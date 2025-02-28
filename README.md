@@ -17,6 +17,20 @@
 
 ## Installation
 
+```bash
+git clone src/git@github.com:MIT-SPARK/Awesome-DCIST-T4.git # Presumably run from your colcon ws
+echo export DCIST_WS=`pwd` >> ~/.zshrc
+sudo apt install tmuxp
+pip install pre-commit # Probably in your virtualenv?
+```
+
+You should be able to load a tmuxp launch file by navigating to
+`awesome-dcist-t4/dcist_launch_system/tmux` and running
+
+```bash
+tmuxp load dcist_launch.yaml
+```
+
 ## Documentation
 Haha
 
