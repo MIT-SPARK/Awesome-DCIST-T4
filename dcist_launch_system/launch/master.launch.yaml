@@ -1,0 +1,26 @@
+launch:
+
+    - arg:
+        name: "conf_name"
+
+    - arg:
+        name: "launch_example_1_node"
+        default: "false"
+
+    - arg:
+        name: "launch_example_2_node"
+        default: "false"
+
+    - node:
+        if: "$(var launch_example_1_node)"
+        pkg: dcist_launch_system
+        exec: example_1_node
+        name: example_1_node
+        param:
+            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/example_1_node.yaml
+
+    - node:
+        if: "$(var launch_example_2_node)"
+        pkg: dcist_launch_system
+        exec: example_2_node
+        name: example_2_node

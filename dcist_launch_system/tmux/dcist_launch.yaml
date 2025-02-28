@@ -1,0 +1,19 @@
+session_name: dcist_launch
+
+options:
+    default-command: /bin/zsh
+
+windows:
+
+    - window_name: talker
+      shell_command_before: source ${DCIST_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_example_1_node:=true
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_example_2_node:=true
+
+    - window_name: debug
+      shell_command_before: source ${DCIST_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+        - sleep 10 && ros2 node list
