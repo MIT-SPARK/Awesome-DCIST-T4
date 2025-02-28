@@ -1,0 +1,30 @@
+name: Awesome-DCIST-T4
+run-name: Awesome-DCIST-T4
+on:
+    push:
+        branches: main
+    pull_request:
+        branches:
+            - main
+            - develop
+jobs:
+  Awesome-DCIST-T4:
+    runs-on: ubuntu-latest
+    container: ros:jazzy-desktop-full
+    steps:
+      - name: Update git
+        run: sudo apt update && sudo apt install -y git
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+            path: src/awesome_dcist
+            submodules: recursive
+
+      - name: Pre-commit
+        run: pip install pre-commit && cd src/awesome_dcist && pre-commit run --all-files src/awesome_dcist
+
+      - name: Install Everything
+        run: colcon build
+
+      - run: echo "🍏 This job's status is ${{ job.status }}."
