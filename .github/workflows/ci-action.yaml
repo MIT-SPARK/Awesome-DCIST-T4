@@ -10,7 +10,7 @@ on:
 jobs:
   Awesome-DCIST-T4:
     runs-on: ubuntu-latest
-    container: ros:jazzy-desktop-full
+    container: osrf/ros:jazzy-desktop-full
     steps:
       - name: Update git
         run: sudo apt update && sudo apt install -y git
