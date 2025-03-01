@@ -33,7 +33,7 @@ jobs:
             source dcist_venv/bin/activate
             pip install pre-commit
             cd src/awesome_dcist
-            pre-commit run --all-files src/awesome_dcist
+            pre-commit run --all-files
 
       - name: Install Everything
         shell: bash
