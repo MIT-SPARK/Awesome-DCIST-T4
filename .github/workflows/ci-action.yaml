@@ -17,7 +17,9 @@ jobs:
             sudo apt update
             sudo apt install -y git
             sudo apt install -y python3-pip
-            sudo pip install --upgrade pip
+            python3 -m venv dcist_venv
+            source dcist_venv/bin/activate
+            pip install --upgrade pip
 
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -26,7 +28,11 @@ jobs:
             submodules: recursive
 
       - name: Pre-commit
-        run: pip install pre-commit && cd src/awesome_dcist && pre-commit run --all-files src/awesome_dcist
+        run: |
+            source dcist_venv/bin/activate
+            pip install pre-commit
+            cd src/awesome_dcist
+            pre-commit run --all-files src/awesome_dcist
 
       - name: Install Everything
         run: colcon build
