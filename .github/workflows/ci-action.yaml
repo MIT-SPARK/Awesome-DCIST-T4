@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
             source dcist_venv/bin/activate
+            source /opt/ros/jazzy/setup.bash
             colcon build
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
