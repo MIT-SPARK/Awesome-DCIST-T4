@@ -20,7 +20,7 @@ jobs:
             python3 -m venv dcist_venv
             source dcist_venv/bin/activate
             pip install --upgrade pip
-            pip install empy==3.3.4
+            pip install empy==3.3.4 catkin_pkg lark
 
       - name: Check out repository code
         uses: actions/checkout@v4
