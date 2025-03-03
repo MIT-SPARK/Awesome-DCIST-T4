@@ -1,0 +1,20 @@
+nodes_to_track:
+    - hydra
+    - roman
+    - spot_executor
+    - planner
+    - nlp
+    - perception # demo placeholder
+    - planning # demo placeholder
+    - example1 # demo placeholder
+
+# TODO: once we can take a list
+#external_monitors:
+#    - type: "Example1NodeMonitor"
+#      divider: 10
+#      mod: 2
+
+external_monitors:
+    type: "Example1NodeMonitor"
+    divider: 10
+    mod: 2

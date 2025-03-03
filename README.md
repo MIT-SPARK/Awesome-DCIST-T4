@@ -24,6 +24,11 @@ sudo apt install tmuxp
 pip install pre-commit # Probably in your virtualenv?
 ```
 
+Other dependencies:
+```bash
+git@github.com:MIT-SPARK/Spark-Config.git # https://github.com/MIT-SPARK/Spark-Config
+```
+
 You should be able to load a tmuxp launch file by navigating to
 `awesome-dcist-t4/dcist_launch_system/tmux` and running
 

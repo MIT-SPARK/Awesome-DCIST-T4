@@ -11,9 +11,10 @@ windows:
       panes:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_example_1_node:=true
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_example_2_node:=true
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_nominal_node:=true launch_warning_node:=true
 
     - window_name: debug
       shell_command_before: source ${DCIST_WS}/install/setup.zsh
       layout: tiled
       panes:
-        - sleep 10 && ros2 node list
+        - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/default/ros_system_monitor_config.yaml --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic

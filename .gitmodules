@@ -1,0 +1,3 @@
+[submodule "ROS-System-Monitor"]
+	path = ROS-System-Monitor
+	url = git@github.com:MIT-SPARK/ROS-System-Monitor.git

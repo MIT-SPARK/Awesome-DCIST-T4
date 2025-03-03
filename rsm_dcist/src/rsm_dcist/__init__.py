@@ -1,0 +1,1 @@
+from rsm_dcist.example1_monitor import Example1NodeMonitorConfig
