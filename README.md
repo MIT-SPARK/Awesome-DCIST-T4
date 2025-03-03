@@ -20,13 +20,13 @@
 Install dependencies:
 ```bash
 sudo apt install pipx
-pipx install tmuxp pre-commit
-echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.zshrc
+pipx install -f tmuxp pre-commit
+echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```
 
 ```bash
 # Feel free to change the workspace
-mkdir -p ~colcon_ws/src && cd ~colcon_ws
+mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4
 echo export DCIST_WS=`pwd` >> ~/.zshrc
 ```
