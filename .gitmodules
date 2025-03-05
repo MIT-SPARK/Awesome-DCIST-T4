@@ -1,3 +1,6 @@
 [submodule "ROS-System-Monitor"]
 	path = ros_system_monitor
 	url = git@github.com:MIT-SPARK/ROS-System-Monitor.git
+[submodule "spark_dsg"]
+	path = spark_dsg
+	url = git@github.com:MIT-SPARK/Spark-DSG.git

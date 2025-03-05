@@ -19,7 +19,7 @@
 
 Install dependencies:
 ```bash
-sudo apt install pipx python3-virtualenv
+sudo apt install pipx python3-virtualenv python3-colcon-clean
 pipx install -f tmuxp pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```

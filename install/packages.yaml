@@ -3,3 +3,7 @@ repositories:
     type: git
     url: git@github.com:MIT-SPARK/Spark-Config.git
     version: main
+  pose_graph_tools:
+    type: git
+    url: git@github.com:MIT-SPARK/pose_graph_tools.git
+    version: ros2
