@@ -3,7 +3,19 @@ repositories:
     type: git
     url: git@github.com:MIT-SPARK/Spark-Config.git
     version: main
-  pose_graph_tools:
+  config_utilities:  # added by Nathan for Hydra (and semantic_inference, among others)
+    type: git
+    url: git@github.com:MIT-SPARK/config_utilities.git
+    version: main
+  pose_graph_tools:  # added by Nathan for Hydra
     type: git
     url: git@github.com:MIT-SPARK/pose_graph_tools.git
     version: ros2
+  spatial_hash: # added by Nathan for Hydra
+    type: git
+    url: git@github.com:MIT-SPARK/Spatial-Hash.git
+    version: main
+  teaserpp: # added by Nathan for Hydra
+    type: git
+    url: git@github.com:MIT-SPARK/TEASER-plusplus.git
+    version: master
