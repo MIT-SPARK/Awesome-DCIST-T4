@@ -1,20 +1,11 @@
+---
 nodes_to_track:
-    - hydra
-    - roman
-    - spot_executor
-    - planner
-    - nlp
-    - perception # demo placeholder
-    - planning # demo placeholder
-    - example1 # demo placeholder
-
-# TODO: once we can take a list
-#external_monitors:
-#    - type: "Example1NodeMonitor"
-#      divider: 10
-#      mod: 2
-
-external_monitors:
-    type: "Example1NodeMonitor"
-    divider: 10
-    mod: 2
+  - {nickname: hydra}
+  - {nickname: roman}
+  - {nickname: spot_executor}
+  - {nickname: planner}
+  - {nickname: nlp}
+  - {nickname: perception}
+  - {nickname: planning}
+  - {nickname: example1}
+  - {nickname: example2, external_monitors: {type: Example1NodeMonitor, divider: 10, mod: 2}}

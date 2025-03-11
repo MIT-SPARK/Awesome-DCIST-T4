@@ -19,7 +19,7 @@
 
 Install dependencies:
 ```bash
-sudo apt install pipx
+sudo apt install pipx python3-virtualenv
 pipx install -f tmuxp pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```
@@ -29,11 +29,16 @@ echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
 echo export DCIST_WS=`pwd` >> ~/.zshrc
+
+# Feel free to change the environment path
+python3 -m virtualenv ~/environments/dcist --download
+echo export DCIST_ENV=~/environments/dcist >> ~/.zshrc
 ```
 
 Other dependencies:
 ```bash
-git@github.com:MIT-SPARK/Spark-Config.git # https://github.com/MIT-SPARK/Spark-Config
+source $DCIST_ENV/bin/activate
+pip install git+https://github.com/MIT-SPARK/Spark-Config@main
 ```
 
 You should be able to load a tmuxp launch file by navigating to
