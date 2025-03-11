@@ -32,7 +32,7 @@ echo export DCIST_WS=`pwd` >> ~/.zshrc
 
 # Feel free to change the environment path
 python3 -m virtualenv ~/environments/dcist --download
-echo export DCIST_ENV=~/environments/dcist >> ~/.zshrc
+echo export DCIST_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 ```
 
 Other dependencies:
