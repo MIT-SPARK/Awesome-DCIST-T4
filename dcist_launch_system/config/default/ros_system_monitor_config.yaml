@@ -8,4 +8,4 @@ nodes_to_track:
   - {nickname: perception}
   - {nickname: planning}
   - {nickname: example1}
-  - {nickname: example2, external_monitors: {type: Example1NodeMonitor, divider: 10, mod: 2}}
+  - {nickname: example2, external_monitor: {type: Example1NodeMonitor, divider: 10, mod: 2}}
