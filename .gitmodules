@@ -13,3 +13,12 @@
 [submodule "ianvs"]
 	path = ianvs
 	url = git@github.com:MIT-SPARK/Ianvs
+[submodule "kimera_pgmo"]
+	path = kimera_pgmo
+	url = git@github.com:MIT-SPARK/Kimera-PGMO.git
+[submodule "hydra"]
+	path = hydra
+	url = git@github.com:MIT-SPARK/Hydra.git
+[submodule "hydra_ros"]
+	path = hydra_ros
+	url = git@github.com:MIT-SPARK/Hydra-ROS.git
