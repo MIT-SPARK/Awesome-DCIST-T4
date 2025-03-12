@@ -20,10 +20,9 @@ class Example1NodeMonitor:
 
     def register_callbacks(self, monitor):
         self.monitor = monitor
-        subscriber = monitor.create_subscription(
+        self.subscriber = monitor.create_subscription(
             String, "~/example1_node_topic", self.callback, 1
         )
-        monitor.add_subscribers([subscriber])
 
     def callback(self, msg):
         msg_idx = int(msg.data.split(" ")[3])
