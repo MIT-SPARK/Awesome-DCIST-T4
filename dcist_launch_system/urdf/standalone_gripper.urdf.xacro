@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot name="standalone_gripper" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find spot_description)/urdf/spot_gripper_macro.urdf" />
+
+  <!-- Root link -->
+  <!-- <link name="body"/> -->
+
+  <!-- Parameters -->
+  <xacro:arg name="tf_prefix" default="" />
+  <xacro:arg name="include_transmissions" default="false" />
+
+  <!-- Load arm -->
+  <xacro:load_gripper
+    tf_prefix="$(arg tf_prefix)"
+    include_transmissions="$(arg include_transmissions)" />
+
+</robot>
