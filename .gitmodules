@@ -1,3 +1,6 @@
 [submodule "ROS-System-Monitor"]
 	path = ros_system_monitor
 	url = git@github.com:MIT-SPARK/ROS-System-Monitor.git
+[submodule "spot_tools"]
+	path = spot_tools
+	url = git@github.com:robustrobotics/spot_tools.git
