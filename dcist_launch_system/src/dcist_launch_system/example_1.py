@@ -14,7 +14,7 @@ class Example1Node(Node):
             type=Parameter.Type.STRING.value,
             description="This is a string",
         )
-        self.declare_parameter("prefix", descriptor=param_descriptor)
+        self.declare_parameter("prefix", "", descriptor=param_descriptor)
 
         self.prefix = self.get_parameter("prefix").value
         timer_period_s = 0.5
