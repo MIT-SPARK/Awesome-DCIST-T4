@@ -1,11 +1,11 @@
 ---
 nodes_to_track:
-  - {nickname: hydra}
-  - {nickname: roman}
-  - {nickname: spot_executor}
-  - {nickname: planner}
-  - {nickname: nlp}
-  - {nickname: perception}
-  - {nickname: planning}
-  - {nickname: example1}
-  - {nickname: example2, external_monitor: {type: Example1NodeMonitor, divider: 10, mod: 2}}
+  hydra: {}
+  roman: {}
+  spot_executor: {}
+  planner: {}
+  nlp: {}
+  perception: {}
+  planning: {}
+  example1: {}
+  example2: {external_monitor: {type: Example1NodeMonitor, divider: 10, mod: 2}}

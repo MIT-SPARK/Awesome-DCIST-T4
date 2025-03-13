@@ -7,6 +7,7 @@
   <maintainer email="aaronray@mit.edu">aaron</maintainer>
   <license>TODO: License declaration</license>
 
+  <depend>python3-ruamel.yaml</depend> <!-- needed for spark_config -->
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
