@@ -1,56 +1,49 @@
+---
 launch:
-
-    - arg:
-        name: "conf_name"
-
-    - arg:
-        name: "launch_example_1_node"
-        default: "false"
-
-    - arg:
-        name: "launch_example_2_node"
-        default: "false"
-
-    - arg:
-        name: "launch_nominal_node"
-        default: "false"
-
-    - arg:
-        name: "launch_warning_node"
-        default: "false"
-
-    - node:
-        if: "$(var launch_example_1_node)"
-        pkg: dcist_launch_system
-        exec: example_1_node
-        name: example_1_node
-        param:
-            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/example_1_node.yaml
-
-    - node:
-        if: "$(var launch_nominal_node)"
-        pkg: ros_system_monitor
-        exec: example_monitored_node
-        name: nominal_monitored_node
-        param:
-            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/nominal_monitored_node.yaml
-        remap:
-            - from: ~/node_status
-              to: /ros_system_monitor/node_diagnostic_collector
-
-    - node:
-        if: "$(var launch_warning_node)"
-        pkg: ros_system_monitor
-        exec: example_monitored_node
-        name: warning_monitored_node
-        param:
-            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/warning_monitored_node.yaml
-        remap:
-            - from: ~/node_status
-              to: /ros_system_monitor/node_diagnostic_collector
-
-    - node:
-        if: "$(var launch_example_2_node)"
-        pkg: dcist_launch_system
-        exec: example_2_node
-        name: example_2_node
+  - arg: {name: conf_name}
+  # Example Node 1
+  - arg: {name: launch_example_1_node, default: 'false'}
+  - node:
+      if: $(var launch_example_1_node)
+      pkg: dcist_launch_system
+      exec: example_1_node
+      name: example_1_node
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/example_1_node.yaml
+  # Nominal Node
+  - arg: {name: launch_nominal_node, default: 'false'}
+  - node:
+      if: $(var launch_nominal_node)
+      pkg: ros_system_monitor
+      exec: example_monitored_node
+      name: nominal_monitored_node
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/nominal_monitored_node.yaml
+      remap:
+        - {from: ~/node_status, to: /ros_system_monitor/node_diagnostic_collector}
+  # Warning Node
+  - arg: {name: launch_warning_node, default: 'false'}
+  - node:
+      if: $(var launch_warning_node)
+      pkg: ros_system_monitor
+      exec: example_monitored_node
+      name: warning_monitored_node
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/warning_monitored_node.yaml
+      remap:
+        - {from: ~/node_status, to: /ros_system_monitor/node_diagnostic_collector}
+  # Example 2 Node
+  - arg: {name: launch_example_2_node, default: 'false'}
+  - node: {if: $(var launch_example_2_node), pkg: dcist_launch_system, exec: example_2_node, name: example_2_node}
+  # Hydra
+  - arg: {name: launch_hydra, default: 'false'}
+  - set_remap: {if: $(var launch_hydra), from: hydra/status, to: /ros_system_monitor/hydra/status}
+  - include: {if: $(var launch_hydra), file: $(find-pkg-share dcist_launch_system)/launch/hydra/uhumans2.launch.yaml}
+  # Hydra Visualizer
+  - arg: {name: launch_hydra_visualizer, default: 'false'}
+  - set_remap: {if: $(var launch_hydra_visualizer), from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+  - include:
+      if: $(var launch_hydra_visualizer)
+      file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
+      arg:
+        - {name: visualizer_frame, value: map}
