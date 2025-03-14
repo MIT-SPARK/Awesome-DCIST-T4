@@ -1,6 +1,6 @@
 ---
 nodes_to_track:
-  hydra: {}
+  hydra: {external_monitor: {type: JsonMonitor, nickname: hydra}}
   roman: {}
   spot_executor: {}
   planner: {}

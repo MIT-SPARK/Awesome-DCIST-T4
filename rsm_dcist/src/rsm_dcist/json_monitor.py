@@ -2,25 +2,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import functools
 
 import ros_system_monitor as rsm
-from spark_config.config import Config, register_config
+import spark_config as sc
 from std_msgs.msg import String
 
 
 class JsonMonitor:
+    """External monitor that listens to json status report."""
+
     def __init__(self, config: JsonMonitorConfig, nickname: str):
         self.nickname = nickname
-        self.config = config
 
-    @classmethod
-    def load(cls, path):
-        config = Config.load(JsonMonitorConfig, path)
-        return cls(config)
-
-    def set_callback(self, monitor, monitor_callback):
-        self._update_cb = monitor_callback
-        self.sub = monitor.create_subscription(String, "~/status", self._callback, 1)
+    def register_monitor(self, monitor):
+        self._update_cb = functools.partial(monitor.update_node_info, self.nickname)
+        topic = rsm.get_topic(self.nickname)
+        self.sub = monitor.create_subscription(String, str(topic), self._callback, 1)
 
     def _callback(self, msg):
         try:
@@ -31,19 +29,16 @@ class JsonMonitor:
         if "status" not in contents:
             self._update_cb("???", rsm.Status.ERROR, f"status missing: '{contents}'")
 
-        if self.config.nickname != "":
-            if "nickname" not in contents:
-                self._update_cb(
-                    "???", rsm.Status.ERROR, f"nickname missing: '{contents}'"
-                )
+        if "nickname" not in contents:
+            self._update_cb("???", rsm.Status.ERROR, f"nickname missing: '{contents}'")
 
-            curr_name = contents["nickname"]
-            if self.config.nickname != contents["nickname"]:
-                self._update_cb(
-                    "???",
-                    rsm.Status.ERROR,
-                    f"name mismatch: got '{curr_name} vs. '{self.config.nickname}'",
-                )
+        curr_name = contents["nickname"]
+        if self.nickname != curr_name:
+            self._update_cb(
+                "???",
+                rsm.Status.ERROR,
+                f"name mismatch: got '{curr_name} vs. '{self.nickname}'",
+            )
 
         status, status_str = rsm.str_to_status(contents["status"])
         note = contents.get("note", "")
@@ -53,8 +48,7 @@ class JsonMonitor:
         self._update_cb(contents.get("node_name", "???"), status, note)
 
 
-@register_config("json_monitor", name="JsonMonitor", constructor=JsonMonitor)
+@sc.register_config("json_monitor", name="JsonMonitor", constructor=JsonMonitor)
 @dataclass
-class JsonMonitorConfig(Config):
-    namespace: str = ""
-    nickname: str = ""
+class JsonMonitorConfig(sc.Config):
+    pass
