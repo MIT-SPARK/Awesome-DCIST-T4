@@ -39,7 +39,7 @@ echo export DCIST_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 ```
 
 Build:
-```
+```bash
 # this next step is CRUCIAL to get colcon to behave properly
 pushd $DCIST_WS
 # this will error most likely but it's fine...
