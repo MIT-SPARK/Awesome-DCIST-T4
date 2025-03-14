@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-import json
 import functools
+import json
+from dataclasses import dataclass
 
 import ros_system_monitor as rsm
 import spark_config as sc

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import functools
+from dataclasses import dataclass
 
 import ros_system_monitor as rsm
 from spark_config.config import Config, register_config
