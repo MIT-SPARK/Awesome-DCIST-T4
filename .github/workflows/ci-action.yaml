@@ -27,7 +27,6 @@ jobs:
       - name: Pre-commit
         shell: bash
         run: |
-            source dcist_venv/bin/activate
             pip install pre-commit
             cd src/awesome_dcist_t4
             pre-commit run --all-files
@@ -36,6 +35,7 @@ jobs:
         shell: bash
         run: |
             vcs import src < src/awesome_dcist_t4/install/packages.yaml
+            rosdep update
             rosdep install --from-paths src --ignore-src -r -y
             source /opt/ros/jazzy/setup.bash
             colcon build
