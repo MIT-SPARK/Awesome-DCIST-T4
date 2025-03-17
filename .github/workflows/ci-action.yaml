@@ -9,7 +9,7 @@ on:
             - develop
 jobs:
   Awesome-DCIST-T4:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container: osrf/ros:jazzy-desktop-full
     steps:
       - name: Update Dependencies
@@ -39,8 +39,10 @@ jobs:
       - name: Install Everything
         shell: bash
         run: |
+            vcs import src < src/awesome_dcist_t4/install/packages.yaml
+            rosdep install --from-paths src --ignore-src -r -y
             source dcist_venv/bin/activate
             source /opt/ros/jazzy/setup.bash
-            colcon build --packages-up-to ros_system_monitor
+            colcon build
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
