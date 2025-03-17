@@ -27,7 +27,7 @@ jobs:
       - name: Pre-commit
         shell: bash
         run: |
-            python3 -m virtaulenv precommit_venv --download
+            python3 -m virtualenv precommit_venv --download
             source precommit_venv/bin/activate
             pip install pre-commit
             cd src/awesome_dcist_t4
