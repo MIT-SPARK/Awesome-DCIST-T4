@@ -1,44 +1,37 @@
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 
-from ros_system_monitor.node_info import NodeInfo, Status
+import ros_system_monitor as rsm
 from spark_config.config import Config, register_config
 from std_msgs.msg import String
 
 
 class Example1NodeMonitor:
-    def __init__(self, config: Example1NodeMonitorConfig):
+    def __init__(self, config: Example1NodeMonitorConfig, nickname: str):
+        self.nickname = nickname
         self.divider = config.divider
         self.mod = config.mod
         self.monitor = None
 
-    @classmethod
-    def load(cls, path):
-        config = Config.load(Example1NodeMonitorConfig, path)
-        return cls(config)
-
-    def register_callbacks(self, monitor):
-        self.monitor = monitor
-        self.subscriber = monitor.create_subscription(
+    def register_monitor(self, monitor):
+        self.monitor_callback = functools.partial(
+            monitor.update_node_info, self.nickname
+        )
+        self.sub = monitor.create_subscription(
             String, "~/example1_node_topic", self.callback, 1
         )
 
     def callback(self, msg):
         msg_idx = int(msg.data.split(" ")[3])
         if msg_idx // self.divider % self.mod:
-            status = Status.NOMINAL
+            status = rsm.Status.NOMINAL
         else:
-            status = Status.ERROR
-        note = f"Current messaged idx {msg_idx}"
-        info = NodeInfo(
-            nickname="example1",
-            node_name="<external monitor>",
-            status=status,
-            notes=note,
-        )
+            status = rsm.Status.ERROR
 
-        self.monitor.update_node_info(info)
+        note = f"Current messaged idx {msg_idx}"
+        self.monitor_callback("<external>", status, note)
 
 
 @register_config(
