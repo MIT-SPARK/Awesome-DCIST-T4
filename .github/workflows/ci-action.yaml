@@ -1,5 +1,4 @@
 name: Awesome-DCIST-T4
-run-name: Awesome-DCIST-T4
 on:
     push:
         branches: main
@@ -8,7 +7,7 @@ on:
             - main
             - develop
 jobs:
-  Awesome-DCIST-T4:
+  Build:
     runs-on: self-hosted
     container: osrf/ros:jazzy-desktop-full
     steps:
