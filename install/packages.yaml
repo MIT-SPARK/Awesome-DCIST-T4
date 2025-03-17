@@ -1,0 +1,5 @@
+repositories:
+  spark_config:  # added by Nathan for ros_system_monitor
+    type: git
+    url: git@github.com:MIT-SPARK/Spark-Config.git
+    version: main
