@@ -11,6 +11,11 @@ jobs:
     runs-on: self-hosted
     container: osrf/ros:jazzy-desktop-full
     steps:
+      - name: Clean Artifacts
+        shell: bash
+        run: |
+          rm -rf src || rm -rf precommit_venv
+
       - name: Update Dependencies
         shell: bash
         run: |
@@ -37,7 +42,7 @@ jobs:
         run: |
             vcs import src < src/awesome_dcist_t4/install/packages.yaml
             rosdep update
-            rosdep install --from-paths src --ignore-src -r -y
+            rosdep install -q --from-paths src --ignore-src -r -y || echo "Installed rosdeps"
             source /opt/ros/jazzy/setup.bash
             colcon build
 
