@@ -1,0 +1,13 @@
+launch:
+
+  - node:
+      pkg: simple_image
+      exec: simple_image_node
+      name: simple_image_node
+      output: screen
+      remap:
+        - from: image 
+          to: /tesse/left_cam/rgb/image_raw
+
+
+
