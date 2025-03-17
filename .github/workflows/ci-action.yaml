@@ -41,6 +41,6 @@ jobs:
         run: |
             source dcist_venv/bin/activate
             source /opt/ros/jazzy/setup.bash
-            colcon build
+            colcon build --packages-up-to ros_system_monitor
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
