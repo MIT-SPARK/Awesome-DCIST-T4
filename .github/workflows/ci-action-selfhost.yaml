@@ -1,0 +1,46 @@
+name: Awesome-DCIST-T4
+run-name: Awesome-DCIST-T4
+on:
+    push:
+        branches: main
+    pull_request:
+        branches:
+            - main
+            - develop
+jobs:
+  Awesome-DCIST-T4:
+    runs-on: self-hosted
+    container: osrf/ros:jazzy-desktop-full
+    steps:
+      - name: Update Dependencies
+        shell: bash
+        run: |
+            sudo apt update
+            sudo apt install -y git python3-pip python3 python3-venv ros-jazzy-ament-cmake
+            python3 -m venv dcist_venv
+            source dcist_venv/bin/activate
+            pip install --upgrade pip
+            pip install empy==3.3.4 catkin_pkg lark numpy
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+            path: src/awesome_dcist
+            submodules: recursive
+
+      - name: Pre-commit
+        shell: bash
+        run: |
+            source dcist_venv/bin/activate
+            pip install pre-commit
+            cd src/awesome_dcist
+            pre-commit run --all-files
+
+      - name: Install Everything
+        shell: bash
+        run: |
+            source dcist_venv/bin/activate
+            source /opt/ros/jazzy/setup.bash
+            colcon build
+
+      - run: echo "🍏 This job's status is ${{ job.status }}."
