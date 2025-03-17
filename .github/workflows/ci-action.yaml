@@ -7,7 +7,7 @@ on:
             - main
             - develop
 jobs:
-  Build:
+  Awesome-DCIST-T4:
     runs-on: self-hosted
     container: osrf/ros:jazzy-desktop-full
     steps:
