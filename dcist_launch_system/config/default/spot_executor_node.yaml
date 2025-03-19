@@ -6,11 +6,11 @@
         bosdyn_client_password: "$(env BOSDYN_CLIENT_PASSWORD)"
         use_fake_spot_interface: true
         use_fake_spot_pose: true
-        fake_spot_x: 0
-        fake_spot_y: 0
-        fake_spot_z: 0
-        fake_spot_yaw: 0
-        follower_lookahead: 2
+        fake_spot_x: 0.
+        fake_spot_y: 0.
+        fake_spot_z: 0.
+        fake_spot_yaw: 0.
+        follower_lookahead: 2.
         #semantic_model_path: "(find-pkg-share semantic_inference)/models/ade20k-efficientvit_seg_l2.onnx"
         semantic_model_path: "path_to_semantic_model"
         #labelspace_path: "(find-pkg-share hydra)/config/label_spaces/ade20k_mit_label_space.yaml"

@@ -80,3 +80,12 @@ launch:
       remap:
           - from: /joint_states
             to: /spot_executor_node/joint_states
+
+  # Rviz
+  - arg: {name: 'launch_rviz', default: 'false'}
+  - node:
+      if: "$(var launch_rviz)"
+      pkg: rviz2
+      exec: "rviz2"
+      name: "rviz2_node"
+      args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"

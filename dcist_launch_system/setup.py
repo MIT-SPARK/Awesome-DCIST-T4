@@ -23,6 +23,8 @@ config_files_csv = get_share_info("config", "*.csv")
 mesh_files_obj = get_share_info("meshes", "*.obj")
 mesh_files_mtl = get_share_info("meshes", "*.mtl")
 
+rviz_files = get_share_info("rviz", "*.rviz")
+
 
 data_files = (
     [
@@ -34,6 +36,7 @@ data_files = (
     + config_files_csv
     + mesh_files_obj
     + mesh_files_mtl
+    + rviz_files
 )
 
 
