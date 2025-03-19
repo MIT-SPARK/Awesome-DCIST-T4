@@ -25,6 +25,6 @@ string pick_frame
 string object_class
 geometry_msgs/Point object_point
 
-# Definition for PICK
+# Definition for PLACE
 string place_frame
 # Should drop the object for now.
