@@ -90,7 +90,7 @@ def _(action: Follow, marker_ns):
         pt = Point()
         pt.x = p[0]
         pt.y = p[1]
-        pt.z = 0.
+        pt.z = 0.0
         points.append(pt)
     m = Marker()
     m.header.frame_id = action.frame
@@ -99,12 +99,12 @@ def _(action: Follow, marker_ns):
     m.id = 0
     m.type = m.LINE_STRIP
     m.action = m.ADD
-    m.pose.orientation.w = 1.
+    m.pose.orientation.w = 1.0
     m.scale.x = 0.1
-    m.color.a = 1.
-    m.color.r = 0.
-    m.color.g = 1.
-    m.color.b = 0.
+    m.color.a = 1.0
+    m.color.r = 0.0
+    m.color.g = 1.0
+    m.color.b = 0.0
     m.points = points
     return [m]
 
@@ -160,13 +160,13 @@ def _(action: Gaze, marker_ns):
     m.id = 0
     m.type = m.ARROW
     m.action = m.ADD
-    m.pose.orientation.w = 1.
+    m.pose.orientation.w = 1.0
     m.scale.x = 0.1  # shaft diameter
     m.scale.y = 0.2  # head diameter
-    m.color.a = 1.
-    m.color.r = 1.
-    m.color.g = 0.
-    m.color.b = 0.
+    m.color.a = 1.0
+    m.color.r = 1.0
+    m.color.g = 0.0
+    m.color.b = 0.0
     m.points = [pt1, pt2]
 
     return [m]
@@ -222,13 +222,13 @@ def _(action: Pick, marker_ns):
     m.id = 0
     m.type = m.ARROW
     m.action = m.ADD
-    m.pose.orientation.w = 1.
+    m.pose.orientation.w = 1.0
     m.scale.x = 0.1  # shaft diameter
     m.scale.y = 0.2  # head diameter
-    m.color.a = 1.
-    m.color.r = 0.
-    m.color.g = 1.
-    m.color.b = 0.
+    m.color.a = 1.0
+    m.color.r = 0.0
+    m.color.g = 1.0
+    m.color.b = 0.0
     m.points = [pt1, pt2]
 
     return [m]
@@ -282,13 +282,13 @@ def _(action: Place, marker_ns):
     m.id = 0
     m.type = m.ARROW
     m.action = m.ADD
-    m.pose.orientation.w = 1.
+    m.pose.orientation.w = 1.0
     m.scale.x = 0.1  # shaft diameter
     m.scale.y = 0.2  # head diameter
-    m.color.a = 1.
-    m.color.r = 0.
-    m.color.g = 0.
-    m.color.b = 1.
+    m.color.a = 1.0
+    m.color.r = 0.0
+    m.color.g = 0.0
+    m.color.b = 1.0
     m.points = [pt1, pt2]
 
     return [m]
