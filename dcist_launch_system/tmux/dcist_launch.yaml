@@ -13,6 +13,13 @@ windows:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_example_2_node:=true
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_nominal_node:=true launch_warning_node:=true
 
+    - window_name: hydra
+      shell_command_before: source ${DCIST_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_hydra:=true
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_hydra_visualizer:=true
+
     - window_name: debug
       shell_command_before: source ${DCIST_WS}/install/setup.zsh
       layout: tiled

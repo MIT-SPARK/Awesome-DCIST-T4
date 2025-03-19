@@ -1,3 +1,24 @@
 [submodule "ROS-System-Monitor"]
 	path = ros_system_monitor
 	url = git@github.com:MIT-SPARK/ROS-System-Monitor.git
+[submodule "spark_dsg"]
+	path = spark_dsg
+	url = git@github.com:MIT-SPARK/Spark-DSG.git
+[submodule "kimera_rpgo"]
+	path = kimera_rpgo
+	url = git@github.com:MIT-SPARK/Kimera-RPGO
+[submodule "semantic_inference"]
+	path = semantic_inference
+	url = git@github.com:MIT-SPARK/semantic_inference.git
+[submodule "ianvs"]
+	path = ianvs
+	url = git@github.com:MIT-SPARK/Ianvs
+[submodule "kimera_pgmo"]
+	path = kimera_pgmo
+	url = git@github.com:MIT-SPARK/Kimera-PGMO.git
+[submodule "hydra"]
+	path = hydra
+	url = git@github.com:MIT-SPARK/Hydra.git
+[submodule "hydra_ros"]
+	path = hydra_ros
+	url = git@github.com:MIT-SPARK/Hydra-ROS.git
