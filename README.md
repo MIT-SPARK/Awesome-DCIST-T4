@@ -56,6 +56,16 @@ You should be able to load a tmuxp launch file by navigating to
 tmuxp load dcist_launch.yaml
 ```
 
+To see Hydra running:
+```
+ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-overrides-path ~/tf_overrides.yaml
+```
+where `~/tf_overrides.yaml` looks like
+```yaml
+/tf_static: {depth: 1, durability: transient_local}
+```
+To get the bag, ask Aaron (and convert by `pipx install rosbags; rosbags-convert --src spot_hydra_twocam_test.bag --dst spot_hydra_twocam_test`).
+
 ## Documentation
 Haha
 
