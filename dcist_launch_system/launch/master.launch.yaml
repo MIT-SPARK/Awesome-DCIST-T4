@@ -43,7 +43,7 @@ launch:
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
   - set_remap: {if: $(var launch_hydra), from: hydra/status, to: /ros_system_monitor/hydra/status}
-  - include: {if: $(var launch_hydra), file: $(find-pkg-share dcist_launch_system)/launch/hydra/uhumans2.launch.yaml}
+  - include: {if: $(var launch_hydra), file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
