@@ -8,7 +8,7 @@ launch:
   - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: /spot/depth/frontleft/depth_in_visual}
   - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: /spot/camera/frontleft/image}
   - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: /spot/camera/frontleft/camera_info}
-  - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: /spot/frontleft/semantics/image_raw}
+  - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: /spot/frontleft/semantic/image_raw}
   - set_remap: {from: /spot/frontleft/color/image_raw, to: /spot/camera/frontleft/image}
   - node:
       pkg: semantic_inference_ros
@@ -26,7 +26,7 @@ launch:
   - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: /spot/depth/frontright/depth_in_visual}
   - set_remap: {from: hydra/input/frontright/rgb/image_raw, to: /spot/camera/frontright/image}
   - set_remap: {from: hydra/input/frontright/rgb/camera_info, to: /spot/camera/frontright/camera_info}
-  - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: /spot/frontright/semantics/image_raw}
+  - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: /spot/frontright/semantic/image_raw}
   - set_remap: {from: /spot/frontright/color/image_raw, to: /spot/camera/frontright/image}
   - node:
       pkg: semantic_inference_ros
@@ -45,12 +45,10 @@ launch:
       pkg: hydra_ros
       exec: hydra_ros_node
       name: hydra
-      env:
-        - {name: TERM, value: xterm-256color}
       param:
         - {name: use_sim_time, value: true}
       args: >
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
-        --config-utilities-yaml {glog_level: 0, verbosity: $(var verbosity)}
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
         --config-utilities-yaml {robot_id: 0, odom_frame: vision, robot_frame: body, map_frame: map}

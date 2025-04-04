@@ -3,6 +3,8 @@
 _definitions:
   min_range: &min_range 0.4
   max_range: &max_range 5.0
+enable_zmq_interface: false
+publish_backend_tf: true
 map_window: {type: spatial, max_radius_m: 8.0}
 # modules
 input:
