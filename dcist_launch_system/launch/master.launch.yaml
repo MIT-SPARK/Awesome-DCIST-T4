@@ -54,6 +54,19 @@ launch:
       arg:
         - {name: visualizer_frame, value: map}
 
+  # ROMAN Map
+  - arg: {name: launch_roman_map, default: 'false'}
+  - include: 
+      if: $(var launch_roman_map)
+      file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+  - include: 
+      if: $(var launch_roman_map)
+      file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
   - node:

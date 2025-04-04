@@ -1,0 +1,27 @@
+---
+launch:
+  - arg: {name: conf_name}
+  - arg: {name: camera, default: frontleft}
+  - node: 
+      if: $(eval "'$(var conf_name)' == 'spot'")
+      pkg: roman_ros2
+      exec: roman_map_node.py
+      name: roman_map_node
+      namespace: $(var conf_name)
+      param:
+        - {name: map_frame_id, value: vision}
+        - {name: odom_frame_id, value: body}
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_map.yaml
+      remap:
+        - {from: color/camera_info, to: camera/$(var camera)/camera_info}
+        - {from: color/image_raw, to: camera/$(var camera)/image}
+        - {from: /$(var conf_name)/tf, to: /tf}
+        - {from: /$(var conf_name)/tf_static, to: /tf_static}
+  - node:
+      if: $(eval "'$(var conf_name)' == 'default'")
+      pkg: roman_ros2
+      exec: roman_map_node.py
+      name: roman_map_node
+      namespace: $(var conf_name)
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_map.yaml
