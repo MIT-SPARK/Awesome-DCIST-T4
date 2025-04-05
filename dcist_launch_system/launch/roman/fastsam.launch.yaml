@@ -10,7 +10,7 @@ launch:
       namespace: $(var conf_name)
       param:
         - {name: map_frame_id, value: vision}
-        - {name: odom_frame_id, value: body}
+        - {name: odom_base_frame_id, value: body}
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/fastsam.yaml}
       remap:
         - {from: color/camera_info, to: camera/$(var camera)/camera_info}

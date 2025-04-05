@@ -20,6 +20,14 @@ windows:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_hydra:=true
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_hydra_visualizer:=true
 
+    - window_name: roman
+      shell_command_before: 
+      - source ${DCIST_WS}/install/setup.zsh
+      - source ${DCIST_ENV}/bin/activate
+      layout: tiled
+      panes:
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default launch_roman_map:=true
+
     - window_name: robot
       shell_command_before: source ${DCIST_WS}/install/setup.zsh
       layout: tiled
