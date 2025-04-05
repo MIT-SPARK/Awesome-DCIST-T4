@@ -1,5 +1,7 @@
 /**:
   ros__parameters:
+    map_frame_id: vision
+    odom_frame_id: body
     robot_id: 0
     visualize: true
     viz_min_viz_dt: 0.25

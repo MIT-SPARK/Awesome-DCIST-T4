@@ -3,6 +3,7 @@ session_name: roman
 environment:
   BAG: /media/masonbp/dcist_acl2/west_point_2024/thursday_runs/ThS2_2024-10-31_11-18-23/ThS2_2024-10-31-11-18-36/
   CONF_NAME: spot
+  ZENOH: true
 
 options:
     default-command: /bin/zsh
@@ -13,10 +14,8 @@ windows:
       shell_command_before: source ${DCIST_WS}/install/setup.zsh
       layout: tiled
       panes:
-        - ros2 run rmw_zenoh_cpp rmw_zenohd
+        - $ZENOH && ros2 run rmw_zenoh_cpp rmw_zenohd
         - ros2 bag play $BAG
-        # - ros2 bag play $BAG --clock
-        # - python3 /home/masonbp/ws2/dcist_ws/src/tf_listener_node.py --ros-args -p use_sim_time:=true
 
     - window_name: roman
       shell_command_before: 
@@ -25,12 +24,11 @@ windows:
       layout: tiled
       panes:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$CONF_NAME launch_roman_map:=true
-        - ros2 bag record /spot/roman/annotated_img -o ~/results/spot_roman_annotated_imgs2
 
-    # - window_name: debug
-    #   shell_command_before: source ${DCIST_WS}/install/setup.zsh
-    #   layout: tiled
-    #   panes:
-    #     - ros2 run ros_system_monitor ros_system_monitor
-    #         --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/default/ros_system_monitor_config.yaml
-    #         --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
+    - window_name: debug
+      shell_command_before: source ${DCIST_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+        - ros2 run ros_system_monitor ros_system_monitor
+            --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/default/ros_system_monitor_config.yaml
+            --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
