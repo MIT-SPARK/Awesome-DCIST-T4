@@ -35,9 +35,11 @@ vcs import src < src/awesome_dcist_t4/install/packages.yaml
 rosdep install --from-paths src --ignore-src -r -y
 echo export DCIST_WS=`pwd` >> ~/.zshrc
 
-# Feel free to change the environment path (currently unused)
+# Feel free to change the environment path
 python3 -m virtualenv ~/environments/dcist --download
 echo export DCIST_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
+source ~/.zshrc
+source $DCIST_WS/src/awesome_dcist_t4/install/python_setup.sh
 ```
 
 Build:

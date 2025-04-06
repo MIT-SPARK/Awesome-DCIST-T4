@@ -3,7 +3,7 @@ session_name: roman
 environment:
   BAG: /media/masonbp/dcist_acl2/west_point_2024/thursday_runs/ThS2_2024-10-31_11-18-23/ThS2_2024-10-31-11-18-36/
   CONF_NAME: spot
-  ZENOH: true
+  ZENOH: "true"
 
 options:
     default-command: /bin/zsh
