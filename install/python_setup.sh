@@ -4,7 +4,7 @@ source $DCIST_ENV/bin/activate
 pushd $DCIST_WS/src/awesome_dcist_t4/roman
 
 git submodule update --init --recursive
-mkdir dependencies/clipper/build
+mkdir -p dependencies/clipper/build
 cd dependencies/clipper/build
 cmake .. && make && make pip-install
 
