@@ -2,7 +2,9 @@ session_name: roman
   
 environment:
   BAG: /media/masonbp/dcist_acl2/west_point_2024/thursday_runs/ThS2_2024-10-31_11-18-23/ThS2_2024-10-31-11-18-36/
-  CONF_NAME: spot
+  CONF_NAME: roman
+  ROBOT_TYPE: spot
+  ROBOT_NAME: spot
   ZENOH: "true"
 
 options:
@@ -23,7 +25,8 @@ windows:
       - source ${DCIST_ENV}/bin/activate
       layout: tiled
       panes:
-        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$CONF_NAME launch_roman_map:=true
+        - ros2 launch dcist_launch_system master.launch.yaml robot_type:=$ROBOT_TYPE conf_name:=$CONF_NAME 
+          robot_name:=$ROBOT_NAME camera:=frontleft launch_fastsam:=true launch_roman_map:=true
 
     - window_name: debug
       shell_command_before: source ${DCIST_WS}/install/setup.zsh

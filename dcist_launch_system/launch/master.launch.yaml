@@ -1,6 +1,9 @@
 ---
 launch:
   - arg: {name: conf_name}
+  - arg: {name: robot_type}
+  - arg: {name: robot_name}
+  - arg: {name: camera, default: none}
 
   # Example Node 1
   - arg: {name: launch_example_1_node, default: 'false'}
@@ -54,18 +57,57 @@ launch:
       arg:
         - {name: visualizer_frame, value: map}
 
-  # ROMAN Map
+  # ROMAN Remaps
+  - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
+  - set_remap: 
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true') and '$(var robot_name)' == 'spot'")
+      from: color/camera_info
+      to: camera/$(var camera)/camera_info
+  - set_remap: 
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true') and '$(var robot_name)' == 'spot'")
+      from: color/image_raw
+      to: camera/$(var camera)/image
+  - set_remap: 
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true') and '$(var robot_name)' == 'spot'")
+      from: depth/camera_info
+      to: camera/$(var camera)/camera_info
+  - set_remap: 
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true') and '$(var robot_name)' == 'spot'")
+      from: depth/image_raw
+      to: depth/$(var camera)/depth_in_visual
+  - set_remap:
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true')")
+      from: /$(var robot_name)/tf
+      to: /tf
+  - set_remap:
+      if: $(eval "('$(var launch_fastsam)'.lower() == 'true' or '$(var launch_roman_map)'.lower() == 'true')")
+      from: /$(var robot_name)/tf_static
+      to: /tf_static
+  
+  # ROMAN: FastSAM
+  - set_remap:
+      if: $(var launch_fastsam)
+      from: /$(var robot_name)/roman/fastsam/status
+      to: /ros_system_monitor/node_diagnostic_collector
   - include: 
-      if: $(var launch_roman_map)
+      if: $(var launch_fastsam)
       file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
       arg:
-        - {name: conf_name, value: $(var conf_name)}
+        - {name: robot_name, value: $(var robot_name)}
+        - {name: robot_type, value: $(var robot_type)}
+
+  # ROMAN: Mapping
+  - set_remap:
+      if: $(var launch_roman_map)
+      from: /$(var robot_name)/roman/roman_map/status
+      to: /ros_system_monitor/node_diagnostic_collector
   - include: 
       if: $(var launch_roman_map)
       file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
       arg:
-        - {name: conf_name, value: $(var conf_name)}
+        - {name: robot_name, value: $(var robot_name)}
+        - {name: robot_type, value: $(var robot_type)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
