@@ -127,3 +127,18 @@ launch:
       exec: "rviz2"
       name: "rviz2_node"
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
+
+  - arg:
+      name: launch_scene_graph_publisher
+      default: "false"
+  - node:
+      if: $(var launch_scene_graph_publisher)
+      pkg: dcist_launch_system
+      exec: prior_dsg_publisher_node
+      name: prior_dsg_publisher
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
+
+      remap:
+        - from: ~/dsg_out
+          to: /hydra/backend/dsg
