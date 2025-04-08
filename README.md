@@ -32,7 +32,7 @@ Set up the workspace:
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
 vcs import src < src/awesome_dcist_t4/install/packages.yaml
-rosdep install --from-paths src --ignore-src -r -y
+rosdep install --from-paths src --ignore-src -r -y # Make sure you have sourced ROS!!!
 echo export DCIST_WS=`pwd` >> ~/.zshrc
 
 # Feel free to change the environment path (currently unused)
