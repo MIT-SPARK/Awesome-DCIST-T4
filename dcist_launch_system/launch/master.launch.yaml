@@ -58,6 +58,7 @@ launch:
       arg:
         - {name: start_rviz, value: 'false'}
         - {name: visualizer_frame, value: map}
+        - {name: start_rviz, value: 'false'}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
@@ -94,3 +95,36 @@ launch:
       exec: "rviz2"
       name: "rviz2_node"
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
+
+
+  - arg:
+      name: launch_omniplanner
+      default: "false"
+  - node:
+      if: $(var launch_omniplanner)
+      pkg: omniplanner_ros
+      exec: omniplanner_node
+      name: omniplanner_node
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
+      remap:
+        - from: ~/node_status
+          to: /ros_system_monitor/node_diagnostic_collector
+        - from: ~/dsg_in
+          to: /hydra/backend/dsg
+
+
+  - arg:
+      name: launch_scene_graph_publisher
+      default: "false"
+  - node:
+      if: $(var launch_scene_graph_publisher)
+      pkg: dcist_launch_system
+      exec: prior_dsg_publisher_node
+      name: prior_dsg_publisher
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
+
+      remap:
+        - from: ~/dsg_out
+          to: /hydra/backend/dsg
