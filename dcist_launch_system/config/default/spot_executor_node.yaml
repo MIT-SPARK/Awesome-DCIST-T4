@@ -2,8 +2,8 @@
     ros__parameters:
         fixed_frame: "map"
         spot_ip: "10.0.0.3"
-        bosdyn_client_username: "$(env BOSDYN_CLIENT_USERNAME)"
-        bosdyn_client_password: "$(env BOSDYN_CLIENT_PASSWORD)"
+        bosdyn_client_username: fake_username #"(env BOSDYN_CLIENT_USERNAME)"
+        bosdyn_client_password: fake_password #"(env BOSDYN_CLIENT_PASSWORD)"
         use_fake_spot_interface: true
         use_fake_spot_pose: true
         fake_spot_x: 0.
