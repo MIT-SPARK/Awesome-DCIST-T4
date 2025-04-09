@@ -4,9 +4,8 @@
 ---
 windows:
 #@overlay/append
-- window_name: misc
+- window_name: core
   shell_command_before: source ${DCIST_WS}/install/setup.zsh
   layout: tiled
   panes:
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_rviz:=true
     - ros2 run rmw_zenoh_cpp rmw_zenohd

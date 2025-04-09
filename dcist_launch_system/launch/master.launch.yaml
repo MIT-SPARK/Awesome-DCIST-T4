@@ -123,6 +123,7 @@ launch:
       name: prior_dsg_publisher
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
+          allow_substs: true
 
       remap:
         - from: ~/dsg_out

@@ -13,12 +13,12 @@ class PriorDsgPublisher(Node):
         super().__init__("prior_dsg_publisher")
 
         # Declare and get parameters
-        self.declare_parameter("prior_dsg_fn", "")
+        self.declare_parameter("prior_dsg_filepath", "")
         self.declare_parameter("run_autoabstr", False)
         self.declare_parameter("autoabstr_config_filepath", "")
 
         self.prior_dsg_fn = (
-            self.get_parameter("prior_dsg_fn").get_parameter_value().string_value
+            self.get_parameter("prior_dsg_filepath").get_parameter_value().string_value
         )
 
         # Load the DSG from file
@@ -46,7 +46,8 @@ class PriorDsgPublisher(Node):
         self.dsg_sender = DsgPublisher(self, "~/dsg_out", True)
 
         # Timer to publish DSG at regular intervals
-        self.timer = self.create_timer(10, self.publish_dsg)
+        timer_period_s = 3
+        self.timer = self.create_timer(timer_period_s, self.publish_dsg)
 
     def publish_dsg(self):
         self.dsg_sender.publish(self.G)

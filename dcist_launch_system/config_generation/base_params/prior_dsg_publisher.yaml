@@ -1,5 +1,5 @@
 /**:
   ros__parameters:
-    prior_dsg_fn: $(env ADT4_PRIOR_DSG_PATH)
+    prior_dsg_filepath: $(env ADT4_PRIOR_DSG_PATH)
     run_autoabstr: false
     autoabstr_config_filepath: ""
