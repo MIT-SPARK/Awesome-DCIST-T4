@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 
+import argparse
+import logging
 import os
 import shutil
-import yaml
-import argparse
 import traceback
 
-import logging
+import yaml
+
 logger = logging.getLogger(__name__)
+
 
 def log_error(msg):
     logger.error(f"\033[1;33m{msg}\033[1;0m")
 
+
 def log_warn(msg):
     logger.warning(f"\033[1;31m{msg}\033[1;0m")
 
+
 def log_info(msg):
     logger.info(msg)
+
 
 def log_debug(msg):
     logger.debug(msg)
@@ -58,7 +63,6 @@ def compute_list_counts(lst):
 
 
 def resolve_unique_dirs(manifest, key):
-
     dirs = resolve_override_dirs(manifest, key)
 
     # A given override directory might be (transitively) specified multiple
@@ -79,7 +83,9 @@ def resolve_override_dirs(manifest, key):
     try:
         children = manifest[key]
     except KeyError:
-        log_error(f"Requested key {key} is not a defined parameter grouping in your manifest! Valid keys are {list(manifest.keys())}")
+        log_error(
+            f"Requested key {key} is not a defined parameter grouping in your manifest! Valid keys are {list(manifest.keys())}"
+        )
         raise
 
     if len(children) == 0:
@@ -102,6 +108,7 @@ def get_experiment_manifest(root_path):
         experiment_manifest = yaml.safe_load(fo)
     return experiment_manifest
 
+
 def generate_config_name_yaml(experiment_manifest):
     for name, children in experiment_manifest["parameter_groupings"].items():
         param_dir = os.path.join("experiment_overrides", name)
@@ -113,8 +120,9 @@ def generate_config_name_yaml(experiment_manifest):
                 f"#@data/values-schema\n---\n#@overlay/match missing_ok=True\nconfig_type: {name}\n"
             )
 
+
 def find_concrete_param_groupings(experiment_manifest):
-    """ Get all of the parameter groupings that appear in an experiment definition """
+    """Get all of the parameter groupings that appear in an experiment definition"""
     concrete_param_groupings = []
     for _, v in experiment_manifest["experiments"].items():
         groupings = v["parameter_groupings"]
@@ -124,11 +132,12 @@ def find_concrete_param_groupings(experiment_manifest):
     return concrete_param_groupings
 
 
-def render_param_grouping(root_path, experiment_manifest, base_yamls, concrete_param_groupings, output_dir):
+def render_param_grouping(
+    root_path, experiment_manifest, base_yamls, concrete_param_groupings, output_dir
+):
     for experiment_key in experiment_manifest["parameter_groupings"].keys():
-
         log_debug(f"Generating config for {experiment_key}")
-        base_param_dir = os.path.join(root_path, 'base_params')
+        base_param_dir = os.path.join(root_path, "base_params")
         rendered_config_dir = os.path.join(output_dir, experiment_key)
         shutil.copytree(base_param_dir, rendered_config_dir, dirs_exist_ok=True)
 
@@ -137,12 +146,16 @@ def render_param_grouping(root_path, experiment_manifest, base_yamls, concrete_p
                 experiment_manifest["parameter_groupings"], experiment_key
             )
         except KeyError:
-            log_error(f"Error when processing {experiment_key}. Could not resolve parameter grouping")
+            log_error(
+                f"Error when processing {experiment_key}. Could not resolve parameter grouping"
+            )
             raise
 
         override_files = []
         for od in override_dirs:
-            override_files += list_files(os.path.join(root_path, "experiment_overrides", od))
+            override_files += list_files(
+                os.path.join(root_path, "experiment_overrides", od)
+            )
 
         override_yamls = [f for f in override_files if f.endswith("yaml")]
         override_other = [f for f in override_files if not f.endswith("yaml")]
@@ -169,7 +182,6 @@ def render_param_grouping(root_path, experiment_manifest, base_yamls, concrete_p
 
         log_debug(f"rendering_map: {rendering_map}")
         for by in base_yamls:
-
             full_base_name = os.path.join(base_param_dir, by)
             cmd = f"ytt -f {full_base_name}"
             if by in rendering_map:
@@ -186,6 +198,7 @@ def render_param_grouping(root_path, experiment_manifest, base_yamls, concrete_p
                 log_debug(f"  Calling: {cmd}")
                 os.system(cmd)
 
+
 def render_tmux(root_path, experiment_manifest, tmux_output_dir):
     base_launch_file = os.path.join(root_path, "base_launch", "base_launch.yaml")
     if not os.path.exists(tmux_output_dir):
@@ -193,7 +206,6 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
 
     # Generate the tmux launch files
     for exp_key, exp in experiment_manifest["experiments"].items():
-
         log_info(f"Generating launch files for experiment {exp_key}")
 
         launch_configs = resolve_unique_dirs(
@@ -228,9 +240,7 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
                     os.system(cmd_final)
 
 
-
 def render_manifest(root_path, conf_output_dir, tmux_output_dir):
-
     if not os.path.exists(conf_output_dir):
         log_info(f"Creating {conf_output_dir}")
         os.makedirs(conf_output_dir)
@@ -250,34 +260,35 @@ def render_manifest(root_path, conf_output_dir, tmux_output_dir):
     base_yamls = [f for f in os.listdir(base_param_path) if f.endswith("yaml")]
     log_info(f"base_yamls: {base_yamls}")
 
-    
     # Identify the sets of parameters that need to be generated because they are loaded by a launch file
     concrete_param_groupings = find_concrete_param_groupings(experiment_manifest)
 
-
     log_info(f"Rendering concrete configs: {concrete_param_groupings}")
-
 
     # Render all of the defined parameter groupings.
     try:
-        render_param_grouping(root_path, experiment_manifest, base_yamls, concrete_param_groupings, conf_output_dir)
+        render_param_grouping(
+            root_path,
+            experiment_manifest,
+            base_yamls,
+            concrete_param_groupings,
+            conf_output_dir,
+        )
     except KeyError:
         log_error("Could not render parameters!")
         raise
-
 
     # Render all of the tmux files
     render_tmux(root_path, experiment_manifest, tmux_output_dir)
 
 
-
 def main():
-    parser = argparse.ArgumentParser('Config Generation Tool')    
-    parser.add_argument('base_dir')
-    parser.add_argument('conf_output_dir')
-    parser.add_argument('tmux_output_dir')
-    parser.add_argument('--verbose', '-v', action='store_true', default=False)
-    parser.add_argument('--quiet', '-q', action='store_true', default=False)
+    parser = argparse.ArgumentParser("Config Generation Tool")
+    parser.add_argument("base_dir")
+    parser.add_argument("conf_output_dir")
+    parser.add_argument("tmux_output_dir")
+    parser.add_argument("--verbose", "-v", action="store_true", default=False)
+    parser.add_argument("--quiet", "-q", action="store_true", default=False)
 
     args = parser.parse_args()
     if args.verbose:
@@ -295,5 +306,6 @@ def main():
         log_error("Rendering unsuccessful!")
         exit(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
