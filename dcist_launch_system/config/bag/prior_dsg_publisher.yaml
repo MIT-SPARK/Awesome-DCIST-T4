@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    prior_dsg_fn: /home/ubuntu/lxc_datashare/west_point_fused_map_wregions.json
+    run_autoabstr: false
+    autoabstr_config_filepath: ""

@@ -128,6 +128,24 @@ launch:
       name: "rviz2_node"
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
 
+
+  - arg:
+      name: launch_omniplanner
+      default: "false"
+  - node:
+      if: $(var launch_omniplanner)
+      pkg: omniplanner_ros
+      exec: omniplanner_node
+      name: omniplanner_node
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
+      remap:
+        - from: ~/node_status
+          to: /ros_system_monitor/node_diagnostic_collector
+        - from: ~/dsg_in
+          to: /hydra/backend/dsg
+
+
   - arg:
       name: launch_scene_graph_publisher
       default: "false"

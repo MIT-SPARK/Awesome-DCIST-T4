@@ -1,0 +1,32 @@
+session_name: active_dsg
+environment:
+  config: bag
+  odometry_type: spot_odom
+  logging_key: spot_bag-spot_odom-bag
+  real_robot: "false"
+options:
+  default-command: /bin/zsh
+windows:
+- window_name: hydra
+  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra:=true
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra_visualizer:=true
+- window_name: bag_spot
+  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - source ~/dcist_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_spot_executor:=true
+  - source ~/dcist_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_spot_state_publisher:=true
+- window_name: misc
+  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_rviz:=true
+  - ros2 run rmw_zenoh_cpp rmw_zenohd
+- window_name: debug
+  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
