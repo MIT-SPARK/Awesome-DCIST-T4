@@ -6,7 +6,7 @@ launch_configs:
     bag_spot: []
     planning: []
     debug: []
-    misc: []
+    core: []
     prior_dsg: []
 
 
@@ -14,20 +14,20 @@ launch_configs:
         - hydra
         - sim_spot
         - planning
-        - misc
+        - core
         - debug
 
     spot_bag:
         - hydra
         - bag_spot
-        - misc
+        - core
         - debug
 
     spot_prior_dsg:
         - prior_dsg
         - sim_spot
         - planning
-        - misc
+        - core
         - debug
 
 

@@ -302,7 +302,7 @@ def main():
         render_manifest(args.base_dir, args.conf_output_dir, args.tmux_output_dir)
     except Exception:
         tb = traceback.format_exc()
-        log_debug(tb)
+        log_info(tb)
         log_error("Rendering unsuccessful!")
         exit(1)
 
