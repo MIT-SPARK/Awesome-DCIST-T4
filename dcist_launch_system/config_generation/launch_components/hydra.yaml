@@ -1,0 +1,12 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+windows:
+#@overlay/append
+- window_name: hydra
+  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra_visualizer:=true

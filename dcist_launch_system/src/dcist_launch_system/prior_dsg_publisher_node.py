@@ -46,7 +46,7 @@ class PriorDsgPublisher(Node):
         self.dsg_sender = DsgPublisher(self, "~/dsg_out", True)
 
         # Timer to publish DSG at regular intervals
-        self.timer = self.create_timer(3.0, self.publish_dsg)
+        self.timer = self.create_timer(10, self.publish_dsg)
 
     def publish_dsg(self):
         self.dsg_sender.publish(self.G)

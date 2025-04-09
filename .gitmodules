@@ -25,3 +25,6 @@
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
+[submodule "omniplanner"]
+	path = omniplanner
+	url = git@github.com:MIT-SPARK/Omniplanner.git
