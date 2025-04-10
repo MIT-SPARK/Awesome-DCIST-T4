@@ -114,7 +114,8 @@ launch:
       name: robot_state_publisher
       exec: robot_state_publisher
       param:
-          - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_urdf.yaml
+          - name: robot_description
+            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro')
       remap:
           - from: /joint_states
             to: /spot_executor_node/joint_states

@@ -22,6 +22,8 @@ config_files_csv = get_share_info("config", "*.csv")
 
 mesh_files_obj = get_share_info("meshes", "*.obj")
 mesh_files_mtl = get_share_info("meshes", "*.mtl")
+urdf_files_urdf = get_share_info("urdf", "*.urdf")
+urdf_files_xacro = get_share_info("urdf", "*.xacro")
 
 rviz_files = get_share_info("rviz", "*.rviz")
 
@@ -36,6 +38,8 @@ data_files = (
     + config_files_csv
     + mesh_files_obj
     + mesh_files_mtl
+    + urdf_files_urdf
+    + urdf_files_xacro
     + rviz_files
 )
 
