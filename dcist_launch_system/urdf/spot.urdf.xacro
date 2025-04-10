@@ -2,9 +2,9 @@
 <robot name="spot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!-- Macro for loading Spot -->
-  <xacro:include filename="$(find spot_description)/urdf/spot_macro.xacro" />
+  <xacro:include filename="$(find dcist_launch_system)/urdf/spot_macro.xacro" />
   <!-- Macros for loading the ROS 2 control tags -->
-  <xacro:include filename="$(find spot_description)/urdf/spot.ros2_control.xacro" />
+  <xacro:include filename="$(find dcist_launch_system)/urdf/spot.ros2_control.xacro" />
 
   <!-- General parameters -->
 
