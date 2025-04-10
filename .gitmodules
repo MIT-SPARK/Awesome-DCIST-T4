@@ -25,3 +25,9 @@
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
+[submodule "roman"]
+	path = roman
+	url = git@github.com:mit-acl/ROMAN.git
+[submodule "roman_ros2"]
+	path = roman_ros2
+	url = git@github.com:mit-acl/roman_ros

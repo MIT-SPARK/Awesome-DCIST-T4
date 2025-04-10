@@ -1,0 +1,11 @@
+---
+launch:
+  - arg: {name: robot_name}
+  - arg: {name: robot_type}
+  - node: 
+      pkg: roman_ros2
+      exec: roman_map_node.py
+      name: roman_map_node
+      namespace: $(var robot_name)
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var robot_type)/roman_map.yaml

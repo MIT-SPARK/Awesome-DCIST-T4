@@ -1,6 +1,9 @@
 ---
 launch:
   - arg: {name: conf_name}
+  - arg: {name: robot_type}
+  - arg: {name: robot_name}
+  - arg: {name: camera, default: none}
 
   # Example Node 1
   - arg: {name: launch_example_1_node, default: 'false'}
@@ -58,6 +61,36 @@ launch:
       arg:
         - {name: start_rviz, value: 'false'}
         - {name: visualizer_frame, value: map}
+
+  # ROMAN
+  - arg: {name: launch_fastsam, default: 'false'}
+  - arg: {name: launch_roman_map, default: 'false'}
+  - group:
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: camera/$(var camera)/camera_info}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: camera/$(var camera)/image}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/camera_info, to: camera/$(var camera)/camera_info}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/image_raw, to: depth/$(var camera)/depth_in_visual}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf, to: /tf}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf_static, to: /tf_static}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: camera/$(var camera)/image}
+      - set_remap: {from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
+      
+      # FastSAM
+      - include: 
+          if: $(var launch_fastsam)
+          file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
+          arg:
+            - {name: robot_name, value: $(var robot_name)}
+            - {name: robot_type, value: $(var robot_type)}
+
+      # ROMAN: Mapping
+      - include: 
+          if: $(var launch_roman_map)
+          file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
+          arg:
+            - {name: robot_name, value: $(var robot_name)}
+            - {name: robot_type, value: $(var robot_type)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
