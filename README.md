@@ -32,7 +32,7 @@ Set up the workspace:
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
 vcs import src < src/awesome_dcist_t4/install/packages.yaml
-rosdep install --from-paths src --ignore-src -r -y
+rosdep install --from-paths src --ignore-src -r -y # Make sure you have sourced ROS!!!
 echo export DCIST_WS=`pwd` >> ~/.zshrc
 
 # Feel free to change the environment directory path
@@ -51,13 +51,6 @@ colcon build --continue-on-error --symlink-install
 popd
 ```
 
-You should be able to load a tmuxp launch file by navigating to
-`awesome-dcist-t4/dcist_launch_system/tmux` and running
-
-```bash
-tmuxp load dcist_launch.yaml
-```
-
 ## Python environments
 
 For the time being, we are assuming different modules can run with different python environments,
@@ -65,6 +58,25 @@ although in the coming months we may want to use a single python environment.
 These environments should be created in the directory `$DCIST_ENV` by the `install/python_setup.sh` script.
 
 To run different modules with different environments, it is important that the ROS packages are built **without** `--symlink-install`.
+
+## Running
+
+You should be able to load a tmuxp launch file by navigating to
+`awesome-dcist-t4/dcist_launch_system/tmux` and running
+
+```bash
+tmuxp load dcist_launch.yaml
+```
+
+To see Hydra running:
+```
+ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-overrides-path ~/tf_overrides.yaml
+```
+where `~/tf_overrides.yaml` looks like
+```yaml
+/tf_static: {depth: 1, durability: transient_local}
+```
+To get the bag, ask Aaron (and convert by `pipx install rosbags; rosbags-convert --src spot_hydra_twocam_test.bag --dst spot_hydra_twocam_test`).
 
 ## Documentation
 Haha
