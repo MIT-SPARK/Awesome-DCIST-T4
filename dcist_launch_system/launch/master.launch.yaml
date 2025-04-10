@@ -68,8 +68,10 @@ launch:
       - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf, to: /tf}
       - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf_static, to: /tf_static}
       - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: camera/$(var camera)/image}
+      - set_remap: {from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
+      
       # FastSAM
-      - set_remap: {if: $(var launch_fastsam), from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
       - include: 
           if: $(var launch_fastsam)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
@@ -78,7 +80,6 @@ launch:
             - {name: robot_type, value: $(var robot_type)}
 
       # ROMAN: Mapping
-      - set_remap: {if: $(var launch_roman_map), from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
       - include: 
           if: $(var launch_roman_map)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
