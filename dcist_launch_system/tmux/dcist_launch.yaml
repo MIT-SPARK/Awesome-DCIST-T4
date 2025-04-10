@@ -28,11 +28,11 @@ windows:
     - window_name: roman
       shell_command_before: 
       - source ${DCIST_WS}/install/setup.zsh
-      - source ${DCIST_ENV}/bin/activate
+      - source ${DCIST_ENV}/roman/bin/activate
       layout: tiled
       panes:
-        - source ${DCIST_ENV}/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE camera:=frontleft launch_fastsam:=true
-        - source ${DCIST_ENV}/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE camera:=frontleft launch_roman_map:=true
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE camera:=frontleft launch_fastsam:=true
+        - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE camera:=frontleft launch_roman_map:=true
 
     - window_name: robot
       shell_command_before: source ${DCIST_WS}/install/setup.zsh

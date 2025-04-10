@@ -35,10 +35,10 @@ vcs import src < src/awesome_dcist_t4/install/packages.yaml
 rosdep install --from-paths src --ignore-src -r -y
 echo export DCIST_WS=`pwd` >> ~/.zshrc
 
-# Feel free to change the environment path
-python3 -m virtualenv ~/environments/dcist --download
+# Feel free to change the environment directory path
 echo export DCIST_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
-source ~/.zshrc
+
+# This will create all necessary python environments to run DCIST code
 source $DCIST_WS/src/awesome_dcist_t4/install/python_setup.sh
 ```
 
@@ -57,6 +57,14 @@ You should be able to load a tmuxp launch file by navigating to
 ```bash
 tmuxp load dcist_launch.yaml
 ```
+
+## Python environments
+
+For the time being, we are assuming different modules can run with different python environments,
+although in the coming months we may want to use a single python environment.
+These environments should be created in the directory `$DCIST_ENV` by the `install/python_setup.sh` script.
+
+To run different modules with different environments, it is important that the ROS packages are built **without** `--symlink-install`.
 
 ## Documentation
 Haha
