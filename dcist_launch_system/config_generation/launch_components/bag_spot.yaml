@@ -1,0 +1,12 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+windows:
+#@overlay/append
+- window_name: bag_spot
+  shell_command_before: source ${ADT4_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+    - source ~/dcist_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_spot_executor:=true
+    - source ~/dcist_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_spot_state_publisher:=true
