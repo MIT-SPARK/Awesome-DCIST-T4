@@ -1,0 +1,5 @@
+/**:
+    ros__parameters:
+        nickname: perception
+        status: NOMINAL
+        notes: "A perception system. Working OK!"

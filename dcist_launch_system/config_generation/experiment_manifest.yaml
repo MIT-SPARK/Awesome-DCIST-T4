@@ -1,0 +1,61 @@
+# Launch configs build the structure of the tmux launch files
+launch_configs:
+
+    hydra: []
+    sim_spot: []
+    bag_spot: []
+    planning: []
+    debug: []
+    core: []
+    prior_dsg: []
+
+
+    base:
+        - hydra
+        - sim_spot
+        - planning
+        - core
+        - debug
+
+    spot_bag:
+        - hydra
+        - bag_spot
+        - core
+        - debug
+
+    spot_prior_dsg:
+        - prior_dsg
+        - sim_spot
+        - planning
+        - core
+        - debug
+
+
+# Parameter groupings build the set of rosparams that will be loaded
+parameter_groupings:
+
+    default_params: []
+    bag: []
+    spot_prior_dsg: []
+
+# Experiments define which sets of parameters will be used with which sets of launch files
+experiments:
+
+    default:
+        launch_config: base
+        odometry_types: ['spot_odom']
+        parameter_groupings: [default_params]
+        real_robot: ["true"]
+
+    spot_bag:
+        launch_config: spot_bag
+        odometry_types: ['spot_odom']
+        parameter_groupings: [bag]
+        real_robot: ["false"]
+
+
+    spot_prior_dsg:
+        launch_config: spot_prior_dsg
+        odometry_types: ['spot_odom']
+        parameter_groupings: [spot_prior_dsg]
+        real_robot: ["false"]

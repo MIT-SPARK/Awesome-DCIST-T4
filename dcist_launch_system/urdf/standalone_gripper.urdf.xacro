@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot name="standalone_gripper" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:include filename="$(find spot_description)/urdf/spot_gripper_macro.urdf" />
+  <xacro:include filename="$(find dcist_launch_system)/urdf/spot_gripper_macro.urdf" />
 
   <!-- Root link -->
   <!-- <link name="body"/> -->

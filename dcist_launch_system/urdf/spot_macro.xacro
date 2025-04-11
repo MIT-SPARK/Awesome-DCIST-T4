@@ -12,13 +12,13 @@
         <link name="${tf_prefix}body">
             <visual>
                 <geometry>
-                    <mesh filename="package://spot_description/meshes/base/visual/body.obj" />
+                    <mesh filename="package://dcist_launch_system/meshes/base/visual/body.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/body_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/body_collision.obj" />
                 </geometry>
             </collision>
         </link>
@@ -68,7 +68,7 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_left_hip.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_left_hip.obj" />
                 </geometry>
             </visual>
             <inertial>
@@ -102,13 +102,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_left_upper_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_left_upper_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/left_upper_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/left_upper_leg_collision.obj" />
                 </geometry>
             </collision>
             <inertial>
@@ -142,13 +142,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_left_lower_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_left_lower_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/left_lower_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/left_lower_leg_collision.obj" />
                 </geometry>
             </collision>
             <collision>
@@ -189,7 +189,7 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_right_hip.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_right_hip.obj" />
                 </geometry>
             </visual>
             <inertial>
@@ -223,13 +223,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_right_upper_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_right_upper_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/right_upper_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/right_upper_leg_collision.obj" />
                 </geometry>
             </collision>
             <inertial>
@@ -263,13 +263,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/front_right_lower_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/front_right_lower_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/right_lower_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/right_lower_leg_collision.obj" />
                 </geometry>
             </collision>
             <collision>
@@ -310,7 +310,7 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_left_hip.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_left_hip.obj" />
                 </geometry>
             </visual>
             <inertial>
@@ -344,13 +344,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_left_upper_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_left_upper_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/left_upper_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/left_upper_leg_collision.obj" />
                 </geometry>
             </collision>
             <inertial>
@@ -384,13 +384,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_left_lower_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_left_lower_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/left_lower_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/left_lower_leg_collision.obj" />
                 </geometry>
             </collision>
             <collision>
@@ -431,7 +431,7 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_right_hip.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_right_hip.obj" />
                 </geometry>
             </visual>
             <inertial>
@@ -465,13 +465,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_right_upper_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_right_upper_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/right_upper_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/right_upper_leg_collision.obj" />
                 </geometry>
             </collision>
             <inertial>
@@ -505,13 +505,13 @@
             <visual>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/visual/rear_right_lower_leg.obj" />
+                        filename="package://dcist_launch_system/meshes/base/visual/rear_right_lower_leg.obj" />
                 </geometry>
             </visual>
             <collision>
                 <geometry>
                     <mesh
-                        filename="package://spot_description/meshes/base/collision/right_lower_leg_collision.obj" />
+                        filename="package://dcist_launch_system/meshes/base/collision/right_lower_leg_collision.obj" />
                 </geometry>
             </collision>
             <collision>
@@ -550,16 +550,16 @@
         </xacro:if>
 
         <!-- Standard accessories. -->
-        <xacro:include filename="$(find spot_description)/urdf/accessories.urdf.xacro" />
+        <xacro:include filename="$(find dcist_launch_system)/urdf/accessories.urdf.xacro" />
 
         <!-- Optional custom includes. -->
 
-        <xacro:property name="default_empty_urdf" value="$(find spot_description)/urdf/empty.urdf" />
+        <xacro:property name="default_empty_urdf" value="$(find dcist_launch_system)/urdf/empty.urdf" />
         <xacro:include filename="$(optenv SPOT_URDF_EXTRAS ${default_empty_urdf})" />
 
         <!-- Include Arm if necessary-->
         <xacro:if value="${arm}">
-            <xacro:include filename="$(find spot_description)/urdf/spot_arm_macro.urdf" />
+            <xacro:include filename="$(find dcist_launch_system)/urdf/spot_arm_macro.urdf" />
             <xacro:load_arm tf_prefix="${tf_prefix}"
                             gripperless="${gripperless}"
                             custom_gripper_base_link="${custom_gripper_base_link}" />
@@ -567,7 +567,7 @@
 
         <!-- Include links at feet if necessary -->
         <xacro:if value="${feet}">
-            <xacro:include filename="$(find spot_description)/urdf/spot_feet_macro.urdf" />
+            <xacro:include filename="$(find dcist_launch_system)/urdf/spot_feet_macro.urdf" />
             <xacro:load_feet tf_prefix="${tf_prefix}" />
         </xacro:if>
     </xacro:macro>

@@ -31,3 +31,6 @@
 [submodule "roman_ros2"]
 	path = roman_ros2
 	url = git@github.com:mit-acl/roman_ros
+[submodule "omniplanner"]
+	path = omniplanner
+	url = git@github.com:MIT-SPARK/Omniplanner.git
