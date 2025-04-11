@@ -109,9 +109,9 @@ def get_experiment_manifest(root_path):
     return experiment_manifest
 
 
-def generate_config_name_yaml(experiment_manifest):
+def generate_config_name_yaml(root_path, experiment_manifest):
     for name, children in experiment_manifest["parameter_groupings"].items():
-        param_dir = os.path.join("experiment_overrides", name)
+        param_dir = os.path.join(root_path, "experiment_overrides", name)
         if not os.path.exists(param_dir):
             os.mkdir(param_dir)
         config_name_path = os.path.join(param_dir, "config_name.yaml")
@@ -190,7 +190,7 @@ def render_param_grouping(
                     cmd += f" -f {fn}"
 
             if experiment_key in concrete_param_groupings:
-                cmd += f" -f experiment_overrides/{experiment_key}/config_name.yaml"
+                cmd += f" -f {root_path}/experiment_overrides/{experiment_key}/config_name.yaml"
                 dest_path = os.path.join(output_dir, experiment_key, by)
 
                 cmd += f" > {dest_path}"
@@ -215,7 +215,7 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
 
         cmd = f"ytt -f {base_launch_file}"
         for lc in launch_configs:
-            component_yaml = os.path.join("launch_components", lc) + ".yaml"
+            component_yaml = os.path.join(root_path, "launch_components", lc) + ".yaml"
             cmd += f" -f {component_yaml}"
 
         # TODO: generalize this to automatically add any keys as environment variables to the tmux
@@ -254,7 +254,7 @@ def render_manifest(root_path, conf_output_dir, tmux_output_dir):
 
     # Generate an extra config file that's necessary to optionally fill in the
     # config name as a parameter in the base templates
-    generate_config_name_yaml(experiment_manifest)
+    generate_config_name_yaml(root_path, experiment_manifest)
 
     base_param_path = os.path.join(root_path, "base_params")
     base_yamls = [f for f in os.listdir(base_param_path) if f.endswith("yaml")]
