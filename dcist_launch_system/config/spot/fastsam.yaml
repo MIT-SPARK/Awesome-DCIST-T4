@@ -1,4 +1,4 @@
-weights_path: "$DCIST_WS/weights/FastSAM-x.pt"
+weights_path: "$ADT4_WS/weights/FastSAM-x.pt"
 imgsz: [256, 256]
 device: 'cuda'
 mask_downsample_factor: 8

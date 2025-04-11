@@ -33,13 +33,13 @@ mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
 vcs import src < src/awesome_dcist_t4/install/packages.yaml
 rosdep install --from-paths src --ignore-src -r -y # Make sure you have sourced ROS!!!
-echo export DCIST_WS=`pwd` >> ~/.zshrc
+echo export ADT4_WS=`pwd` >> ~/.zshrc
 
 # Feel free to change the environment directory path
-echo export DCIST_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
+echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 
 # This will create all necessary python environments to run DCIST code
-source $DCIST_WS/src/awesome_dcist_t4/install/python_setup.sh
+source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
 ```
 
 Build:
