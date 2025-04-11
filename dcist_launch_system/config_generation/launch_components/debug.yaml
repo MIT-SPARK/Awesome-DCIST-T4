@@ -5,7 +5,7 @@
 windows:
 #@overlay/append
 - window_name: debug
-  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
   panes:
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_rviz:=true

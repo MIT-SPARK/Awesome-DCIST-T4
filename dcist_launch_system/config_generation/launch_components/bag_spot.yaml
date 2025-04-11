@@ -5,7 +5,7 @@
 windows:
 #@overlay/append
 - window_name: bag_spot
-  shell_command_before: source ${DCIST_WS}/install/setup.zsh
+  shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
   panes:
     - source ~/dcist_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_spot_executor:=true
