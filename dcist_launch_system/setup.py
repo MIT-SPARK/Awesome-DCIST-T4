@@ -50,7 +50,7 @@ setup(
     package_dir={"": "src"},
     packages=find_packages("src"),
     data_files=data_files,
-    install_requires=["setuptools", "pyyaml"],
+    install_requires=["setuptools"],
     zip_safe=True,
     maintainer="aaron",
     maintainer_email="aaronray@mit.edu",
