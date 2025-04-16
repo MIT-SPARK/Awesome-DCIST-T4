@@ -17,7 +17,7 @@ jobs:
       - name: Clean Artifacts
         shell: bash
         run: |
-          rm -rf src || rm -rf precommit_venv
+          rm -rf src || rm -rf precommit_venv || rm -rf spark_env || rm -rf install
 
       - name: Update Dependencies
         shell: bash
