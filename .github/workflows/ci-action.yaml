@@ -6,6 +6,9 @@ on:
         branches:
             - main
             - develop
+env:
+    ADT4_WS: ${{ GITHUB_WORKSPACE }}
+    ADT4_ENV: ${{ GITHUB_WORKSPACE }}
 jobs:
   Awesome-DCIST-T4:
     runs-on: self-hosted
@@ -36,6 +39,24 @@ jobs:
             pip install pre-commit
             cd src/awesome_dcist_t4
             pre-commit run --all-files
+
+      - name: ytt install
+        uses: carvel-dev/setup-action@v2
+        with:
+          only: ytt
+        run: |
+            ytt version
+
+      - name: Python Install
+        shell: bash
+        run: |
+            cd $ADT4_ENV && python3 -m virtualenv spark_env
+            source spark_env/bin/activate
+            pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt
+
+      - name: Config Checks
+        shell: bash
+        run: ./src/awesome_dcist_t4/dcist_launch_system/scripts/check_configs.sh
 
       - name: Install Everything
         shell: bash
