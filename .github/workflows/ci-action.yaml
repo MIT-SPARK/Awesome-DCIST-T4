@@ -7,8 +7,8 @@ on:
             - main
             - develop
 env:
-    ADT4_WS: $GITHUB_WORKSPACE
-    ADT4_ENV: $GITHUB_WORKSPACE
+    ADT4_WS: ${{ github.workspace }}
+    ADT4_ENV: ${{ github.workspace }}
 jobs:
   Awesome-DCIST-T4:
     runs-on: self-hosted
