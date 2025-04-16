@@ -44,8 +44,6 @@ jobs:
         uses: carvel-dev/setup-action@v2
         with:
           only: ytt
-        run: |
-            ytt version
 
       - name: Python Install
         shell: bash
