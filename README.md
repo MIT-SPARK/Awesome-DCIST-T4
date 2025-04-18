@@ -20,7 +20,8 @@
 Install dependencies:
 ```bash
 sudo apt install pipx python3-virtualenv python3-colcon-clean
-pipx install -f tmuxp pre-commit
+pipx install -f tmuxp
+pipx install -f pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```
 
@@ -45,19 +46,31 @@ source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
 Build:
 ```bash
 # this next step is CRUCIAL to get colcon to behave properly
-pushd $DCIST_WS
+pushd $ADT4_WS
 # this will error most likely but it's fine...
-colcon build --continue-on-error --symlink-install
+colcon build --continue-on-error
 popd
 ```
 
 ## Python environments
 
-For the time being, we are assuming different modules can run with different python environments,
-although in the coming months we may want to use a single python environment.
-These environments should be created in the directory `$DCIST_ENV` by the `install/python_setup.sh` script.
+For the time being, we are assuming different modules can run with different
+python environments, although in the coming months we may want to use a single
+python environment.  These environments should be created in the directory
+`$ADT4_ENV` by the `install/python_setup.sh` script.
 
-To run different modules with different environments, it is important that the ROS packages are built **without** `--symlink-install`.
+To run different modules with different environments, it is important that the
+ROS packages are built **without** `--symlink-install`.
+
+### !!! Important !!!
+Finally, the `spark_dsg` package needs to build python bindings every time it
+is updated. This means that you need to manually pip install `spark_dsg`!
+Please run
+```
+source $ADT_ENV/spark_env/bin/activate
+pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+```
+now and any time `spark_dsg` updates.
 
 ## Running
 If you want to see hydra running on real Spot data, get the bag from Aaron (and
@@ -74,7 +87,7 @@ tmuxp load dcist_launch.yaml
 
 To see Hydra running:
 ```
-ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-overrides-path ~/tf_overrides.yaml
+ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-profile-overrides-path ~/tf_overrides.yaml
 ```
 where `~/tf_overrides.yaml` looks like
 ```yaml
