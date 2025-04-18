@@ -25,3 +25,10 @@ cd $ADT4_WS/weights
 gdown 'https://drive.google.com/uc?id=1m1sjY4ihXBU1fZXdQ-Xdj-mDltW-2Rqv'
 
 popd
+
+##################################
+# Install Spark
+##################################
+python3 -m venv $ADT4_ENV/spark_env
+source $ADT4_ENV/spark_env/bin/activate
+pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt

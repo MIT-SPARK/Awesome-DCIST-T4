@@ -2,3 +2,15 @@ bosdyn-client
 bosdyn-mission
 bosdyn-choreography-client
 bosdyn-orbit
+pyyaml 
+matplotlib
+shapely
+ski-image
+setuptools
+opencv-python
+transforms3d
+onnxruntime
+parse
+multipledispatch
+open3d
+
