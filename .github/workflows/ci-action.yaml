@@ -57,7 +57,7 @@ jobs:
       - name: todo_remove_should_fail
         shell: bash
         run: |
-          python3 $ADT4_WS/src/awesome_dcist_t4/scripts/test_python_imports.py
+          python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/test_python_imports.py
 
       - name: Install Everything
         shell: bash
