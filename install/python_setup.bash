@@ -1,16 +1,4 @@
 #!/bin/bash
-
-if [ -z "${ADT4_ENV+set}" != set]; then
-    echo "Must set ADT4_ENV"
-    exit 1
-fi
-
-if [ -z "${ADT4_WS+set}" != set]; then
-    echo "Must set ADT4_WS"
-    exit 1
-fi
-
-#!/bin/bash
 # ./python_setup.sh [--no-roman] [--no-spark]
 
 install_roman=true
@@ -36,6 +24,15 @@ while :; do
     esac
 done
 
+if [ -z "${ADT4_ENV+set}" != set]; then
+    echo "Must set ADT4_ENV"
+    exit 1
+fi
+
+if [ -z "${ADT4_WS+set}" != set]; then
+    echo "Must set ADT4_WS"
+    exit 1
+fi
 
 mkdir -p $ADT4_ENV
 
