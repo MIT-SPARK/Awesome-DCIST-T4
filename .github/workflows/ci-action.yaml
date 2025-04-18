@@ -54,11 +54,6 @@ jobs:
         shell: bash
         run: ./src/awesome_dcist_t4/dcist_launch_system/scripts/check_configs.sh
 
-      - name: todo_remove_should_fail
-        shell: bash
-        run: |
-          python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/test_python_imports.py
-
       - name: Install Everything
         shell: bash
         run: |
