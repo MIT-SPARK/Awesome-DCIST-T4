@@ -5,7 +5,7 @@ bosdyn-orbit
 pyyaml 
 matplotlib
 shapely
-ski-image
+scikit-image
 setuptools
 opencv-python
 transforms3d
