@@ -48,7 +48,7 @@ jobs:
       - name: Python Install
         shell: bash
         run: |
-            bash $ADT4_WS/src/awesome_dcist_t4/isntall/python_setup.bash --no-roman
+            bash $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash --no-roman
 
       - name: Config Checks
         shell: bash
