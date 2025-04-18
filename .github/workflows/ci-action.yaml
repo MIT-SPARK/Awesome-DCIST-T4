@@ -48,13 +48,16 @@ jobs:
       - name: Python Install
         shell: bash
         run: |
-            cd $ADT4_ENV && python3 -m virtualenv spark_env
-            source spark_env/bin/activate
-            pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt
+            bash $ADT4_WS/src/awesome_dcist_t4/isntall/python_setup.bash --no-roman
 
       - name: Config Checks
         shell: bash
         run: ./src/awesome_dcist_t4/dcist_launch_system/scripts/check_configs.sh
+
+      - name: todo_remove_should_fail
+        shell: bash
+        run: |
+          python3 $ADT4_WS/src/awesome_dcist_t4/scripts/test_python_imports.py
 
       - name: Install Everything
         shell: bash
@@ -64,5 +67,13 @@ jobs:
             rosdep install -q --from-paths src --ignore-src -r -y || echo "Installed rosdeps"
             source /opt/ros/jazzy/setup.bash
             colcon build
+
+      - name: Test Python Dependencies
+        shell: bash
+        run: |
+          source $ADT4_ENV/spark_env/bin/activate
+          pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+          python3 $ADT4_WS/src/awesome_dcist_t4/scripts/test_python_imports.py
+
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
