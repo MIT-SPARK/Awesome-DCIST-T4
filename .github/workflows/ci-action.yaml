@@ -75,10 +75,18 @@ jobs:
         shell: bash
         run: |
           python3 -c "from ruamel.yaml import YAML"
+          echo "---"
+          dpkg -L python3-ruamel.yaml
+          echo "---"
+          python3 -c "import sys; print(sys.path)"
+          echo "---"
           source $ADT4_WS/install/setup.bash
           source $ADT4_ENV/spark_env/bin/activate
           pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
           apt list --installed | grep ruamel
+          echo "---"
+          python3 -c "import sys; print(sys.path)"
+          echo "---"
           python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/test_python_imports.py
 
 
