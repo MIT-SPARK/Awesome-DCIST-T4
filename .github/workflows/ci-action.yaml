@@ -35,10 +35,8 @@ jobs:
       - name: Pre-commit
         shell: bash
         run: |
-            pipx install pre-commit
             cd src/awesome_dcist_t4
-            pipx ensurepath
-            pre-commit run --all-files
+            pipx run pre-commit run --all-files
 
       - name: ytt install
         uses: carvel-dev/setup-action@v2
