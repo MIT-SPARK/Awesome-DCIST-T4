@@ -164,3 +164,22 @@ launch:
       remap:
         - from: ~/dsg_out
           to: /hydra/backend/dsg
+
+
+  - arg:
+      name: launch_dsg_saver
+      default: "false"
+  - node:
+      if: $(var launch_dsg_saver)
+      pkg: dcist_launch_system
+      exec: dsg_saver_node
+      name: dsg_saver
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml
+          allow_substs: true
+
+      remap:
+        - from: ~/dsg_in
+          to: /hydra/backend/dsg
+        - from: ~/node_status
+          to: /ros_system_monitor/node_diagnostic_collector
