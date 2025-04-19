@@ -17,13 +17,14 @@ jobs:
       - name: Clean Artifacts
         shell: bash
         run: |
-          rm -rf src || rm -rf precommit_venv || rm -rf spark_env || rm -rf install
+          rm -rf src || rm -rf spark_env || rm -rf install
 
       - name: Update Dependencies
         shell: bash
         run: |
             sudo apt update
-            sudo apt install -y git python3-pip python3 python3-virtualenv ros-jazzy-ament-cmake
+            sudo apt install -y git python3-pip pipx python3 python3-venv ros-jazzy-ament-cmake
+
 
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -34,11 +35,8 @@ jobs:
       - name: Pre-commit
         shell: bash
         run: |
-            python3 -m virtualenv precommit_venv --download
-            source precommit_venv/bin/activate
-            pip install pre-commit
             cd src/awesome_dcist_t4
-            pre-commit run --all-files
+            pipx run pre-commit run --all-files
 
       - name: ytt install
         uses: carvel-dev/setup-action@v2
@@ -48,9 +46,7 @@ jobs:
       - name: Python Install
         shell: bash
         run: |
-            cd $ADT4_ENV && python3 -m virtualenv spark_env
-            source spark_env/bin/activate
-            pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt
+            bash $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash --no-roman
 
       - name: Config Checks
         shell: bash
@@ -64,5 +60,14 @@ jobs:
             rosdep install -q --from-paths src --ignore-src -r -y || echo "Installed rosdeps"
             source /opt/ros/jazzy/setup.bash
             colcon build
+
+      - name: Test Python Dependencies
+        shell: bash
+        run: |
+          source $ADT4_WS/install/setup.bash
+          source $ADT4_ENV/spark_env/bin/activate
+          pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+          python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/test_python_imports.py
+
 
       - run: echo "🍏 This job's status is ${{ job.status }}."
