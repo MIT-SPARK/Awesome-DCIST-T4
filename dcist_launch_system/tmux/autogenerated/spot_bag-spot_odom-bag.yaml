@@ -13,6 +13,7 @@ windows:
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra:=true
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra_visualizer:=true
+  - source ${ADT4_ENV}/spark_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_dsg_saver:=true
 - window_name: bag_spot
   shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
