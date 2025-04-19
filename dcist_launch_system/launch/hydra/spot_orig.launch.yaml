@@ -5,7 +5,7 @@ launch:
   - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}
   - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
   # frontleft camera
-  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: /spot/depth_registered/frontleft/image}
+  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: /spot/depth/frontleft/depth_in_visual}
   - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: /spot/camera/frontleft/image}
   - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: /spot/camera/frontleft/camera_info}
   - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: /spot/frontleft/semantic/image_raw}
@@ -23,7 +23,7 @@ launch:
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
         --config-utilities-yaml {image_rotator: {rotation: ROTATE_90_CLOCKWISE}}
   # frontright camera
-  - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: /spot/depth_registered/frontright/image}
+  - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: /spot/depth/frontright/depth_in_visual}
   - set_remap: {from: hydra/input/frontright/rgb/image_raw, to: /spot/camera/frontright/image}
   - set_remap: {from: hydra/input/frontright/rgb/camera_info, to: /spot/camera/frontright/camera_info}
   - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: /spot/frontright/semantic/image_raw}
@@ -46,10 +46,9 @@ launch:
       exec: hydra_ros_node
       name: hydra
       param:
-        - {name: use_sim_time, value: false}
+        - {name: use_sim_time, value: true}
       args: >
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
-        --config-utilities-yaml {robot_id: 0, odom_frame: spot/odom, robot_frame: spot/body, map_frame: map}
-        --config-utilities-yaml {log_path: $(env HOME)/.hydra/adt4}
+        --config-utilities-yaml {robot_id: 0, odom_frame: vision, robot_frame: body, map_frame: map}

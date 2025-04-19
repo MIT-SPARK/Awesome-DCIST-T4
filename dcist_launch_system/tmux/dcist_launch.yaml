@@ -35,7 +35,9 @@ windows:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE camera:=frontleft launch_roman_map:=true
 
     - window_name: robot
-      shell_command_before: source ${ADT4_WS}/install/setup.zsh
+      shell_command_before: 
+      - source ${ADT4_WS}/install/setup.zsh
+      - source ${ADT4_ENV}/spot/bin/activate
       layout: tiled
       panes:
         - ros2 launch dcist_launch_system master.launch.yaml conf_name:=default robot_name:=$ROBOT_NAME robot_type:=$ROBOT_TYPE launch_spot_executor:=true
