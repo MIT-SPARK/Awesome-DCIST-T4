@@ -17,7 +17,7 @@ jobs:
       - name: Clean Artifacts
         shell: bash
         run: |
-          rm -rf src || rm -rf precommit_venv || rm -rf spark_env || rm -rf install
+          rm -rf src || rm -rf spark_env || rm -rf install
 
       - name: Update Dependencies
         shell: bash
@@ -35,9 +35,7 @@ jobs:
       - name: Pre-commit
         shell: bash
         run: |
-            python3 -m virtualenv precommit_venv --download
-            source precommit_venv/bin/activate
-            pip install pre-commit
+            pipx install pre-commit
             cd src/awesome_dcist_t4
             pre-commit run --all-files
 
