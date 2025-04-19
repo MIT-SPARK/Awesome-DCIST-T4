@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
-import rclpy
+import os
 import threading
 from datetime import datetime
-from dcist_launch_system_msgs.srv import SaveDsg, SaveDsg_Response
 
+import rclpy
+from dcist_launch_system_msgs.srv import SaveDsg, SaveDsg_Response
 from hydra_ros import DsgSubscriber
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-import os
 from ros_system_monitor_msgs.msg import NodeInfoMsg
 
 
@@ -20,7 +20,9 @@ class DsgSaver(Node):
 
         # Declare and get parameters
         self.declare_parameter("dsg_save_dir", "")
-        self.dsg_save_dir = self.get_parameter("dsg_save_dir").get_parameter_value().string_value
+        self.dsg_save_dir = (
+            self.get_parameter("dsg_save_dir").get_parameter_value().string_value
+        )
         assert self.dsg_save_dir != "", "You need to pass dsg_save_dir path"
 
         if not os.path.exists(self.dsg_save_dir):
@@ -41,11 +43,7 @@ class DsgSaver(Node):
         self.last_dsg_time = None
         DsgSubscriber(self, "~/dsg_in", self.dsg_callback)
 
-        self.dsg_save_server = self.create_service(
-            SaveDsg,
-            '~/save_dsg',
-            self.save_cb
-        )
+        self.dsg_save_server = self.create_service(SaveDsg, "~/save_dsg", self.save_cb)
 
     def dsg_callback(self, header, dsg):
         with self.dsg_lock:
@@ -64,7 +62,7 @@ class DsgSaver(Node):
             dt = t_now - self.last_dsg_time
             if dt > 10:
                 self.get_logger().warning(f"Saving old DSG ({dt} s old)")
-    
+
             if req.save_path == "":
                 now = datetime.now()
                 fn = now.strftime("%Y-%m-%d-%H_%M_%S_dsg.json")
@@ -79,9 +77,7 @@ class DsgSaver(Node):
             self.get_logger().info("Finished saving DSG")
             return rep
 
-
     def hb_callback(self):
-
         if self.dsg is None:
             status = NodeInfoMsg.WARNING
             notes = "No confirmed DSG connection..."
@@ -114,11 +110,11 @@ def main(args=None):
         try:
             executor.spin()
         finally:
-
             executor.shutdown()
             node.destroy_node()
     finally:
         rclpy.shutdown()
+
 
 if __name__ == "__main__":
     main()
