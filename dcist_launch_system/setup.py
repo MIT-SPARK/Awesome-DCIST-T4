@@ -62,6 +62,7 @@ setup(
             "example_1_node = dcist_launch_system.example_1:main",
             "example_2_node = dcist_launch_system.example_2:main",
             "prior_dsg_publisher_node = dcist_launch_system.prior_dsg_publisher_node:main",
+            "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
         ],
     },
 )
