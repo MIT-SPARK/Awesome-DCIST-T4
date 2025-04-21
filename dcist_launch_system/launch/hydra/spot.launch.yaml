@@ -52,3 +52,4 @@ launch:
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
         --config-utilities-yaml {robot_id: 0, odom_frame: vision, robot_frame: body, map_frame: map}
+        --config-utilities-yaml {log_path: $(env HOME)/.hydra/adt4}
