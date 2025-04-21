@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from typing import Optional
-import spark_dsg
+import argparse
 import uuid
 from dataclasses import dataclass
-import numpy as np
+from typing import Optional
 
-import argparse
+import numpy as np
+import spark_dsg
 
 
 @dataclass
@@ -20,12 +20,20 @@ class SpotObject:
 
 def load_spot_objects(fn):
     # TODO: load objects from file
-    center=  np.array([1,2,3.])
-    obj = SpotObject(uuid, center, np.array([10.,10,10]), 'wood', label_to_color['wood'], "b64ImageString")
+    center = np.array([1, 2, 3.0])
+    obj = SpotObject(
+        uuid,
+        center,
+        np.array([10.0, 10, 10]),
+        "wood",
+        label_to_color["wood"],
+        "b64ImageString",
+    )
     return [obj]
 
+
 def construct_object_attrs(o, label_to_id):
-    bb = spark_dsg.BoundingBox(np.array([10.,10,10]), o.position)
+    bb = spark_dsg.BoundingBox(np.array([10.0, 10, 10]), o.position)
 
     attrs = spark_dsg.ObjectNodeAttributes()
     attrs.name = ""
@@ -36,23 +44,27 @@ def construct_object_attrs(o, label_to_id):
     return attrs
 
 
-label_to_color = {'wood': np.array([0, 255,0])}
+label_to_color = {"wood": np.array([0, 255, 0])}
+
 
 def update_labelspace(G):
-
     id_to_label = G.get_labelspace(2, 0).labels_to_names
     label_to_id = G.get_labelspace(2, 0).names_to_labels
     max_semantic_id = max(id_to_label.keys())
     wood_id = max_semantic_id + 1
-    id_to_label[wood_id] = 'wood'
-    label_to_id['wood'] = wood_id
+    id_to_label[wood_id] = "wood"
+    label_to_id["wood"] = wood_id
 
-    G.set_labelspace(spark_dsg.Labelspace(id_to_label), G.get_layer_id(spark_dsg.DsgLayers.OBJECTS).layer, 0)
+    G.set_labelspace(
+        spark_dsg.Labelspace(id_to_label),
+        G.get_layer_id(spark_dsg.DsgLayers.OBJECTS).layer,
+        0,
+    )
 
     return id_to_label, label_to_id
 
-def add_objects_to_dsg(G, objects):
 
+def add_objects_to_dsg(G, objects):
     id_to_label, label_to_id = update_labelspace(G)
 
     max_gtsam_value = 0
@@ -81,13 +93,21 @@ def process_dsg_updates(dsg_fn, objects_fn):
 def main():
     parser = argparse.ArgumentParser(description="Update DSG files.")
     parser.add_argument("dsg_path_in", type=str, help="Path to the input DSG JSON file")
-    parser.add_argument("objects_to_add_file", type=str, help="Path to a file with objects to add")
-    parser.add_argument("--out", type=str, default="dsg_updated.json", help="Output path for the updated DSG file")
+    parser.add_argument(
+        "objects_to_add_file", type=str, help="Path to a file with objects to add"
+    )
+    parser.add_argument(
+        "--out",
+        type=str,
+        default="dsg_updated.json",
+        help="Output path for the updated DSG file",
+    )
 
     args = parser.parse_args()
 
     G = process_dsg_updates(args.dsg_path_in, args.objects_to_add_file)
     G.save(args.out, True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
