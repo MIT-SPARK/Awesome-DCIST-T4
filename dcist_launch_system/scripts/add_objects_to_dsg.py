@@ -22,7 +22,7 @@ def load_spot_objects(fn):
     # TODO: load objects from file
     center = np.array([1, 2, 3.0])
     obj = SpotObject(
-        uuid,
+        str(uuid.uuid4()),
         center,
         np.array([10.0, 10, 10]),
         "wood",
