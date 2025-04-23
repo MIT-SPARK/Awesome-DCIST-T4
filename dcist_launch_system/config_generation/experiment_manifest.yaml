@@ -29,6 +29,13 @@ launch_configs:
         - planning
         - core
         - debug
+        
+    topaz_prior_dsg:
+        - prior_dsg
+        - bag_spot
+        - planning
+        - core
+        - debug
 
 
 # Parameter groupings build the set of rosparams that will be loaded
@@ -37,6 +44,7 @@ parameter_groupings:
     default_params: []
     bag: []
     spot_prior_dsg: []
+    topaz_prior_dsg: []
 
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
@@ -59,3 +67,9 @@ experiments:
         odometry_types: ['spot_odom']
         parameter_groupings: [spot_prior_dsg]
         real_robot: ["false"]
+    
+    topaz_prior_dsg:
+       launch_config: topaz_prior_dsg
+       odometry_types: ['spot_odom']
+       parameter_groupings: [topaz_prior_dsg]
+       real_robot: ["true"]
