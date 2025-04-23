@@ -41,6 +41,7 @@ def construct_object_attrs(o, label_to_id):
     attrs.semantic_label = label_to_id[o.semantic_label]
     attrs.color = o.semantic_color
     attrs.bounding_box = bb
+    attrs.metadata.set({"image": o.b64image})
     return attrs
 
 
