@@ -9,7 +9,7 @@
   <!-- General parameters -->
 
   <!-- String that will be prepended to all joints and links-->
-  <xacro:arg name="tf_prefix" default="" />
+  <xacro:arg name="tf_prefix" default="spot/" />
 
   <!-- Set to true if Spot has an arm -->
   <xacro:arg name="arm" default="false" />
@@ -37,13 +37,13 @@
   <xacro:load_spot
     arm="$(arg arm)"
     feet="$(arg feet)"
-    tf_prefix="$(arg tf_prefix)" 
+    tf_prefix="$(arg tf_prefix)"
     gripperless="$(arg gripperless)"
 	  include_transmissions="$(arg include_transmissions)" />
 
   <!-- Adding the ROS 2 control tags -->
   <xacro:if value="$(arg add_ros2_control_tag)">
-      <xacro:spot_ros2_control interface_type="$(arg hardware_interface_type)" 
+      <xacro:spot_ros2_control interface_type="$(arg hardware_interface_type)"
                                has_arm="$(arg arm)"
                                leasing="$(arg leasing)"
                                hostname="$(arg hostname)"
