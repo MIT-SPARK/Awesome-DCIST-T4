@@ -1,10 +1,10 @@
 /**:
   ros__parameters:
     odom_frame: map
-    body_frame: body
+    body_frame: spot/body
     spot_ip: 10.0.0.3
-    bosdyn_client_username: fake_username
-    bosdyn_client_password: fake_password
+    bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
+    bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
     use_fake_spot_interface: true
     use_fake_spot_pose: true
     fake_spot_external_pose: false

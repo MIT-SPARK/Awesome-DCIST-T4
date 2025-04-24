@@ -44,6 +44,11 @@ echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
 
 # This will create all necessary python environments to run DCIST code
 source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
+
+# You also need to set the spot username/password. These can be empty if you are simulating spot
+echo export ADT4_BOSDYN_USERNAME="" >> ~/.zshrc
+echo export ADT4_BOSDYN_PASSWORD="" >> ~/.zshrc
+
 ```
 
 Build:
@@ -54,6 +59,17 @@ pushd $ADT4_WS
 colcon build --continue-on-error
 popd
 ```
+
+### Environment Variable Summary
+
+| Environment Variable Name         | Description                           |
+|-----------------------------------|---------------------------------------|
+| ADT4\_WS                          | Colcon workspace root                 |
+| ADT4\_ENV                         | Directory of Python venvs             |
+| ADT4\_OUTPUT\_DIR                 | Output directory (logs, data, etc)    |
+| ADT4\_BOSDYN\_USERNAME            | Spot username                         |
+| ADT4\_BOSDYN\_PASSWORD            | Spot password                         |
+| ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
 
 ## Python environments
 
