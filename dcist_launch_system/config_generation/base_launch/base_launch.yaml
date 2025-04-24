@@ -2,13 +2,8 @@
 ---
 session_name: active_dsg
 
-environment:
-    #! Environment variables that must be set because they may vary user-to-user
+environment: {}
 
-    config: #@ data.values.config
-    odometry_type: #@ data.values.odometry_type
-    logging_key: #@ data.values.logging_key
-    real_robot: #@ data.values.real_robot
 
 options:
   default-command: /bin/zsh

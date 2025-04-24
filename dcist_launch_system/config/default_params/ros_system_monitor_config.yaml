@@ -1,15 +1,8 @@
+---
 nodes_to_track:
-  hydra:
-    external_monitor:
-      type: JsonMonitor
+  hydra: {external_monitor: {type: JsonMonitor}}
   roman: {}
   spot_executor: {}
   omniplanner: {}
-  perception: {}
   dsg_saver: {}
-  example2:
-    external_monitor:
-      type: Example1NodeMonitor
-      divider: 10
-      mod: 2
 timer_period_s: 0.5
