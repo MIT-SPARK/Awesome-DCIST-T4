@@ -24,12 +24,12 @@ while :; do
     esac
 done
 
-if [ -z "${ADT4_ENV+set}" != set ]; then
+if [[ ! -v ADT4_ENV ]]; then
     echo "Must set ADT4_ENV"
     exit 1
 fi
 
-if [ -z "${ADT4_WS+set}" != set ]; then
+if [[ ! -v ADT4_WS ]]; then
     echo "Must set ADT4_WS"
     exit 1
 fi
