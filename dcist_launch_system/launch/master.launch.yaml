@@ -54,13 +54,15 @@ launch:
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
-  - set_remap: {if: $(var launch_hydra_visualizer), from: hydra_visualizer/dsg, to: hydra/backend/dsg}
-  - include:
-      if: $(var launch_hydra_visualizer)
-      file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
-      arg:
-        - {name: start_rviz, value: 'false'}
-        - {name: visualizer_frame, value: map}
+  - group:
+      - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+      - include:
+          if: $(var launch_hydra_visualizer)
+          file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
+          arg:
+            - {name: start_rviz, value: 'false'}
+            - {name: visualizer_frame, value: map}
+            - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
@@ -130,6 +132,7 @@ launch:
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
 
 
+  # Omniplanner
   - arg:
       name: launch_omniplanner
       default: "false"
@@ -147,6 +150,7 @@ launch:
           to: /hydra/backend/dsg
 
 
+  # Scene Graph Publisher
   - arg:
       name: launch_scene_graph_publisher
       default: "false"
@@ -164,6 +168,7 @@ launch:
           to: /hydra/backend/dsg
 
 
+  # DSG Saver
   - arg:
       name: launch_dsg_saver
       default: "false"
