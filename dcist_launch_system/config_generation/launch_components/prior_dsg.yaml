@@ -5,9 +5,11 @@
 windows:
 #@overlay/append
 - window_name: prior_dsg
-  shell_command_before: source ${ADT4_WS}/install/setup.zsh
+  shell_command_before: |
+    source ${ADT4_WS}/install/setup.zsh
+    source ${ADT4_ENV}/spark_env/bin/activate
   layout: tiled
   panes:
-    - source ${ADT4_ENV}/spark_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_scene_graph_publisher:=true
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_hydra_visualizer:=true
-    - source ${ADT4_ENV}/spark_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config launch_dsg_saver:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_scene_graph_publisher:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra_visualizer:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true

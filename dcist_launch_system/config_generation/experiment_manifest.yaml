@@ -31,8 +31,8 @@ launch_configs:
         - debug
 
 
-# Parameter groupings build the set of rosparams that will be loaded
-parameter_groupings:
+# Configs build the set of rosparams that will be loaded
+configs:
 
     default_params: []
     bag: []
@@ -41,21 +41,13 @@ parameter_groupings:
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
 
-    default:
-        launch_config: base
-        odometry_types: ['spot_odom']
-        parameter_groupings: [default_params]
-        real_robot: ["true"]
-
     spot_bag:
         launch_config: spot_bag
-        odometry_types: ['spot_odom']
-        parameter_groupings: [bag]
-        real_robot: ["false"]
+        config: [bag]
+        sim_time: ["true"]
 
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
-        odometry_types: ['spot_odom']
-        parameter_groupings: [spot_prior_dsg]
-        real_robot: ["false"]
+        config: [spot_prior_dsg]
+        sim_time: ["true", "false"]

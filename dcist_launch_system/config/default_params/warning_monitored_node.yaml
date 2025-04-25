@@ -1,5 +1,5 @@
 /**:
-  ros__parameters:
-    nickname: planning
-    status: WARNING
-    notes: A planning system. <some type of warning> detected
+    ros__parameters:
+        nickname: planning
+        status: WARNING
+        notes: "A planning system. <some type of warning> detected"
