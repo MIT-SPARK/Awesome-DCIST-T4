@@ -5,7 +5,7 @@ import numpy as np
 import rclpy.time
 from geometry_msgs.msg import Point
 from robot_executor_msgs.msg import ActionMsg, ActionSequenceMsg
-from spot_executor.utils import path_to_waypoints, waypoints_to_path
+from spot_tools_ros.utils import path_to_waypoints, waypoints_to_path
 from visualization_msgs.msg import Marker, MarkerArray
 
 from robot_executor_interface.action_descriptions import (
