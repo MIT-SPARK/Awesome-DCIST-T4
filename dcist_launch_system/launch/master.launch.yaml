@@ -132,6 +132,9 @@ launch:
       exec: "rviz2"
       name: "rviz2_node"
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
+      remap:
+        - from: ~/node_status
+          to: /ros_system_monitor/node_diagnostic_collector
 
 
   # Omniplanner

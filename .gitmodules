@@ -34,3 +34,6 @@
 [submodule "omniplanner"]
 	path = omniplanner
 	url = git@github.com:MIT-SPARK/Omniplanner.git
+[submodule "nlu_interface"]
+	path = nlu_interface
+	url = git@gitlab.sitcore.net:dcist/mit/nlu_interface.git
