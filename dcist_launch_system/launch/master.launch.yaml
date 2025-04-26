@@ -117,6 +117,7 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
+          allow_substs: true
       remap:
         - from: ~/node_status
           to: /ros_system_monitor/node_diagnostic_collector
