@@ -5,7 +5,7 @@ nodes_to_track:
   roman_map: {}
   spot_executor: {}
   omniplanner: {}
-  nlu_rviz_panel: {}
+  nlp: {}
   perception: {}
   planning: {}
   example1: {}

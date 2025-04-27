@@ -7,6 +7,7 @@ nodes_to_track:
   omniplanner: {}
   perception: {}
   dsg_saver: {}
+  nlu_rviz_panel: {}
   example2:
     external_monitor:
       type: Example1NodeMonitor
