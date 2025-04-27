@@ -1,47 +1,10 @@
 ---
 launch:
   - arg: {name: conf_name}
+  - arg: {name: sim_time}
   - arg: {name: robot_type, default: none}
   - arg: {name: robot_name, default: none}
   - arg: {name: camera, default: none}
-
-  # Example Node 1
-  - arg: {name: launch_example_1_node, default: 'false'}
-  - node:
-      if: $(var launch_example_1_node)
-      pkg: dcist_launch_system
-      exec: example_1_node
-      name: example_1_node
-      param:
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/example_1_node.yaml
-
-  # Nominal Node
-  - arg: {name: launch_nominal_node, default: 'false'}
-  - node:
-      if: $(var launch_nominal_node)
-      pkg: ros_system_monitor
-      exec: example_monitored_node
-      name: nominal_monitored_node
-      param:
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/nominal_monitored_node.yaml
-      remap:
-        - {from: ~/node_status, to: /ros_system_monitor/node_diagnostic_collector}
-
-  # Warning Node
-  - arg: {name: launch_warning_node, default: 'false'}
-  - node:
-      if: $(var launch_warning_node)
-      pkg: ros_system_monitor
-      exec: example_monitored_node
-      name: warning_monitored_node
-      param:
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/warning_monitored_node.yaml
-      remap:
-        - {from: ~/node_status, to: /ros_system_monitor/node_diagnostic_collector}
-
-  # Example 2 Node
-  - arg: {name: launch_example_2_node, default: 'false'}
-  - node: {if: $(var launch_example_2_node), pkg: dcist_launch_system, exec: example_2_node, name: example_2_node}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
@@ -51,6 +14,7 @@ launch:
       file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
       arg:
         - {name: conf_name, value: $(var conf_name)}
+        - {name: use_sim_time, value: $(var sim_time)}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
@@ -60,6 +24,7 @@ launch:
           if: $(var launch_hydra_visualizer)
           file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
           arg:
+            - {name: use_sim_time, value: $(var sim_time)}
             - {name: start_rviz, value: 'false'}
             - {name: visualizer_frame, value: map}
             - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml}
@@ -83,6 +48,7 @@ launch:
           if: $(var launch_fastsam)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
           arg:
+            - {name: use_sim_time, value: $(var sim_time)}
             - {name: robot_name, value: $(var robot_name)}
             - {name: robot_type, value: $(var robot_type)}
 
@@ -91,6 +57,7 @@ launch:
           if: $(var launch_roman_map)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
           arg:
+            - {name: use_sim_time, value: $(var sim_time)}
             - {name: robot_name, value: $(var robot_name)}
             - {name: robot_type, value: $(var robot_type)}
 
@@ -102,6 +69,7 @@ launch:
       exec: spot_executor_node
       name: spot_executor_node
       param:
+          - {name: use_sim_time, value: $(var sim_time)}
           - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_executor_node.yaml
             allow_substs: true
       remap:
@@ -118,6 +86,7 @@ launch:
       name: robot_state_publisher
       exec: robot_state_publisher
       param:
+          - {name: use_sim_time, value: $(var sim_time)}
           - name: robot_description
             value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro')
       remap:
@@ -135,6 +104,8 @@ launch:
       remap:
         - from: ~/node_status
           to: /ros_system_monitor/node_diagnostic_collector
+      param:
+          - {name: use_sim_time, value: $(var sim_time)}
 
 
   # Omniplanner
@@ -147,7 +118,9 @@ launch:
       exec: omniplanner_node
       name: omniplanner_node
       param:
+        - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
+          allow_substs: true
       remap:
         - from: ~/node_status
           to: /ros_system_monitor/node_diagnostic_collector
@@ -165,6 +138,7 @@ launch:
       exec: prior_dsg_publisher_node
       name: prior_dsg_publisher
       param:
+        - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
           allow_substs: true
 
@@ -183,6 +157,7 @@ launch:
       exec: dsg_saver_node
       name: dsg_saver
       param:
+        - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml
           allow_substs: true
 

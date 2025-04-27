@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 
 import argparse
+import itertools
 import logging
 import os
 import shutil
 import traceback
 
-import yaml
+import ruamel.yaml
+
+yaml = ruamel.yaml.YAML()
 
 logger = logging.getLogger(__name__)
+
+
+def str_to_bool(string):
+    if string.lower() == "true":
+        return True
+    elif string.lower() == "false":
+        return False
+    return None
 
 
 def log_error(msg):
@@ -84,7 +95,7 @@ def resolve_override_dirs(manifest, key):
         children = manifest[key]
     except KeyError:
         log_error(
-            f"Requested key {key} is not a defined parameter grouping in your manifest! Valid keys are {list(manifest.keys())}"
+            f"Requested key {key} is not a defined config in your manifest! Valid keys are {list(manifest.keys())}"
         )
         raise
 
@@ -105,12 +116,12 @@ def get_experiment_manifest(root_path):
         exit(1)
         return
     with open(manifest_path, "r") as fo:
-        experiment_manifest = yaml.safe_load(fo)
+        experiment_manifest = yaml.load(fo)
     return experiment_manifest
 
 
 def generate_config_name_yaml(root_path, experiment_manifest):
-    for name, children in experiment_manifest["parameter_groupings"].items():
+    for name, children in experiment_manifest["configs"].items():
         param_dir = os.path.join(root_path, "experiment_overrides", name)
         if not os.path.exists(param_dir):
             os.mkdir(param_dir)
@@ -121,21 +132,21 @@ def generate_config_name_yaml(root_path, experiment_manifest):
             )
 
 
-def find_concrete_param_groupings(experiment_manifest):
-    """Get all of the parameter groupings that appear in an experiment definition"""
-    concrete_param_groupings = []
+def find_concrete_configs(experiment_manifest):
+    """Get all of the configs that appear in an experiment definition"""
+    concrete_configs = []
     for _, v in experiment_manifest["experiments"].items():
-        groupings = v["parameter_groupings"]
+        groupings = v["config"]
         for g in groupings:
-            if g not in concrete_param_groupings:
-                concrete_param_groupings.append(g)
-    return concrete_param_groupings
+            if g not in concrete_configs:
+                concrete_configs.append(g)
+    return concrete_configs
 
 
-def render_param_grouping(
-    root_path, experiment_manifest, base_yamls, concrete_param_groupings, output_dir
+def render_config(
+    root_path, experiment_manifest, base_yamls, concrete_configs, output_dir
 ):
-    for experiment_key in experiment_manifest["parameter_groupings"].keys():
+    for experiment_key in experiment_manifest["configs"].keys():
         log_debug(f"Generating config for {experiment_key}")
         base_param_dir = os.path.join(root_path, "base_params")
         rendered_config_dir = os.path.join(output_dir, experiment_key)
@@ -143,11 +154,11 @@ def render_param_grouping(
 
         try:
             override_dirs = resolve_unique_dirs(
-                experiment_manifest["parameter_groupings"], experiment_key
+                experiment_manifest["configs"], experiment_key
             )
         except KeyError:
             log_error(
-                f"Error when processing {experiment_key}. Could not resolve parameter grouping"
+                f"Error when processing {experiment_key}. Could not resolve config"
             )
             raise
 
@@ -189,7 +200,7 @@ def render_param_grouping(
                     log_debug(f"  Override {by} with {fn}")
                     cmd += f" -f {fn}"
 
-            if experiment_key in concrete_param_groupings:
+            if experiment_key in concrete_configs:
                 cmd += f" -f {root_path}/experiment_overrides/{experiment_key}/config_name.yaml"
                 dest_path = os.path.join(output_dir, experiment_key, by)
 
@@ -218,26 +229,44 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
             component_yaml = os.path.join(root_path, "launch_components", lc) + ".yaml"
             cmd += f" -f {component_yaml}"
 
-        # TODO: generalize this to automatically add any keys as environment variables to the tmux
-        for odom in exp["odometry_types"]:
-            log_debug(f"  Generating launch file for odom type {odom}")
-            if "real_robot" in exp.keys():
-                real_robot_vals = exp["real_robot"]
-            else:
-                real_robot_vals = ["false"]
-            for real_robot in real_robot_vals:
-                cmd_w_odom = cmd + f" -v odometry_type={odom}"
-                for pg in exp["parameter_groupings"]:
-                    log_debug(f"    Generating launch file for parameter grouping {pg}")
-                    logging_key = f"{exp_key}-{odom}-{pg}"
-                    cmd_w_odom_w_params = (
-                        cmd_w_odom + f" -v config={pg} -v logging_key={logging_key}"
-                    )
-                    cmd_w_odom_w_params += f" -v real_robot={real_robot}"
-                    launch_fn = f"{tmux_output_dir}/{exp_key}-{odom}-{pg}.yaml"
-                    cmd_final = cmd_w_odom_w_params + " > " + launch_fn
-                    log_debug(f"    Calling: {cmd_final}")
-                    os.system(cmd_final)
+        special_keys = ["launch_config"]
+        extra_keys = [k for k in exp.keys() if k not in special_keys]
+        log_debug(f"{exp_key} extra keys: {extra_keys}")
+
+        cartesian_kv = list(
+            itertools.product(
+                *[
+                    [(k, vi) for vi in v]
+                    for k, v in exp.items()
+                    if k not in special_keys
+                ]
+            )
+        )
+        for tmux in cartesian_kv:
+            logging_key = exp_key
+            for k, v in tmux:
+                bool_val = str_to_bool(v)
+                if bool_val is None:
+                    s = v
+                elif bool_val:
+                    s = k
+                else:
+                    s = "no_" + k
+
+                logging_key += f"-{s}"
+            base_launch_fn = f"{tmux_output_dir}/{logging_key}.yaml"
+            ytt_tmux_cmd = cmd + " > " + base_launch_fn
+            log_debug(f"    Calling: {ytt_tmux_cmd}")
+            os.system(ytt_tmux_cmd)
+
+            with open(base_launch_fn, "r") as fo:
+                launch = yaml.load(fo)
+                launch["environment"]["logging_key"] = logging_key
+                for k, v in tmux:
+                    launch["environment"][k] = v
+
+            with open(base_launch_fn, "w") as fo:
+                yaml.dump(launch, fo)
 
 
 def render_manifest(root_path, conf_output_dir, tmux_output_dir):
@@ -261,17 +290,17 @@ def render_manifest(root_path, conf_output_dir, tmux_output_dir):
     log_info(f"base_yamls: {base_yamls}")
 
     # Identify the sets of parameters that need to be generated because they are loaded by a launch file
-    concrete_param_groupings = find_concrete_param_groupings(experiment_manifest)
+    concrete_configs = find_concrete_configs(experiment_manifest)
 
-    log_info(f"Rendering concrete configs: {concrete_param_groupings}")
+    log_info(f"Rendering concrete configs: {concrete_configs}")
 
-    # Render all of the defined parameter groupings.
+    # Render all of the defined configs
     try:
-        render_param_grouping(
+        render_config(
             root_path,
             experiment_manifest,
             base_yamls,
-            concrete_param_groupings,
+            concrete_configs,
             conf_output_dir,
         )
     except KeyError:

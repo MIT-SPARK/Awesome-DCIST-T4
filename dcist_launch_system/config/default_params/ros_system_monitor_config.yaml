@@ -1,11 +1,9 @@
+---
 nodes_to_track:
-  hydra:
-    external_monitor:
-      type: JsonMonitor
+  hydra: {external_monitor: {type: JsonMonitor}}
   roman: {}
   spot_executor: {}
   omniplanner: {}
-  perception: {}
   dsg_saver: {}
   nlu_rviz_panel: {}
   example2:
