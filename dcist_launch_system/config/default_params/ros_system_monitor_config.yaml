@@ -6,9 +6,4 @@ nodes_to_track:
   omniplanner: {}
   dsg_saver: {}
   nlu_rviz_panel: {}
-  example2:
-    external_monitor:
-      type: Example1NodeMonitor
-      divider: 10
-      mod: 2
 timer_period_s: 0.5
