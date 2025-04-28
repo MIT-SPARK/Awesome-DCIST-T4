@@ -1,7 +1,7 @@
 planners:
-  goto_points:
-    plugin:
-      type: GotoPoints
-  language_planner:
-    plugin:
-      type: LanguagePlanner
+    goto_points:
+        plugin:
+            type: GotoPoints
+    language_planner:
+        plugin:
+            type: LanguagePlanner
