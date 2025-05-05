@@ -8,6 +8,7 @@ launch_configs:
     debug: []
     core: []
     prior_dsg: []
+    spot_real: []
 
 
     base:
@@ -30,6 +31,12 @@ launch_configs:
         - core
         - debug
 
+    real_spot: 
+        - hydra
+        - spot_real
+        - core
+        - debug
+
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -37,6 +44,7 @@ configs:
     default_params: []
     bag: []
     spot_prior_dsg: []
+    real_spot: []
 
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
@@ -51,3 +59,8 @@ experiments:
         launch_config: spot_prior_dsg
         config: [spot_prior_dsg]
         sim_time: ["true", "false"]
+
+    real_spot:
+        launch_config: real_spot
+        config: [real_spot]
+        sim_time: ["false"]
