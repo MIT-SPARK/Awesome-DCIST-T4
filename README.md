@@ -69,6 +69,7 @@ popd
 | ADT4\_OUTPUT\_DIR                 | Output directory (logs, data, etc)    |
 | ADT4\_BOSDYN\_USERNAME            | Spot username                         |
 | ADT4\_BOSDYN\_PASSWORD            | Spot password                         |
+| ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)  |
 | ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
 
 ## Python environments

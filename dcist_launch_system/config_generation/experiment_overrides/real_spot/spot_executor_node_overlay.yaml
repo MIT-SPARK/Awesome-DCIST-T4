@@ -1,0 +1,8 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+/**:
+    ros__parameters:
+        use_fake_spot_interface: false
+        fake_spot_external_pose: false

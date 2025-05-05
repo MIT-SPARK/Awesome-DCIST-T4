@@ -93,6 +93,42 @@ launch:
           - from: /joint_states
             to: /spot_executor_node/joint_states
 
+  # Spot camera driver 
+  - arg: {name: launch_spot_camera_driver, default: 'false'}
+  - group: 
+    - push_ros_namespace: {namespace: spot}
+    - node: 
+        if: "$(var launch_spot_camera_driver)"
+        pkg: spot_tools_ros
+        exec: spot_sensor_node
+        name: spot_sensor_node
+        param:
+            - {name: use_sim_time, value: $(var sim_time)}
+            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml
+              allow_substs: true
+    - node:
+        if: "$(var launch_spot_camera_driver)"
+        namespace: frontleft
+        pkg: image_transport
+        exec: republish
+        param:
+          - {name: in_transport, value: compressed}
+          - {name: out_transport, value: raw}
+        remap:
+          - {from: in/compressed, to: color/image_raw/compressed}
+          - {from: out, to: color/image_raw}
+    - node:
+        if: "$(var launch_spot_camera_driver)"
+        namespace: frontright
+        pkg: image_transport
+        exec: republish
+        param:
+          - {name: in_transport, value: compressed}
+          - {name: out_transport, value: raw}
+        remap:
+          - {from: in/compressed, to: color/image_raw/compressed}
+          - {from: out, to: color/image_raw}
+
   # Rviz
   - arg: {name: 'launch_rviz', default: 'false'}
   - node:
