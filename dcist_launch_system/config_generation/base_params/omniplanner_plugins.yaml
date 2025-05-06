@@ -2,6 +2,12 @@ planners:
     goto_points:
         plugin:
             type: GotoPoints
+
     language_planner:
         plugin:
             type: LanguagePlanner
+
+    tsp_planner:
+        plugin:
+            type: Tsp
+            solver: 2opt

@@ -137,6 +137,11 @@ send spot a plan with:
 ros2 topic pub /omniplanner_node/language_planner/language_goal omniplanner_msgs/msg/LanguageGoalMsg "{robot_id: 'spot', command: 'R(70) R(23)'}" -1
 ```
 
+You can also manually specify the list of string symbols, instead of relying on the "language" module to do it for you:
+```
+ros2 topic pub /omniplanner_node/goto_points/goto_points_goal omniplanner_msgs/msg/GotoPointsGoalMsg "{robot_id: 'spot', point_names_to_visit: ['R(70)']}" -1
+```
+
 This should result in a planned path appearing in RVIZ, and spot following the
 plan.
 
