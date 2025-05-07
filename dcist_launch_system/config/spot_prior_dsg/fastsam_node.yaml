@@ -1,0 +1,4 @@
+/**:
+  ros__parameters:
+    map_frame_id: vision
+    odom_base_frame_id: body

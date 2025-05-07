@@ -2,7 +2,6 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: sim_time}
-  - arg: {name: robot_type, default: none}
   - arg: {name: robot_name, default: none}
   - arg: {name: camera, default: none}
 
@@ -49,8 +48,8 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
           arg:
             - {name: use_sim_time, value: $(var sim_time)}
+            - {name: conf_name, value: $(var conf_name)}
             - {name: robot_name, value: $(var robot_name)}
-            - {name: robot_type, value: $(var robot_type)}
 
       # ROMAN: Mapping
       - include:
@@ -58,8 +57,8 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
           arg:
             - {name: use_sim_time, value: $(var sim_time)}
+            - {name: conf_name, value: $(var conf_name)}
             - {name: robot_name, value: $(var robot_name)}
-            - {name: robot_type, value: $(var robot_type)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}

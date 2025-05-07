@@ -9,10 +9,12 @@ launch_configs:
     core: []
     prior_dsg: []
     spot_real: []
+    roman: []
 
 
     base:
         - hydra
+        - roman
         - sim_spot
         - planning
         - core
@@ -20,6 +22,7 @@ launch_configs:
 
     spot_bag:
         - hydra
+        - roman
         - bag_spot
         - core
         - debug
@@ -33,6 +36,7 @@ launch_configs:
 
     real_spot: 
         - hydra
+        - roman
         - spot_real
         - core
         - debug
