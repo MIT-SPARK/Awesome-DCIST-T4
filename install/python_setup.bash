@@ -73,6 +73,7 @@ if [ "$install_spark" = true ]; then
 
     if [ ! -d $ADT4_WS/src/fast_downward ]; then
         git clone https://github.com/aibasel/downward.git $ADT4_WS/src/fast_downward
+        touch $ADT4_WS/src/fast_downward/COLCON_IGNORE
         $ADT4_WS/src/fast_downward/build.py
         echo "*********************************************************************************************************"
         echo "** Please run the following to install fast-downward:                                                  **"

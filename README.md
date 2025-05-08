@@ -160,6 +160,14 @@ ros2 topic pub /omniplanner_node/tsp_planner/solve_tsp_goal omniplanner_msgs/msg
 This should result in a planned path appearing in RVIZ, and spot following the
 plan.
 
+You can also send PDDL goals such as:
+```
+ros2 topic pub /omniplanner_node/visit_objects_pddl/pddl_goal omniplanner_msgs/msg/PddlGoalMsg "{robot_id: 'spot', pddl_goal: '(or (visited-place r116) (and (visited-place r69) (visited-place r83)))'}" -1
+```
+Currently you can use `visited-place` and `visited-object` predicates and
+general conjunctions/disjunctions/negations to specify goals.
+
+
 ### Catalog of Supported Launch Configurations
 
 | Tmux Launch Name                                     | Description                                                                |
