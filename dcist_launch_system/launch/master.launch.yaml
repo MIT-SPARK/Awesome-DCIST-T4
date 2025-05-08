@@ -32,13 +32,12 @@ launch:
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
   - group:
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: camera/$(var camera)/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: camera/$(var camera)/image}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/camera_info, to: camera/$(var camera)/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/image_raw, to: depth/$(var camera)/depth_in_visual}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf, to: /tf}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: /$(var robot_name)/tf_static, to: /tf_static}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: camera/$(var camera)/image}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: $(var camera)/color/camera_info}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: $(var camera)/color/image_raw}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/camera_info, to: $(var camera)/depth/camera_info}
+      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/image_raw, to: $(var camera)/depth/image_rect}
+      - set_remap: {from: /$(var robot_name)/tf, to: /tf}
+      - set_remap: {from: /$(var robot_name)/tf_static, to: /tf_static}
       - set_remap: {from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
       - set_remap: {from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
 

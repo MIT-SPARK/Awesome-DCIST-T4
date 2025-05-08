@@ -2,7 +2,8 @@ nodes_to_track:
   hydra:
     external_monitor:
       type: JsonMonitor
-  roman: {}
+  fastsam: {}
+  roman_map: {}
   spot_executor: {}
   omniplanner: {}
   dsg_saver: {}
