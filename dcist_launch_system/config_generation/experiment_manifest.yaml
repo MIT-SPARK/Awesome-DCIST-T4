@@ -41,6 +41,11 @@ launch_configs:
         - core
         - debug
 
+    data_collection:
+        - spot_real
+        - core
+        - debug
+
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -66,5 +71,11 @@ experiments:
 
     real_spot:
         launch_config: real_spot
+        config: [real_spot]
+        sim_time: ["false"]
+
+
+    data_collection:
+        launch_config: data_collection
         config: [real_spot]
         sim_time: ["false"]
