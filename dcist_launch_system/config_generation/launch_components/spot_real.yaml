@@ -5,9 +5,12 @@
 windows:
 #@overlay/append
 - window_name: real_spot
-  shell_command_before: source ${ADT4_WS}/install/setup.zsh && source ${ADT4_ENV}/spark_env/bin/activate &&
+  shell_command_before: |
+    source ${ADT4_WS}/install/setup.zsh
+    source ${ADT4_ENV}/spark_env/bin/activate
   layout: tiled
   panes:
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_driver:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_decompression:=true

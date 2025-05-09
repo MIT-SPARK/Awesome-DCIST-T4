@@ -91,11 +91,11 @@ launch:
           - from: /joint_states
             to: /spot_executor_node/joint_states
 
-  # Spot camera driver 
+  # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
-  - group: 
+  - group:
     - push_ros_namespace: {namespace: spot}
-    - node: 
+    - node:
         if: "$(var launch_spot_camera_driver)"
         pkg: spot_tools_ros
         exec: spot_sensor_node
@@ -104,8 +104,12 @@ launch:
             - {name: use_sim_time, value: $(var sim_time)}
             - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml
               allow_substs: true
+
+  - arg: {name: launch_spot_camera_decompression, default: 'false'}
+  - group:
+    - push_ros_namespace: {namespace: spot}
     - node:
-        if: "$(var launch_spot_camera_driver)"
+        if: "$(var launch_spot_camera_decompression)"
         namespace: frontleft
         pkg: image_transport
         exec: republish
@@ -116,7 +120,7 @@ launch:
           - {from: in/compressed, to: color/image_raw/compressed}
           - {from: out, to: color/image_raw}
     - node:
-        if: "$(var launch_spot_camera_driver)"
+        if: "$(var launch_spot_camera_decompression)"
         namespace: frontright
         pkg: image_transport
         exec: republish
