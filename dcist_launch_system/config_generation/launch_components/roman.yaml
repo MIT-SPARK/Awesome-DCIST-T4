@@ -1,0 +1,16 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+windows:
+#@overlay/append
+- window_name: roman
+  shell_command_before:
+  - source ${ADT4_WS}/install/setup.zsh
+  - source ${ADT4_ENV}/roman/bin/activate
+  layout: tiled
+  panes:
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config
+      robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_fastsam:=true sim_time:=$sim_time
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config 
+      robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_roman_map:=true sim_time:=$sim_time

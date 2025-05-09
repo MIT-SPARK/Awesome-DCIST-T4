@@ -49,6 +49,9 @@ source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
 echo export ADT4_BOSDYN_USERNAME="" >> ~/.zshrc
 echo export ADT4_BOSDYN_PASSWORD="" >> ~/.zshrc
 
+# You also need to set the robot name. Example:
+echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
+
 ```
 
 Build:
@@ -71,6 +74,7 @@ popd
 | ADT4\_BOSDYN\_PASSWORD            | Spot password                         |
 | ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)  |
 | ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
+| ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
 
 ## Python environments
 
