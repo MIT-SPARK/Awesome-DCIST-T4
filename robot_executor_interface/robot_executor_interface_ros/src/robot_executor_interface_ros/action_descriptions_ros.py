@@ -100,13 +100,53 @@ def _(action: Follow, marker_ns):
     m.type = m.LINE_STRIP
     m.action = m.ADD
     m.pose.orientation.w = 1.0
-    m.scale.x = 0.1
+    m.scale.x = 0.2
+    m.scale.y = 0.2
     m.color.a = 1.0
     m.color.r = 0.0
     m.color.g = 1.0
     m.color.b = 0.0
     m.points = points
-    return [m]
+
+    start = Marker()
+    start.header.frame_id = action.frame
+    start.header.stamp = gtm()
+    start.ns = marker_ns
+    start.id = 1
+    start.type = m.SPHERE
+    start.action = m.ADD
+    start.pose.orientation.w = 1.0
+    start.scale.x = 0.4
+    start.scale.y = 0.4
+    start.scale.z = 0.4
+    start.color.a = 0.5
+    start.color.r = 1.0
+    start.color.g = 0.0
+    start.color.b = 0.0
+    start.pose.position.x = points[0].x
+    start.pose.position.y = points[0].y
+    start.pose.position.z = points[0].z
+
+    end = Marker()
+    end.header.frame_id = action.frame
+    end.header.stamp = gtm()
+    end.ns = marker_ns
+    end.id = 2
+    end.type = m.SPHERE
+    end.action = m.ADD
+    end.pose.orientation.w = 1.0
+    end.scale.x = 0.4
+    end.scale.y = 0.4
+    end.scale.z = 0.4
+    end.color.a = 0.5
+    end.color.r = 0.0
+    end.color.g = 0.0
+    end.color.b = 1.0
+    end.pose.position.x = points[-1].x
+    end.pose.position.y = points[-1].y
+    end.pose.position.z = points[-1].z
+
+    return [m, start, end]
 
 
 def gaze_from_msg(msg):
