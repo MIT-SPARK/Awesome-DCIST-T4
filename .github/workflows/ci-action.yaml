@@ -31,7 +31,6 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
           path: src/awesome_dcist_t4
           submodules: recursive
 
