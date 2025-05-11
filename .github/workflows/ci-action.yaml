@@ -23,6 +23,11 @@ jobs:
           rm -rf install
           rm -rf build
 
+      - name: Clean workspace
+        run: |
+          rm -rf src/awesome_dcist_t4
+          rm -rf Hydra-Multi
+
       - name: Update Dependencies
         shell: bash
         run: |
