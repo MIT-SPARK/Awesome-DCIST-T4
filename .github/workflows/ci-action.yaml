@@ -38,6 +38,13 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
+      - name: Check SSH Key
+        run: |
+          echo "Key length: $(echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | wc -c)"
+          echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | head -c 50
+          echo "...(truncated)"
+          git clone git@github.mit.edu:SPARK/Hydra-Multi.git
+
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
