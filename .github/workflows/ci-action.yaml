@@ -28,7 +28,13 @@ jobs:
             sudo apt update
             sudo apt install -y git python3-pip pipx python3 python3-venv ros-jazzy-ament-cmake
 
-      - name: Set up SSH for Private Repos
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+            path: src/awesome_dcist_t4
+            submodules: false
+
+      - name: Set up SSH for Private Submodules
         shell: bash
         run: |
           mkdir -p ~/.ssh
@@ -37,12 +43,11 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Check out repository code
-        uses: actions/checkout@v4
-        with:
-            path: src/awesome_dcist_t4
-            submodules: recursive
-            ssh-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
+      - name: Update submodules
+        shell: bash
+        run: |
+          cd src/awesome_dcist_t4
+          git submodule update --init --recursive
 
       - name: Pre-commit
         shell: bash
