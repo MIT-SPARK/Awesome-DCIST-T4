@@ -9,6 +9,7 @@ on:
 env:
     ADT4_WS: ${{ github.workspace }}
     ADT4_ENV: ${{ github.workspace }}
+    GIT_SSH_COMMAND: ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no
 jobs:
   Awesome-DCIST-T4:
     runs-on: self-hosted
@@ -36,7 +37,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
       - name: Check SSH Key
         run: |
