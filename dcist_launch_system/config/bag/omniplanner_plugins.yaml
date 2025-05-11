@@ -9,3 +9,7 @@ planners:
     plugin:
       type: Tsp
       solver: 2opt
+  visit_objects_pddl:
+    plugin:
+      type: Pddl
+      domain_name: GotoObjectDomain

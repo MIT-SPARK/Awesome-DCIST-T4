@@ -45,7 +45,13 @@ echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
 # This will create all necessary python environments to run DCIST code
 source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
 
-# You also need to set the spot username/password. These cannot be empty, but you can use dummy place-holders if you are simulating spot. Feel free to set these to something other than `user` and `pass`.
+# The previous command will build fast-downward, but you need to install it:
+sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+
+# You also need to set the spot username/password. These cannot be empty, but
+# you can use dummy place-holders if you are simulating spot. Feel free to set
+# these to something other than `user` and `pass`.
+
 echo export ADT4_BOSDYN_USERNAME="user" >> ~/.zshrc
 echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 
@@ -153,6 +159,14 @@ ros2 topic pub /omniplanner_node/tsp_planner/solve_tsp_goal omniplanner_msgs/msg
 
 This should result in a planned path appearing in RVIZ, and spot following the
 plan.
+
+You can also send PDDL goals such as:
+```
+ros2 topic pub /omniplanner_node/visit_objects_pddl/pddl_goal omniplanner_msgs/msg/PddlGoalMsg "{robot_id: 'spot', pddl_goal: '(or (visited-place r116) (and (visited-place r69) (visited-place r83)))'}" -1
+```
+Currently you can use `visited-place` and `visited-object` predicates and
+general conjunctions/disjunctions/negations to specify goals.
+
 
 ### Catalog of Supported Launch Configurations
 

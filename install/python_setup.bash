@@ -70,4 +70,16 @@ if [ "$install_spark" = true ]; then
     python3 -m venv $ADT4_ENV/spark_env --system-site-packages
     source $ADT4_ENV/spark_env/bin/activate
     pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt
+
+    if [ ! -d $ADT4_WS/src/fast_downward ]; then
+        git clone https://github.com/aibasel/downward.git $ADT4_WS/src/fast_downward
+        touch $ADT4_WS/src/fast_downward/COLCON_IGNORE
+        $ADT4_WS/src/fast_downward/build.py
+        echo "*********************************************************************************************************"
+        echo "** Please run the following to install fast-downward:                                                  **"
+        echo "**                                                                                                     **"
+        echo "** sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward                 **"
+        echo "**                                                                                                     **"
+        echo "*********************************************************************************************************"
+    fi
 fi
