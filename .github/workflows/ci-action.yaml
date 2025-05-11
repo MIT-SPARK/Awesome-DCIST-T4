@@ -43,7 +43,7 @@ jobs:
           echo "Key length: $(echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | wc -c)"
           echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | head -c 50
           echo "...(truncated)"
-          git clone git@github.mit.edu:SPARK/Hydra-Multi.git
+          git clone git@github.com:MIT-SPARK/Hydra-Multi.git
 
       - name: Check out repository code
         uses: actions/checkout@v4
