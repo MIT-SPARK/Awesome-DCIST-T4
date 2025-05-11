@@ -83,6 +83,8 @@ launch:
             to: /ros_system_monitor/node_diagnostic_collector
           - from: ~/action_sequence_subscriber
             to: /omniplanner_node/compiled_plan_out
+          - from: ~/joint_states
+            to: /spot/joint_states
 
   # Spot state publisher
   - arg: {name: launch_spot_state_publisher, default: 'false'}
@@ -97,7 +99,7 @@ launch:
             value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro')
       remap:
           - from: /joint_states
-            to: /spot_executor_node/joint_states
+            to: /spot/joint_states
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
