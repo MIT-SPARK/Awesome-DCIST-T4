@@ -38,15 +38,15 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
-      - name: Configure Git to use SSH key
-        run: |
-          git config --global core.sshCommand "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no"
-
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
           path: src/awesome_dcist_t4
-          submodules: recursive
+          submodules: false
+
+      - name: Update submodules
+        working-directory: src/awesome_dcist_t4
+        run: git submodule update --init --recursive
 
       - name: Pre-commit
         shell: bash
