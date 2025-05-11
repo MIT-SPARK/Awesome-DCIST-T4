@@ -31,23 +31,9 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-            path: src/awesome_dcist_t4
-            submodules: false
-
-      - name: Set up SSH for Private Submodules
-        shell: bash
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
-      - name: Update submodules
-        shell: bash
-        run: |
-          cd src/awesome_dcist_t4
-          git submodule update --init --recursive
+          ssh-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
+          path: src/awesome_dcist_t4
+          submodules: recursive
 
       - name: Pre-commit
         shell: bash
