@@ -42,8 +42,11 @@ echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 # Feel free to change the output directory (saved scene graphs, logs, etc)
 echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
 
+# Source to update changes
+source ~/.zshrc
+
 # This will create all necessary python environments to run DCIST code
-source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
+source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash
 
 # You also need to set the spot username/password. These cannot be empty, but you can use dummy place-holders if you are simulating spot. Feel free to set these to something other than `user` and `pass`.
 echo export ADT4_BOSDYN_USERNAME="user" >> ~/.zshrc
@@ -52,6 +55,8 @@ echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 # You also need to set the robot name. Example:
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
+# Source to update all changes
+source ~/.zshrc
 ```
 
 Build:
