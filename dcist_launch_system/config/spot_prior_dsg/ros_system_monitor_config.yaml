@@ -4,6 +4,7 @@ nodes_to_track:
       type: JsonMonitor
   fastsam: {}
   roman_map: {}
+  roman_lc: {}
   spot_executor: {}
   omniplanner: {}
   dsg_saver: {}

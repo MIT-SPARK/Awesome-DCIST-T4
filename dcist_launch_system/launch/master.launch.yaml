@@ -31,6 +31,7 @@ launch:
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
+  - arg: {name: launch_roman_lc, default: 'false'}
   - group:
       - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: $(var camera)/color/camera_info}
       - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: $(var camera)/color/image_raw}
@@ -40,13 +41,13 @@ launch:
       - set_remap: {from: /$(var robot_name)/tf_static, to: /tf_static}
       - set_remap: {from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
       - set_remap: {from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: /$(var robot_name)/roman/roman_lc/status, to: /ros_system_monitor/node_diagnostic_collector}
 
       # FastSAM
       - include:
           if: $(var launch_fastsam)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
           arg:
-            - {name: use_sim_time, value: $(var sim_time)}
             - {name: conf_name, value: $(var conf_name)}
             - {name: robot_name, value: $(var robot_name)}
 
@@ -55,7 +56,14 @@ launch:
           if: $(var launch_roman_map)
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
           arg:
-            - {name: use_sim_time, value: $(var sim_time)}
+            - {name: conf_name, value: $(var conf_name)}
+            - {name: robot_name, value: $(var robot_name)}
+
+      # ROMAN: Loop Closures
+      - include:
+          if: $(var launch_roman_lc)
+          file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_lc.launch.yaml
+          arg:
             - {name: conf_name, value: $(var conf_name)}
             - {name: robot_name, value: $(var robot_name)}
 
