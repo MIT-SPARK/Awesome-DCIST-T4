@@ -9,6 +9,7 @@ on:
 env:
     ADT4_WS: ${{ github.workspace }}
     ADT4_ENV: ${{ github.workspace }}
+    GIT_SSH_COMMAND: ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no
 jobs:
   Awesome-DCIST-T4:
     runs-on: self-hosted
@@ -28,12 +29,24 @@ jobs:
             sudo apt update
             sudo apt install -y git python3-pip pipx python3 python3-venv ros-jazzy-ament-cmake
 
+      - name: Set up SSH
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-            path: src/awesome_dcist_t4
-            submodules: recursive
+          path: src/awesome_dcist_t4
+          submodules: false
+
+      - name: Update submodules
+        working-directory: src/awesome_dcist_t4
+        run: git submodule update --init --recursive
 
       - name: Pre-commit
         shell: bash

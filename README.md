@@ -42,8 +42,11 @@ echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 # Feel free to change the output directory (saved scene graphs, logs, etc)
 echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
 
+# Source to update changes
+source ~/.zshrc
+
 # This will create all necessary python environments to run DCIST code
-source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.sh
+source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash
 
 # The previous command will build fast-downward, but you need to install it:
 sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
@@ -58,6 +61,8 @@ echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 # You also need to set the robot name. Example:
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
+# Source to update all changes
+source ~/.zshrc
 ```
 
 Build:

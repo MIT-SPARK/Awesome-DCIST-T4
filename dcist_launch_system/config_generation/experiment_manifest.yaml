@@ -10,6 +10,7 @@ launch_configs:
     prior_dsg: []
     spot_real: []
     roman: []
+    hydra_multi: []
 
 
     base:
