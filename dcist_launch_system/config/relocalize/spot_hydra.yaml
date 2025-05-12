@@ -6,6 +6,7 @@ publish_backend_tf: true
 map_window:
   type: spatial
   max_radius_m: 8
+robot_id: 1
 input:
   type: RosInput
   inputs:

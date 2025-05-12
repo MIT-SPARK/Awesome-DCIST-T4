@@ -6,12 +6,12 @@ robots:
   inputs:
     dgraph:
       type: FileDGraphInput
-      dgrf_path: !env ADT4_PRIOR_DGRF_PATH
+      dgrf_path: ADT4_PRIOR_DGRF_PATH
     dsg:
       type: FileDsgInput
-      dsg_json: !env ADT4_PRIOR_DSG_PATH
+      dsg_json: ADT4_PRIOR_DSG_PATH
 - type: RosUnitInterface
-  robot_id: 5
+  robot_id: 1
   robot_name: spot
   robot_frame: spot/vision
   inputs:

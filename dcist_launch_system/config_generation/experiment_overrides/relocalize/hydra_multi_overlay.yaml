@@ -14,7 +14,7 @@ robots:
         type: FileDsgInput
         dsg_json: !env ADT4_PRIOR_DSG_PATH
   - type: RosUnitInterface
-    robot_id: 5
+    robot_id: 1
     robot_name: "spot"
     robot_frame: "spot/vision"
     inputs:

@@ -6,6 +6,7 @@ _definitions:
 enable_zmq_interface: false
 publish_backend_tf: true
 map_window: {type: spatial, max_radius_m: 8.0}
+robot_id: 0
 # modules
 input:
   type: RosInput
