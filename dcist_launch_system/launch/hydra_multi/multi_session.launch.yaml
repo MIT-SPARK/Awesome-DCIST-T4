@@ -4,6 +4,7 @@ launch:
   - arg: {name: use_sim_time}
   - arg: {name: conf_name}
   # hydra-multi
+  - set_remap: {from: /hydra_multi/external_loop_closures, to: /spot/roman/roman_lc/pose_graph_update} 
   - node:
       pkg: hydra_multi_ros
       exec: hydra_multi_ros_node
@@ -14,4 +15,3 @@ launch:
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
         --config-utilities-yaml {log_path: $(env HOME)/.hydra_multi/adt4}
-        --config-utilities-yaml {world_frame: map}

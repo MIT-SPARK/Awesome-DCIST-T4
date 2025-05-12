@@ -5,6 +5,7 @@ launch:
   - arg: {name: use_sim_time}
   - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}
   - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
+  - arg: {name: disable_publish_dsg, default: 'false'}
   # frontleft camera
   - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: /spot/frontleft/depth/image_rect}
   - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: /spot/frontleft/color/image_raw}
@@ -39,11 +40,13 @@ launch:
         --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx}}}
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
         --config-utilities-yaml {image_rotator: {rotation: ROTATE_90_CLOCKWISE}}
+  - set_remap: {if: $(var disable_publish_dsg), from: hydra/backend/dsg, to: hydra/backend/remapped_dsg}
   # hydra
   - node:
       pkg: hydra_ros
       exec: hydra_ros_node
       name: hydra
+      namespace: spot
       param:
         - {name: use_sim_time, value: $(var use_sim_time)}
       args: >

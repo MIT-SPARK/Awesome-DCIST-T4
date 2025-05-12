@@ -1,7 +1,8 @@
+world_frame: map
 robots: []
 backend:
   type: MultiBackendModule
-  add_places_to_deformation_graph: true
+  add_places_to_deformation_graph: false
   add_objects_to_deformation_graph: false
   optimize_on_lc: true
   enable_node_merging: true

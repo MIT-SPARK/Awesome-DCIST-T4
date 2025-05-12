@@ -1,25 +1,27 @@
+world_frame: map
 robots:
-- type: RosUnitInterface
+- type: UnitInterface
   robot_id: 0
-  robot_name: robot0
+  robot_name: prior
+  inputs:
+    dgraph:
+      type: FileDGraphInput
+      dgrf_path: !env ADT4_PRIOR_DGRF_PATH
+    dsg:
+      type: FileDsgInput
+      dsg_json: !env ADT4_PRIOR_DSG_PATH
+- type: RosUnitInterface
+  robot_id: 5
+  robot_name: spot
+  robot_frame: spot/vision
   inputs:
     dgraph:
       type: RosDGraphInput
     dsg:
       type: RosDsgInput
-- type: UnitInterface
-  robot_id: 5
-  robot_name: prior
-  inputs:
-    dgraph:
-      type: FileDGraphInput
-      dgrf_path: ADT4_PRIOR_DGRF_PATH
-    dsg:
-      type: FileDsgInput
-      dsg_json: ADT4_PRIOR_DSG_PATH
 backend:
   type: MultiBackendModule
-  add_places_to_deformation_graph: true
+  add_places_to_deformation_graph: false
   add_objects_to_deformation_graph: false
   optimize_on_lc: true
   enable_node_merging: true
