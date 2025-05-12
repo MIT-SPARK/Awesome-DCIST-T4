@@ -8,6 +8,7 @@
   <license>TODO: License declaration</license>
 
   <depend>python3-ruamel.yaml</depend> <!-- needed for spark_config -->
+  <depend>tmux</depend>
   <exec_depend>xacro</exec_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
