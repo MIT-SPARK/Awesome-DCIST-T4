@@ -25,7 +25,8 @@ pipx install -f pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```
 
-*(Optional)* Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
+Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
+*(Required to run hydra online but not required for running from a bag with semantic inference data)*
 
 Set up the workspace:
 ```bash
