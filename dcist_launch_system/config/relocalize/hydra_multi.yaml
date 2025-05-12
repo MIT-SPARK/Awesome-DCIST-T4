@@ -1,13 +1,30 @@
----
 robots:
-  - type: RosUnitInterface
-    robot_id: 0
-    robot_name: "robot0"
-    inputs:
-      dgraph:
-        type: RosDGraphInput
-      dsg:
-        type: RosDsgInput
+- type: RosUnitInterface
+  robot_id: 0
+  robot_name: robot0
+  inputs:
+    dgraph:
+      type: RosDGraphInput
+    dsg:
+      type: RosDsgInput
+- type: RosUnitInterface
+  robot_id: 0
+  robot_name: robot0
+  inputs:
+    dgraph:
+      type: RosDGraphInput
+    dsg:
+      type: RosDsgInput
+- type: UnitInterface
+  robot_id: 5
+  robot_name: prior
+  inputs:
+    dgraph:
+      type: FileDGraphInput
+      dgrf_path: $(evn ADT4_PRIOR_DGRF_PATH)
+    dsg:
+      type: FileDsgInput
+      dsg_json: $(env ADT4_PRIOR_DSG_PATH)
 backend:
   type: MultiBackendModule
   add_places_to_deformation_graph: true
@@ -15,33 +32,38 @@ backend:
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:
-    agents: {type: UpdateAgentsFunctor}
-    objects: {type: UpdateObjectsFunctor}
-    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
+    agents:
+      type: UpdateAgentsFunctor
+    objects:
+      type: UpdateObjectsFunctor
+    surface_places:
+      type: Update2dPlacesFunctor
+      min_size: 3
   initial_align:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.7
     rot_sigma: 0.1
-    trans_sigma: 10.0
+    trans_sigma: 10
   pgmo:
-    run_mode: FULL  # kimera_pgmo run mode FULL is required
-    embed_trajectory_delta_t: 5.0
+    run_mode: FULL
+    embed_trajectory_delta_t: 5
     num_interp_pts: 3
-    interp_horizon: 10.0
+    interp_horizon: 10
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
-      gnc: {inlier_probability: 0.9, mu_step: 1.6, max_iterations: 100}
+      gnc:
+        inlier_probability: 0.9
+        mu_step: 1.6
+        max_iterations: 100
     covariance:
-      odom: 1.0e-02
-      loop_close: 5.0e-02
-      sg_loop_close: 1.0e-01
-      prior: 1.0e-02
-      mesh_mesh: 1.0e-02
-      pose_mesh: 1.0e-02
-      place_mesh: 1.0e-02
-      place_edge: 10.0
-      place_merge: 10.0
-      object_merge: 10.0
-
-
+      odom: 0.01
+      loop_close: 0.05
+      sg_loop_close: 0.1
+      prior: 0.01
+      mesh_mesh: 0.01
+      pose_mesh: 0.01
+      place_mesh: 0.01
+      place_edge: 10
+      place_merge: 10
+      object_merge: 10

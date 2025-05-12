@@ -1,6 +1,7 @@
----
 nodes_to_track:
-  hydra: {external_monitor: {type: JsonMonitor}}
+  hydra:
+    external_monitor:
+      type: JsonMonitor
   fastsam: {}
   roman_map: {}
   roman_lc: {}

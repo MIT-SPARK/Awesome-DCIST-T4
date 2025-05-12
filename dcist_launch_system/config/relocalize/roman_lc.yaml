@@ -1,17 +1,15 @@
 dim: 3
-method: 'pcavolgrav'
-fusion_method: 'geometric_mean'
-submap_radius: 15.0
-submap_center_dist: 10.0
-submap_center_time: 50.0 
+method: pcavolgrav
+fusion_method: geometric_mean
+submap_radius: 15
+submap_center_dist: 10
+submap_center_time: 50
 submap_max_size: 40
-
 sigma: 0.2
 epsilon: 0.4
 mindist: 0.4
 cosine_min: 0.85
 cosine_max: 0.95
-
-force_rm_lc_roll_pitch: True
-force_rm_upside_down: True
-use_object_bottom_middle: False
+force_rm_lc_roll_pitch: true
+force_rm_upside_down: true
+use_object_bottom_middle: false

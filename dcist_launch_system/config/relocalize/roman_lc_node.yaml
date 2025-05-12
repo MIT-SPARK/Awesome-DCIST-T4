@@ -7,9 +7,15 @@
     ego_name: spot
     ego_flu_ref_frame: spot/body
     ego_odom_frame: spot/vision
-    team_ids: [-1]
-    team_names: ['']
-    team_flu_ref_frames: ['']
-    team_odom_frames: ['']
-    prior_session_maps: [$(env ADT4_PRIOR_ROMAN_PATH)]
-    prior_session_ids: [-1]
+    team_ids:
+    - -1
+    team_names:
+    - ""
+    team_flu_ref_frames:
+    - ""
+    team_odom_frames:
+    - ""
+    prior_session_maps:
+    - $(env ADT4_PRIOR_ROMAN_PATH)
+    prior_session_ids:
+    - -1
