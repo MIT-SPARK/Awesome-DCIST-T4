@@ -17,7 +17,7 @@ robots:
     inputs:
       dgraph:
         type: FileDGraphInput
-        dgrf_path: $(evn ADT4_PRIOR_DGRF_PATH)
+        dgrf_path: !env ADT4_PRIOR_DGRF_PATH
       dsg:
         type: FileDsgInput
-        dsg_json: $(env ADT4_PRIOR_DSG_PATH)
+        dsg_json: !env ADT4_PRIOR_DSG_PATH

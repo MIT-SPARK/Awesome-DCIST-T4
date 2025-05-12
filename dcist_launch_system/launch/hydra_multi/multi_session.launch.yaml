@@ -1,5 +1,8 @@
 ---
 launch:
+  - arg: {name: verbosity, default: '0'}
+  - arg: {name: use_sim_time}
+  - arg: {name: conf_name}
   # hydra-multi
   - node:
       pkg: hydra_multi_ros

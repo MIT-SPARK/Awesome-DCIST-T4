@@ -73,7 +73,6 @@ experiments:
         config: [bag]
         sim_time: ["true"]
 
-
     spot_prior_dsg:
         launch_config: spot_prior_dsg
         config: [spot_prior_dsg]
