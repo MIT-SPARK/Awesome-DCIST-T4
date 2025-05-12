@@ -1,0 +1,23 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+robots:
+  - type: RosUnitInterface
+    robot_id: 0
+    robot_name: "robot0"
+    inputs:
+      dgraph:
+        type: RosDGraphInput
+      dsg:
+        type: RosDsgInput
+  - type: UnitInterface
+    robot_id: 5
+    robot_name: "prior"
+    inputs:
+      dgraph:
+        type: FileDGraphInput
+        dgrf_path: $(evn ADT4_PRIOR_DGRF_PATH)
+      dsg:
+        type: FileDsgInput
+        dsg_json: $(env ADT4_PRIOR_DSG_PATH)

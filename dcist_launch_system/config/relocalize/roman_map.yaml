@@ -1,0 +1,11 @@
+/**:
+  ros__parameters:
+    base_link_frame_id: spot/body
+    map_frame_id: spot/vision
+    use_multiple_cams: True
+    robot_id: 0
+    visualize: true
+    viz_min_viz_dt: 0.25
+    viz_rotate_img: "CW"
+    output_roman_map: ~/roman_map.pkl
+    # default T_camera_flu assumes camera frame is right-down-forward (rdf)
