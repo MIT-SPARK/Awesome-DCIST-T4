@@ -62,7 +62,7 @@ frontend:
 backend:
   type: BackendModule
   add_places_to_deformation_graph: false
-  optimize_on_lc: true
+  optimize_on_lc: false
   update_functors:
     agents:
       type: UpdateAgentsFunctor
@@ -76,7 +76,7 @@ backend:
     embed_trajectory_delta_t: 5
     num_interp_pts: 3
     interp_horizon: 10
-    add_initial_prior: true
+    add_initial_prior: false
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM

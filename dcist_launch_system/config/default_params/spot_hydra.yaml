@@ -46,6 +46,7 @@ frontend:
 backend:
   type: BackendModule
   add_places_to_deformation_graph: false
+  optimize_on_lc: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}

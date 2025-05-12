@@ -47,6 +47,14 @@ launch_configs:
         - core
         - debug
 
+    spot_bag_relocalize:
+        - prior_dsg
+        - hydra
+        - hydra_multi
+        - roman
+        - core
+        - debug
+
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -55,6 +63,7 @@ configs:
     bag: []
     spot_prior_dsg: []
     real_spot: []
+    relocalize: []
 
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
@@ -63,7 +72,6 @@ experiments:
         launch_config: spot_bag
         config: [bag]
         sim_time: ["true"]
-
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
@@ -75,8 +83,12 @@ experiments:
         config: [real_spot]
         sim_time: ["false"]
 
-
     data_collection:
         launch_config: data_collection
         config: [real_spot]
         sim_time: ["false"]
+
+    spot_bag_relocalize:
+        launch_config: spot_bag_relocalize
+        config: [relocalize]
+        sim_time: ["true"]

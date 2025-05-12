@@ -28,6 +28,16 @@ launch:
             - {name: visualizer_frame, value: map}
             - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml}
 
+  # Hydra-Multi
+  - arg: {name: launch_hydra_multi, default: 'false'}
+  - set_remap: {if: $(var launch_hydra_multi), from: hydra_multi/status, to: /ros_system_monitor/hydra_multi/status}
+  - include:
+      if: $(var launch_hydra_multi)
+      file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+        - {name: use_sim_time, value: $(var sim_time)}
+
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}

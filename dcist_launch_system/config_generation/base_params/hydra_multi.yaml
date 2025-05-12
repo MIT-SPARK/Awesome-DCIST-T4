@@ -1,13 +1,5 @@
 ---
-robots:
-  - type: RosUnitInterface
-    robot_id: 0
-    robot_name: "robot0"
-    inputs:
-      dgraph:
-        type: RosDGraphInput
-      dsg:
-        type: RosDsgInput
+robots: []
 backend:
   type: MultiBackendModule
   add_places_to_deformation_graph: true
