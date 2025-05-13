@@ -18,7 +18,7 @@ backend:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.7
     rot_sigma: 0.1
-    trans_sigma: 10
+    trans_sigma: 1
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5
