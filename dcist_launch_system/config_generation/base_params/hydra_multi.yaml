@@ -23,7 +23,7 @@ backend:
     surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   initial_align:
     type: LoopClosureInitialAlign
-    alignment_gnc_alpha: 0.7
+    alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10.0
   pgmo:
@@ -34,10 +34,10 @@ backend:
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
-      gnc: {inlier_probability: 0.9, mu_step: 1.6, max_iterations: 100}
+      gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
     covariance:
-      odom: 1.0e-02
-      loop_close: 5.0e-02
+      odom: 1.0e-04
+      loop_close: 1.0e-01
       sg_loop_close: 1.0e-01
       prior: 1.0e-02
       mesh_mesh: 1.0e-02

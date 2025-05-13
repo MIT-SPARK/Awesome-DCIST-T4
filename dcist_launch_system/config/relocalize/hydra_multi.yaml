@@ -25,7 +25,7 @@ backend:
       min_size: 3
   initial_align:
     type: LoopClosureInitialAlign
-    alignment_gnc_alpha: 0.7
+    alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10
   pgmo:
@@ -37,12 +37,12 @@ backend:
       type: KimeraRpgoOptimizer
       solver: LM
       gnc:
-        inlier_probability: 0.9
+        inlier_probability: 0.7
         mu_step: 1.6
         max_iterations: 100
     covariance:
-      odom: 0.01
-      loop_close: 0.05
+      odom: 0.0001
+      loop_close: 0.1
       sg_loop_close: 0.1
       prior: 0.01
       mesh_mesh: 0.01

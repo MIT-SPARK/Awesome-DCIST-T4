@@ -51,6 +51,7 @@ launch_configs:
         - prior_dsg
         - hydra_multi
         - roman
+        - bag_spot
         - core
         - debug
 

@@ -2,6 +2,7 @@
 
 #@overlay/match by=overlay.all, expects="1+"
 ---
+map_frame: spot/vision 
 robot_id: 1
 backend:
   optimize_on_lc: false
