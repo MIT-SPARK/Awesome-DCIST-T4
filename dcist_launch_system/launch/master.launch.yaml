@@ -8,14 +8,15 @@ launch:
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
   - arg: {name: disable_hydra_publish_dsg, default: 'false'}
-  - set_remap: {if: $(var launch_hydra), from: $(var robot_name)/hydra/status, to: /ros_system_monitor/hydra/status}
-  - include:
-      if: $(var launch_hydra)
-      file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
-      arg:
-        - {name: conf_name, value: $(var conf_name)}
-        - {name: use_sim_time, value: $(var sim_time)}
-        - {name: disable_publish_dsg, value: $(var disable_hydra_publish_dsg)}
+  - group:
+    - set_remap: {from: $(var robot_name)/hydra/status, to: /ros_system_monitor/hydra/status}
+    - include:
+        if: $(var launch_hydra)
+        file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
+        arg:
+          - {name: conf_name, value: $(var conf_name)}
+          - {name: use_sim_time, value: $(var sim_time)}
+          - {name: disable_publish_dsg, value: $(var disable_hydra_publish_dsg)}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
@@ -32,13 +33,14 @@ launch:
 
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
-  - set_remap: {if: $(var launch_hydra_multi), from: hydra_multi/status, to: /ros_system_monitor/hydra_multi/status}
-  - include:
-      if: $(var launch_hydra_multi)
-      file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
-      arg:
-        - {name: conf_name, value: $(var conf_name)}
-        - {name: use_sim_time, value: $(var sim_time)}
+  - group:
+    - set_remap: {from: hydra_multi/status, to: /ros_system_monitor/hydra_multi/status}
+    - include:
+        if: $(var launch_hydra_multi)
+        file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
+        arg:
+          - {name: conf_name, value: $(var conf_name)}
+          - {name: use_sim_time, value: $(var sim_time)}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
