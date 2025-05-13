@@ -18,7 +18,7 @@ repositories:
   teaserpp: # added by Nathan for Hydra
     type: git
     url: https://github.com/nathanhhughes/TEASER-plusplus.git
-    version: fix/third_party
+    version: master
   ros2_numpy: # added by Mason for ROMAN
     type: git
     url: https://github.com/Box-Robotics/ros2_numpy.git
