@@ -87,6 +87,17 @@ popd
 | ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
 
+### Silvus Network Computer IPs
+
+| Hostname      | Description           | IP              |
+|---------------|-----------------------|-----------------|
+| euclid        | Jasper Jockey         | 192.167.70.3    |
+| hamilton      | Topaz Jockey          | 192.167.70.2    |
+| russell       | Aaron's base station  | 192.167.70.101  |
+| bonsai        | RRG dev computer      | ???.???.??.???  |
+| willow        | RRG base station      | 192.167.70.100  |
+
+
 ## Python environments
 
 For the time being, we are assuming different modules can run with different
