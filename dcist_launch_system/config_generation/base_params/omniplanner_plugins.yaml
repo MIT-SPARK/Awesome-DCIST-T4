@@ -6,6 +6,9 @@ planners:
     language_planner:
         plugin:
             type: LanguagePlanner
+            domain_type: Pddl
+            pddl_domain_name: GotoObjectDomain
+            llm_config: /colcon_ws/src/awesome_dcist_t4/nlu_interface/nlu_interface/config/llm_config.yaml
 
     tsp_planner:
         plugin:
