@@ -1,5 +1,14 @@
 world_frame: map
-robots: []
+robots:
+- type: RosUnitInterface
+  robot_id: 1
+  robot_name: spot
+  robot_frame: spot/vision
+  inputs:
+    dgraph:
+      type: RosDGraphInput
+    dsg:
+      type: RosDsgInput
 backend:
   type: MultiBackendModule
   add_places_to_deformation_graph: false

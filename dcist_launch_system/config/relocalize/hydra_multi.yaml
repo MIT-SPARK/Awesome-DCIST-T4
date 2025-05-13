@@ -1,15 +1,5 @@
 world_frame: map
 robots:
-- type: UnitInterface
-  robot_id: 0
-  robot_name: prior
-  inputs:
-    dgraph:
-      type: FileDGraphInput
-      dgrf_path: !env ADT4_PRIOR_DGRF_PATH
-    dsg:
-      type: FileDsgInput
-      dsg_json: !env ADT4_PRIOR_DSG_PATH
 - type: RosUnitInterface
   robot_id: 1
   robot_name: spot

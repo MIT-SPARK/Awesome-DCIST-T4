@@ -1,6 +1,16 @@
 ---
 world_frame: map
-robots: []
+robots:
+  # NOTE(Yun): for now due to needing to call env variables, robot_id 0 corresponding to file input interface is defined in launch file
+  - type: RosUnitInterface
+    robot_id: 1
+    robot_name: "spot"
+    robot_frame: "spot/vision"
+    inputs:
+      dgraph:
+        type: RosDGraphInput
+      dsg:
+        type: RosDsgInput
 backend:
   type: MultiBackendModule
   add_places_to_deformation_graph: false
