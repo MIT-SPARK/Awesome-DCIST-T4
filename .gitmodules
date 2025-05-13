@@ -37,3 +37,6 @@
 [submodule "nlu_interface"]
 	path = nlu_interface
 	url = git@github.com:robustrobotics/nlu_interface.git
+[submodule "hydra_multi"]
+	path = hydra_multi
+	url = git@github.com:MIT-SPARK/Hydra-Multi.git
