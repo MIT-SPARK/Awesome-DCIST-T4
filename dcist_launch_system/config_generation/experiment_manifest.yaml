@@ -35,7 +35,7 @@ launch_configs:
         - core
         - debug
 
-    real_spot: 
+    real_spot:
         - hydra
         - roman
         - spot_real
@@ -52,6 +52,9 @@ launch_configs:
         - hydra_multi
         - roman
         - bag_spot
+
+    base_station:
+        - planning
         - core
         - debug
 
@@ -92,3 +95,8 @@ experiments:
         launch_config: spot_bag_relocalize
         config: [relocalize]
         sim_time: ["true"]
+
+    base_station:
+        launch_config: base_station
+        config: [real_spot]
+        sim_time: ["false"]
