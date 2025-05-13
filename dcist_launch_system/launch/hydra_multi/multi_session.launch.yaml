@@ -20,7 +20,7 @@ launch:
               robot_id: 0,
               inputs: {
                 dgraph: {
-                  type: FileDGraphInput, dgrf_path: $(env ADT4_PRIOR_DGRF_PATH)
+                  type: FileDGraphInput, dgrf_path: $(env ADT4_PRIOR_DGRF_PATH), include_priors: true
                 },
                 dsg: {
                   type: FileDsgInput, dsg_json: $(env ADT4_PRIOR_DSG_PATH)
