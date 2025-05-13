@@ -62,6 +62,10 @@ echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 # You also need to set the robot name. Example:
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
+# If you want to use Zenoh, you need to run:
+echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
+# See the bottom of this README for details on setting up multi-host zenoh
+
 # Source to update all changes
 source ~/.zshrc
 ```
@@ -321,6 +325,50 @@ Finally, the `experiments` section generates launch files for the specified
 combination of launch config X parameter grouping X {other variables}. The
 syntax and semantics of these {other variables} is going to change soon, but
 roughly they map to environment variables that are set in the tmux file.
+
+## Zenoh
+Middleware is, of course, a personal choice, though in this project, the 
+default is to use Zenoh. 
+### Installation 
+```bash
+sudo apt update && sudo apt install ros-jazzy-rmw-zenoh-cpp
+```
+### Setting Default RMW
+```bash
+echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
+```
+### Starting Zenoh Router 
+```bash
+ros2 run rmw_zenoh_cpp rmw_zenohd
+```
+By default, the tmux launch files will start the zenoh router for you, so you
+probably don't need to run this command manually.
+
+### Connecting Multiple Zenoh Routers 
+To connect multiple Zenoh routers across laptops, copy 
+[DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5](https://github.com/ros2/rmw_zenoh/blob/rolling/rmw_zenoh_cpp/config/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5) 
+to a location of your choosing (e.g., your home directory) and modify the 
+`connect` block to include the endpoint(s) that the other host's `Zenoh router(s)` 
+is listening on. For example, if another `Zenoh router` is listening on IP address 
+`192.168.1.1` and port `7447` (the default) on its host, modify the config file to connect to 
+this router as shown below:
+
+```json5
+/// ... preceding parts of the config file.
+{
+  connect: {
+    endpoints: ["tcp/192.168.1.1:7447"],
+  },
+}
+/// ... following parts of the config file.
+```
+Then, start the `Zenoh router` after setting the `ZENOH_ROUTER_CONFIG_URI` environment variable to the absolute path of the modified config file.
+
+```bash
+echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5 >> ~/.zshrc
+```
+For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/). 
+
 
 
 ## Sponsors
