@@ -1,0 +1,29 @@
+session_name: active_dsg
+environment:
+  logging_key: base_station-real_spot-no_sim_time
+  config: real_spot
+  sim_time: 'false'
+options:
+  default-command: /bin/zsh
+windows:
+- window_name: planning
+  shell_command_before: |
+    source ${ADT4_WS}/install/setup.zsh
+    source ${ADT4_ENV}/spark_env/bin/activate
+  layout: tiled
+  panes:
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
+    launch_omniplanner:=true
+- window_name: core
+  shell_command_before: source ${ADT4_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - ros2 run rmw_zenoh_cpp rmw_zenohd
+- window_name: debug
+  shell_command_before: source ${ADT4_WS}/install/setup.zsh
+  layout: tiled
+  panes:
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
+    launch_rviz:=true
+  - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml
+    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
