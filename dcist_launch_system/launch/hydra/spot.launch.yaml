@@ -1,6 +1,6 @@
 ---
 launch:
-  - arg: {name: verbosity, default: '0'}
+  - arg: {name: verbosity, default: '1'}
   - arg: {name: conf_name}
   - arg: {name: use_sim_time}
   - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}

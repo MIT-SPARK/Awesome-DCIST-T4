@@ -2,8 +2,8 @@ _definitions:
   min_range: 0.4
   max_range: 5
 map_frame: spot/odom
-odom_frame: spot/odom
-robot_frame: spot/body
+odom_frame: $<env ADT4_ROBOT_NAME>/odom
+robot_frame: $<env ADT4_ROBOT_NAME>/body
 enable_zmq_interface: false
 publish_backend_tf: true
 map_window:

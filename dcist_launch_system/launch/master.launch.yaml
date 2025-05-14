@@ -48,10 +48,10 @@ launch:
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
   - group:
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: $(var camera)/color/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: $(var camera)/color/image_raw}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/camera_info, to: $(var camera)/depth/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/image_raw, to: $(var camera)/depth/image_rect}
+      - set_remap: {from: color/camera_info, to: $(var camera)/color/camera_info}
+      - set_remap: {from: color/image_raw, to: $(var camera)/color/image_raw}
+      - set_remap: {from: depth/camera_info, to: $(var camera)/depth/camera_info}
+      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/image_rect}
       - set_remap: {from: tf, to: /tf}
       - set_remap: {from: tf_static, to: /tf_static}
       - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
@@ -108,7 +108,7 @@ launch:
       param:
           - {name: use_sim_time, value: $(var sim_time)}
           - name: robot_description
-            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro')
+            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/')
       remap:
           - from: /joint_states
             to: joint_states
