@@ -8,7 +8,7 @@ planners:
             type: LanguagePlanner
             domain_type: Pddl
             pddl_domain_name: GotoObjectDomain
-            llm_config: ${ADT4_NLU_INTERFACE_PKG}/config/llm_config.yaml
+            llm_config: ${ADT4_DLS_PKG}/config/${config}/llm_config.yaml
 
     tsp_planner:
         plugin:
