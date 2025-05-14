@@ -230,11 +230,11 @@ launch:
           to: /ros_system_monitor/node_diagnostic_collector
 
   - arg:
-      name: launch_static_map_to_spot
+      name: launch_static_map_to_robot
       default: "false"
   - node: 
-      if: $(var launch_static_map_to_spot)
+      if: $(var launch_static_map_to_robot)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id spot/vision
+      args: --frame-id map --child-frame-id $(var robot_name)/vision
 
