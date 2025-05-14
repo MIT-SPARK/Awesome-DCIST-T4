@@ -63,7 +63,7 @@ echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
 # To use the language planner, you will also need to set the path to the nlu_interface package. Example:
-echo export ADT4_NLU_INTERFACE_PKG="~/colcon_ws/src/awesome_dcist_t4/nlu_interface/nlu_interface" >> ~/.zshrc
+echo export ADT4_NLU_INTERFACE_PKG="$ADT4_WS/src/awesome_dcist_t4/nlu_interface/nlu_interface" >> ~/.zshrc
 
 # If you want to use Zenoh, you need to run:
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
