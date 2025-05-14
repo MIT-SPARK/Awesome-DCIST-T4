@@ -1,0 +1,10 @@
+# adt4 aliases
+alias adt4_gen_config="$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/generate_configs.sh"
+
+# git aliases
+alias gs="git status"
+alias gps="git push"
+alias gpl="git pull"
+
+# other aliases
+alias sz="source ~/.zshrc"
