@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    odom_frame: map
+    odom_frame: spot/vision
     body_frame: spot/body
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)

@@ -49,9 +49,9 @@ launch_configs:
 
     spot_bag_relocalize:
         - prior_dsg
-        - hydra
         - hydra_multi
         - roman
+        - bag_spot
         - core
         - debug
 

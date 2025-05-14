@@ -1,7 +1,17 @@
-robots: []
+world_frame: map
+robots:
+- type: RosUnitInterface
+  robot_id: 1
+  robot_name: spot
+  robot_frame: spot/vision
+  inputs:
+    dgraph:
+      type: RosDGraphInput
+    dsg:
+      type: RosDsgInput
 backend:
   type: MultiBackendModule
-  add_places_to_deformation_graph: true
+  add_places_to_deformation_graph: false
   add_objects_to_deformation_graph: false
   optimize_on_lc: true
   enable_node_merging: true
@@ -15,7 +25,7 @@ backend:
       min_size: 3
   initial_align:
     type: LoopClosureInitialAlign
-    alignment_gnc_alpha: 0.7
+    alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10
   pgmo:
@@ -27,12 +37,12 @@ backend:
       type: KimeraRpgoOptimizer
       solver: LM
       gnc:
-        inlier_probability: 0.9
+        inlier_probability: 0.7
         mu_step: 1.6
         max_iterations: 100
     covariance:
-      odom: 0.01
-      loop_close: 0.05
+      odom: 0.0001
+      loop_close: 0.1
       sg_loop_close: 0.1
       prior: 0.01
       mesh_mesh: 0.01
