@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
 import itertools
 import logging
-import os
+import pathlib
+import pprint
 import shutil
+import subprocess
 import traceback
 
 import ruamel.yaml
@@ -13,6 +16,9 @@ yaml = ruamel.yaml.YAML()
 
 logger = logging.getLogger(__name__)
 
+
+def _show_paths(paths, **kwargs):
+    return pprint.pformat([str(x) for x in paths], **kwargs)
 
 def str_to_bool(string):
     if string.lower() == "true":
@@ -48,10 +54,12 @@ def enforce_unique_filenames(paths):
 
 
 def list_files(directory):
+    directory = pathlib.Path(directory)
     r = []
-    for root, dirs, files in os.walk(directory):
+    for root, dirs, files in directory.walk():
         for name in files:
-            r.append(os.path.join(root, name))
+            r.append(root /  name)
+
     return r
 
 
@@ -60,6 +68,7 @@ def chop(path, delim, n_start, n_end):
         toks = path.split(delim)[n_start:-n_end]
     else:
         toks = path.split(delim)[n_start:]
+
     return delim.join(toks)
 
 
@@ -110,26 +119,24 @@ def resolve_override_dirs(manifest, key):
 
 
 def get_experiment_manifest(root_path):
-    manifest_path = os.path.join(root_path, "experiment_manifest.yaml")
-    if not os.path.exists(manifest_path):
+    root_path = pathlib.Path(root_path)
+    manifest_path = root_path / "experiment_manifest.yaml"
+    if not manifest_path.exists():
         log_error(f"Cannot find experiment manifest at {manifest_path}. Aborting!")
         exit(1)
         return
-    with open(manifest_path, "r") as fo:
+
+    with manifest_path.open("r") as fo:
         experiment_manifest = yaml.load(fo)
+
     return experiment_manifest
 
 
 def generate_config_name_yaml(root_path, experiment_manifest):
+    root_path = pathlib.Path(root_path)
     for name, children in experiment_manifest["configs"].items():
-        param_dir = os.path.join(root_path, "experiment_overrides", name)
-        if not os.path.exists(param_dir):
-            os.mkdir(param_dir)
-        config_name_path = os.path.join(param_dir, "config_name.yaml")
-        with open(config_name_path, "w") as fo:
-            fo.write(
-                f"#@data/values-schema\n---\n#@overlay/match missing_ok=True\nconfig_type: {name}\n"
-            )
+        param_dir = root_path / "experiment_overrides" / name
+        param_dir.mkdir(exist_ok=True, parents=True)
 
 
 def find_concrete_configs(experiment_manifest):
@@ -146,10 +153,12 @@ def find_concrete_configs(experiment_manifest):
 def render_config(
     root_path, experiment_manifest, base_yamls, concrete_configs, output_dir
 ):
+    root_path = pathlib.Path(root_path)
+    output_dir = pathlib.Path(output_dir)
     for experiment_key in experiment_manifest["configs"].keys():
         log_debug(f"Generating config for {experiment_key}")
-        base_param_dir = os.path.join(root_path, "base_params")
-        rendered_config_dir = os.path.join(output_dir, experiment_key)
+        base_param_dir = root_path / "base_params"
+        rendered_config_dir = output_dir / experiment_key
         shutil.copytree(base_param_dir, rendered_config_dir, dirs_exist_ok=True)
 
         try:
@@ -164,56 +173,54 @@ def render_config(
 
         override_files = []
         for od in override_dirs:
-            override_files += list_files(
-                os.path.join(root_path, "experiment_overrides", od)
-            )
+            override_files += list_files(root_path / "experiment_overrides" / od)
 
-        override_yamls = [f for f in override_files if f.endswith("yaml")]
-        override_other = [f for f in override_files if not f.endswith("yaml")]
+        override_yamls = [f for f in override_files if f.match("*.yaml")]
+        override_other = [f for f in override_files if not f.match("*.yaml")]
 
         enforce_unique_filenames(override_other)
 
         # Non-yaml files in the override directory are copied directly to the output config
         for path in override_other:
-            fn = path.split("/")[-1]
-            copy_dst = os.path.join(rendered_config_dir, fn)
-            log_debug(f"copy {fn} to {copy_dst}")
-            shutil.copy(path, copy_dst)
+            copy_dst = rendered_config_dir / path.name
+            log_debug(f"copy '{path}' to '{copy_dst}'")
+            shutil.copy2(path, copy_dst)
 
         # There can be both an "args" and an "overlay" file, which we want to process together.
         # We build a map from "base" yaml files to override yaml files, and apply any applicable
         rendering_map = {}
         for fn in override_yamls:
-            base_config_name = chop(fn.split("/")[-1], "_", 0, 1) + ".yaml"
-
+            base_config_name = chop(fn.name, "_", 0, 1) + ".yaml"
             if base_config_name in base_yamls:
                 if base_config_name not in rendering_map:
                     rendering_map[base_config_name] = []
+
                 rendering_map[base_config_name].append(fn)
 
         log_debug(f"rendering_map: {rendering_map}")
         for by in base_yamls:
-            full_base_name = os.path.join(base_param_dir, by)
-            cmd = f"ytt -f {full_base_name}"
+            full_base_name = base_param_dir / by
+            cmd = ["composite-configs", "-f", str(full_base_name)]
             if by in rendering_map:
                 for fn in rendering_map[by]:
                     log_debug(f"  Override {by} with {fn}")
-                    cmd += f" -f {fn}"
+                    cmd += ["-f", str(fn)]
 
             if experiment_key in concrete_configs:
-                cmd += f" -f {root_path}/experiment_overrides/{experiment_key}/config_name.yaml"
-                dest_path = os.path.join(output_dir, experiment_key, by)
+                cmd += ["-v", f"config_name={experiment_key}"]
+                dest_path = output_dir / experiment_key / by
 
-                cmd += f" > {dest_path}"
-
-                log_debug(f"  Calling: {cmd}")
-                os.system(cmd)
+                log_debug(f"  Calling: {' '.join(cmd)} and outputting to {dest_path}")
+                with dest_path.open("w") as fout:
+                    subprocess.run(cmd, stdout=fout)
 
 
 def render_tmux(root_path, experiment_manifest, tmux_output_dir):
-    base_launch_file = os.path.join(root_path, "base_launch", "base_launch.yaml")
-    if not os.path.exists(tmux_output_dir):
-        os.mkdir(tmux_output_dir)
+    root_path = pathlib.Path(root_path)
+    tmux_output_dir = pathlib.Path(tmux_output_dir)
+    tmux_output_dir.mkdir(exist_ok=True, parents=True)
+
+    base_launch_file = root_path / "base_launch" / "base_launch.yaml"
 
     # Generate the tmux launch files
     for exp_key, exp in experiment_manifest["experiments"].items():
@@ -224,10 +231,9 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
         )
         log_debug(f"Building launch config with windows: {launch_configs}")
 
-        cmd = f"ytt -f {base_launch_file}"
+        cmd = ["composite-configs", "-f", base_launch_file]
         for lc in launch_configs:
-            component_yaml = os.path.join(root_path, "launch_components", lc) + ".yaml"
-            cmd += f" -f {component_yaml}"
+            cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
 
         special_keys = ["launch_config"]
         extra_keys = [k for k in exp.keys() if k not in special_keys]
@@ -254,40 +260,39 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
                     s = "no_" + k
 
                 logging_key += f"-{s}"
-            base_launch_fn = f"{tmux_output_dir}/{logging_key}.yaml"
-            ytt_tmux_cmd = cmd + " > " + base_launch_fn
-            log_debug(f"    Calling: {ytt_tmux_cmd}")
-            os.system(ytt_tmux_cmd)
 
-            with open(base_launch_fn, "r") as fo:
-                launch = yaml.load(fo)
-                launch["environment"]["logging_key"] = logging_key
-                for k, v in tmux:
-                    launch["environment"][k] = v
+            cmd = [str(x) for x in cmd]
+            extras = {"environment": {"logging_key": logging_key}}
+            extras["environment"].update(tmux)
+            extras_str = io.StringIO()
+            yaml.dump(extras, extras_str)
+            cmd += ["-c", extras_str.getvalue()]
+            extras_str.close()
 
-            with open(base_launch_fn, "w") as fo:
-                yaml.dump(launch, fo)
+            base_launch_fn = tmux_output_dir / f"{logging_key}.yaml"
+            log_debug(f"    Calling: {" ".join(cmd)} > {base_launch_fn}")
+            with base_launch_fn.open("w") as fout:
+                subprocess.run(cmd, stdout=fout)
 
 
 def render_manifest(root_path, conf_output_dir, tmux_output_dir):
-    if not os.path.exists(conf_output_dir):
+    root_path = pathlib.Path(root_path)
+    conf_output_dir = pathlib.Path(conf_output_dir)
+    tmux_output_dir = pathlib.Path(tmux_output_dir)
+    if not conf_output_dir.exists():
         log_info(f"Creating {conf_output_dir}")
-        os.makedirs(conf_output_dir)
+        conf_output_dir.mkdir(parents=True)
 
-    if not os.path.exists(tmux_output_dir):
+    if not tmux_output_dir.exists():
         log_info(f"Creating {tmux_output_dir}")
-        os.makedirs(tmux_output_dir)
+        tmux_output_dir.mkdir(parents=True)
 
     # Load the definition of what configs, node topologies, and launch files we need to generate
     experiment_manifest = get_experiment_manifest(root_path)
 
-    # Generate an extra config file that's necessary to optionally fill in the
-    # config name as a parameter in the base templates
-    generate_config_name_yaml(root_path, experiment_manifest)
-
-    base_param_path = os.path.join(root_path, "base_params")
-    base_yamls = [f for f in os.listdir(base_param_path) if f.endswith("yaml")]
-    log_info(f"base_yamls: {base_yamls}")
+    base_param_path = root_path / "base_params"
+    base_yamls = list(base_param_path.glob("*.yaml"))
+    log_info(f"base_yamls:\n{_show_paths(base_yamls, indent=2)}")
 
     # Identify the sets of parameters that need to be generated because they are loaded by a launch file
     concrete_configs = find_concrete_configs(experiment_manifest)
