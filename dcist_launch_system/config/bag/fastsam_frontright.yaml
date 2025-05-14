@@ -24,3 +24,10 @@ yolo_imgsz:
 depth_scale: 1000
 max_depth: 7.5
 rotate_img: CW
+triangle_ignore_masks:
+- - - 640
+    - 480
+  - - 640
+    - 140
+  - - 480
+    - 480

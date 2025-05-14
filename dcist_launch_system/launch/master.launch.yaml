@@ -64,6 +64,7 @@ launch:
           arg:
             - {name: conf_name, value: $(var conf_name)}
             - {name: robot_name, value: $(var robot_name)}
+            - {name: camera, value: $(var camera)}
 
       # ROMAN: Mapping
       - include:
