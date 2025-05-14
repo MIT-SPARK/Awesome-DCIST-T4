@@ -5,7 +5,7 @@ robots:
   - type: RosUnitInterface
     robot_id: 1
     robot_name: "spot"
-    robot_frame: "spot/vision"
+    robot_frame: "spot/odom"
     inputs:
       dgraph:
         type: RosDGraphInput

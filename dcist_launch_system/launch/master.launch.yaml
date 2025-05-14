@@ -238,5 +238,5 @@ launch:
       if: $(var launch_static_map_to_robot)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id $(var robot_name)/vision
+      args: --frame-id map --child-frame-id $(var robot_name)/odom
 
