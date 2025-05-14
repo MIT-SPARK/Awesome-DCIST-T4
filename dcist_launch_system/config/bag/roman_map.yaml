@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     base_link_frame_id: spot/body
-    map_frame_id: spot/vision
+    map_frame_id: spot/odom
     use_multiple_cams: true
     robot_id: 0
     visualize: true

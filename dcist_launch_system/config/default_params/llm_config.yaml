@@ -1,0 +1,8 @@
+model_name: gpt-4o
+prompt_mode: default
+prompt: prompt_pddl_planner
+num_incontext_examples: -1
+temperature: 0.0
+seed: 100
+api_timeout: 120.0
+debug: True

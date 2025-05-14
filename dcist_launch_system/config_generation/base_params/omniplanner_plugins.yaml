@@ -6,6 +6,9 @@ planners:
     language_planner:
         plugin:
             type: LanguagePlanner
+            domain_type: Pddl
+            pddl_domain_name: GotoObjectDomain
+            llm_config: ${ADT4_DLS_PKG}/config/${config}/llm_config.yaml
 
     tsp_planner:
         plugin:

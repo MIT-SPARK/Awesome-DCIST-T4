@@ -188,6 +188,8 @@ launch:
           to: /ros_system_monitor/node_diagnostic_collector
         - from: ~/dsg_in
           to: /$(var robot_name)/hydra/backend/dsg
+        - from: ~/llm_response
+          to: /rviz2_node/llm_response
 
 
   # Scene Graph Publisher
@@ -236,5 +238,5 @@ launch:
       if: $(var launch_static_map_to_robot)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id $(var robot_name)/vision
+      args: --frame-id map --child-frame-id $(var robot_name)/odom
 

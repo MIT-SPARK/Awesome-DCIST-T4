@@ -30,7 +30,7 @@ Panels:
     Name: Time
     SyncMode: 0
     SyncSource: ""
-  - Class: nlu_interface::InstructionPanel
+  - Class: nlu_interface_rviz::InstructionPanel
     Name: InstructionPanel
 Visualization Manager:
   Class: ""

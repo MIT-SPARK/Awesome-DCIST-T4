@@ -6,7 +6,7 @@
     ego_id: 1
     ego_name: spot
     ego_flu_ref_frame: spot/body
-    ego_odom_frame: spot/vision
+    ego_odom_frame: spot/odom
     team_ids:
     - 0
     team_names:

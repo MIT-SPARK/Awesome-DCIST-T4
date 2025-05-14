@@ -3,3 +3,4 @@ bosdyn-mission
 bosdyn-choreography-client
 bosdyn-orbit
 onnxruntime
+openai
