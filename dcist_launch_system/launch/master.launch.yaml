@@ -2,7 +2,7 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: sim_time}
-  - arg: {name: robot_name, default: $(env ADT4_ROBOT_NAME)}
+  - arg: {name: robot_name}
   - arg: {name: camera, default: none}
   - push_ros_namespace: {namespace: $(var robot_name)}
 

@@ -10,6 +10,6 @@ windows:
     source ${ADT4_ENV}/spark_env/bin/activate
   layout: tiled
   panes:
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_decompression:=true
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_decompression:=true robot_name:=$ADT4_ROBOT_NAME
