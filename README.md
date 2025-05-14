@@ -62,6 +62,9 @@ echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
 # You also need to set the robot name. Example:
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
+# To use the language planner, you will also need to set the path to the nlu_interface package. Example:
+echo export ADT4_NLU_INTERFACE_PKG="~/colcon_ws/src/awesome_dcist_t4/nlu_interface/nlu_interface" >> ~/.zshrc
+
 # If you want to use Zenoh, you need to run:
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
 # See the bottom of this README for details on setting up multi-host zenoh
@@ -91,6 +94,7 @@ popd
 | ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)  |
 | ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
+| ADT4\_NLU\_INTERFACE\_PKG         | Path to the NLU Interface Package     |
 
 ### Silvus Network Computer IPs
 
