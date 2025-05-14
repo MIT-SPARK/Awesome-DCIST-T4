@@ -6,7 +6,7 @@ planners:
     language_planner:
         plugin:
             type: LanguagePlanner
-            domain_type: Pddl
+            domain_type: pddl
             pddl_domain_name: GotoObjectDomain
             llm_config: ${ADT4_NLU_INTERFACE_PKG}/config/llm_config.yaml
 
