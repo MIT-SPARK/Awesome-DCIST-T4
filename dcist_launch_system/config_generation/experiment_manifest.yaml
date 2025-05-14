@@ -42,6 +42,14 @@ launch_configs:
         - core
         - debug
 
+    real_spot_relocalize:
+        - prior_dsg
+        - hydra_multi
+        - roman
+        - spot_real
+        - core
+        - debug
+
     data_collection:
         - spot_real
         - core
@@ -67,6 +75,7 @@ configs:
     spot_prior_dsg: []
     real_spot: []
     relocalize: []
+    real_spot_relocalize: []
 
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
@@ -99,4 +108,9 @@ experiments:
     base_station:
         launch_config: base_station
         config: [real_spot]
+        sim_time: ["false"]
+
+    real_spot_relocalize: 
+        launch_config: real_spot_relocalize
+        config: [real_spot_relocalize]
         sim_time: ["false"]

@@ -1,21 +1,31 @@
 session_name: active_dsg
 environment:
-  logging_key: real_spot-real_spot-no_sim_time
-  config: real_spot
+  logging_key: real_spot_relocalize-real_spot_relocalize-no_sim_time
+  config: real_spot_relocalize
   sim_time: 'false'
 options:
   default-command: /bin/zsh
 windows:
-- window_name: hydra
+- window_name: prior_dsg
+  shell_command_before: |
+    source ${ADT4_WS}/install/setup.zsh
+    source ${ADT4_ENV}/spark_env/bin/activate
+  layout: tiled
+  panes:
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
+    launch_scene_graph_publisher:=true
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
+    launch_hydra_visualizer:=true
+  - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
+    launch_dsg_saver:=true
+- window_name: hydra_multi
   shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_hydra:=true
+    launch_hydra:=true disable_hydra_publish_dsg:=true
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_hydra_visualizer:=true
-  - source ${ADT4_ENV}/spark_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml
-    conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true
+    launch_hydra_multi:=true
 - window_name: roman
   shell_command_before:
   - source ${ADT4_WS}/install/setup.zsh

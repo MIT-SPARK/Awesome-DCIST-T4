@@ -1,0 +1,10 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+/**:
+  ros__parameters:
+    #@overlay/replace
+    prior_session_maps: [$(env ADT4_PRIOR_ROMAN_PATH)]
+    #@overlay/replace
+    prior_session_ids: [0]
