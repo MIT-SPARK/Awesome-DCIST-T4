@@ -4,8 +4,8 @@ robots:
   # NOTE(Yun): for now due to needing to call env variables, robot_id 0 corresponding to file input interface is defined in launch file
   - type: RosUnitInterface
     robot_id: 1
-    robot_name: $<env robot_name>
-    robot_frame: $<env robot_name>/odom
+    robot_name: $<env ADT4_ROBOT_NAME>
+    robot_frame: $<env ADT4_ROBOT_NAME>/odom
     inputs:
       dgraph:
         type: RosDGraphInput

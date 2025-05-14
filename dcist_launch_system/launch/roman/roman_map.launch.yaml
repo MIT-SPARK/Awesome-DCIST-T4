@@ -7,3 +7,4 @@ launch:
       name: roman_map_node
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_map.yaml
+          allow_substs: true
