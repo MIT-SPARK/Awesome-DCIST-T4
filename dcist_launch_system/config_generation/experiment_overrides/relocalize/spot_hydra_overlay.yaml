@@ -2,7 +2,7 @@
 
 #@overlay/match by=overlay.all, expects="1+"
 ---
-map_frame: spot/odom 
+map_frame: $<env robot_name>/odom 
 robot_id: 1
 backend:
   optimize_on_lc: false
