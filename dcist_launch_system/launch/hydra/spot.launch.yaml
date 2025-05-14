@@ -7,14 +7,14 @@ launch:
   - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
   - arg: {name: disable_publish_dsg, default: 'false'}
   # frontleft camera
-  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: /spot/frontleft/depth/image_rect}
-  - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: /spot/frontleft/color/image_raw}
-  - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: /spot/frontleft/color/camera_info}
-  - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: /spot/frontleft/semantic/image_raw}
+  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: frontleft/depth/image_rect}
+  - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: frontleft/color/image_raw}
+  - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: frontleft/color/camera_info}
+  - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: frontleft/semantic/image_raw}
   - node:
       pkg: semantic_inference_ros
       exec: closed_set_node
-      namespace: spot/frontleft
+      namespace: frontleft
       name: segmentation
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var model_name).yaml
@@ -24,14 +24,14 @@ launch:
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
         --config-utilities-yaml {image_rotator: {rotation: ROTATE_90_CLOCKWISE}}
   # frontright camera
-  - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: /spot/frontright/depth/image_rect}
-  - set_remap: {from: hydra/input/frontright/rgb/image_raw, to: /spot/frontright/color/image_raw}
-  - set_remap: {from: hydra/input/frontright/rgb/camera_info, to: /spot/frontright/color/camera_info}
-  - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: /spot/frontright/semantic/image_raw}
+  - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: frontright/depth/image_rect}
+  - set_remap: {from: hydra/input/frontright/rgb/image_raw, to: frontright/color/image_raw}
+  - set_remap: {from: hydra/input/frontright/rgb/camera_info, to: frontright/color/camera_info}
+  - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: frontright/semantic/image_raw}
   - node:
       pkg: semantic_inference_ros
       exec: closed_set_node
-      namespace: spot/frontright
+      namespace: frontright
       name: segmentation
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var model_name).yaml
@@ -46,7 +46,6 @@ launch:
       pkg: hydra_ros
       exec: hydra_ros_node
       name: hydra
-      namespace: spot
       param:
         - {name: use_sim_time, value: $(var use_sim_time)}
       args: >
@@ -54,4 +53,3 @@ launch:
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
         --config-utilities-yaml {log_path: $(env HOME)/.hydra/adt4}
-        --config-utilities-yaml {odom_frame: spot/odom, robot_frame: spot/body}
