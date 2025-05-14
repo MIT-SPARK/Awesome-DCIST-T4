@@ -184,6 +184,8 @@ launch:
           to: /ros_system_monitor/node_diagnostic_collector
         - from: ~/dsg_in
           to: /hydra/backend/dsg
+        - from: ~/llm_response
+          to: /rviz2_node/llm_response
 
 
   # Scene Graph Publisher
