@@ -202,7 +202,7 @@ def render_config(
         log_debug(f"rendering_map: {rendering_map}")
         for by in base_yamls:
             full_base_name = base_param_dir / by
-            cmd = ["composite-configs", "-f", str(full_base_name)]
+            cmd = ["composite-configs", "-d", "-f", str(full_base_name)]
             if by in rendering_map:
                 for fn in rendering_map[by]:
                     log_debug(f"  Override {by} with {fn}")
@@ -233,7 +233,7 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
         )
         log_debug(f"Building launch config with windows: {launch_configs}")
 
-        cmd = ["composite-configs", "-f", base_launch_file]
+        cmd = ["composite-configs", "-d", "-f", base_launch_file]
         for lc in launch_configs:
             cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
 
