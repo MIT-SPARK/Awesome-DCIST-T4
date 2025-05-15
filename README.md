@@ -65,6 +65,10 @@ echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 # You should set the following for convenience. Example:
 echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
 
+# Note that if you want to use an LLM, you need to provide an API key. This should never be committed to a repo.
+# We load API keys from environment variables. Below is an example of setting our expected environment variable (you can change this in the configs).
+echo export ADT4_OPENAI_API_KEY={your api key} >> ~/.zshrc
+
 # If you want to use Zenoh, you need to run:
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
 # See the bottom of this README for details on setting up multi-host zenoh
@@ -96,6 +100,7 @@ popd
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false              |
+| ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                        |
 
 ### Silvus Network Computer IPs
 
