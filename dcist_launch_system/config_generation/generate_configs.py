@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 def _show_paths(paths, **kwargs):
     return pprint.pformat([str(x) for x in paths], **kwargs)
 
+
 def str_to_bool(string):
     if string.lower() == "true":
         return True
@@ -58,7 +59,7 @@ def list_files(directory):
     r = []
     for root, dirs, files in directory.walk():
         for name in files:
-            r.append(root /  name)
+            r.append(root / name)
 
     return r
 
@@ -271,7 +272,7 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
             extras_str.close()
 
             base_launch_fn = tmux_output_dir / f"{logging_key}.yaml"
-            log_debug(f"    Calling: {" ".join(cmd)} > {base_launch_fn}")
+            log_debug(f"    Calling: {' '.join(cmd)} > {base_launch_fn}")
             with base_launch_fn.open("w") as fout:
                 subprocess.run(cmd, stdout=fout)
 
