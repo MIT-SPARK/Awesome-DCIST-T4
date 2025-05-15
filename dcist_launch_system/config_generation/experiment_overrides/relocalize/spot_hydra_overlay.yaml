@@ -2,7 +2,7 @@
 
 #@overlay/match by=overlay.all, expects="1+"
 ---
-map_frame: $<env ADT4_ROBOT_NAME>/odom 
+map_frame: $<env ADT4_ROBOT_NAME>/odom
 publish_backend_tf: false
 robot_id: 1
 backend:

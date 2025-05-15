@@ -13,8 +13,8 @@
 
   <!-- Load arm -->
   <xacro:load_arm
-		tf_prefix="$(arg tf_prefix)" 
-		gripperless="$(arg gripperless)" 
+		tf_prefix="$(arg tf_prefix)"
+		gripperless="$(arg gripperless)"
 		include_transmissions="$(arg include_transmissions)"/>
 
 </robot>

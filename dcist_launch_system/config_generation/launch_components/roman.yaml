@@ -12,7 +12,7 @@ windows:
   panes:
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config
       robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_fastsam:=true sim_time:=$sim_time
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config 
+    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config
       robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_roman_map:=true sim_time:=$sim_time
     - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
       robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
