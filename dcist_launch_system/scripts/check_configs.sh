@@ -6,7 +6,6 @@ if [[ `git status --porcelain` ]]; then
     exit 1
 fi
 
-source ${ADT4_ENV}/spark_env/bin/activate
 ./scripts/generate_configs.sh
 
 if [[ `git status --porcelain` ]]; then
