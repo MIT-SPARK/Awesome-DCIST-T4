@@ -147,14 +147,15 @@ def find_concrete_configs(experiment_manifest):
         for g in groupings:
             if g not in concrete_configs:
                 concrete_configs.append(g)
+
     return concrete_configs
 
 
 def render_config(
     root_path, experiment_manifest, base_yamls, concrete_configs, output_dir
 ):
-    root_path = pathlib.Path(root_path)
-    output_dir = pathlib.Path(output_dir)
+    root_path = pathlib.Path(root_path).expanduser().resolve()
+    output_dir = pathlib.Path(output_dir).expanduser().resolve()
     for experiment_key in experiment_manifest["configs"].keys():
         log_debug(f"Generating config for {experiment_key}")
         base_param_dir = root_path / "base_params"
@@ -291,7 +292,7 @@ def render_manifest(root_path, conf_output_dir, tmux_output_dir):
     experiment_manifest = get_experiment_manifest(root_path)
 
     base_param_path = root_path / "base_params"
-    base_yamls = list(base_param_path.glob("*.yaml"))
+    base_yamls = [x.name for x in base_param_path.glob("*.yaml")]
     log_info(f"base_yamls:\n{_show_paths(base_yamls, indent=2)}")
 
     # Identify the sets of parameters that need to be generated because they are loaded by a launch file
@@ -313,7 +314,7 @@ def render_manifest(root_path, conf_output_dir, tmux_output_dir):
         raise
 
     # Render all of the tmux files
-    render_tmux(root_path, experiment_manifest, tmux_output_dir)
+    # render_tmux(root_path, experiment_manifest, tmux_output_dir)
 
 
 def main():
