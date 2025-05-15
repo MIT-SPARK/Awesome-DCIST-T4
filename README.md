@@ -101,7 +101,6 @@ popd
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false              |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                        |
-| ADT4\_SIM\_TIME                   | Use sim time? true/false              |
 
 ### Silvus Network Computer IPs
 
