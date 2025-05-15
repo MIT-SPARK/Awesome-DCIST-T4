@@ -195,11 +195,16 @@ general conjunctions/disjunctions/negations to specify goals.
 
 ### Catalog of Supported Launch Configurations
 
-| Tmux Launch Name                                     | Description                                                                |
-|------------------------------------------------------|--------------------------------------------------------------------------  |
-| spot\_bag-bag-sim\_time.yaml                         | Runs with single spot robot, based on a bag, using sim time.               |
-| spot\_prior\_dsg-spot\_prior\_dsg-no\_sim\_time.yaml | Runs with a single spot robot and a prior scene graph, deployable on-robot |
-| spot\_prior\_dsg-spot\_prior\_dsg-sim\_time.yaml     | Runs with a single spot robot and a prior scene graph with sim time.       |
+| Tmux Launch Name                                             | Description                                                                                        |
+|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `base_station-real_spot-no_sim_time.yaml`                    | Runs base station planner, language interface, and visualizer                                      |
+| `data_collection-real_spot-no_sim_time.yaml`                 | Runs real spot interface for collecting sensor/robot data                                          |
+| `real_spot_relocalize-real_spot_relocalize-no_sim_time.yaml` | Runs online spot interface for relocalizing in a prior scene graph                                 |
+| `real_spot-real_spot-no_sim_time.yaml`                       | Runs online spot interface for building a scene graph and planning in current scene graph          |
+| `spot_bag_relocalize-relocalize-sim_time.yaml`               | Runs with single spot robot, based on a bag, using sim time and relocalizes in a prior scene graph |
+| `spot_bag-bag-sim_time.yaml`                                 | Runs with single spot robot, based on a bag, using sim time                                        |
+| `spot_prior_dsg-spot_prior_dsg-no_sim_time.yaml`             | Runs with a single spot robot and a prior scene graph, deployable on-robot                         |
+| `spot_prior_dsg-spot_prior_dsg-sim_time.yaml`                | Runs with a single spot robot and a prior scene graph with sim time                                |
 
 
 
