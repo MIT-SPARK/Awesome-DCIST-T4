@@ -1,7 +1,7 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - node: 
+  - node:
       pkg: roman_ros2
       exec: fastsam_node.py
       name: fastsam_node

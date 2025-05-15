@@ -1,7 +1,7 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - node: 
+  - node:
       pkg: roman_ros2
       exec: roman_map_node.py
       name: roman_map_node

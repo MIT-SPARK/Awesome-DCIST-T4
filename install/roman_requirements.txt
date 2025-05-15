@@ -1,4 +1,4 @@
-# gtsam does not exist in pypi for python3.12 and ROMAN does not 
+# gtsam does not exist in pypi for python3.12 and ROMAN does not
 # need it for what we are doing so install other ROMAN dependencies here.
 numpy<2
 scipy

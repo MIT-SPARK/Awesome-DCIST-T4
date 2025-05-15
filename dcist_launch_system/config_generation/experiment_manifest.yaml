@@ -112,7 +112,7 @@ experiments:
         config: [real_spot]
         sim_time: ["false"]
 
-    real_spot_relocalize: 
+    real_spot_relocalize:
         launch_config: real_spot_relocalize
         config: [real_spot_relocalize]
         sim_time: ["false"]
