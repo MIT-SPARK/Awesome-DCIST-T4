@@ -212,8 +212,9 @@ def render_config(
                 dest_path = output_dir / experiment_key / by
 
                 log_debug(f"  Calling: {' '.join(cmd)} and outputting to {dest_path}")
-                with dest_path.open("w") as fout:
-                    subprocess.run(cmd, stdout=fout)
+                # with dest_path.open("w") as fout:
+                subprocess.run(cmd)
+                exit(1)
 
 
 def render_tmux(root_path, experiment_manifest, tmux_output_dir):
