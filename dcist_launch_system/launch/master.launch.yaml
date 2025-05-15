@@ -64,6 +64,7 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
           arg:
             - {name: conf_name, value: $(var conf_name)}
+            - {name: camera, value: $(var camera)}
 
       # ROMAN: Mapping
       - include:
