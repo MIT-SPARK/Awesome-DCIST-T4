@@ -1,15 +1,11 @@
-#@ load("@ytt:overlay", "overlay")
-
-#@overlay/match by=overlay.all, expects="1+"
 ---
 windows:
-#@overlay/append
-- window_name: sim_spot
-  shell_command_before: |
-    source ${ADT4_WS}/install/setup.zsh
-    source ${ADT4_ENV}/spark_env/bin/activate
-  layout: tiled
-  panes:
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
-    - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
-    - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel
+  - window_name: sim_spot
+    shell_command_before: |
+      source ${ADT4_WS}/install/setup.zsh
+      source ${ADT4_ENV}/spark_env/bin/activate
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel

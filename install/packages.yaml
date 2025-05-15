@@ -1,3 +1,4 @@
+---
 repositories:
   config_utilities:  # added by Nathan for Hydra (and semantic_inference, among others)
     type: git
@@ -11,15 +12,15 @@ repositories:
     type: git
     url: https://github.com/MIT-SPARK/Spark-Config.git
     version: main
-  spatial_hash: # added by Nathan for Hydra
+  spatial_hash:  # added by Nathan for Hydra
     type: git
     url: https://github.com/MIT-SPARK/Spatial-Hash.git
     version: main
-  teaserpp: # added by Nathan for Hydra
+  teaserpp:  # added by Nathan for Hydra
     type: git
     url: https://github.com/nathanhhughes/TEASER-plusplus.git
     version: master
-  ros2_numpy: # added by Mason for ROMAN
+  ros2_numpy:  # added by Mason for ROMAN
     type: git
     url: https://github.com/Box-Robotics/ros2_numpy.git
     version: jazzy
