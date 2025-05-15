@@ -209,7 +209,7 @@ def render_config(
                     cmd += ["-f", str(fn)]
 
             if experiment_key in concrete_configs:
-                cmd += ["-v", f"config_name={experiment_key}"]
+                cmd += ["-v", f"config_type={experiment_key}"]
                 dest_path = output_dir / experiment_key / by
 
                 log_debug(f"  Calling: {' '.join(cmd)} and outputting to {dest_path}")

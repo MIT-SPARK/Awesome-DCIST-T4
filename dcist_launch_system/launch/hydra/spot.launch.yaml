@@ -48,7 +48,7 @@ launch:
       name: hydra
       param:
         - {name: use_sim_time, value: $(var use_sim_time)}
-      args: >
+      args: >-
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}

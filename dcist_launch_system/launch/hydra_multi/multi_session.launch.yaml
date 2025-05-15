@@ -11,7 +11,7 @@ launch:
       name: hydra_multi
       param:
         - {name: use_sim_time, value: $(var use_sim_time)}
-      args: >
+      args: >-
         --config-utilities-yaml
           {
             robots: [

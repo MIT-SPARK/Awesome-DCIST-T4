@@ -1,11 +1,6 @@
-#@ load("@ytt:overlay", "overlay")
-
-#@overlay/match by=overlay.all, expects="1+"
 ---
 windows:
-#@overlay/append
-- window_name: core
-  shell_command_before: source ${ADT4_WS}/install/setup.zsh
-  layout: tiled
-  panes:
-    - ros2 run rmw_zenoh_cpp rmw_zenohd
+  - window_name: core
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run rmw_zenoh_cpp rmw_zenohd]
