@@ -1,8 +1,8 @@
 session_name: active_dsg
 environment:
-  logging_key: data_collection-real_spot-no_sim_time
+  sim_time: $ADT4_SIM_TIME
+  logging_key: data_collection-real_spot
   config: real_spot
-  sim_time: 'false'
 options:
   default-command: /bin/zsh
 windows:

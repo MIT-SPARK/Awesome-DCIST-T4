@@ -2,7 +2,7 @@
 ---
 session_name: active_dsg
 
-environment: {}
+environment: {sim_time: $ADT4_SIM_TIME}
 
 options:
   default-command: /bin/zsh

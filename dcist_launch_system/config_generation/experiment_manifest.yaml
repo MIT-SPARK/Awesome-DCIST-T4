@@ -79,40 +79,34 @@ configs:
     relocalize: []
     real_spot_relocalize: []
 
-# Experiments define which sets of parameters will be used with which sets of launch files
+# Experiments define which sets of parameters will be used with which sets of
+# launch files
 experiments:
 
     spot_bag:
         launch_config: spot_bag
         config: [bag]
-        sim_time: ["true"]
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
         config: [spot_prior_dsg]
-        sim_time: ["true", "false"]
 
     real_spot:
         launch_config: real_spot
         config: [real_spot]
-        sim_time: ["false"]
 
     data_collection:
         launch_config: data_collection
         config: [real_spot]
-        sim_time: ["false"]
 
     spot_bag_relocalize:
         launch_config: spot_bag_relocalize
         config: [relocalize]
-        sim_time: ["true"]
 
     base_station:
         launch_config: base_station
         config: [real_spot]
-        sim_time: ["false"]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
         config: [real_spot_relocalize]
-        sim_time: ["false"]
