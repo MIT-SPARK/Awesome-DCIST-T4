@@ -95,6 +95,7 @@ popd
 | ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package |
+| ADT4\_SIM\_TIME                   | Use sim time? true/false              |
 
 ### Silvus Network Computer IPs
 
