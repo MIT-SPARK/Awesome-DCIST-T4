@@ -1,68 +1,50 @@
 _definitions:
-  min_range: 0.4
-  max_range: 5
+  min_range: &1 0.4
+  max_range: &2 5.0
 map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
 enable_zmq_interface: false
 publish_backend_tf: false
-map_window:
-  type: spatial
-  max_radius_m: 8
+map_window: {type: spatial, max_radius_m: 8.0}
 robot_id: 1
 input:
   type: RosInput
   inputs:
     frontleft:
-      receiver:
-        type: ClosedSetImageReceiver
-        queue_size: 30
+      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
-        min_range: 0.4
-        max_range: 5
-        extrinsics:
-          type: ros
+        min_range: *1
+        max_range: *2
+        extrinsics: {type: ros}
     frontright:
-      receiver:
-        type: ClosedSetImageReceiver
-        queue_size: 30
+      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
-        min_range: 0.4
-        max_range: 5
-        extrinsics:
-          type: ros
+        min_range: *1
+        max_range: *2
+        extrinsics: {type: ros}
 active_window:
-  volumetric_map:
-    voxels_per_side: 16
-    voxel_size: 0.1
-    truncation_distance: 0.3
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
   tsdf:
-    semantic_integrator:
-      type: MLESemanticIntegrator
+    semantic_integrator: {type: MLESemanticIntegrator}
 frontend:
   type: GraphBuilder
-  pgmo:
-    time_horizon: 15
-    d_graph_resolution: 2.5
-    mesh_resolution: 0.005
-  objects:
-    min_cluster_size: 40
-    cluster_tolerance: 0.25
-    bounding_box_type: RAABB
+  pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
+  objects: {min_cluster_size: 40, cluster_tolerance: 0.25, bounding_box_type: RAABB}
   surface_places:
     type: place_2d
     prefix: P
     pure_final_place_size: 3
     enable_place_purity: false
     impure_final_place_size: 1
-    cluster_tolerance: 0.3
+    cluster_tolerance: .3
     min_cluster_size: 50
     max_cluster_size: 100000
     min_final_place_points: 10
-    place_max_neighbor_z_diff: 0.5
-    place_overlap_threshold: 0
+    place_max_neighbor_z_diff: .5
+    place_overlap_threshold: 0.0
 backend:
   type: BackendModule
   serialize_dsg_mesh: false
@@ -72,34 +54,27 @@ backend:
   add_places_to_deformation_graph: false
   optimize_on_lc: false
   update_functors:
-    agents:
-      type: UpdateAgentsFunctor
-    objects:
-      type: UpdateObjectsFunctor
-    surface_places:
-      type: Update2dPlacesFunctor
-      min_size: 3
+    agents: {type: UpdateAgentsFunctor}
+    objects: {type: UpdateObjectsFunctor}
+    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   pgmo:
     run_mode: FULL
-    embed_trajectory_delta_t: 5
+    embed_trajectory_delta_t: 5.0
     num_interp_pts: 3
-    interp_horizon: 10
+    interp_horizon: 10.0
     add_initial_prior: false
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
-      gnc:
-        inlier_probability: 0.9
-        mu_step: 1.6
-        max_iterations: 100
+      gnc: {inlier_probability: 0.9, mu_step: 1.6, max_iterations: 100}
     covariance:
-      odom: 0.01
-      loop_close: 0.05
-      sg_loop_close: 0.1
-      prior: 0.01
-      mesh_mesh: 0.01
-      pose_mesh: 0.01
-      place_mesh: 0.01
-      place_edge: 10
-      place_merge: 10
-      object_merge: 10
+      odom: 1.0e-02
+      loop_close: 5.0e-02
+      sg_loop_close: 1.0e-01
+      prior: 1.0e-02
+      mesh_mesh: 1.0e-02
+      pose_mesh: 1.0e-02
+      place_mesh: 1.0e-02
+      place_edge: 10.0
+      place_merge: 10.0
+      object_merge: 10.0

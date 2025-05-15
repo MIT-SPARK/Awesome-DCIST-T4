@@ -1,8 +1,6 @@
 /**:
   ros__parameters:
-    cameras:
-    - frontleft
-    - frontright
+    cameras: [frontleft, frontright]
     robot:
       setup_logging: false
       should_retry: true

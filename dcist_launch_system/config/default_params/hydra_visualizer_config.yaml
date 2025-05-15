@@ -9,14 +9,14 @@ renderer:
       nodes:
         scale: 0.40
         color:
-            type: LabelColorAdapter
-            alpha: 0.8
-            use_sphere: false
+          type: LabelColorAdapter
+          alpha: 0.8
+          use_sphere: false
       text:
         draw: true
         collapse: true
         adapter:
-            type: LabelIdTextAdapter
+          type: LabelIdTextAdapter
         height: 0.5
         scale: 0.45
       bounding_boxes: {draw: true, collapse: true, scale: 0.05, edge_scale: 0.05, alpha: 0.9, edge_break_ratio: 0.5}
@@ -27,8 +27,8 @@ renderer:
       nodes:
         scale: 0.2
         color:
-            type: ParentColorAdapter
-            colormap: {palette: colorbrewer}
+          type: ParentColorAdapter
+          colormap: {palette: colorbrewer}
         alpha: 0.9
         use_sphere: true
       edges:
@@ -40,8 +40,6 @@ renderer:
         interlayer_alpha: 0.4
         interlayer_use_color: true
         interlayer_insertion_skip: 0
-
-
     20:
       z_offset_scale: 3.0
       visualize: true
@@ -51,7 +49,7 @@ renderer:
         draw: true
         collapse: false
         adapter:
-            type: IdTextAdapter
+          type: IdTextAdapter
         height: 0.5
         scale: 0.45
       edges:
@@ -63,7 +61,6 @@ renderer:
         interlayer_alpha: 0.4
         interlayer_use_color: true
         interlayer_insertion_skip: 0
-
     4:
       z_offset_scale: 4.2
       visualize: true
@@ -94,7 +91,7 @@ renderer:
         draw: true
         collapse: false
         adapter:
-            type: IdTextAdapter
+          type: IdTextAdapter
         height: 0.5
         scale: 0.45
       edges:
