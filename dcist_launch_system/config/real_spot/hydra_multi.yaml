@@ -2,8 +2,8 @@ world_frame: map
 robots:
 - type: RosUnitInterface
   robot_id: 1
-  robot_name: spot
-  robot_frame: spot/odom
+  robot_name: $<env ADT4_ROBOT_NAME>
+  robot_frame: $<env ADT4_ROBOT_NAME>/odom
   inputs:
     dgraph:
       type: RosDGraphInput

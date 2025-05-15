@@ -13,11 +13,11 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_scene_graph_publisher:=true
+    launch_scene_graph_publisher:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_hydra_visualizer:=true
+    launch_hydra_visualizer:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_dsg_saver:=true
+    launch_dsg_saver:=true robot_name:=$ADT4_ROBOT_NAME
 - window_name: sim_spot
   shell_command_before: |
     source ${ADT4_WS}/install/setup.zsh
@@ -25,10 +25,10 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_executor:=true
+    launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_state_publisher:=true
-  - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/spot_executor_node/cmd_vel
+    launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
+  - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel
 - window_name: planning
   shell_command_before: |
     source ${ADT4_WS}/install/setup.zsh
@@ -36,7 +36,7 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_omniplanner:=true
+    launch_omniplanner:=true robot_name:=$ADT4_ROBOT_NAME
 - window_name: core
   shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
@@ -47,6 +47,7 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_rviz:=true
+    launch_rviz:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml
-    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
+    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic --ros-args
+    -r __ns:=/$ADT4_ROBOT_NAME

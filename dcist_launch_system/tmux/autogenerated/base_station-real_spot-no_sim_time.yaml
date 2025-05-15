@@ -13,7 +13,7 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_omniplanner:=true
+    launch_omniplanner:=true robot_name:=$ADT4_ROBOT_NAME
 - window_name: core
   shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
@@ -24,6 +24,7 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_rviz:=true
+    launch_rviz:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml
-    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
+    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic --ros-args
+    -r __ns:=/$ADT4_ROBOT_NAME

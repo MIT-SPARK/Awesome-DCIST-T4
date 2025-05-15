@@ -1,0 +1,18 @@
+planners:
+  goto_points:
+    plugin:
+      type: GotoPoints
+  language_planner:
+    plugin:
+      type: LanguagePlanner
+      domain_type: Pddl
+      pddl_domain_name: GotoObjectDomain
+      llm_config: ${ADT4_DLS_PKG}/config/${config}/llm_config.yaml
+  tsp_planner:
+    plugin:
+      type: Tsp
+      solver: 2opt
+  visit_objects_pddl:
+    plugin:
+      type: Pddl
+      domain_name: GotoObjectDomain

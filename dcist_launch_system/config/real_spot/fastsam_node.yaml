@@ -1,4 +1,4 @@
 /**:
   ros__parameters:
-    map_frame_id: spot/odom
-    odom_base_frame_id: spot/body
+    map_frame_id: $(var robot_name)/odom
+    odom_base_frame_id: $(var robot_name)/body

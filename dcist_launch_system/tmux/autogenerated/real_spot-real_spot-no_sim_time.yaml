@@ -11,13 +11,13 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_hydra:=true
+    launch_hydra:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_hydra_visualizer:=true
+    launch_hydra_visualizer:=true robot_name:=$ADT4_ROBOT_NAME
   - source ${ADT4_ENV}/spark_env/bin/activate && ros2 launch dcist_launch_system master.launch.yaml
-    conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true
+    conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_static_map_to_robot:=true robot_name:=spot
+    launch_static_map_to_robot:=true robot_name:=$ADT4_ROBOT_NAME
 - window_name: roman
   shell_command_before:
   - source ${ADT4_WS}/install/setup.zsh
@@ -37,13 +37,13 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_executor:=true
+    launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_state_publisher:=true
+    launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_camera_driver:=true
+    launch_spot_camera_driver:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_spot_camera_decompression:=true
+    launch_spot_camera_decompression:=true robot_name:=$ADT4_ROBOT_NAME
 - window_name: core
   shell_command_before: source ${ADT4_WS}/install/setup.zsh
   layout: tiled
@@ -54,6 +54,7 @@ windows:
   layout: tiled
   panes:
   - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time
-    launch_rviz:=true
+    launch_rviz:=true robot_name:=$ADT4_ROBOT_NAME
   - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml
-    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic
+    --ros-args -r /ros_system_monitor/example1_node_topic:=/example_1_node/topic --ros-args
+    -r __ns:=/$ADT4_ROBOT_NAME

@@ -1,0 +1,11 @@
+#@ load("@ytt:overlay", "overlay")
+
+#@overlay/match by=overlay.all, expects="1+"
+---
+map_frame: $<env ADT4_ROBOT_NAME>/odom
+publish_backend_tf: false
+robot_id: 1
+backend:
+  optimize_on_lc: false
+  pgmo:
+    add_initial_prior: false

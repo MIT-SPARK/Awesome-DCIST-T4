@@ -4,7 +4,7 @@ launch:
   - arg: {name: use_sim_time}
   - arg: {name: conf_name}
   # hydra-multi
-  - set_remap: {from: ~/external_loop_closures, to: /spot/roman/roman_lc/pose_graph_update}
+  - set_remap: {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
   - node:
       pkg: hydra_multi_ros
       exec: hydra_multi_ros_node

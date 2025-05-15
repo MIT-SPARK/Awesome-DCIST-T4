@@ -1,12 +1,10 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - arg: {name: robot_name}
   - node: 
       pkg: roman_ros2
       exec: roman_loop_closure_node.py
       name: roman_lc_node
-      namespace: $(var robot_name)
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc_node.yaml
           allow_substs: true

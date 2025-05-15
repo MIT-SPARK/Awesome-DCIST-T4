@@ -1,5 +1,5 @@
 # adt4 aliases
-alias adt4_gen_config="$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/generate_configs.sh"
+alias adt4_gen_config="$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/generate_configs.sh && pushd $ADT4_WS && colcon build --packages-select dcist_launch_system --continue-on-error && popd"
 
 # git aliases
 alias gs="git status"

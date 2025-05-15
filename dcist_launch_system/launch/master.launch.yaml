@@ -2,14 +2,15 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: sim_time}
-  - arg: {name: robot_name, default: spot}
+  - arg: {name: robot_name}
   - arg: {name: camera, default: none}
+  - push_ros_namespace: {namespace: $(var robot_name)}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
   - arg: {name: disable_hydra_publish_dsg, default: 'false'}
   - group:
-    - set_remap: {from: $(var robot_name)/hydra/status, to: /ros_system_monitor/hydra/status}
+    - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
     - include:
         if: $(var launch_hydra)
         file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
@@ -21,7 +22,7 @@ launch:
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
   - group:
-      - set_remap: {from: hydra_visualizer/dsg, to: /$(var robot_name)/hydra/backend/dsg}
+      - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
       - include:
           if: $(var launch_hydra_visualizer)
           file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
@@ -34,7 +35,7 @@ launch:
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
   - group:
-    - set_remap: {from: hydra_multi/status, to: /ros_system_monitor/hydra_multi/status}
+    - set_remap: {from: hydra_multi/status, to: ros_system_monitor/hydra_multi/status}
     - include:
         if: $(var launch_hydra_multi)
         file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
@@ -47,15 +48,15 @@ launch:
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
   - group:
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/camera_info, to: $(var camera)/color/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: color/image_raw, to: $(var camera)/color/image_raw}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/camera_info, to: $(var camera)/depth/camera_info}
-      - set_remap: {if: $(eval "'$(var robot_name)' == 'spot'"), from: depth/image_raw, to: $(var camera)/depth/image_rect}
-      - set_remap: {from: /$(var robot_name)/tf, to: /tf}
-      - set_remap: {from: /$(var robot_name)/tf_static, to: /tf_static}
-      - set_remap: {from: /$(var robot_name)/roman/fastsam/status, to: /ros_system_monitor/node_diagnostic_collector}
-      - set_remap: {from: /$(var robot_name)/roman/roman_map/status, to: /ros_system_monitor/node_diagnostic_collector}
-      - set_remap: {from: /$(var robot_name)/roman/roman_lc/status, to: /ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: color/camera_info, to: $(var camera)/color/camera_info}
+      - set_remap: {from: color/image_raw, to: $(var camera)/color/image_raw}
+      - set_remap: {from: depth/camera_info, to: $(var camera)/depth/camera_info}
+      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/image_rect}
+      - set_remap: {from: tf, to: /tf}
+      - set_remap: {from: tf_static, to: /tf_static}
+      - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: roman/roman_map/status, to: ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: roman/roman_lc/status, to: ros_system_monitor/node_diagnostic_collector}
 
       # FastSAM
       - include:
@@ -63,7 +64,6 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
           arg:
             - {name: conf_name, value: $(var conf_name)}
-            - {name: robot_name, value: $(var robot_name)}
 
       # ROMAN: Mapping
       - include:
@@ -71,7 +71,6 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
           arg:
             - {name: conf_name, value: $(var conf_name)}
-            - {name: robot_name, value: $(var robot_name)}
 
       # ROMAN: Loop Closures
       - include:
@@ -79,7 +78,6 @@ launch:
           file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_lc.launch.yaml
           arg:
             - {name: conf_name, value: $(var conf_name)}
-            - {name: robot_name, value: $(var robot_name)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
@@ -94,11 +92,11 @@ launch:
             allow_substs: true
       remap:
           - from: ~/node_status
-            to: /ros_system_monitor/node_diagnostic_collector
+            to: ros_system_monitor/node_diagnostic_collector
           - from: ~/action_sequence_subscriber
-            to: /omniplanner_node/compiled_plan_out
+            to: omniplanner_node/compiled_plan_out
           - from: ~/joint_states
-            to: /spot/joint_states
+            to: joint_states
 
   # Spot state publisher
   - arg: {name: launch_spot_state_publisher, default: 'false'}
@@ -110,15 +108,14 @@ launch:
       param:
           - {name: use_sim_time, value: $(var sim_time)}
           - name: robot_description
-            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro')
+            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/')
       remap:
           - from: /joint_states
-            to: /spot/joint_states
+            to: joint_states
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
   - group:
-    - push_ros_namespace: {namespace: spot}
     - node:
         if: "$(var launch_spot_camera_driver)"
         pkg: spot_tools_ros
@@ -131,7 +128,6 @@ launch:
 
   - arg: {name: launch_spot_camera_decompression, default: 'false'}
   - group:
-    - push_ros_namespace: {namespace: spot}
     - node:
         if: "$(var launch_spot_camera_decompression)"
         namespace: frontleft
@@ -165,7 +161,7 @@ launch:
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
       remap:
         - from: ~/node_status
-          to: /ros_system_monitor/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
       param:
           - {name: use_sim_time, value: $(var sim_time)}
 
@@ -185,12 +181,11 @@ launch:
           allow_substs: true
       remap:
         - from: ~/node_status
-          to: /ros_system_monitor/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
         - from: ~/dsg_in
-          to: /$(var robot_name)/hydra/backend/dsg
+          to: hydra/backend/dsg
         - from: ~/llm_response
-          to: /rviz2_node/llm_response
-
+          to: rviz2_node/llm_response
 
   # Scene Graph Publisher
   - arg:
@@ -208,7 +203,7 @@ launch:
 
       remap:
         - from: ~/dsg_out
-          to: /$(var robot_name)/hydra/backend/dsg
+          to: hydra/backend/dsg
 
 
   # DSG Saver
@@ -227,9 +222,9 @@ launch:
 
       remap:
         - from: ~/dsg_in
-          to: /$(var robot_name)/hydra/backend/dsg
+          to: hydra/backend/dsg
         - from: ~/node_status
-          to: /ros_system_monitor/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
 
   - arg:
       name: launch_static_map_to_robot
@@ -239,4 +234,3 @@ launch:
       pkg: tf2_ros
       exec: static_transform_publisher
       args: --frame-id map --child-frame-id $(var robot_name)/odom
-

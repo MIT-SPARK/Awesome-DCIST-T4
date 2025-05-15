@@ -1,12 +1,11 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - arg: {name: robot_name}
   - node: 
       pkg: roman_ros2
       exec: fastsam_node.py
       name: fastsam_node
-      namespace: $(var robot_name)
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/fastsam_node.yaml
+          allow_substs: true
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/fastsam.yaml}
