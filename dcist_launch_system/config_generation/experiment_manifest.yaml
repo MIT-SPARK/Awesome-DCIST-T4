@@ -64,6 +64,7 @@ launch_configs:
         - debug
 
     base_station:
+        - prior_dsg
         - planning
         - core
         - debug
