@@ -105,6 +105,7 @@ launch:
             to: joint_states
 
   # Spot state publisher
+  - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}
   - arg: {name: launch_spot_state_publisher, default: 'false'}
   - node:
       if: "$(var launch_spot_state_publisher)"
@@ -114,7 +115,7 @@ launch:
       param:
           - {name: use_sim_time, value: $(var sim_time)}
           - name: robot_description
-            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/')
+            value: $(command 'xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/ spot_color:=$(var robot_color)')
       remap:
           - from: /joint_states
             to: joint_states
