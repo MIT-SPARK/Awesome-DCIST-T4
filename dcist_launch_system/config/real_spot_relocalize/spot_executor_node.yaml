@@ -1,13 +1,13 @@
 /**:
   ros__parameters:
-    odom_frame: $(var robot_name)/odom
+    odom_frame: map
     body_frame: $(var robot_name)/body
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
-    use_fake_spot_interface: true
+    use_fake_spot_interface: false
     use_fake_spot_pose: false
-    fake_spot_external_pose: true
+    fake_spot_external_pose: false
     fake_spot_static_pose: false
     fake_spot_x: 0.01
     fake_spot_y: 0.01

@@ -1,7 +1,7 @@
 ---
 /**:
   ros__parameters:
-    odom_frame: $(var robot_name)/odom
+    odom_frame: map
     body_frame: $(var robot_name)/body
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
