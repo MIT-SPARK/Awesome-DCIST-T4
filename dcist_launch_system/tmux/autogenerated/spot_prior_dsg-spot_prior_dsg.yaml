@@ -17,6 +17,7 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
       - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_static_map_to_robot:=true robot_name:=$ADT4_ROBOT_NAME
   - window_name: planning
     shell_command_before: "source ${ADT4_WS}/install/setup.zsh\nsource ${ADT4_ENV}/spark_env/bin/activate\n"
     layout: tiled

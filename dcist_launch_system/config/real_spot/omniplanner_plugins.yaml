@@ -1,3 +1,16 @@
+robots:
+  - robot_name: euclid
+    robot_type: spot
+    fixed_frame: euclid/odom
+    body_frame: euclid/body
+  - robot_name: hamilton
+    robot_type: spot
+    fixed_frame: hamilton/odom
+    body_frame: hamilton/body
+  - robot_name: hilbert
+    robot_type: simulated-spot
+    fixed_frame: hilbert/odom
+    body_frame: hilbert/body
 planners:
   goto_points:
     plugin:
