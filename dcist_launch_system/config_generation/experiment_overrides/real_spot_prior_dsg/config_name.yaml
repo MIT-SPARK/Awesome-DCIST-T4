@@ -1,4 +1,3 @@
-#@data/values-schema
 ---
 #@overlay/match missing_ok=True
 config_type: real_spot_prior_dsg
