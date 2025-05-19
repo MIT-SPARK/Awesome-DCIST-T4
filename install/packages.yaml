@@ -1,9 +1,5 @@
 ---
 repositories:
-  config_utilities:  # added by Nathan for Hydra (and semantic_inference, among others)
-    type: git
-    url: https://github.com/MIT-SPARK/config_utilities.git
-    version: main
   pose_graph_tools:  # added by Nathan for Hydra
     type: git
     url: https://github.com/MIT-SPARK/pose_graph_tools.git
