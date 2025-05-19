@@ -1,0 +1,7 @@
+---
+windows:
+  - window_name: rosbag
+    shell_command_before: |
+      source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run ianvs play_rosbag $ADT4_BAG_PATH]

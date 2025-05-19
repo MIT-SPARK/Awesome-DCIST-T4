@@ -10,6 +10,7 @@ launch_configs:
     prior_dsg: []
     spot_real: []
     roman: []
+    rosbag: []
     hydra_multi: []
 
 
@@ -69,6 +70,13 @@ launch_configs:
         - core
         - debug
 
+    gt_perception:
+        - hydra
+        - rosbag
+
+    perception:
+        - gt_perception
+        - roman
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -79,6 +87,7 @@ configs:
     real_spot: []
     relocalize: []
     real_spot_relocalize: []
+    bag_kimera_multi: []
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
@@ -111,3 +120,7 @@ experiments:
     real_spot_relocalize:
         launch_config: real_spot_relocalize
         config: [real_spot_relocalize]
+
+    kimera_multi:
+      launch_config: [perception, perception_gt]
+      config: bag
