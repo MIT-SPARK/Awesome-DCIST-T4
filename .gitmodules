@@ -40,3 +40,6 @@
 [submodule "hydra_multi"]
 	path = hydra_multi
 	url = git@github.com:MIT-SPARK/Hydra-Multi.git
+[submodule "config_utilities"]
+	path = config_utilities
+	url = git@github.com:MIT-SPARK/config_utilities.git
