@@ -1,0 +1,4 @@
+---
+/**:
+  ros__parameters:
+    plugin_config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml

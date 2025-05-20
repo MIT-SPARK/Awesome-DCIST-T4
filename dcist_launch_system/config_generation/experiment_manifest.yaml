@@ -70,14 +70,6 @@ launch_configs:
         - core
         - debug
 
-    gt_perception:
-        - hydra
-        - rosbag
-
-    perception:
-        - gt_perception
-        - roman
-
 # Configs build the set of rosparams that will be loaded
 configs:
 
@@ -120,7 +112,3 @@ experiments:
     real_spot_relocalize:
         launch_config: real_spot_relocalize
         config: [real_spot_relocalize]
-
-    kimera_multi:
-      launch_config: [perception, perception_gt]
-      config: bag

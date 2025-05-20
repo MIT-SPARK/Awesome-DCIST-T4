@@ -1,0 +1,21 @@
+---
+weights_path: $ADT4_WS/weights/FastSAM-x.pt
+imgsz: [256, 256]
+device: cuda
+mask_downsample_factor: 8
+min_mask_len_div: 30
+max_mask_len_div: 3
+ignore_people: false
+erosion_size: 3
+voxel_size: 0.05
+ignore_labels: [person]
+use_keep_labels: false
+keep_labels: []
+plane_filter_params: [3.0, 1.0, 0.2]
+clip: true
+yolo_imgsz: [256, 256]
+depth_scale: 1000.0
+max_depth: 7.5
+rotate_img: CW
+triangle_ignore_masks:
+  - [[640, 0], [640, 340], [480, 0]]
