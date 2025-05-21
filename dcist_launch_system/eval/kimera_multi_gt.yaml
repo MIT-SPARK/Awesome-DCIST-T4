@@ -51,7 +51,7 @@ _definitions:
                     --config-utilities-file $(find-pkg-share dcist_launch_system)/config/bag_kimera_multi/kimera_multi_hydra.yaml
                     --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
                     ---config-utilities-yaml {odom_frame: odom, robot_frame: base_link}
-                    --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
+                    --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
                     --config-utilities-yaml {log_path: $(var output_path)/hydra}
               - node:
                   pkg: hydra_ros
@@ -61,6 +61,8 @@ _definitions:
                     - {name: use_sim_time, value: true}
                     - {name: trajectory_file, value: $(env KIMERA_MULTI_PATH)/$(var trajectory)}
                     - {name: offset_s, value: $(var offset)}
+                    #- {name: lookahead_s, value: 0.5}
+                    #- {name: stale_threshold_s, value: 2.0}
           - node: {pkg: ianvs, exec: play_rosbag, args: --clock $(env KIMERA_MULTI_PATH)/$(var bag_path), on_exit: shutdown}
           - set_remap: {from: hydra_visualizer/dsg, to: $(var robot_name)/hydra/backend/dsg}
           - include:
@@ -70,48 +72,57 @@ _definitions:
                 - {name: use_sim_time, value: 'true'}
                 - {name: start_rviz, value: 'false'}
                 - {name: visualizer_frame, value: map}
+                - {name: rviz_path, value: $(find-pkg-share dcist_launch_system)/rviz/kimera_multi/hydra_visualizer_config.yaml}
                 - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/bag_kimera_multi/hydra_visualizer_config.yaml}
+          - node:
+              if: $(var visualize)
+              pkg: rviz2
+              name: rviz
+              exec: rviz2
+              args: -d $(find-pkg-share dcist_launch_system)/rviz/kimera_multi.rviz
+              param:
+                - {name: use_sim_time, value: true}
 name: kimera_multi_gt
 trials:
   - name: 10_14_acl_jackal2
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_acl_jackal2
-      trajectory: outdoor_10_14/10_14_acl_jackal2_gt_odom.csv
+      trajectory: outdoor_10_14/acl_jackal2_gt_odom.csv
       robot_name: acl_jackal2
       offset: '-177.22'
-  - name: 10_14_acl_jackal
-    executable: *exec
-    args:
-      bag_path: outdoor_10_14/10_14_acl_jackal
-      trajectory: outdoor_10_14/10_14_acl_jackal_gt_odom.csv
-      robot_name: acl_jackal
-      offset: '-177.27'
-  - name: 10_14_acl_hathor
-    executable: *exec
-    args:
-      bag_path: outdoor_10_14/10_14_acl_hathor
-      trajectory: outdoor_10_14/10_14_acl_hathor_gt_odom.csv
-      robot_name: acl_hathor
-      offset: '-181.33'
-  - name: 10_14_sparkal1
-    executable: *exec
-    args:
-      bag_path: outdoor_10_14/10_14_sparkal1
-      trajectory: outdoor_10_14/10_14_sparkal1_gt_odom.csv
-      robot_name: sparkal1
-      offset: '-177.39'
-  - name: 10_14_sparkal2
-    executable: *exec
-    args:
-      bag_path: outdoor_10_14/10_14_sparkal2
-      trajectory: outdoor_10_14/10_14_sparkal2_gt_odom.csv
-      robot_name: sparkal2
-      offset: '-181.47'
-  - name: 10_14_thoth
-    executable: *exec
-    args:
-      bag_path: outdoor_10_14/10_14_thoth
-      trajectory: outdoor_10_14/10_14_thoth_gt_odom.csv
-      robot_name: thoth
-      offset: '-181.35'
+#  - name: 10_14_acl_jackal
+    # executable: *exec
+    # args:
+      # bag_path: outdoor_10_14/10_14_acl_jackal
+      # trajectory: outdoor_10_14/acl_jackal_gt_odom.csv
+      # robot_name: acl_jackal
+      # offset: '-177.27'
+  #- name: 10_14_acl_hathor
+    # executable: *exec
+    # args:
+      # bag_path: outdoor_10_14/10_14_acl_hathor
+      # trajectory: outdoor_10_14/acl_hathor_gt_odom.csv
+      # robot_name: acl_hathor
+      # offset: '-181.33'
+  #- name: 10_14_sparkal1
+    # executable: *exec
+    # args:
+      # bag_path: outdoor_10_14/10_14_sparkal1
+      # trajectory: outdoor_10_14/sparkal1_gt_odom.csv
+      # robot_name: sparkal1
+      # offset: '-177.39'
+  #- name: 10_14_sparkal2
+    # executable: *exec
+    # args:
+      # bag_path: outdoor_10_14/10_14_sparkal2
+      # trajectory: outdoor_10_14/sparkal2_gt_odom.csv
+      # robot_name: sparkal2
+      # offset: '-181.47'
+  #- name: 10_14_thoth
+    # executable: *exec
+    # args:
+      # bag_path: outdoor_10_14/10_14_thoth
+      # trajectory: outdoor_10_14/thoth_gt_odom.csv
+      # robot_name: thoth
+      # offset: '-181.35'
