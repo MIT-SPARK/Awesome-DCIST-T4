@@ -4,3 +4,4 @@ bosdyn-choreography-client
 bosdyn-orbit
 onnxruntime
 openai
+deepgram-sdk
