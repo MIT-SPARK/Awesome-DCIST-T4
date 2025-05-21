@@ -68,6 +68,7 @@ echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> 
 # Note that if you want to use an LLM, you need to provide an API key. This should never be committed to a repo.
 # We load API keys from environment variables. Below is an example of setting our expected environment variable (you can change this in the configs).
 echo export ADT4_OPENAI_API_KEY={your api key} >> ~/.zshrc
+echo export ADT4_DEEPGRAM_API_KEY="a" >> ~/.zshrc
 
 # If you want to use Zenoh, you need to run:
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
@@ -101,7 +102,11 @@ popd
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false              |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                        |
-| ADT4\_SIM\_TIME                   | Use sim time? true/false              |
+| ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                      |
+
+Note that while some of these environment variables can be set to dummy values
+(e.g., API Keys for functionality you aren't using), all of them need to be set
+to *something* in order to launch the system properly.
 
 ### Silvus Network Computer IPs
 

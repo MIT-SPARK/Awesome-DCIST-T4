@@ -2,6 +2,6 @@
 /**:
   ros__parameters:
     plugin_config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml
-    vocalize: true
+    vocalize: false
     deepgram_api_key: $(env ADT4_DEEPGRAM_API_KEY)
     openai_api_key: $(env ADT4_OPENAI_API_KEY)
