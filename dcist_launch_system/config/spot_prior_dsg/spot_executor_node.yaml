@@ -14,6 +14,7 @@
     fake_spot_z: 0.01
     fake_spot_yaw: 0.01
     follower_lookahead: 2.1
+    goal_tolerance: 2.8
     semantic_model_path: path_to_semantic_model
     labelspace_path: labelspace_path
     labelspace_grouping_path: grouping_path
