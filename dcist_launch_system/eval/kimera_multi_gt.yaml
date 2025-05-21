@@ -8,9 +8,9 @@ _definitions:
           - arg: {name: trajectory}
           - arg: {name: robot_name}
           - arg: {name: output_path}
-          - arg: {name: offset}
+          - arg: {name: extrinsics}
           - arg: {name: labelspace_name, default: ade20k_mit}
-          - arg: {name: visualize, default: 'true'}
+          - arg: {name: visualize, default: 'false'}
           - group:
               - push_ros_namespace: {namespace: $(var robot_name)}
               - node:
@@ -40,8 +40,6 @@ _definitions:
                   exec: hydra_ros_node
                   name: hydra
                   on_exit: shutdown
-                  param:
-                    - {name: use_sim_time, value: true}
                   remap:
                     - {from: hydra/input/forward/depth_registered/image_rect, to: forward/depth/image_rect_raw}
                     - {from: hydra/input/forward/rgb/image_raw, to: forward/color/image_raw}
@@ -49,27 +47,27 @@ _definitions:
                     - {from: hydra/input/forward/semantic/image_raw, to: forward/semantic/image_raw}
                   args: >
                     --config-utilities-file $(find-pkg-share dcist_launch_system)/config/bag_kimera_multi/kimera_multi_hydra.yaml
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/mesh_segmenter_sinks.yaml@frontend/objects
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/gvd_places_sinks.yaml@frontend/freespace_places
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
                     --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
-                    ---config-utilities-yaml {odom_frame: odom, robot_frame: base_link}
+                    --config-utilities-yaml {input: {inputs: {forward: {sensor: {extrinsics: $(var extrinsics)}}}}}
+                    --config-utilities-yaml {odom_frame: odom, robot_frame: base_link}
                     --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
-                    --config-utilities-yaml {log_path: $(var output_path)/hydra}
+                    --config-utilities-yaml {log_path: $(var output_path)/hydra, exit_after_clock: true}
               - node:
                   pkg: hydra_ros
-                  exec: csv_to_tf
+                  exec: odom_to_tf
                   on_exit: shutdown
-                  param:
-                    - {name: use_sim_time, value: true}
-                    - {name: trajectory_file, value: $(env KIMERA_MULTI_PATH)/$(var trajectory)}
-                    - {name: offset_s, value: $(var offset)}
-                    #- {name: lookahead_s, value: 0.5}
-                    #- {name: stale_threshold_s, value: 2.0}
-          - node: {pkg: ianvs, exec: play_rosbag, args: --clock $(env KIMERA_MULTI_PATH)/$(var bag_path), on_exit: shutdown}
+                  remap:
+                    - {from: ~/odom, to: gt_odom}
+          - node: {pkg: ianvs, exec: play_rosbag, args: --clock $(env KIMERA_MULTI_PATH)/$(var bag_path)}
           - set_remap: {from: hydra_visualizer/dsg, to: $(var robot_name)/hydra/backend/dsg}
           - include:
               if: $(var visualize)
               file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
               arg:
-                - {name: use_sim_time, value: 'true'}
+                - {name: use_sim_time, value: 'false'}
                 - {name: start_rviz, value: 'false'}
                 - {name: visualizer_frame, value: map}
                 - {name: rviz_path, value: $(find-pkg-share dcist_launch_system)/rviz/kimera_multi/hydra_visualizer_config.yaml}
@@ -80,8 +78,6 @@ _definitions:
               name: rviz
               exec: rviz2
               args: -d $(find-pkg-share dcist_launch_system)/rviz/kimera_multi.rviz
-              param:
-                - {name: use_sim_time, value: true}
 name: kimera_multi_gt
 trials:
   - name: 10_14_acl_jackal2
@@ -90,39 +86,39 @@ trials:
       bag_path: outdoor_10_14/10_14_acl_jackal2
       trajectory: outdoor_10_14/acl_jackal2_gt_odom.csv
       robot_name: acl_jackal2
-      offset: '-177.22'
-#  - name: 10_14_acl_jackal
-    # executable: *exec
-    # args:
-      # bag_path: outdoor_10_14/10_14_acl_jackal
-      # trajectory: outdoor_10_14/acl_jackal_gt_odom.csv
-      # robot_name: acl_jackal
-      # offset: '-177.27'
-  #- name: 10_14_acl_hathor
-    # executable: *exec
-    # args:
-      # bag_path: outdoor_10_14/10_14_acl_hathor
-      # trajectory: outdoor_10_14/acl_hathor_gt_odom.csv
-      # robot_name: acl_hathor
-      # offset: '-181.33'
-  #- name: 10_14_sparkal1
-    # executable: *exec
-    # args:
-      # bag_path: outdoor_10_14/10_14_sparkal1
-      # trajectory: outdoor_10_14/sparkal1_gt_odom.csv
-      # robot_name: sparkal1
-      # offset: '-177.39'
-  #- name: 10_14_sparkal2
-    # executable: *exec
-    # args:
-      # bag_path: outdoor_10_14/10_14_sparkal2
-      # trajectory: outdoor_10_14/sparkal2_gt_odom.csv
-      # robot_name: sparkal2
-      # offset: '-181.47'
-  #- name: 10_14_thoth
-    # executable: *exec
-    # args:
-      # bag_path: outdoor_10_14/10_14_thoth
-      # trajectory: outdoor_10_14/thoth_gt_odom.csv
-      # robot_name: thoth
-      # offset: '-181.35'
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_acl_jackal
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_acl_jackal
+      trajectory: outdoor_10_14/acl_jackal_gt_odom.csv
+      robot_name: acl_jackal
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_acl_hathor
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_acl_hathor
+      trajectory: outdoor_10_14/acl_hathor_gt_odom.csv
+      robot_name: acl_hathor
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_sparkal1
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_sparkal1
+      trajectory: outdoor_10_14/sparkal1_gt_odom.csv
+      robot_name: sparkal1
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_sparkal2
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_sparkal2
+      trajectory: outdoor_10_14/sparkal2_gt_odom.csv
+      robot_name: sparkal2
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_thoth
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_thoth
+      trajectory: outdoor_10_14/thoth_gt_odom.csv
+      robot_name: thoth
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'

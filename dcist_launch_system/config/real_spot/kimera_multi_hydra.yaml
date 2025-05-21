@@ -11,7 +11,7 @@ input:
         type: camera_info
         min_range: 0.3
         max_range: 5.0
-        extrinsics: {type: identity}
+        extrinsics: {type: param}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
   tsdf:
@@ -19,7 +19,7 @@ active_window:
 frontend:
   type: GraphBuilder
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
-  objects: {min_cluster_size: 40, cluster_tolerance: 0.25, bounding_box_type: RAABB}
+  objects: {min_cluster_size: 40, cluster_tolerance: 0.25, bounding_box_type: AABB}
   surface_places:
     type: place_2d
     prefix: P
