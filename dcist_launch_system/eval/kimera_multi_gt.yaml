@@ -5,7 +5,6 @@ _definitions:
       contents:
         launch:
           - arg: {name: bag_path}
-          - arg: {name: trajectory}
           - arg: {name: robot_name}
           - arg: {name: output_path}
           - arg: {name: extrinsics}
@@ -84,41 +83,35 @@ trials:
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_acl_jackal2
-      trajectory: outdoor_10_14/acl_jackal2_gt_odom.csv
       robot_name: acl_jackal2
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 10_14_acl_jackal
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_acl_jackal
-      trajectory: outdoor_10_14/acl_jackal_gt_odom.csv
       robot_name: acl_jackal
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 10_14_acl_hathor
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_acl_hathor
-      trajectory: outdoor_10_14/acl_hathor_gt_odom.csv
       robot_name: acl_hathor
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 10_14_sparkal1
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_sparkal1
-      trajectory: outdoor_10_14/sparkal1_gt_odom.csv
       robot_name: sparkal1
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 10_14_sparkal2
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_sparkal2
-      trajectory: outdoor_10_14/sparkal2_gt_odom.csv
       robot_name: sparkal2
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 10_14_thoth
     executable: *exec
     args:
       bag_path: outdoor_10_14/10_14_thoth
-      trajectory: outdoor_10_14/thoth_gt_odom.csv
       robot_name: thoth
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
