@@ -12,7 +12,7 @@ input:
         type: camera_info
         min_range: 0.3
         max_range: 5.0
-        extrinsics: {type: ros}
+        extrinsics: {type: identity}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
   tsdf:
