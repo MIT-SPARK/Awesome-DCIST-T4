@@ -53,14 +53,14 @@ _definitions:
                     --config-utilities-yaml {input: {inputs: {forward: {sensor: {extrinsics: $(var extrinsics)}}}}}
                     --config-utilities-yaml {odom_frame: odom, robot_frame: base_link}
                     --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
-                    --config-utilities-yaml {log_path: $(var output_path)/hydra, exit_after_clock: true}
+                    --config-utilities-yaml {log_path: $(var output_path)/hydra}
               - node:
                   pkg: hydra_ros
                   exec: odom_to_tf
                   on_exit: shutdown
                   remap:
                     - {from: ~/odom, to: gt_odom}
-          - node: {pkg: ianvs, exec: play_rosbag, args: --clock $(env KIMERA_MULTI_PATH)/$(var bag_path)}
+          - node: {pkg: ianvs, exec: play_rosbag, args: $(env KIMERA_MULTI_PATH)/$(var bag_path) --signal-services /$(var robot_name)/shutdown}
           - set_remap: {from: hydra_visualizer/dsg, to: $(var robot_name)/hydra/backend/dsg}
           - include:
               if: $(var visualize)
