@@ -1,0 +1,117 @@
+---
+_definitions:
+  - exec: &exec
+      type: launch
+      contents:
+        launch:
+          - arg: {name: bag_path}
+          - arg: {name: robot_name}
+          - arg: {name: output_path}
+          - arg: {name: extrinsics}
+          - arg: {name: labelspace_name, default: ade20k_mit}
+          - arg: {name: visualize, default: 'false'}
+          - group:
+              - push_ros_namespace: {namespace: $(var robot_name)}
+              - node:
+                  namespace: forward
+                  pkg: image_transport
+                  exec: republish
+                  param:
+                    - {name: in_transport, value: compressed}
+                    - {name: out_transport, value: raw}
+                  remap:
+                    - {from: in/compressed, to: color/image_raw/compressed}
+                    - {from: out, to: color/image_raw}
+              - node:
+                  pkg: semantic_inference_ros
+                  exec: closed_set_node
+                  namespace: forward
+                  on_exit: shutdown
+                  name: segmentation
+                  args: >
+                    --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/ade20k-efficientvit_seg_l2.yaml
+                    --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
+                    --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
+                    --config-utilities-yaml {segmenter: {model: {model_file: ade20k-efficientvit_seg_l2.onnx}}}
+                    --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
+              - node:
+                  pkg: hydra_ros
+                  exec: hydra_ros_node
+                  name: hydra
+                  on_exit: shutdown
+                  remap:
+                    - {from: hydra/input/forward/depth_registered/image_rect, to: forward/depth/image_rect_raw}
+                    - {from: hydra/input/forward/rgb/image_raw, to: forward/color/image_raw}
+                    - {from: hydra/input/forward/rgb/camera_info, to: forward/color/camera_info}
+                    - {from: hydra/input/forward/semantic/image_raw, to: forward/semantic/image_raw}
+                  args: >
+                    --config-utilities-file $(find-pkg-share dcist_launch_system)/config/bag_kimera_multi/kimera_multi_hydra.yaml
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/mesh_segmenter_sinks.yaml@frontend/objects
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/gvd_places_sinks.yaml@frontend/freespace_places
+                    --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
+                    --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
+                    --config-utilities-yaml {input: {inputs: {forward: {sensor: {extrinsics: $(var extrinsics)}}}}}
+                    --config-utilities-yaml {odom_frame: odom, robot_frame: base_link}
+                    --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+                    --config-utilities-yaml {log_path: $(var output_path)/hydra}
+              - node:
+                  pkg: hydra_ros
+                  exec: odom_to_tf
+                  on_exit: shutdown
+                  remap:
+                    - {from: ~/odom, to: locus_odom}
+          - node: {pkg: ianvs, exec: play_rosbag, args: $(env KIMERA_MULTI_PATH)/$(var bag_path) --signal-services /$(var robot_name)/shutdown}
+          - set_remap: {from: hydra_visualizer/dsg, to: $(var robot_name)/hydra/backend/dsg}
+          - include:
+              if: $(var visualize)
+              file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
+              arg:
+                - {name: use_sim_time, value: 'false'}
+                - {name: start_rviz, value: 'false'}
+                - {name: visualizer_frame, value: map}
+                - {name: rviz_path, value: $(find-pkg-share dcist_launch_system)/rviz/kimera_multi/hydra_visualizer_config.yaml}
+                - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/bag_kimera_multi/hydra_visualizer_config.yaml}
+          - node:
+              if: $(var visualize)
+              pkg: rviz2
+              name: rviz
+              exec: rviz2
+              args: -d $(find-pkg-share dcist_launch_system)/rviz/kimera_multi.rviz
+name: kimera_multi_gt
+trials:
+  - name: 10_14_acl_jackal2
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_acl_jackal2
+      robot_name: acl_jackal2
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_sparkal1
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_sparkal1
+      robot_name: sparkal1
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 10_14_sparkal2
+    executable: *exec
+    args:
+      bag_path: outdoor_10_14/10_14_sparkal2
+      robot_name: sparkal2
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 12_08_acl_jackal2
+    executable: *exec
+    args:
+      bag_path: hybrid_12_08/12_08_acl_jackal2
+      robot_name: acl_jackal2
+      extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
+  - name: 12_08_sparkal1
+    executable: *exec
+    args:
+      bag_path: hybrid_12_08/12_08_sparkal1
+      robot_name: sparkal1
+      extrinsics: '{body_R_sensor: {x: 0.5013, y: -0.4988, z: 0.4990, w: -0.5009}, body_p_sensor: [-0.00, -0.06, 0.00]}'
+  - name: 12_08_sparkal2
+    executable: *exec
+    args:
+      bag_path: hybrid_12_08/12_08_sparkal2
+      robot_name: sparkal2
+      extrinsics: '{body_R_sensor: {x: -0.5002, y: 0.4979, z: -0.5001, w: 0.5017}, body_p_sensor: [-0.00, -0.06, 0.00]}'
