@@ -77,7 +77,7 @@ _definitions:
               name: rviz
               exec: rviz2
               args: -d $(find-pkg-share dcist_launch_system)/rviz/kimera_multi.rviz
-name: kimera_multi_gt
+name: kimera_multi_locus
 trials:
   - name: 10_14_acl_jackal2
     executable: *exec
