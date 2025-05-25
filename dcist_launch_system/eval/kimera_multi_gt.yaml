@@ -118,42 +118,42 @@ trials:
   - name: 12_08_acl_jackal2
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_acl_jackal2
+      bag_path: hybrid_12_08/12_08_acl_jackal2
       robot_name: acl_jackal2
       extrinsics: '{body_R_sensor: {x: -0.4988, y: 0.4979, z: -0.5008, w: 0.5024}, body_p_sensor: [0.0, -0.06, 0.0]}'
   - name: 12_08_acl_jackal
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_acl_jackal
+      bag_path: hybrid_12_08/12_08_acl_jackal
       robot_name: acl_jackal
       extrinsics: '{body_R_sensor: {x: 0.5013, y: -0.4996, z: 0.4996, w: -0.4995}, body_p_sensor: [-0.00, -0.06, 0.00]}'
   - name: 12_08_apis
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_apis
+      bag_path: hybrid_12_08/12_08_apis
       robot_name: apis
       extrinsics: '{body_R_sensor: {x: -0.4991, y: 0.5010, z: -0.4995, w: 0.5004}, body_p_sensor: [-0.00, -0.06, 0.00]}'
   - name: 12_08_hathor
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_hathor
+      bag_path: hybrid_12_08/12_08_hathor
       robot_name: hathor
       extrinsics: '{body_R_sensor: {x: -0.4991, y: 0.5010, z: -0.4995, w: 0.5004}, body_p_sensor: [-0.00, -0.06, 0.00]}'
   - name: 12_08_sobek
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_sobek
+      bag_path: hybrid_12_08/12_08_sobek
       robot_name: sobek
       extrinsics: '{body_R_sensor: {x: -0.4991, y: 0.5010, z: -0.4995, w: 0.5004}, body_p_sensor: [-0.00, -0.06, 0.00]}'
   - name: 12_08_sparkal1
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_sparkal1
+      bag_path: hybrid_12_08/12_08_sparkal1
       robot_name: sparkal1
       extrinsics: '{body_R_sensor: {x: 0.5013, y: -0.4988, z: 0.4990, w: -0.5009}, body_p_sensor: [-0.00, -0.06, 0.00]}'
   - name: 12_08_sparkal2
     executable: *exec
     args:
-      bag_path: 12_08_hybrid/12_08_sparkal2
+      bag_path: hybrid_12_08/12_08_sparkal2
       robot_name: sparkal2
       extrinsics: '{body_R_sensor: {x: -0.5002, y: 0.4979, z: -0.5001, w: 0.5017}, body_p_sensor: [-0.00, -0.06, 0.00]}'
