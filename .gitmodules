@@ -43,3 +43,6 @@
 [submodule "config_utilities"]
 	path = config_utilities
 	url = git@github.com:MIT-SPARK/config_utilities.git
+[submodule "ouroboros"]
+	path = ouroboros
+	url = git@github.com:MIT-SPARK/Ouroboros.git
