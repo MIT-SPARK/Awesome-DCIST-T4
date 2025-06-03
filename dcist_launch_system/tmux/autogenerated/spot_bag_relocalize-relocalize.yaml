@@ -1,5 +1,5 @@
 session_name: active_dsg
-environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag_relocalize-relocalize, config: relocalize}
+environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag_relocalize-relocalize, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: relocalize}
 options:
   default-command: /bin/zsh
 windows:

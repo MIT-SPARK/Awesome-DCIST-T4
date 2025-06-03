@@ -1,5 +1,5 @@
 session_name: active_dsg
-environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag-bag, config: bag}
+environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag-bag, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag}
 options:
   default-command: /bin/zsh
 windows:
