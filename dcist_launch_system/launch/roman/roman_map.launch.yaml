@@ -1,10 +1,12 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - node:
+  - arg: {name: pyenv_path}
+  - pyenv_node:
       pkg: roman_ros2
       exec: roman_map_node.py
       name: roman_map_node
+      pyenv: $(var pyenv_path)
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_map.yaml
           allow_substs: true

@@ -4,7 +4,7 @@ options:
   default-command: /bin/zsh
 windows:
   - window_name: prior_dsg
-    shell_command_before: "source ${ADT4_WS}/install/setup.zsh\nsource ${ADT4_ENV}/spark_env/bin/activate\n"
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_scene_graph_publisher:=true robot_name:=$ADT4_ROBOT_NAME
@@ -17,14 +17,14 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra:=true disable_hydra_publish_dsg:=true robot_name:=$ADT4_ROBOT_NAME
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra_multi:=true robot_name:=$ADT4_ROBOT_NAME
   - window_name: roman
-    shell_command_before: ["source ${ADT4_WS}/install/setup.zsh", "source ${ADT4_ENV}/roman/bin/activate"]
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_fastsam:=true sim_time:=$sim_time
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config robot_name:=$ADT4_ROBOT_NAME camera:=frontleft launch_roman_map:=true sim_time:=$sim_time
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
   - window_name: real_spot
-    shell_command_before: "source ${ADT4_WS}/install/setup.zsh\nsource ${ADT4_ENV}/spark_env/bin/activate\n"
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
