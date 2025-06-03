@@ -86,11 +86,12 @@ launch:
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
-  - node:
+  - pyenv_node:
       if: "$(var launch_spot_executor)"
       pkg: spot_tools_ros
       exec: spot_executor_node
       name: spot_executor_node
+      pyenv: $(var spark_env)
       param:
           - {name: use_sim_time, value: $(var sim_time)}
           - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_executor_node.yaml
@@ -121,11 +122,12 @@ launch:
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
   - group:
-    - node:
+    - pyenv_node:
         if: "$(var launch_spot_camera_driver)"
         pkg: spot_tools_ros
         exec: spot_sensor_node
         name: spot_sensor_node
+        pyenv: $(var spark_env)
         param:
             - {name: use_sim_time, value: $(var sim_time)}
             - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml
@@ -175,11 +177,12 @@ launch:
   - arg:
       name: launch_omniplanner
       default: "false"
-  - node:
+  - pyenv_node:
       if: $(var launch_omniplanner)
       pkg: omniplanner_ros
       exec: omniplanner_node
       name: omniplanner_node
+      pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
@@ -196,11 +199,12 @@ launch:
   - arg:
       name: launch_scene_graph_publisher
       default: "false"
-  - node:
+  - pyenv_node:
       if: $(var launch_scene_graph_publisher)
       pkg: dcist_launch_system
       exec: prior_dsg_publisher_node
       name: prior_dsg_publisher
+      pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
@@ -215,11 +219,12 @@ launch:
   - arg:
       name: launch_dsg_saver
       default: "false"
-  - node:
+  - pyenv_node:
       if: $(var launch_dsg_saver)
       pkg: dcist_launch_system
       exec: dsg_saver_node
       name: dsg_saver
+      pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml
