@@ -6,3 +6,4 @@ onnxruntime
 openai
 deepgram-sdk
 ultralytics
+plum-dispatch
