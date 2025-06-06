@@ -1,10 +1,12 @@
 ---
 launch:
   - arg: {name: conf_name}
-  - node:
+  - arg: {name: pyenv_path}
+  - pyenv_node:
       pkg: roman_ros2
       exec: fastsam_node.py
       name: fastsam_node
+      pyenv: $(var pyenv_path)
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/fastsam_node.yaml
           allow_substs: true
