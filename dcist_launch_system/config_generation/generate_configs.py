@@ -264,7 +264,12 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
                 logging_key += f"-{s}"
 
             cmd = [str(x) for x in cmd]
-            extras = {"environment": {"logging_key": logging_key}}
+            extras = {
+                "environment": {
+                    "logging_key": logging_key,
+                    "ADT4_ROBOT_NAME": "$ADT4_ROBOT_NAME",
+                }
+            }
             extras["environment"].update(tmux)
             extras_str = io.StringIO()
             yaml.dump(extras, extras_str)
