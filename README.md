@@ -181,17 +181,17 @@ There will be controls for moving spot around in one of the windows. You can
 send spot a plan with:
 
 ```
-ros2 topic pub /omniplanner_node/language_planner/language_goal omniplanner_msgs/msg/LanguageGoalMsg "{robot_id: 'spot', command: 'R(70) R(23)'}" -1
+ros2 topic pub /hilbert/omniplanner_node/language_planner/language_goal omniplanner_msgs/msg/LanguageGoalMsg "{robot_id: 'hilbert', command: 'R(70) R(23)'}" -1
 ```
 
 You can also manually specify the list of string symbols, instead of relying on the "language" module to do it for you:
 ```
-ros2 topic pub /omniplanner_node/goto_points/goto_points_goal omniplanner_msgs/msg/GotoPointsGoalMsg "{robot_id: 'spot', point_names_to_visit: ['R(70)']}" -1
+ros2 topic pub /hilbert/omniplanner_node/goto_points/goto_points_goal omniplanner_msgs/msg/GotoPointsGoalMsg "{robot_id: 'hilbert', point_names_to_visit: ['R(70)']}" -1
 ```
 
 You can try out the TSP planner with:
 ```
-ros2 topic pub /omniplanner_node/tsp_planner/solve_tsp_goal omniplanner_msgs/msg/GotoPointsGoalMsg "{robot_id: 'spot', point_names_to_visit: ['R(69)', 'R(35)', 'R(71)', 'R(83)']}" -1
+ros2 topic pub /hilbert/omniplanner_node/tsp_planner/solve_tsp_goal omniplanner_msgs/msg/GotoPointsGoalMsg "{robot_id: 'hilbert', point_names_to_visit: ['R(69)', 'R(35)', 'R(71)', 'R(83)']}" -1
 ```
 
 This should result in a planned path appearing in RVIZ, and spot following the
@@ -199,10 +199,16 @@ plan.
 
 You can also send PDDL goals such as:
 ```
-ros2 topic pub /omniplanner_node/visit_objects_pddl/pddl_goal omniplanner_msgs/msg/PddlGoalMsg "{robot_id: 'spot', pddl_goal: '(or (visited-place r116) (and (visited-place r69) (visited-place r83)))'}" -1
+ros2 topic pub /hilbert/omniplanner_node/visit_objects_pddl/pddl_goal omniplanner_msgs/msg/PddlGoalMsg "{robot_id: 'hilbert', pddl_goal: '(or (visited-place r116) (and (visited-place r69) (visited-place r83)))'}" -1
 ```
 Currently you can use `visited-place` and `visited-object` predicates and
 general conjunctions/disjunctions/negations to specify goals.
+
+This example shows how to send region-grounded goals. It should work, although currently it will take a *long* time to plan (~2+ minutes).
+
+```
+ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal omniplanner_msgs/msg/PddlGoalMsg "{robot_id: 'hilbert', pddl_goal: '(and (visited-region r70) (at-place p1042) (object-in-place o94 p2157))'}" -1
+```
 
 
 ### Catalog of Supported Launch Configurations
