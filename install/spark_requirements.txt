@@ -5,3 +5,4 @@ bosdyn-orbit
 onnxruntime
 openai
 deepgram-sdk
+ultralytics
