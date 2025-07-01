@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 from dataclasses import dataclass
 
 import ros_system_monitor as rsm
@@ -16,9 +15,7 @@ class Example1NodeMonitor:
         self.monitor = None
 
     def register_monitor(self, monitor):
-        self.monitor_callback = functools.partial(
-            monitor.update_node_info, self.nickname
-        )
+        self.monitor_callback = monitor.update_node_info
         self.sub = monitor.create_subscription(
             String, "~/example1_node_topic", self.callback, 1
         )
@@ -30,8 +27,14 @@ class Example1NodeMonitor:
         else:
             status = rsm.Status.ERROR
 
-        note = f"Current messaged idx {msg_idx}"
-        self.monitor_callback("<external>", status, note)
+        info = rsm.TrackedNodeInfo(
+            nickname=self.nickname,
+            last_heartbeat=-1,
+            node_name="<external>",
+            status=status,
+            notes=f"Current messaged idx {msg_idx}",
+        )
+        self.monitor_callback(info)
 
 
 @register_config(
