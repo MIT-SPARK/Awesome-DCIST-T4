@@ -1,18 +1,11 @@
 nodes_to_track:
-  base/nlu_rviz_panel: {}
-  base/omniplanner: {}
-  euclid/hydra:
+  hydra:
     external_monitor: {type: JsonMonitor}
-  euclid/fastsam: {}
-  euclid/roman_map: {}
-  euclid/roman_lc: {}
-  euclid/spot_executor: {}
-  euclid/dsg_saver: {}
-  hamilton/hydra:
-    external_monitor: {type: JsonMonitor}
-  hamilton/fastsam: {}
-  hamilton/roman_map: {}
-  hamilton/roman_lc: {}
-  hamilton/spot_executor: {}
-  hamilton/dsg_saver: {}
+  fastsam: {}
+  roman_map: {}
+  roman_lc: {}
+  spot_executor: {}
+  omniplanner: {}
+  dsg_saver: {}
+  nlu_rviz_panel: {}
 timer_period_s: 0.5
