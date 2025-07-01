@@ -12,7 +12,7 @@ launch:
   - arg: {name: launch_hydra, default: 'false'}
   - arg: {name: disable_hydra_publish_dsg, default: 'false'}
   - group:
-    - set_remap: {from: hydra/status, to: ros_system_monitor/$(robot name)/hydra/status}
+    - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
     - include:
         if: $(var launch_hydra)
         file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
@@ -37,7 +37,7 @@ launch:
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
   - group:
-    - set_remap: {from: hydra_multi/status, to: ros_system_monitor/$(var robot_name)/hydra_multi/status}
+    - set_remap: {from: hydra_multi/status, to: ros_system_monitor/hydra_multi/status}
     - include:
         if: $(var launch_hydra_multi)
         file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
@@ -56,9 +56,9 @@ launch:
       - set_remap: {from: depth/image_raw, to: $(var camera)/depth/image_rect}
       - set_remap: {from: tf, to: /tf}
       - set_remap: {from: tf_static, to: /tf_static}
-      - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector}
-      - set_remap: {from: roman/roman_map/status, to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector}
-      - set_remap: {from: roman/roman_lc/status, to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector}
+      - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: roman/roman_map/status, to: ros_system_monitor/node_diagnostic_collector}
+      - set_remap: {from: roman/roman_lc/status, to: ros_system_monitor/node_diagnostic_collector}
 
       # FastSAM
       - include:
@@ -98,7 +98,7 @@ launch:
             allow_substs: true
       remap:
           - from: ~/node_status
-            to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector
+            to: ros_system_monitor/node_diagnostic_collector
           - from: ~/action_sequence_subscriber
             to: omniplanner_node/compiled_plan_out
           - from: ~/joint_states
@@ -169,7 +169,7 @@ launch:
       args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
       remap:
         - from: ~/node_status
-          to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
       param:
           - {name: use_sim_time, value: $(var sim_time)}
 
@@ -190,7 +190,7 @@ launch:
           allow_substs: true
       remap:
         - from: ~/node_status
-          to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
         - from: ~/dsg_in
           to: hydra/backend/dsg
         - from: ~/llm_response
@@ -235,7 +235,7 @@ launch:
         - from: ~/dsg_in
           to: hydra/backend/dsg
         - from: ~/node_status
-          to: ros_system_monitor/$(var robot_name)/node_diagnostic_collector
+          to: ros_system_monitor/node_diagnostic_collector
 
   - arg:
       name: launch_static_map_to_robot
