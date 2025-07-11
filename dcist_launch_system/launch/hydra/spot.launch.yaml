@@ -6,28 +6,13 @@ launch:
   - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}
   - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
   - arg: {name: disable_publish_dsg, default: 'false'}
-  # frontleft camera
-  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: frontleft/depth/image_rect}
-  - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: frontleft/color/image_raw}
-  - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: frontleft/color/camera_info}
+  - arg: {name: camera, default: 'zed'}
+
+  # Zed
+  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
+  - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
+  - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: $(var camera)/rgb/camera_info}
   - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: frontleft/semantic/image_raw}
-  - node:
-      pkg: semantic_inference_ros
-      exec: closed_set_node
-      namespace: frontleft
-      name: segmentation
-      args: >
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var model_name).yaml
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
-        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
-        --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx}}}
-        --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
-        --config-utilities-yaml {image_rotator: {rotation: ROTATE_90_CLOCKWISE}}
-  # frontright camera
-  - set_remap: {from: hydra/input/frontright/depth_registered/image_rect, to: frontright/depth/image_rect}
-  - set_remap: {from: hydra/input/frontright/rgb/image_raw, to: frontright/color/image_raw}
-  - set_remap: {from: hydra/input/frontright/rgb/camera_info, to: frontright/color/camera_info}
-  - set_remap: {from: hydra/input/frontright/semantic/image_raw, to: frontright/semantic/image_raw}
   - node:
       pkg: semantic_inference_ros
       exec: closed_set_node
@@ -39,7 +24,7 @@ launch:
         --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
         --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx}}}
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
-        --config-utilities-yaml {image_rotator: {rotation: ROTATE_90_CLOCKWISE}}
+
   - set_remap: {if: $(var disable_publish_dsg), from: hydra/backend/dsg, to: hydra/backend/remapped_dsg}
   # hydra
   - node:

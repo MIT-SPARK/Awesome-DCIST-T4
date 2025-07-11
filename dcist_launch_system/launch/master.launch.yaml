@@ -6,6 +6,18 @@ launch:
   - arg: {name: camera, default: none}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+
+  # Zed camera driver (has to be above push_ros_namespace)
+  - arg: {name: launch_zed, default: 'false'}
+  - include:
+      if: $(var launch_zed)
+      file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
+      arg:
+        - {name: namespace, value: $(var robot_name)}
+        - {name: camera_model, value: zed2i}
+        - {name: camera_name, value: $(var camera)}
+        - {name: publish_tf, value: 'false'}
+  
   - push_ros_namespace: {namespace: $(var robot_name)}
 
   # Hydra
@@ -20,6 +32,7 @@ launch:
           - {name: conf_name, value: $(var conf_name)}
           - {name: use_sim_time, value: $(var sim_time)}
           - {name: disable_publish_dsg, value: $(var disable_hydra_publish_dsg)}
+          - {name: camera, value: $(var camera)}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
@@ -50,10 +63,10 @@ launch:
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
   - group:
-      - set_remap: {from: color/camera_info, to: $(var camera)/color/camera_info}
-      - set_remap: {from: color/image_raw, to: $(var camera)/color/image_raw}
+      - set_remap: {from: color/camera_info, to: $(var camera)/rgb/camera_info}
+      - set_remap: {from: color/image_raw, to: $(var camera)/rgb/image_rect_color}
       - set_remap: {from: depth/camera_info, to: $(var camera)/depth/camera_info}
-      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/image_rect}
+      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/depth_registered}
       - set_remap: {from: tf, to: /tf}
       - set_remap: {from: tf_static, to: /tf_static}
       - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
@@ -119,6 +132,15 @@ launch:
       remap:
           - from: /joint_states
             to: joint_states
+  - node:
+      if: "$(var launch_spot_state_publisher)"
+      pkg: robot_state_publisher
+      name: cameras_state_publisher
+      exec: robot_state_publisher
+      param:
+          - {name: use_sim_time, value: $(var sim_time)}
+          - name: robot_description
+            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/$(var robot_name).urdf.xacro tf_prefix:=$(var robot_name)')
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
