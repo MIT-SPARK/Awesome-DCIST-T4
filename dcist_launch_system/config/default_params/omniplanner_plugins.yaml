@@ -30,3 +30,11 @@ planners:
     plugin:
       type: Pddl
       domain_name: GotoObjectDomain
+  rearrange_objects_pddl:
+    plugin:
+      type: Pddl
+      domain_name: ObjectRearrangementDomain
+  region_rearrange_objects_pddl:
+    plugin:
+      type: Pddl
+      domain_name: RegionObjectRearrangementDomain
