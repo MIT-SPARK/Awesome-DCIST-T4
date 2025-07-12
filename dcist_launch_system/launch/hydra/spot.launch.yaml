@@ -6,7 +6,7 @@ launch:
   - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}
   - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
   - arg: {name: disable_publish_dsg, default: 'false'}
-  - arg: {name: camera, default: 'zed'}
+  - arg: {name: camera, default: zed}
 
   # Zed
   - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
@@ -24,7 +24,6 @@ launch:
         --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
         --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx}}}
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
-
   - set_remap: {if: $(var disable_publish_dsg), from: hydra/backend/dsg, to: hydra/backend/remapped_dsg}
   # hydra
   - node:
