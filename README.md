@@ -181,7 +181,7 @@ There will be controls for moving spot around in one of the windows. You can
 send spot a plan with:
 
 ```
-ros2 topic pub /hilbert/omniplanner_node/language_planner/language_goal omniplanner_msgs/msg/LanguageGoalMsg "{robot_id: 'hilbert', command: 'R(70) R(23)'}" -1
+ros2 topic pub /hilbert/omniplanner_node/language_planner/language_goal omniplanner_msgs/msg/LanguageGoalMsg "{robot_id: 'hilbert', domain_type: 'goto_points', command: 'R(70) R(23)'}" -1
 ```
 
 You can also manually specify the list of string symbols, instead of relying on the "language" module to do it for you:
