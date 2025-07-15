@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import ros_system_monitor as rsm
 from spark_config.config import Config, register_config
@@ -8,7 +9,12 @@ from std_msgs.msg import String
 
 
 class Example1NodeMonitor:
-    def __init__(self, config: Example1NodeMonitorConfig, nickname: str):
+    def __init__(
+        self,
+        config: Example1NodeMonitorConfig,
+        nickname: str,
+        monitor_name: Optional[str] = None,
+    ):
         self.nickname = nickname
         self.divider = config.divider
         self.mod = config.mod
