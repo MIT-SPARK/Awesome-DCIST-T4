@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import json
 from dataclasses import dataclass
 
@@ -16,7 +15,7 @@ class JsonMonitor:
         self.nickname = nickname
 
     def register_monitor(self, monitor):
-        self._update_cb = functools.partial(monitor.update_node_info, self.nickname)
+        self._update_cb = monitor.update_node_info
         topic = rsm.get_monitor_topic(self.nickname)
         self.sub = monitor.create_subscription(String, str(topic), self._callback, 1)
 
@@ -49,7 +48,14 @@ class JsonMonitor:
         if status_str is not None:
             note += f" ({status_str})"
 
-        self._update_cb(contents.get("node_name", "???"), status, note)
+        info = rsm.TrackedNodeInfo(
+            nickname=self.nickname,
+            last_heartbeat=-1,
+            node_name=contents.get("node_name", "???"),
+            status=status,
+            notes=note,
+        )
+        self._update_cb(info)
 
 
 @sc.register_config("external_monitor", name="JsonMonitor", constructor=JsonMonitor)

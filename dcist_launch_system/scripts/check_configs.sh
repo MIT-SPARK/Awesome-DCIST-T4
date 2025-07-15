@@ -10,5 +10,6 @@ fi
 
 if [[ `git status --porcelain` ]]; then
     echo "Diff detected. Committed configs inconsistent with config generators"
+    git --no-pager diff
     exit 1
 fi

@@ -1,0 +1,6 @@
+---
+windows:
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]

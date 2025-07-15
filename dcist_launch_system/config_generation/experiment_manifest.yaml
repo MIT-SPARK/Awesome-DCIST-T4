@@ -11,7 +11,7 @@ launch_configs:
     spot_real: []
     roman: []
     hydra_multi: []
-
+    multi_status: []
 
     base:
         - hydra
@@ -68,6 +68,7 @@ launch_configs:
         - planning
         - core
         - debug
+        - multi_status
 
 
 # Configs build the set of rosparams that will be loaded
@@ -79,6 +80,7 @@ configs:
     real_spot: []
     relocalize: []
     real_spot_relocalize: []
+    base_station: []
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
@@ -106,7 +108,7 @@ experiments:
 
     base_station:
         launch_config: base_station
-        config: [real_spot]
+        config: [base_station]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
