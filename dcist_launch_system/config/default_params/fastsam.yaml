@@ -13,11 +13,7 @@ ignore_labels: [person]
 use_keep_labels: false
 keep_labels: []
 plane_filter_params: [3.0, 1.0, 0.2]
-<<<<<<< Updated upstream
-semantics: 'dino'
-=======
 semantics: dino
->>>>>>> Stashed changes
 yolo_imgsz: [256, 256]
 depth_scale: 1000.0
 max_depth: 7.5
