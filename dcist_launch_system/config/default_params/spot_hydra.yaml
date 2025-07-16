@@ -14,14 +14,7 @@ robot_id: 0
 input:
   type: RosInput
   inputs:
-    frontleft:
-      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
-      sensor:
-        type: camera_info
-        min_range: *min_range
-        max_range: *max_range
-        extrinsics: {type: ros}
-    frontright:
+    camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
       sensor:
         type: camera_info

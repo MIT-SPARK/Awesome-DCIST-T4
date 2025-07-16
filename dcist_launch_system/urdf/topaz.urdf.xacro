@@ -14,7 +14,7 @@
   <joint name="$(arg tf_prefix)_frontleft_to_zed" type="fixed">
     <parent link="$(arg tf_prefix)/frontleft"/>
     <child link="$(arg tf_prefix)_zed_camera_link"/>
-    <origin xyz="-0.10658496884512007 0.026247948174877016 -0.11793444318564054" rpy="-2.6228496639972296 1.3036971096950234 3.1196051589865026" />
+    <origin xyz="-0.14202953085743672 0.015046794634271764 0.07455903427663088" rpy="-1.990205509681296 -0.972943029332566 2.0587233433215095" />
   </joint>
 
 </robot>

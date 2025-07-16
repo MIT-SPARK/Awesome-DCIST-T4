@@ -59,6 +59,7 @@ if [ "$install_roman" = true ]; then
     mkdir -p $ADT4_WS/weights
     cd $ADT4_WS/weights
     gdown 'https://drive.google.com/uc?id=1m1sjY4ihXBU1fZXdQ-Xdj-mDltW-2Rqv'
+    wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt
 
     popd
 fi

@@ -9,15 +9,17 @@ launch:
   - arg: {name: camera, default: zed}
 
   # Zed
-  - set_remap: {from: hydra/input/frontleft/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
-  - set_remap: {from: hydra/input/frontleft/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
-  - set_remap: {from: hydra/input/frontleft/rgb/camera_info, to: $(var camera)/rgb/camera_info}
-  - set_remap: {from: hydra/input/frontleft/semantic/image_raw, to: frontleft/semantic/image_raw}
+  - set_remap: {from: hydra/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
+  - set_remap: {from: hydra/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
+  - set_remap: {from: hydra/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
+  - set_remap: {from: hydra/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
   - node:
       pkg: semantic_inference_ros
       exec: closed_set_node
-      namespace: frontright
+      namespace: $(var camera)
       name: segmentation
+      remap:
+        - {from: color/image_raw, to: rgb/image_rect_color}
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var model_name).yaml
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
