@@ -114,9 +114,18 @@ to *something* in order to launch the system properly.
 |---------------|-----------------------|-----------------|
 | euclid        | Jasper Jockey         | 192.167.70.3    |
 | hamilton      | Topaz Jockey          | 192.167.70.2    |
-| russell       | Aaron's base station  | 192.167.70.101  |
+| russell       | Aaron's laptop        | 192.167.70.101  |
 | bonsai        | RRG dev computer      | ???.???.??.???  |
 | willow        | RRG base station      | 192.167.70.100  |
+
+### MIT Network Computer IPs
+| Hostname      | Description           | IP              |
+|---------------|-----------------------|-----------------|
+| euclid        | Jasper Jockey         | 10.29.219.68    |
+| hamilton      | Topaz Jockey          | 10.29.225.80    |
+| russell       | Aaron's laptop        | 10.29.129.166   |
+| bonsai        | RRG dev computer      | ???.???.??.???  |
+| willow        | RRG base station      | 10.29.170.228   |
 
 
 ## Python environments
