@@ -11,3 +11,12 @@ launch:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc_node.yaml
           allow_substs: true
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc.yaml}
+  - pyenv_node:
+      pkg: roman_ros2
+      exec: lc_viz_node.py
+      name: lc_viz_node
+      pyenv: $(var pyenv_path)
+      param:
+        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc_node.yaml
+          allow_substs: true
+        - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc.yaml}

@@ -9,7 +9,7 @@ windows:
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_driver:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_driver:=true launch_zed:=true camera:=${ADT4_ROBOT_NAME}_zed robot_name:=$ADT4_ROBOT_NAME
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_decompression:=true robot_name:=$ADT4_ROBOT_NAME
   - window_name: core
     shell_command_before: source ${ADT4_WS}/install/setup.zsh

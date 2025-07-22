@@ -4,5 +4,5 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra:=true disable_hydra_publish_dsg:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra:=true disable_hydra_publish_dsg:=true robot_name:=$ADT4_ROBOT_NAME camera:=${ADT4_ROBOT_NAME}_zed
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra_multi:=true robot_name:=$ADT4_ROBOT_NAME
