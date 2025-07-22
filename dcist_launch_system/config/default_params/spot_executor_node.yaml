@@ -22,3 +22,4 @@
     labelspace_path: labelspace_path
         # labelspace_grouping_path: "(find-pkg-share semantic_inference)/config/label_groupings/ade20k_mit.yaml"
     labelspace_grouping_path: grouping_path
+    detector_model_path: $(env ADT4_WS)/weights/yolov8s-world.pt

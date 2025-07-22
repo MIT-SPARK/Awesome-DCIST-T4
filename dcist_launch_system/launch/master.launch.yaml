@@ -266,4 +266,4 @@ launch:
       if: $(var launch_static_map_to_robot)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id $(var robot_name)/odom --x 10 --y 20 --yaw 1.57
+      args: --frame-id map --child-frame-id $(var robot_name)/odom --x 0 --y 0 --yaw 0 
