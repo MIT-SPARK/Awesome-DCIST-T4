@@ -1,8 +1,5 @@
 ---
 # general config
-_definitions:
-  min_range: &min_range 0.4
-  max_range: &max_range 5.0
 map_frame: map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
@@ -18,8 +15,8 @@ input:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
-        min_range: *min_range
-        max_range: *max_range
+        min_range: 0.4
+        max_range: 5.0
         extrinsics: {type: ros}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
