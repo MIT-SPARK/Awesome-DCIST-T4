@@ -140,7 +140,7 @@ launch:
       param:
           - {name: use_sim_time, value: $(var sim_time)}
           - name: robot_description
-            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/$(var robot_name).urdf.xacro tf_prefix:=$(var robot_name)')
+            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/topaz.urdf.xacro tf_prefix:=$(var robot_name)')
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
