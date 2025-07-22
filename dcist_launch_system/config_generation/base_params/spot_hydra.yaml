@@ -1,5 +1,6 @@
 ---
 # general config
+paths: [khronos]
 robot_id: 0
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
@@ -19,16 +20,45 @@ input:
         extrinsics: {type: ros}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
-  tsdf: {semantic_integrator: {type: SingleLabelIntegrator}}
+  type: ActiveWindow
+  # tsdf: {semantic_integrator: {type: SingleLabelIntegrator}}
+  projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  object_detector:
+    type: ConnectedSemantics
+    min_cluster_size: 50
+    use_full_connectivity: true
+    use_3d: true
+    grid_size: 0.1
+    max_range: 4.5
+  tracker:
+    type: MaxIouTracker
+    track_by: voxels
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
+    voxel_size: 0.2
+    temporal_window: 3.0
+    min_num_observations: 15
+  object_extractor:
+    type: MeshObjectExtractor
+    verbosity: 0
+    min_object_allocation_confidence: 0.5
+    min_object_volume: 0.005  # m^3
+    max_object_volume: 10.0  # m^3
+    min_dynamic_displacement: 1  # m
+    only_extract_reconstructed_objects: true
+    min_object_reconstruction_confidence: 0.5
+    min_object_reconstruction_observations: 10
+    object_reconstruction_resolution: -0.02  # Positive: voxel size in meters.
+    visualizer_classification: false
+    projective_integrator:
+      num_threads: 8
 frontend:
   type: GraphBuilder
+  enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
-  objects: {min_cluster_size: 25, cluster_tolerance: 0.25, bounding_box_type: AABB}
+  # objects: {min_cluster_size: 25, cluster_tolerance: 0.25, bounding_box_type: AABB}
   graph_connector:
-    layers:
-      - parent_layer: MESH_PLACES
-        child_layers:
-          - {layer: OBJECTS}
+    layers: [{parent_layer: MESH_PLACES, child_layers: [{layer: OBJECTS}]}]
   surface_places:
     type: place_2d
     prefix: P
