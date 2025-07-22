@@ -87,7 +87,7 @@ build:
     cmake-args:
         - -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
-Then, build the workspace as follows: 
+Then, build the workspace as follows:
 ```bash
 # this next step is CRUCIAL to get colcon to behave properly
 pushd $ADT4_WS
@@ -95,9 +95,9 @@ pushd $ADT4_WS
 colcon build --continue-on-error
 popd
 ```
-If building the workspace is too memory intensive, set the `MAKEFLAGS` environment 
-variable to restrict the number of parallel jobs and add the argument `--executor sequential` 
-to the `colcon build` command. 
+If building the workspace is too memory intensive, set the `MAKEFLAGS` environment
+variable to restrict the number of parallel jobs and add the argument `--executor sequential`
+to the `colcon build` command.
 
 ### Environment Variable Summary
 
