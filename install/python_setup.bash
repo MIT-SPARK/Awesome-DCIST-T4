@@ -59,8 +59,12 @@ if [ "$install_roman" = true ]; then
     mkdir -p $ADT4_WS/weights
     cd $ADT4_WS/weights
     gdown 'https://drive.google.com/uc?id=1m1sjY4ihXBU1fZXdQ-Xdj-mDltW-2Rqv'
-    wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt
-
+    MODEL_PATH="yolov7.pt"
+    if [ ! -f "$MODEL_FILE" ]; then
+	wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/$MODEL_FILE
+    else
+        echo "$MODEL_FILE already exists, skipping download."
+    fi
     popd
 fi
 
@@ -82,5 +86,15 @@ if [ "$install_spark" = true ]; then
         echo "** sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward                 **"
         echo "**                                                                                                     **"
         echo "*********************************************************************************************************"
+    fi
+
+    mkdir -p $ADT4_WS/weights
+    cd $ADT4_WS/weights
+
+    MODEL_FILE="yolov8s-world.pt"
+    if [ ! -f "$MODEL_FILE" ]; then
+    	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODEL_FILE
+    else
+    	echo "$MODEL_FILE already exists, skipping download."
     fi
 fi

@@ -19,7 +19,7 @@
 
 Install dependencies:
 ```bash
-sudo apt install pipx python3-virtualenv python3-colcon-clean
+sudo apt install pipx python3-virtualenv python3-colcon-clean wget
 pipx install -f tmuxp
 pipx install -f pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
@@ -79,6 +79,15 @@ source ~/.zshrc
 ```
 
 Build:
+
+In the colcon workspace root directory, create a file called `colcon_defaults.yaml`
+with the following contents:
+```yaml
+build:
+    cmake-args:
+        - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+```
+Then, build the workspace as follows:
 ```bash
 # this next step is CRUCIAL to get colcon to behave properly
 pushd $ADT4_WS
@@ -86,6 +95,9 @@ pushd $ADT4_WS
 colcon build --continue-on-error
 popd
 ```
+If building the workspace is too memory intensive, set the `MAKEFLAGS` environment
+variable to restrict the number of parallel jobs and add the argument `--executor sequential`
+to the `colcon build` command.
 
 ### Environment Variable Summary
 
@@ -103,6 +115,7 @@ popd
 | ADT4\_SIM\_TIME                   | Use sim time? true/false              |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                        |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                      |
+| MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build   |
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
