@@ -3,9 +3,9 @@ launch:
   - arg: {name: conf_name}
   - arg: {name: sim_time}
   - arg: {name: robot_name}
-  - arg: {name: camera, default: none}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - let: {name: camera, value: $(var robot_name)_zed}
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
