@@ -82,7 +82,7 @@ Build:
 
 In the colcon workspace root directory, create a file called `colcon_defaults.yaml`
 with the following contents:
-```bash
+```yaml
 build:
     cmake-args:
         - -DCMAKE_BUILD_TYPE=RelWithDebInfo
