@@ -1,0 +1,13 @@
+---
+launch:
+  - arg: {name: camera_ns}
+  - node:
+      namespace: $(var camera_ns)
+      pkg: image_transport
+      exec: republish
+      param:
+        - {name: in_transport, value: compressed}
+        - {name: out_transport, value: raw}
+      remap:
+        - {from: in/compressed, to: color/image_raw/compressed}
+        - {from: out, to: color/image_raw}
