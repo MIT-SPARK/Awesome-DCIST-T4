@@ -1,5 +1,0 @@
----
-/**:
-  ros__parameters:
-    prior_session_maps: !replace [$(env ADT4_PRIOR_ROMAN_PATH)]
-    prior_session_ids: !replace [0]

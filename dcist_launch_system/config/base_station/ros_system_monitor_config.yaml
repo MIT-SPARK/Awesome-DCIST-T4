@@ -1,5 +1,0 @@
-nodes_to_track:
-  omniplanner: {}
-  nlu_rviz_panel: {}
-  dsg_saver: {}
-timer_period_s: 0.5
