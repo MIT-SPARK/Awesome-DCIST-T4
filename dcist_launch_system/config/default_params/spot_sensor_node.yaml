@@ -1,4 +1,3 @@
----
 /**:
   ros__parameters:
     cameras: [frontleft, frontright]

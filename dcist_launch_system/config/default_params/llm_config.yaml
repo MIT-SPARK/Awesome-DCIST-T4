@@ -1,4 +1,3 @@
----
 model: gpt-4o
 mode: default
 prompt: prompt_pddl_planner

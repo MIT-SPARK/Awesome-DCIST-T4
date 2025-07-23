@@ -1,7 +1,5 @@
----
 world_frame: map
 robots:
-  # NOTE(Yun): for now due to needing to call env variables, robot_id 0 corresponding to file input interface is defined in launch file
   - type: RosUnitInterface
     robot_id: 1
     robot_name: $<env ADT4_ROBOT_NAME>
@@ -27,7 +25,7 @@ backend:
     rot_sigma: 0.1
     trans_sigma: 10.0
   pgmo:
-    run_mode: FULL  # kimera_pgmo run mode FULL is required
+    run_mode: FULL
     embed_trajectory_delta_t: 5.0
     num_interp_pts: 3
     interp_horizon: 10.0

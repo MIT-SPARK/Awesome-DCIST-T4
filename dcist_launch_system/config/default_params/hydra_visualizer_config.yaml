@@ -1,7 +1,6 @@
----
 renderer:
-  layer_z_step: 5.5  # unit separation between layers
-  collapse_layers: false  # whether or not to apply offsets to each of the layers
+  layer_z_step: 5.5
+  collapse_layers: false
   layers:
     2:
       z_offset_scale: 2.0
@@ -43,7 +42,11 @@ renderer:
     20:
       z_offset_scale: 3.0
       visualize: true
-      nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
+      nodes:
+        scale: 0.2
+        color: {type: LabelColorAdapter}
+        alpha: 0.9
+        use_sphere: true
       boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
       text:
         draw: true
@@ -64,7 +67,13 @@ renderer:
     4:
       z_offset_scale: 4.2
       visualize: true
-      nodes: {scale: 0.6, color: {type: IdColorAdapter, colormap: {palette: colorbrewer}}, alpha: 0.8, use_sphere: false}
+      nodes:
+        scale: 0.6
+        color:
+          type: IdColorAdapter
+          colormap: {palette: colorbrewer}
+        alpha: 0.8
+        use_sphere: false
       text: {draw: true, height: 1.25, scale: 1.0}
       edges:
         scale: 0.1
@@ -79,13 +88,21 @@ renderer:
     2:
       z_offset_scale: 0.0
       visualize: true
-      nodes: {scale: 0.15, alpha: 0.9, use_sphere: false, color: {type: PartitionColorAdapter}}
+      nodes:
+        scale: 0.15
+        alpha: 0.9
+        use_sphere: false
+        color: {type: PartitionColorAdapter}
       edges: {scale: 0.05, alpha: 0.9, draw_interlayer: false}
       text: {draw_layer: true, height: 0.9, scale: 0.8}
     3:
       z_offset_scale: 3.0
       visualize: true
-      nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
+      nodes:
+        scale: 0.2
+        color: {type: LabelColorAdapter}
+        alpha: 0.9
+        use_sphere: true
       boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
       text:
         draw: true

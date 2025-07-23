@@ -1,4 +1,3 @@
----
 /**:
   ros__parameters:
     odom_frame: $(var robot_name)/odom
@@ -16,10 +15,7 @@
     fake_spot_yaw: 0.01
     follower_lookahead: 2.1
     goal_tolerance: 2.8
-        # semantic_model_path: "(find-pkg-share semantic_inference)/models/ade20k-efficientvit_seg_l2.onnx"
     semantic_model_path: path_to_semantic_model
-        # labelspace_path: "(find-pkg-share hydra)/config/label_spaces/ade20k_mit_label_space.yaml"
     labelspace_path: labelspace_path
-        # labelspace_grouping_path: "(find-pkg-share semantic_inference)/config/label_groupings/ade20k_mit.yaml"
     labelspace_grouping_path: grouping_path
     detector_model_path: $(env ADT4_WS)/weights/yolov8s-world.pt

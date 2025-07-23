@@ -1,4 +1,3 @@
----
 weights_path: $ADT4_WS/weights/FastSAM-x.pt
 yolo_weights_path: $ADT4_WS/weights/yolov7.pt
 imgsz: [256, 256]
