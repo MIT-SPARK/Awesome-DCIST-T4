@@ -272,7 +272,7 @@ we have override files that specify specific parameters that should be
 overridden for a given configuration. We use `config_utilities` to do this yaml templating.
 For example, consider `base_params/spot_executor_node.yaml`:
 
-```
+```yaml
 /**:
     ros__parameters:
         odom_frame: "map"
@@ -292,7 +292,7 @@ whether we are running from a bag that provides a pose for spot, or a
 we specify that for the `spot_prior_dsg` parameter setting, these two flags should be
 flipped:
 
-```
+```yaml
 ---
 /**:
     ros__parameters:
