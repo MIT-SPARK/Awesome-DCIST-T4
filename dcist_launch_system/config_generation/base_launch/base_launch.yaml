@@ -1,6 +1,7 @@
 ---
 nodes_to_monitor: {}  # this gets removed before finalizing a tmuxp file
-session_name: active_dsg
+session_name: adt4_system
+suppress_history: false
 environment: {sim_time: $ADT4_SIM_TIME}
 options:
   default-command: /bin/zsh

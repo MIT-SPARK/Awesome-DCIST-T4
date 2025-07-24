@@ -5,7 +5,8 @@ nodes_to_monitor:
   roman_map: {}
   roman_lc: {}
   spot_executor: {}
-session_name: active_dsg
+session_name: adt4_system
+suppress_history: false
 environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot_relocalize, logging_key: real_spot_relocalize-real_spot_relocalize}
 options:
   default-command: /bin/zsh

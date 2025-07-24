@@ -1,7 +1,8 @@
 nodes_to_monitor:
   omniplanner: {}
   nlu_rviz_panel: {}
-session_name: active_dsg
+session_name: adt4_system
+suppress_history: false
 environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {nlu_rviz_panel: {}, omniplanner: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: default_params, logging_key: base_station-default_params}
 options:
   default-command: /bin/zsh

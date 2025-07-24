@@ -6,7 +6,8 @@ nodes_to_monitor:
   roman_map: {}
   roman_lc: {}
   spot_executor: {}
-session_name: active_dsg
+session_name: adt4_system
+suppress_history: false
 environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag, logging_key: spot_bag-bag}
 options:
   default-command: /bin/zsh
