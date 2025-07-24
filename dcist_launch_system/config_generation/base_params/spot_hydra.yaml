@@ -1,12 +1,10 @@
 ---
 # general config
-map_frame: map
+robot_id: 0
+map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
-enable_zmq_interface: false
-publish_backend_tf: true
 map_window: {type: spatial, max_radius_m: 8.0}
-robot_id: 0
 # modules
 input:
   type: RosInput
@@ -39,6 +37,8 @@ frontend:
     place_overlap_threshold: 0.0
 backend:
   type: BackendModule
+  enable_zmq_interface: false
+  publish_backend_tf: true
   serialize_dsg_mesh: false
   min_dsg_separation_s: 1
   publish_mesh: true
