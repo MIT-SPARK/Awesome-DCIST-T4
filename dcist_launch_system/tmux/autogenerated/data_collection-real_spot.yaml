@@ -1,7 +1,7 @@
 nodes_to_monitor:
   spot_executor: {}
 session_name: active_dsg
-environment: {sim_time: $ADT4_SIM_TIME, logging_key: data_collection-real_spot, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot, ADT4_MONITOR_CONFIG: "'{spot_executor: {}}\n'"}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot, logging_key: data_collection-real_spot}
 options:
   default-command: /bin/zsh
 windows:
@@ -22,4 +22,4 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'

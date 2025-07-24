@@ -6,7 +6,7 @@ nodes_to_monitor:
   roman_lc: {}
   spot_executor: {}
 session_name: active_dsg
-environment: {sim_time: $ADT4_SIM_TIME, logging_key: real_spot_relocalize-real_spot_relocalize, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot_relocalize, ADT4_MONITOR_CONFIG: "'hydra_multi:\n  external_monitor: {type: JsonMonitor}\nfastsam: {}\nroman_map: {}\nroman_lc: {}\nspot_executor: {}\n'"}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot_relocalize, logging_key: real_spot_relocalize-real_spot_relocalize}
 options:
   default-command: /bin/zsh
 windows:
@@ -24,8 +24,7 @@ windows:
   - window_name: hydra_multi
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_multi:=true
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_multi:=true]
   - window_name: roman
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
@@ -46,4 +45,4 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
