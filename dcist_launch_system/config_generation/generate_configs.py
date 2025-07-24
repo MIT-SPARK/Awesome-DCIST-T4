@@ -17,6 +17,13 @@ yaml = ruamel.yaml.YAML()
 logger = logging.getLogger(__name__)
 
 
+def _dump_str(obj, dumper=None):
+    dumper = yaml if dumper is None else dumper
+    with io.StringIO() as buffer:
+        dumper.dump(obj, buffer)
+        return buffer.getvalue()
+
+
 def _show_paths(paths, **kwargs):
     return pprint.pformat([str(x) for x in paths], **kwargs)
 
@@ -263,7 +270,6 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
 
                 logging_key += f"-{s}"
 
-            cmd = [str(x) for x in cmd]
             extras = {
                 "environment": {
                     "logging_key": logging_key,
@@ -271,13 +277,24 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
                 }
             }
             extras["environment"].update(tmux)
-            extras_str = io.StringIO()
-            yaml.dump(extras, extras_str)
-            cmd += ["-c", extras_str.getvalue()]
-            extras_str.close()
 
+            cmd = [str(x) for x in cmd]
             base_launch_fn = tmux_output_dir / f"{logging_key}.yaml"
             log_debug(f"    Calling: {' '.join(cmd)} > {base_launch_fn}")
+
+            ret = subprocess.run(cmd, stdout=subprocess.PIPE)
+            if ret.returncode != 0:
+                log_error(f"Failed to composite tmux for {logging_key}!")
+                continue
+
+            contents = yaml.load(ret.stdout)
+            if "nodes_to_monitor" in contents:
+                dumper = ruamel.yaml.YAML(typ="full")
+                dumper.default_flow_style = True
+                monitor_str = _dump_str(contents["nodes_to_monitor"], dumper=dumper)
+                extras["environment"]["ADT4_MONITOR_CONFIG"] = f"'{monitor_str}'"
+
+            cmd += ["-c", _dump_str(extras)]
             with base_launch_fn.open("w") as fout:
                 subprocess.run(cmd, stdout=fout)
 

@@ -1,37 +1,43 @@
+nodes_to_monitor:
+  dsg_saver: {}
+  hydra:
+    external_monitor: {type: JsonMonitor}
+  fastsam: {}
+  roman_map: {}
+  roman_lc: {}
+  spot_executor: {}
 session_name: active_dsg
-environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag-bag, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag}
+environment: {sim_time: $ADT4_SIM_TIME, logging_key: spot_bag-bag, ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag, ADT4_MONITOR_CONFIG: "'{dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, roman_lc: {},\n  roman_map: {}, spot_executor: {}}\n'"}
 options:
   default-command: /bin/zsh
 windows:
+  - window_name: core
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run rmw_zenoh_cpp rmw_zenohd]
   - window_name: hydra
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra:=true robot_name:=$ADT4_ROBOT_NAME camera:=${ADT4_ROBOT_NAME}_zed
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra_visualizer:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_static_map_to_robot:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
   - window_name: roman
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config robot_name:=$ADT4_ROBOT_NAME camera:=${ADT4_ROBOT_NAME}_zed launch_fastsam:=true sim_time:=$sim_time
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config robot_name:=$ADT4_ROBOT_NAME camera:=${ADT4_ROBOT_NAME}_zed launch_roman_map:=true sim_time:=$sim_time
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_fastsam:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_map:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
   - window_name: bag_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_executor:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_state_publisher:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_spot_camera_decompression:=true robot_name:=$ADT4_ROBOT_NAME
-  - window_name: core
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes: [ros2 run rmw_zenoh_cpp rmw_zenohd]
-  - window_name: debug
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_executor:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_state_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_camera_decompression:=true
+  - window_name: status
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_rviz:=true robot_name:=$ADT4_ROBOT_NAME
       - ros2 run ros_system_monitor ros_system_monitor --param_file `ros2 pkg prefix dcist_launch_system`/share/dcist_launch_system/config/$config/ros_system_monitor_config.yaml --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'

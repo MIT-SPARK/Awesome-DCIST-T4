@@ -1,4 +1,5 @@
 ---
+nodes_to_monitor: {}  # this gets removed before finalizing a tmuxp file
 session_name: active_dsg
 environment: {sim_time: $ADT4_SIM_TIME}
 options:
