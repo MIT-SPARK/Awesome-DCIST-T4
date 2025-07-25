@@ -1,4 +1,3 @@
----
 /**:
   ros__parameters:
     submap_num_segments: 40
@@ -9,9 +8,9 @@
     ego_flu_ref_frame: $(var robot_name)/body
     ego_odom_frame: $(var robot_name)/odom
     team_ids: [0]
-    team_names: ['']
-    team_flu_ref_frames: ['']
-    team_odom_frames: ['']
-    prior_session_maps: ['']
+    team_names: [""]
+    team_flu_ref_frames: [""]
+    team_odom_frames: [""]
+    prior_session_maps: [""]
     prior_session_ids: [0]
     output_dir: ~/.roman

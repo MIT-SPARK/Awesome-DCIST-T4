@@ -1,0 +1,7 @@
+---
+windows:
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'

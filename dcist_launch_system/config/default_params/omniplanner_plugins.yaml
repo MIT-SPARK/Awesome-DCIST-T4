@@ -1,4 +1,3 @@
----
 robots:
   - robot_name: euclid
     robot_type: spot

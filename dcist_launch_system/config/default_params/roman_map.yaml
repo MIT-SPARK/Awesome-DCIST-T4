@@ -1,4 +1,3 @@
----
 /**:
   ros__parameters:
     base_link_frame_id: $(var robot_name)/body
@@ -8,4 +7,3 @@
     visualize: true
     viz_min_viz_dt: 0.25
     output_roman_map: ~/.roman/roman_map.pkl
-    # default T_camera_flu assumes camera frame is right-down-forward (rdf)

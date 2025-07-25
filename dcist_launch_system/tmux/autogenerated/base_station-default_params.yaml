@@ -1,11 +1,10 @@
 nodes_to_monitor:
   dsg_saver: {}
-  spot_executor: {}
   omniplanner: {}
   nlu_rviz_panel: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_panel: {}, omniplanner: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: spot_prior_dsg, logging_key: spot_prior_dsg-spot_prior_dsg}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_panel: {}, omniplanner: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: default_params, logging_key: base_station-default_params}
 options:
   default-command: /bin/zsh
 windows:
@@ -20,14 +19,6 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_scene_graph_publisher:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
-  - window_name: sim_spot
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_executor:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_state_publisher:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true launch_static_robot_map_to_odom:=true
-      - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
@@ -39,3 +30,7 @@ windows:
     layout: tiled
     panes:
       - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]

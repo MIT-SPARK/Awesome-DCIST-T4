@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import io
 import itertools
 import logging
 import pathlib
@@ -10,11 +9,13 @@ import shutil
 import subprocess
 import traceback
 
-import ruamel.yaml
-
-yaml = ruamel.yaml.YAML()
+import yaml
 
 logger = logging.getLogger(__name__)
+
+
+def _dump_str(obj):
+    return yaml.dump(obj, default_flow_style=False, width=800)
 
 
 def _show_paths(paths, **kwargs):
@@ -128,7 +129,7 @@ def get_experiment_manifest(root_path):
         return
 
     with manifest_path.open("r") as fo:
-        experiment_manifest = yaml.load(fo)
+        experiment_manifest = yaml.safe_load(fo)
 
     return experiment_manifest
 
@@ -233,6 +234,7 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
         )
         log_debug(f"Building launch config with windows: {launch_configs}")
 
+        # TODO(nathan) add --force-block-style when I update config_utilities
         cmd = ["composite-configs", "-d", "-f", base_launch_file]
         for lc in launch_configs:
             cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
@@ -263,7 +265,6 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
 
                 logging_key += f"-{s}"
 
-            cmd = [str(x) for x in cmd]
             extras = {
                 "environment": {
                     "logging_key": logging_key,
@@ -271,13 +272,26 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
                 }
             }
             extras["environment"].update(tmux)
-            extras_str = io.StringIO()
-            yaml.dump(extras, extras_str)
-            cmd += ["-c", extras_str.getvalue()]
-            extras_str.close()
 
+            cmd = [str(x) for x in cmd]
             base_launch_fn = tmux_output_dir / f"{logging_key}.yaml"
             log_debug(f"    Calling: {' '.join(cmd)} > {base_launch_fn}")
+
+            ret = subprocess.run(cmd, stdout=subprocess.PIPE)
+            if ret.returncode != 0:
+                log_error(f"Failed to composite tmux for {logging_key}!")
+                continue
+
+            contents = yaml.safe_load(ret.stdout)
+            if "nodes_to_monitor" in contents:
+                monitor_str = yaml.dump(
+                    {"nodes_to_track": contents["nodes_to_monitor"]},
+                    default_flow_style=True,
+                    width=800,
+                ).strip("\n")
+                extras["environment"]["ADT4_MONITOR_CONFIG"] = monitor_str
+
+            cmd += ["-c", _dump_str(extras)]
             with base_launch_fn.open("w") as fout:
                 subprocess.run(cmd, stdout=fout)
 

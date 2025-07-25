@@ -1,10 +1,13 @@
 ---
+nodes_to_monitor:
+  dsg_saver: {}
+  hydra: {external_monitor: {type: JsonMonitor}}
 windows:
   - window_name: hydra
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra:=true robot_name:=$ADT4_ROBOT_NAME camera:=${ADT4_ROBOT_NAME}_zed
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_hydra_visualizer:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_dsg_saver:=true robot_name:=$ADT4_ROBOT_NAME
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time launch_static_map_to_robot:=true robot_name:=$ADT4_ROBOT_NAME
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true

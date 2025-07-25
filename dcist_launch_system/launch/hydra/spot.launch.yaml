@@ -1,18 +1,15 @@
 ---
 launch:
-  - arg: {name: verbosity, default: '1'}
   - arg: {name: conf_name}
-  - arg: {name: use_sim_time}
-  - arg: {name: model_name, default: ade20k-efficientvit_seg_l2}
-  - arg: {name: labelspace_name, default: ade20k_mit, description: Label remapping configuration}
-  - arg: {name: disable_publish_dsg, default: 'false'}
   - arg: {name: camera, default: zed}
-
-  # Zed
+  # remaps
   - set_remap: {from: hydra/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
   - set_remap: {from: hydra/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
   - set_remap: {from: hydra/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
   - set_remap: {from: hydra/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
+  # camera semantics
+  - let: {name: labelspace_name, value: ade20k_mit}
+  - let: {name: model_name, value: ade20k-efficientvit_seg_l2}
   - node:
       pkg: semantic_inference_ros
       exec: closed_set_node
@@ -26,16 +23,13 @@ launch:
         --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
         --config-utilities-yaml {segmenter: {model: {model_file: $(var model_name).onnx}}}
         --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
-  - set_remap: {if: $(var disable_publish_dsg), from: hydra/backend/dsg, to: hydra/backend/remapped_dsg}
   # hydra
   - node:
       pkg: hydra_ros
       exec: hydra_ros_node
       name: hydra
-      param:
-        - {name: use_sim_time, value: $(var use_sim_time)}
       args: >-
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
-        --config-utilities-yaml {glog_level: 0, glog_verbosity: $(var verbosity)}
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
         --config-utilities-yaml {log_path: $(env HOME)/.hydra/adt4}

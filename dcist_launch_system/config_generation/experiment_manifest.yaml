@@ -1,73 +1,68 @@
 # Launch configs build the structure of the tmux launch files
 launch_configs:
 
-    hydra: []
-    sim_spot: []
-    bag_spot: []
-    planning: []
-    debug: []
     core: []
-    prior_dsg: []
-    spot_real: []
-    roman: []
-    hydra_multi: []
+    status: []
     multi_status: []
 
-    base:
-        - hydra
-        - roman
-        - sim_spot
-        - planning
-        - core
-        - debug
+    sim_spot: []
+    bag_spot: []
+    spot_real: []
+
+    planning: []
+
+    roman: []
+    hydra: []
+    prior_dsg: []
+    hydra_multi: []
 
     spot_bag:
+        - core
         - hydra
         - roman
         - bag_spot
-        - core
-        - debug
+        - status
 
     spot_prior_dsg:
+        - core
         - prior_dsg
         - sim_spot
         - planning
-        - core
-        - debug
+        - status
 
     real_spot:
+        - core
         - hydra
         - roman
         - spot_real
-        - core
-        - debug
+        - status
 
     real_spot_relocalize:
+        - core
         - prior_dsg
         - hydra_multi
         - roman
         - spot_real
-        - core
-        - debug
+        - status
 
     data_collection:
-        - spot_real
         - core
-        - debug
+        - spot_real
+        - status
 
     spot_bag_relocalize:
+        - core
         - prior_dsg
         - hydra_multi
         - roman
         - bag_spot
-        - core
-        - debug
+        - status
 
     base_station:
+        - core
         - prior_dsg
         - planning
-        - core
-        - debug
+        - status
         - multi_status
 
 
@@ -75,12 +70,13 @@ launch_configs:
 configs:
 
     default_params: []
+
     bag: []
     spot_prior_dsg: []
     real_spot: []
     relocalize: []
-    real_spot_relocalize: []
-    base_station: []
+
+    real_spot_relocalize: [real_spot, relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
@@ -108,7 +104,7 @@ experiments:
 
     base_station:
         launch_config: base_station
-        config: [base_station]
+        config: [default_params]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize

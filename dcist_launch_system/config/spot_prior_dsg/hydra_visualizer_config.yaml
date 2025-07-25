@@ -1,3 +1,9 @@
+visualizer_frame: map
+graph:
+  type: GraphFromRos
+plugins:
+  mesh:
+    use_color_adaptor: false
 renderer:
   layer_z_step: 5.5
   collapse_layers: false

@@ -3,9 +3,9 @@ launch:
   - arg: {name: conf_name}
   - arg: {name: sim_time}
   - arg: {name: robot_name}
-  - arg: {name: camera, default: none}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - let: {name: camera, value: $(var robot_name)_zed}
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
@@ -17,46 +17,47 @@ launch:
         - {name: camera_model, value: zed2i}
         - {name: camera_name, value: $(var camera)}
         - {name: publish_tf, value: 'false'}
-  
+
+  # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
-  - arg: {name: disable_hydra_publish_dsg, default: 'false'}
   - group:
-    - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
-    - include:
-        if: $(var launch_hydra)
-        file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
-        arg:
-          - {name: conf_name, value: $(var conf_name)}
-          - {name: use_sim_time, value: $(var sim_time)}
-          - {name: disable_publish_dsg, value: $(var disable_hydra_publish_dsg)}
-          - {name: camera, value: $(var camera)}
+      - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
+      - include:
+          if: $(var launch_hydra)
+          file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
+          arg:
+            - {name: conf_name, value: $(var conf_name)}
+            - {name: camera, value: $(var camera)}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
   - group:
       - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
-      - include:
+      - node:
           if: $(var launch_hydra_visualizer)
-          file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
-          arg:
-            - {name: use_sim_time, value: $(var sim_time)}
-            - {name: start_rviz, value: 'false'}
-            - {name: visualizer_frame, value: $(var robot_name)/map}
-            - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml}
+          pkg: hydra_visualizer
+          exec: hydra_visualizer_node
+          name: hydra_visualizer
+          args: >
+            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
+            --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
+            --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
+            --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
+
 
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
   - group:
-    - set_remap: {from: hydra_multi/status, to: ros_system_monitor/hydra_multi/status}
-    - include:
-        if: $(var launch_hydra_multi)
-        file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
-        arg:
-          - {name: conf_name, value: $(var conf_name)}
-          - {name: use_sim_time, value: $(var sim_time)}
+      - set_remap: {from: hydra_multi/status, to: ros_system_monitor/hydra_multi/status}
+      - include:
+          if: $(var launch_hydra_multi)
+          file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
+          arg:
+            - {name: conf_name, value: $(var conf_name)}
+            - {name: use_sim_time, value: $(var sim_time)}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
@@ -100,106 +101,85 @@ launch:
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
   - pyenv_node:
-      if: "$(var launch_spot_executor)"
+      if: $(var launch_spot_executor)
       pkg: spot_tools_ros
       exec: spot_executor_node
       name: spot_executor_node
       pyenv: $(var spark_env)
       param:
-          - {name: use_sim_time, value: $(var sim_time)}
-          - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_executor_node.yaml
-            allow_substs: true
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_executor_node.yaml, allow_substs: true}
       remap:
-          - from: ~/node_status
-            to: ros_system_monitor/node_diagnostic_collector
-          - from: ~/action_sequence_subscriber
-            to: omniplanner_node/compiled_plan_out
-          - from: ~/joint_states
-            to: joint_states
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+        - {from: ~/action_sequence_subscriber, to: omniplanner_node/compiled_plan_out}
+        - {from: ~/joint_states, to: joint_states}
 
   # Spot state publisher
   - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}
   - arg: {name: launch_spot_state_publisher, default: 'false'}
   - node:
-      if: "$(var launch_spot_state_publisher)"
+      if: $(var launch_spot_state_publisher)
       pkg: robot_state_publisher
       name: robot_state_publisher
       exec: robot_state_publisher
       param:
-          - {name: use_sim_time, value: $(var sim_time)}
-          - name: robot_description
-            value: $(command 'xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/ spot_color:=$(var robot_color)')
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {name: robot_description, value: $(command 'xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/ spot_color:=$(var robot_color)')}
       remap:
-          - from: /joint_states
-            to: joint_states
-  - node:
-      if: "$(var launch_spot_state_publisher)"
-      pkg: robot_state_publisher
-      name: cameras_state_publisher
-      exec: robot_state_publisher
-      param:
-          - {name: use_sim_time, value: $(var sim_time)}
-          - name: robot_description
-            value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/topaz.urdf.xacro tf_prefix:=$(var robot_name)')
+        - {from: /joint_states, to: joint_states}
+  - group:
+      - set_remap: {from: robot_description, to: camera_description}
+      - node:
+          if: $(var launch_spot_state_publisher)
+          pkg: robot_state_publisher
+          name: cameras_state_publisher
+          exec: robot_state_publisher
+          param:
+            - {name: use_sim_time, value: $(var sim_time)}
+            - {name: robot_description, value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/topaz.urdf.xacro tf_prefix:=$(var robot_name)')}
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
   - group:
-    - pyenv_node:
-        if: "$(var launch_spot_camera_driver)"
-        pkg: spot_tools_ros
-        exec: spot_sensor_node
-        name: spot_sensor_node
-        pyenv: $(var spark_env)
-        param:
+      - pyenv_node:
+          if: $(var launch_spot_camera_driver)
+          pkg: spot_tools_ros
+          exec: spot_sensor_node
+          name: spot_sensor_node
+          pyenv: $(var spark_env)
+          param:
             - {name: use_sim_time, value: $(var sim_time)}
-            - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml
-              allow_substs: true
+            - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml, allow_substs: true}
 
+  # Decompression for spot camera topics
   - arg: {name: launch_spot_camera_decompression, default: 'false'}
   - group:
-    - node:
-        if: "$(var launch_spot_camera_decompression)"
-        namespace: frontleft
-        pkg: image_transport
-        exec: republish
-        param:
-          - {name: in_transport, value: compressed}
-          - {name: out_transport, value: raw}
-        remap:
-          - {from: in/compressed, to: color/image_raw/compressed}
-          - {from: out, to: color/image_raw}
-    - node:
-        if: "$(var launch_spot_camera_decompression)"
-        namespace: frontright
-        pkg: image_transport
-        exec: republish
-        param:
-          - {name: in_transport, value: compressed}
-          - {name: out_transport, value: raw}
-        remap:
-          - {from: in/compressed, to: color/image_raw/compressed}
-          - {from: out, to: color/image_raw}
+      - include:
+          if: $(var launch_spot_camera_decompression)
+          file: $(find-pkg-share dcist_launch_system)/launch/utils/decompress_camera.launch.yaml
+          arg:
+            - {name: camera_ns, value: frontleft}
+      - include:
+          if: $(var launch_spot_camera_decompression)
+          file: $(find-pkg-share dcist_launch_system)/launch/utils/decompress_camera.launch.yaml
+          arg:
+            - {name: camera_ns, value: frontright}
 
   # Rviz
-  - arg: {name: 'launch_rviz', default: 'false'}
+  - arg: {name: launch_rviz, default: 'false'}
   - node:
-      if: "$(var launch_rviz)"
+      if: $(var launch_rviz)
       pkg: rviz2
-      exec: "rviz2"
-      name: "rviz2_node"
-      args: "-d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz"
+      exec: rviz2
+      name: rviz2_node
+      args: -d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz
       remap:
-        - from: ~/node_status
-          to: ros_system_monitor/node_diagnostic_collector
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
       param:
-          - {name: use_sim_time, value: $(var sim_time)}
-
+        - {name: use_sim_time, value: $(var sim_time)}
 
   # Omniplanner
-  - arg:
-      name: launch_omniplanner
-      default: "false"
+  - arg: {name: launch_omniplanner, default: 'false'}
   - pyenv_node:
       if: $(var launch_omniplanner)
       pkg: omniplanner_ros
@@ -208,20 +188,14 @@ launch:
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml
-          allow_substs: true
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml, allow_substs: true}
       remap:
-        - from: ~/node_status
-          to: ros_system_monitor/node_diagnostic_collector
-        - from: ~/dsg_in
-          to: hydra/backend/dsg
-        - from: ~/llm_response
-          to: rviz2_node/llm_response
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/llm_response, to: rviz2_node/llm_response}
 
   # Scene Graph Publisher
-  - arg:
-      name: launch_scene_graph_publisher
-      default: "false"
+  - arg: {name: launch_scene_graph_publisher, default: 'false'}
   - pyenv_node:
       if: $(var launch_scene_graph_publisher)
       pkg: dcist_launch_system
@@ -230,18 +204,12 @@ launch:
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml
-          allow_substs: true
-
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml, allow_substs: true}
       remap:
-        - from: ~/dsg_out
-          to: hydra/backend/dsg
-
+        - {from: ~/dsg_out, to: hydra/backend/dsg}
 
   # DSG Saver
-  - arg:
-      name: launch_dsg_saver
-      default: "false"
+  - arg: {name: launch_dsg_saver, default: 'false'}
   - pyenv_node:
       if: $(var launch_dsg_saver)
       pkg: dcist_launch_system
@@ -250,20 +218,26 @@ launch:
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml
-          allow_substs: true
-
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml, allow_substs: true}
       remap:
-        - from: ~/dsg_in
-          to: hydra/backend/dsg
-        - from: ~/node_status
-          to: ros_system_monitor/node_diagnostic_collector
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 
-  - arg:
-      name: launch_static_map_to_robot
-      default: "false"
+  # Static TF to replace Hydra multi map->robot/map TF.
+  # Non-identity transform for verification.
+  - arg: {name: launch_static_map_to_robot_map, default: 'false'}
   - node:
-      if: $(var launch_static_map_to_robot)
+      if: $(var launch_static_map_to_robot_map)
       pkg: tf2_ros
       exec: static_transform_publisher
       args: --frame-id map --child-frame-id $(var robot_name)/map --x 10 --y 20 --yaw 1.57
+
+
+  # Static TF to replace Hydra backend TF with non-identity transform for verification
+  # This node is used to replace the backend TF from hydra, when we are running planning offline.
+  - arg: {name: launch_static_robot_map_to_odom, default: 'false'}
+  - node:
+      if: $(var launch_static_robot_map_to_odom)
+      pkg: tf2_ros
+      exec: static_transform_publisher
+      args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
