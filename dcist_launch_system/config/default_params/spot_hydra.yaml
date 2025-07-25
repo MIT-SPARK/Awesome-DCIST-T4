@@ -1,11 +1,8 @@
----
-# general config
 robot_id: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
 map_window: {type: spatial, max_radius_m: 8.0}
-# modules
 input:
   type: RosInput
   inputs:
@@ -18,7 +15,8 @@ input:
         extrinsics: {type: ros}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
-  tsdf: {semantic_integrator: {type: MLESemanticIntegrator}}
+  tsdf:
+    semantic_integrator: {type: MLESemanticIntegrator}
 frontend:
   type: GraphBuilder
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
