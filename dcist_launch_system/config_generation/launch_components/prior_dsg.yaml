@@ -1,4 +1,6 @@
 ---
+nodes_to_monitor:
+  dsg_saver: {}
 windows:
   - window_name: prior_dsg
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
