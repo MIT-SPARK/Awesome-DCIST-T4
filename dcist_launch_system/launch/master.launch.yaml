@@ -44,7 +44,7 @@ launch:
           arg:
             - {name: use_sim_time, value: $(var sim_time)}
             - {name: start_rviz, value: 'false'}
-            - {name: visualizer_frame, value: map}
+            - {name: visualizer_frame, value: $(var robot_name)/map}
             - {name: visualizer_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml}
 
   # Hydra-Multi
@@ -266,4 +266,4 @@ launch:
       if: $(var launch_static_map_to_robot)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id $(var robot_name)/odom --x 10 --y 20 --yaw 1.57 
+      args: --frame-id map --child-frame-id $(var robot_name)/map --x 10 --y 20 --yaw 1.57

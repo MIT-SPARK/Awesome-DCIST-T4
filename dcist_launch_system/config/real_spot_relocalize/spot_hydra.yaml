@@ -1,10 +1,8 @@
+robot_id: 1
 map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
-enable_zmq_interface: false
-publish_backend_tf: false
 map_window: {type: spatial, max_radius_m: 8.0}
-robot_id: 1
 input:
   type: RosInput
   inputs:
@@ -37,6 +35,8 @@ frontend:
     place_overlap_threshold: 0.0
 backend:
   type: BackendModule
+  enable_zmq_interface: false
+  publish_backend_tf: false
   serialize_dsg_mesh: false
   min_dsg_separation_s: 1
   publish_mesh: true
