@@ -1,4 +1,5 @@
 robot_id: 1
+config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
@@ -16,11 +17,16 @@ input:
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
   tsdf:
-    semantic_integrator: {type: MLESemanticIntegrator}
+    semantic_integrator: {type: SingleLabelIntegrator}
 frontend:
   type: GraphBuilder
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
-  objects: {min_cluster_size: 40, cluster_tolerance: 0.25, bounding_box_type: RAABB}
+  objects: {min_cluster_size: 25, cluster_tolerance: 0.25, bounding_box_type: AABB}
+  graph_connector:
+    layers:
+      parent_layer: MESH_PLACES
+      child_layers:
+        - {layer: OBJECTS}
   surface_places:
     type: place_2d
     prefix: P

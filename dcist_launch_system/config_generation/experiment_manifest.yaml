@@ -4,6 +4,7 @@ launch_configs:
     core: []
     status: []
     multi_status: []
+    rviz: []
 
     sim_spot: []
     bag_spot: []
@@ -22,6 +23,7 @@ launch_configs:
         - roman
         - bag_spot
         - status
+        - rviz
 
     spot_prior_dsg:
         - core
