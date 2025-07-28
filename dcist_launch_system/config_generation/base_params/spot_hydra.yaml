@@ -19,9 +19,8 @@ input:
         max_range: 5.0
         extrinsics: {type: ros}
 active_window:
-  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3}
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
-  # tsdf: {semantic_integrator: {type: SingleLabelIntegrator}}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   object_detector:
     type: ConnectedSemantics
@@ -56,9 +55,9 @@ frontend:
   type: GraphBuilder
   enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
-  # objects: {min_cluster_size: 25, cluster_tolerance: 0.25, bounding_box_type: AABB}
   graph_connector:
-    layers: [{parent_layer: MESH_PLACES, child_layers: [{layer: OBJECTS}]}]
+    layers:
+      - {parent_layer: MESH_PLACES, child_layers: [layer: OBJECTS]}
   surface_places:
     type: place_2d
     prefix: P
