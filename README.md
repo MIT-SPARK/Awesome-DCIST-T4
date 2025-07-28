@@ -101,21 +101,23 @@ to the `colcon build` command.
 
 ### Environment Variable Summary
 
-| Environment Variable Name         | Description                           |
-|-----------------------------------|---------------------------------------|
-| ADT4\_WS                          | Colcon workspace root                 |
-| ADT4\_ENV                         | Directory of Python venvs             |
-| ADT4\_OUTPUT\_DIR                 | Output directory (logs, data, etc)    |
-| ADT4\_BOSDYN\_USERNAME            | Spot username                         |
-| ADT4\_BOSDYN\_PASSWORD            | Spot password                         |
-| ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)  |
-| ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning        |
-| ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")              |
-| ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package |
-| ADT4\_SIM\_TIME                   | Use sim time? true/false              |
-| ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                        |
-| ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                      |
-| MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build   |
+| Environment Variable Name         | Description                                                       |
+|-----------------------------------|-------------------------------------------------------------------|
+| ADT4\_WS                          | Colcon workspace root                                             |
+| ADT4\_ENV                         | Directory of Python venvs                                         |
+| ADT4\_OUTPUT\_DIR                 | Output directory (logs, data, etc)                                |
+| ADT4\_BOSDYN\_USERNAME            | Spot username                                                     |
+| ADT4\_BOSDYN\_PASSWORD            | Spot password                                                     |
+| ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)                              |
+| ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning                                    |
+| ADT4\_PRIOR\_DGRF\_PATH           | Prior deformation graph for multi-robot scene graph optimization  |
+| ADT4\_PRIOR\_ROMAN\_PATH          | Prior ROMAN map for relocalization                                |
+| ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")                                          |
+| ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package                             |
+| ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
+| ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
+| ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
+| MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
