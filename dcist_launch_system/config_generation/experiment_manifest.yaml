@@ -59,6 +59,7 @@ launch_configs:
         - roman
         - bag_spot
         - status
+        - rviz
 
     base_station:
         - core
