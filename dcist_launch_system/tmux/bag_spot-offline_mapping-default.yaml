@@ -1,0 +1,49 @@
+session_name: adt4_system
+suppress_history: false
+environment:
+  ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
+  ADT4_LAUNCH_SIM_TIME: $ADT4_SIM_TIME
+  ADT4_LAUNCH_CONFIG: default
+  ADT4_LAUNCH_ROBOT_MODEL: bag_spot
+  ADT4_LAUNCH_LOGGING_KEY: bag_spot-offline_mapping-default
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_panel: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}"
+options:
+  default-command: /bin/zsh
+windows:
+  - window_name: core
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run rmw_zenoh_cpp rmw_zenohd
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+  - window_name: hydra
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml launch_hydra:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_hydra_visualizer:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_dsg_saver:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_static_map_to_robot_map:=true
+  - window_name: roman
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml launch_fastsam:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_roman_map:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_roman_lc:=true
+  - window_name: rviz
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml launch_rviz:=true
+  - window_name: bag_spot
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml launch_spot_executor:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_spot_state_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml launch_spot_camera_decompression:=true

@@ -1,21 +1,33 @@
-# Launch configs build the structure of the tmux launch files
-launch_configs:
-
+# Launch components build the structure of the tmux launch files
+launch_modes:
+    ########################
+    # debugging components #
+    ########################
     core: []
     status: []
     multi_status: []
     rviz: []
-
-    sim_spot: []
-    bag_spot: []
-    spot_real: []
-
+    ############################
+    # system module components #
+    ############################
     planning: []
-
     roman: []
     hydra: []
     prior_dsg: []
     hydra_multi: []
+    ####################
+    # component groups #
+    ####################
+    base: [core, status]
+    mapping: [base, hydra, roman]
+    relocalize: [base, prior_dsg, hydra_multi, roman]
+    base_station: [base, prior_dsg, planning, multi_status]
+    ##################################
+    # debugging or development modes #
+    ##################################
+    offline_mapping: [mapping, rviz]
+    offline_relocalize: [relocalize, rviz]
+    offline_planning: [base, prior_dsg, planning]
 
     transform_publishers: []
 
@@ -75,45 +87,29 @@ launch_configs:
         - transform_publishers
 
 
-# Configs build the set of rosparams that will be loaded
+# Configs build the set of rosparams that will be loaded (`base_params` will be rendered to `default`)
 configs:
-
-    default_params: []
-
-    bag: []
-    spot_prior_dsg: []
-    real_spot: []
+    prior_dsg: []
     relocalize: []
 
-    real_spot_relocalize: [real_spot, relocalize]
-
-# Experiments define which sets of parameters will be used with which sets of
-# launch files
+# Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
-
-    spot_bag:
-        launch_config: spot_bag
-        config: [bag]
-
-    spot_prior_dsg:
-        launch_config: spot_prior_dsg
-        config: [spot_prior_dsg]
-
-    real_spot:
-        launch_config: real_spot
-        config: [real_spot]
-
+    offline_mapping:
+        launch_mode: offline_mapping
+        robot_models: [bag_spot]
+        config: [default]
     data_collection:
-        launch_config: data_collection
-        config: [real_spot]
-
-    spot_bag_relocalize:
-        launch_config: spot_bag_relocalize
+        launch_mode: base
+        robot_models: [spot]
+        config: [default]
+    relocalize:
+        launch_mode: relocalize
+        robot_models: [spot]
         config: [relocalize]
-
     base_station:
-        launch_config: base_station
-        config: [default_params]
+        launch_mode: base_station
+        robot_models: []
+        config: [default]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize

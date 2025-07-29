@@ -1,8 +1,12 @@
 ---
 launch:
-  - arg: {name: conf_name}
-  - arg: {name: sim_time}
-  - arg: {name: robot_name}
+  # robot name (name of computer)
+  - let: {name: robot_name, value: $(env ADT4_ROBOT_NAME)}
+  # "args" for the launch file given by minimal set of environment variables
+  - let: {name: sim_time, value: $(env ADT4_LAUNCH_SIM_TIME)}
+  - let: {name: conf_name, value: $(env ADT4_LAUNCH_CONFIG)}
+  - let: {name: robot_model, value: $(env ADT4_LAUNCH_ROBOT_MODEL)}
+  # python environment configuration
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - let: {name: camera, value: $(var robot_name)_zed}
@@ -13,14 +17,20 @@ launch:
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
-  - include:
-      if: $(var launch_zed)
-      file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
-      arg:
-        - {name: namespace, value: $(var robot_name)}
-        - {name: camera_model, value: zed2i}
-        - {name: camera_name, value: $(var camera)}
-        - {name: publish_tf, value: 'false'}
+  - group:
+    # Intentionally remaps important zed topics to look like the spot cameras
+    - set_remap: {from: $(var robot_name)_zed/rgb/camera_info, to: $(var robot_name)/frontleft/color/camera_info}
+    - set_remap: {from: $(var robot_name)_zed/rgb/image_rect_color, to: $(var robot_name)/frontleft/color/image_raw}
+    - set_remap: {from: $(var robot_name)_zed/depth/camera_info, to: $(var robot_name)/frontleft/depth/camera_info}
+    - set_remap: {from: $(var robot_name)_zed/depth/depth_registered, to: $(var robot_name)/frontleft/depth/image_rect}
+    - include:
+        if: $(var launch_zed)
+        file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
+        arg:
+          - {name: namespace, value: $(var robot_name)}
+          - {name: camera_model, value: zed2i}
+          - {name: camera_name, value: $(var robot_name)_zed}
+          - {name: publish_tf, value: 'false'}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
@@ -104,10 +114,11 @@ launch:
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
   - group:
-      - set_remap: {from: color/camera_info, to: $(var camera)/rgb/camera_info}
-      - set_remap: {from: color/image_raw, to: $(var camera)/rgb/image_rect_color}
+      - let: {name: camera, value: frontleft}
+      - set_remap: {from: color/camera_info, to: $(var camera)/color/camera_info}
+      - set_remap: {from: color/image_raw, to: $(var camera)/color/image_raw}
       - set_remap: {from: depth/camera_info, to: $(var camera)/depth/camera_info}
-      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/depth_registered}
+      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/image_rect}
       - set_remap: {from: tf, to: /tf}
       - set_remap: {from: tf_static, to: /tf_static}
       - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}

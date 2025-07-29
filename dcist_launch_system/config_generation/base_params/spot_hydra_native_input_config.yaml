@@ -1,0 +1,18 @@
+---
+input:
+  type: RosInput
+  inputs:
+    frontleft:
+      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
+      sensor:
+        type: camera_info
+        min_range: 0.4
+        max_range: 5.0
+        extrinsics: {type: ros}
+    frontright:
+      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
+      sensor:
+        type: camera_info
+        min_range: 0.4
+        max_range: 5.0
+        extrinsics: {type: ros}

@@ -3,6 +3,7 @@
 
 install_roman=true
 install_spark=true
+install_config=true
 
 while :; do
     echo $1
@@ -15,8 +16,12 @@ while :; do
             install_spark=false
             shift
             ;;
+        --no-config)
+            install_config=false
+            shift
+            ;;
         -h|-?|--help)
-            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark]"
+            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark] [--no-config]"
             exit
             ;;
         *)
@@ -115,4 +120,14 @@ if [ "$install_spark" = true ]; then
     # clean up environment after install
     deactivate
     popd
+fi
+
+
+##################################
+# Install Config
+##################################
+if [ "$install_config" = true ]; then
+    python3 -m venv $ADT4_ENV/config_env --clear
+    source $ADT4_ENV/config_env/bin/activate
+    pip install -r $ADT4_WS/src/awesome_dcist_t4/install/config_requirements.txt
 fi
