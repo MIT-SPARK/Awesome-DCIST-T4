@@ -1,4 +1,3 @@
----
 robots:
   - robot_name: euclid
     robot_type: spot
@@ -20,7 +19,7 @@ planners:
     plugin:
       type: LanguagePlanner
       domain_type: Pddl
-      pddl_domain_name: GotoObjectDomain
+      pddl_domain_name: RegionObjectRearrangementDomain
       llm_config: ${ADT4_DLS_PKG}/config/${config}/llm_config.yaml
   tsp_planner:
     plugin:
