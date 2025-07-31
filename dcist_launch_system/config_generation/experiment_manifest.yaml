@@ -41,7 +41,6 @@ launch_configs:
 
     real_spot_relocalize:
         - core
-        - prior_dsg
         - hydra_multi
         - roman
         - spot_real
@@ -54,7 +53,6 @@ launch_configs:
 
     spot_bag_relocalize:
         - core
-        - prior_dsg
         - hydra_multi
         - roman
         - bag_spot

@@ -1,5 +1,4 @@
 nodes_to_monitor:
-  dsg_saver: {}
   hydra_multi:
     external_monitor: {type: JsonMonitor}
   fastsam: {}
@@ -9,7 +8,7 @@ nodes_to_monitor:
   nlu_rviz_panel: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, nlu_rviz_panel: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: relocalize, logging_key: spot_bag_relocalize-relocalize}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, nlu_rviz_panel: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: relocalize, logging_key: spot_bag_relocalize-relocalize}
 options:
   default-command: /bin/zsh
 windows:
@@ -17,17 +16,12 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes: [ros2 run rmw_zenoh_cpp rmw_zenohd]
-  - window_name: prior_dsg
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_scene_graph_publisher:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
   - window_name: hydra_multi
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_multi:=true]
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_multi:=true
   - window_name: roman
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

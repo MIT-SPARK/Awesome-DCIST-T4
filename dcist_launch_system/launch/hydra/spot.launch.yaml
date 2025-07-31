@@ -2,6 +2,7 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: camera, default: zed}
+  - arg: {name: output_dir}
   # remaps
   - set_remap: {from: hydra/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
   - set_remap: {from: hydra/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
@@ -32,4 +33,4 @@ launch:
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
         --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
-        --config-utilities-yaml {log_path: $(env HOME)/.hydra/adt4}
+        --config-utilities-yaml {log_path: $(var output_dir)/hydra}
