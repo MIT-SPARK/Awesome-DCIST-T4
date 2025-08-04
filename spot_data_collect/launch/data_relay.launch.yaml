@@ -1,0 +1,13 @@
+---
+launch:
+  - node:
+    package: spot_data_collect
+    executable: data_relay
+    name: data_relay
+    output: screen
+    parameters:
+      topics_to_relay:
+        - input_topic: /tf
+          output_topic: /downsampled/tf
+          msg_type: tf2_msgs/msg/TFMessage
+          publish_rate: 5.0
