@@ -2,6 +2,7 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: pyenv_path}
+  - arg: {name: output_dir}
   - pyenv_node:
       pkg: roman_ros2
       exec: roman_map_node.py

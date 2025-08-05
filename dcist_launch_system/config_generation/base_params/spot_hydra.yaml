@@ -6,7 +6,7 @@ config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
-map_window: {type: spatial, max_radius_m: 8.0}
+map_window: {type: spatial, max_radius_m: 14.0}
 # modules
 input:
   type: RosInput
@@ -15,19 +15,19 @@ input:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
-        min_range: 0.4
-        max_range: 5.0
+        min_range: 0.2
+        max_range: 10.0
         extrinsics: {type: ros}
 active_window:
-  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: true}
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   object_detector:
     type: ConnectedSemantics
-    min_cluster_size: 50
+    min_cluster_size: 20
     use_full_connectivity: true
     use_3d: true
-    grid_size: 0.1
+    grid_size: 0.2
     max_range: 4.5
   tracker:
     type: MaxIouTracker
@@ -36,13 +36,13 @@ active_window:
     min_cross_iou: 0.1
     voxel_size: 0.2
     temporal_window: 3.0
-    min_num_observations: 15
+    min_num_observations: 10
   object_extractor:
     type: MeshObjectExtractor
     verbosity: 0
     min_object_allocation_confidence: 0.5
     min_object_volume: 0.005  # m^3
-    max_object_volume: 10.0  # m^3
+    max_object_volume: 100.0  # m^3
     min_dynamic_displacement: 1  # m
     only_extract_reconstructed_objects: true
     min_object_reconstruction_confidence: 0.5
