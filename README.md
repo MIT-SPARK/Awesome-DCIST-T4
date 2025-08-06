@@ -40,8 +40,9 @@ echo export ADT4_WS=`pwd` >> ~/.zshrc
 # Feel free to change the environment directory path
 echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 
-# Feel free to change the output directory (saved scene graphs, logs, etc)
-echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
+# This is where ADT4 output logs are generated and stored
+# For now, you will want to change this environment variable each time you run
+echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output/init) >> ~/.zshrc
 
 # Source to update changes
 source ~/.zshrc
@@ -109,9 +110,7 @@ to the `colcon build` command.
 | ADT4\_BOSDYN\_USERNAME            | Spot username                                                     |
 | ADT4\_BOSDYN\_PASSWORD            | Spot password                                                     |
 | ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)                              |
-| ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning                                    |
-| ADT4\_PRIOR\_DGRF\_PATH           | Prior deformation graph for multi-robot scene graph optimization  |
-| ADT4\_PRIOR\_ROMAN\_PATH          | Prior ROMAN map for relocalization                                |
+| ADT4\_PRIOR\_MAP                  | Path to ADT4 output logging directory that includes stored map    |
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")                                          |
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package                             |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
@@ -193,8 +192,13 @@ ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-profile-overrides-pa
 ### Prior Scene Graph and Movable Spot
 
 Alternatively, you can drive spot around (and plan in?) a prior scene graph.
-First you need to set the path to the prior scene graph in the environment
-variable `ADT4_PRIOR_DSG_PATH` to the absolute path to your prior graph.
+
+First, a quick discussion on logging.
+During each session, a directory is created from the path set in `$ADT4_OUTPUT_DIR`.
+Hydra scene graphs and ROMAN maps are stored in this directory (see [below](#saving-a-map))
+Before using a prior scene graph, you need to set the `ADT4_PRIOR_MAP` environment variable to
+the absolute path of the adt4 output directory used when creating the original scene graph
+(if you `ls $ADT4_PRIOR_MAP` you should see `hydra` and `roman` subdirectories).
 
 Then run
 ```
@@ -406,6 +410,18 @@ Then, start the `Zenoh router` after setting the `ZENOH_ROUTER_CONFIG_URI` envir
 echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5 >> ~/.zshrc
 ```
 For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/).
+
+### Saving a Map
+
+A current session's map will be saved to the `$ADT4_OUTPUT_DIR` directory when you either:
+
+* Press enter in the bottom pane in the `core` tmux window.
+This will automatically cause ROMAN and Hydra to log their outputs.
+* Or Ctrl-C once the ROMAN mapping node (top right pane in the `roman` tmux window) and call the service: `ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty`
+
+After doing one of these two options, the following paths should exist:
+* `$ADT4_OUTPUT_DIR/roman/roman_map.pkl`
+* `$ADT4_OUTPUT_DIR/hydra`
 
 ## Sponsors
 
