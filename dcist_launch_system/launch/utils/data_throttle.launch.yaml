@@ -1,0 +1,10 @@
+---
+launch:
+  - node:
+      pkg: topic_tools
+      exec: throttle
+      name: throttle_tf
+      param:
+        - {name: type, value: messages}
+        - {name: topic, value: /tf}
+        - {name: publish_rate, value: 2}

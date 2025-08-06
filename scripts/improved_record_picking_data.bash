@@ -7,23 +7,43 @@ fi
 
 FOLDER_NAME="$1"
 SAVE_DIR="/home/swarm/data/spot_manipulation_data/$FOLDER_NAME"
+CSV_FILE="$SAVE_DIR/trial_summary.csv"
 
 # Create the target folder
 mkdir -p "$SAVE_DIR"
 
-# When the user CTRL-C's, it prompts the user to write metadata about the trial.
+# Function to handle CTRL-C
 function on_interrupt {
     echo ""
-    echo "Bagging interrupted. Please enter a summary of the trial. Start your string with 0 for unsuccessful and 1 for successful:"
-    read -rp "Trial Summary: " summary
-    echo "$summary" > "$SAVE_DIR/trial_summary.txt"
-    echo "Summary saved to $SAVE_DIR/trial_summary.txt"
+    echo "Bagging interrupted."
+
+    read -rp "Would you like to save the trial? (Type 'no' to discard): " save_response
+    save_response_lower=$(echo "$save_response" | tr '[:upper:]' '[:lower:]')
+    if [[ "$save_response_lower" == "n" || "$save_response_lower" == "no" ]]; then
+        echo "Trial will not be saved. Deleting folder..."
+        rm -rf "$SAVE_DIR"
+        echo "Folder deleted. Exiting."
+        exit 0
+    fi
+
+    # Collect metadata
+    read -rp "How many times did the robot reject the grasp (fail to find a solution)? " reject
+    read -rp "How many times did the robot detect the object but miss? " miss
+    read -rp "How many times did the robot succeed to pick up the object? " success
+    read -rp "Please add any additional information about the trial: " summary
+
+    # Save to CSV
+    echo "Reject, Miss, Success, Summary" > "$CSV_FILE"
+    echo "$reject, $miss, $success, \"$summary\"" >> "$CSV_FILE"
+
+    echo "Summary saved to $CSV_FILE"
     exit 0
 }
 
+# Trap CTRL-C
 trap on_interrupt SIGINT
 
-
+# Start bagging
 ros2 bag record -o "$SAVE_DIR/bag" \
      /tf \
      /tf_static \

@@ -1,0 +1,7 @@
+---
+/**:
+  ros__parameters:
+    cameras: [hand]
+    camera_poll_period_s: 0.5
+    hand.color_suffix: color_image
+    hand.depth_suffix: depth

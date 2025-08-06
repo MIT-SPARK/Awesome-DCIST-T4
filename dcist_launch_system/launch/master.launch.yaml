@@ -17,6 +17,7 @@ launch:
         - {name: camera_model, value: zed2i}
         - {name: camera_name, value: $(var camera)}
         - {name: publish_tf, value: 'false'}
+        - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
@@ -165,6 +166,12 @@ launch:
           arg:
             - {name: camera_ns, value: frontright}
 
+  # Data throttling 
+  - arg: {name: launch_data_throttling, default: 'false'}
+  - include: 
+      if: $(var launch_data_throttling)
+      file: $(find-pkg-share dcist_launch_system)/launch/utils/data_throttle.launch.yaml
+
   # Rviz
   - arg: {name: launch_rviz, default: 'false'}
   - node:
@@ -230,7 +237,7 @@ launch:
       if: $(var launch_static_map_to_robot_map)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id map --child-frame-id $(var robot_name)/map --x 10 --y 20 --yaw 1.57
+      args: --frame-id map --child-frame-id $(var robot_name)/map --x 0 --y 0 --yaw 0
 
 
   # Static TF to replace Hydra backend TF with non-identity transform for verification

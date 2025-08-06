@@ -8,3 +8,4 @@
       ip: $(env ADT4_BOSDYN_IP)
       username: $(env ADT4_BOSDYN_USERNAME)
       password: $(env ADT4_BOSDYN_PASSWORD)
+    camera_poll_period_s: 0.05

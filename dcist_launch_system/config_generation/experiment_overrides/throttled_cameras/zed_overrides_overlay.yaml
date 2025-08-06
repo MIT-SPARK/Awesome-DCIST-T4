@@ -1,0 +1,5 @@
+---
+/**:
+  ros__parameters:
+    general:
+      pub_frame_rate: 2.
