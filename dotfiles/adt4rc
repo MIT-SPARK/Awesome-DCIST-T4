@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # adt4 aliases
 alias adt4_gen_config="$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/generate_configs.sh"
 
@@ -8,3 +10,17 @@ alias gpl="git pull"
 
 # other aliases
 alias sz="source ~/.zshrc"
+
+# Setup pyshortcuts
+
+if [ -n "$BASH_VERSION" ]; then
+    export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+elif [ -n "$ZSH_VERSION" ]; then
+    export SCRIPT_DIR="${0:A:h}"
+fi
+
+PYSHORTCUTS_PATH="$SCRIPT_DIR/pyshortcuts.py"
+for command in `cat $PYSHORTCUTS_PATH | grep def | sed 's/def //' | sed 's/(.*)://'` #.*):/() {/' 
+do
+    alias $command="python3 $PYSHORTCUTS_PATH --$command"
+done
