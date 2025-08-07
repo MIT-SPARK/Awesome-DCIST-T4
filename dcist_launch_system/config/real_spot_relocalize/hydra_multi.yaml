@@ -5,10 +5,10 @@ robots:
     robot_name: $<env ADT4_ROBOT_NAME>
     robot_frame: $<env ADT4_ROBOT_NAME>/odom
     inputs:
-      dgraph:
-        type: RosDGraphInput
       dsg:
         type: RosDsgInput
+      dgraph:
+        type: RosDGraphInput
 backend:
   type: MultiBackendModule
   add_places_to_deformation_graph: false
