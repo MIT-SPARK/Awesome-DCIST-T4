@@ -417,7 +417,7 @@ A current session's map will be saved to the `$ADT4_OUTPUT_DIR` directory when y
 
 * Press enter in the bottom pane in the `core` tmux window.
 This will automatically cause ROMAN and Hydra to log their outputs.
-* Or Ctrl-C once the ROMAN mapping node (top right pane in the `roman` tmux window) and call the service: `ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty`
+* Or use `Ctrl-c` on the ROMAN mapping node (top right pane in the `roman` tmux window) and call the service: `ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty` to have Hydra shutdown
 
 After doing one of these two options, the following paths should exist:
 * `$ADT4_OUTPUT_DIR/roman/roman_map.pkl`
