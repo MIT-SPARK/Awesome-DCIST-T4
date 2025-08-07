@@ -6,4 +6,4 @@
     robot_id: 0
     visualize: true
     viz_min_viz_dt: 0.25
-    output_roman_map: $(var output_dir)/roman_map.pkl
+    output_roman_map: $(var output_dir)/roman/roman_map.pkl

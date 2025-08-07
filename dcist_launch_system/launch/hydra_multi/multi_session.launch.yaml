@@ -20,10 +20,10 @@ launch:
               robot_id: 0,
               inputs: {
                 dgraph: {
-                  type: FileDGraphInput, dgrf_path: $(env ADT4_PRIOR_DGRF_PATH), include_priors: true
+                  type: FileDGraphInput, dgrf_path: $(env ADT4_PRIOR_MAP)/hydra/backend/deformation_graph.dgrf, include_priors: true
                 },
                 dsg: {
-                  type: FileDsgInput, dsg_json: $(env ADT4_PRIOR_DSG_PATH)
+                  type: FileDsgInput, dsg_json: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg_with_mesh.json
                 }
               }
             }
