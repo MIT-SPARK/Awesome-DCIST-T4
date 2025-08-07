@@ -1,6 +1,6 @@
 ---
 # general config
-paths: [khronos]
+paths: [khronos, khronos_ros]
 robot_id: 0
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
@@ -47,13 +47,16 @@ active_window:
     only_extract_reconstructed_objects: true
     min_object_reconstruction_confidence: 0.5
     min_object_reconstruction_observations: 10
-    object_reconstruction_resolution: -0.02  # Positive: voxel size in meters.
+    object_reconstruction_resolution: -0.05  # Positive: voxel size in meters.
     visualizer_classification: false
     projective_integrator:
       num_threads: 8
+  khronos_sinks:
+    - type: ActiveWindowVisualizer
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
+  clear_object_meshes: true
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:
     layers:
