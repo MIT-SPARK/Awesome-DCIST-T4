@@ -1,8 +1,8 @@
 ---
 /**:
   ros__parameters:
-    base_link_frame_id: $(var robot_name)/body
-    map_frame_id: $(var robot_name)/odom
+    odom_frame_id: $(var robot_name)/odom
+    base_flu_frame_id: $(var robot_name)/body
     use_multiple_cams: false
     robot_id: 0
     visualize: true

@@ -52,7 +52,7 @@ if [ "$install_roman" = true ]; then
 
     # Pip installs
     cd $ADT4_WS/src/awesome_dcist_t4/roman
-    pip install . --no-deps
+    pip install -e . --no-deps
     pip install -r $ADT4_WS/src/awesome_dcist_t4/install/roman_requirements.txt
 
     # Download FastSAM weights

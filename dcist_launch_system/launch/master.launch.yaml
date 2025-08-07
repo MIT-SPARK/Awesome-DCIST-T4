@@ -101,6 +101,7 @@ launch:
             - {name: conf_name, value: $(var conf_name)}
             - {name: pyenv_path, value: $(var roman_env)}
             - {name: output_dir, value: $(var output_dir)}
+            - {name: use_sim_time, value: $(var sim_time)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}

@@ -1,5 +1,5 @@
 ---
 /**:
   ros__parameters:
-    map_frame_id: $(var robot_name)/odom
-    odom_base_frame_id: $(var robot_name)/body
+    odom_frame_id: $(var robot_name)/odom
+    base_flu_frame_id: $(var robot_name)/body
