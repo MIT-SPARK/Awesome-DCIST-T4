@@ -20,7 +20,7 @@ elif [ -n "$ZSH_VERSION" ]; then
 fi
 
 PYSHORTCUTS_PATH="$SCRIPT_DIR/pyshortcuts.py"
-for command in `cat $PYSHORTCUTS_PATH | grep def | sed 's/def //' | sed 's/(.*)://'` #.*):/() {/' 
+for command in `cat $PYSHORTCUTS_PATH | grep def | sed 's/def //' | sed 's/(.*)://'` #.*):/() {/'
 do
     alias $command="python3 $PYSHORTCUTS_PATH --$command"
 done
