@@ -27,6 +27,7 @@ active_window:
     min_cluster_size: 20
     use_full_connectivity: true
     use_3d: true
+    max_range: 10.0
     grid_size: 0.2
   tracker:
     type: MaxIouTracker
