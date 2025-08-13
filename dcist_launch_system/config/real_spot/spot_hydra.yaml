@@ -25,8 +25,8 @@ active_window:
     min_cluster_size: 20
     use_full_connectivity: true
     use_3d: true
+    max_range: 10.0
     grid_size: 0.2
-    max_range: 4.5
   tracker:
     type: MaxIouTracker
     track_by: voxels
@@ -61,6 +61,11 @@ frontend:
       - parent_layer: MESH_PLACES
         child_layers:
           - {layer: OBJECTS}
+  graph_updater:
+    layer_updates:
+      OBJECTS:
+        prefix: O
+        matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
   surface_places:
     type: place_2d
     prefix: P

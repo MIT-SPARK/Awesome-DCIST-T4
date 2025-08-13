@@ -100,6 +100,20 @@ If building the workspace is too memory intensive, set the `MAKEFLAGS` environme
 variable to restrict the number of parallel jobs and add the argument `--executor sequential`
 to the `colcon build` command.
 
+## Python environments
+
+Different nodes can use different python environments; we have two (`roman` and `spark_env`) currently.
+You should periodically rerun the python setup script to make sure everything is installed and up to date!
+
+> :danger: **Important** </br>
+> The `spark_dsg` package needs to build python bindings every time it is updated. This means that you need to manually pip install `spark_dsg`!
+> You can do this without running the full python setup script by running
+>    ```
+>    source $ADT4_ENV/spark_env/bin/activate
+>    pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+>    ```
+
+
 ### Environment Variable Summary
 
 | Environment Variable Name         | Description                                                       |
@@ -140,28 +154,6 @@ to *something* in order to launch the system properly.
 | russell       | Aaron's laptop        | 10.29.129.166   |
 | bonsai        | RRG dev computer      | ???.???.??.???  |
 | willow        | RRG base station      | 10.29.170.228   |
-
-
-## Python environments
-
-For the time being, we are assuming different modules can run with different
-python environments, although in the coming months we may want to use a single
-python environment.  These environments should be created in the directory
-`$ADT4_ENV` by the `install/python_setup.sh` script.
-
-To run different modules with different environments, it is important that the
-ROS packages are built **without** `--symlink-install`.
-
-### !!! Important !!!
-Finally, the `spark_dsg` package needs to build python bindings every time it
-is updated. This means that you need to manually pip install `spark_dsg`!
-Please run
-```
-source $ADT4_ENV/spark_env/bin/activate
-pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
-```
-now and any time `spark_dsg` updates.
-
 
 ## Example System Configurations
 
