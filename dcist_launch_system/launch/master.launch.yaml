@@ -7,6 +7,8 @@ launch:
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
+  - let: {name: semantic_inference_labelspace_name, value: ade20k_mit}
+  - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
@@ -22,17 +24,42 @@ launch:
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
 
+  # Efficient-ViT
+  - arg: {name: launch_semantic_inference, default: 'false'}
+  - group:
+    - node:
+        if: $(var launch_semantic_inference)
+        pkg: semantic_inference_ros
+        exec: closed_set_node
+        namespace: $(var camera)
+        name: segmentation
+        remap:
+          - {from: color/image_raw, to: rgb/image_rect_color}
+        args: >
+          --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
+          --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
+          --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
+          --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
+          --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
+
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
   - group:
+      - set_remap: {from: hydra/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
+      - set_remap: {from: hydra/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
+      - set_remap: {from: hydra/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
+      - set_remap: {from: hydra/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
       - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
-      - include:
+      - node:
           if: $(var launch_hydra)
-          file: $(find-pkg-share dcist_launch_system)/launch/hydra/spot.launch.yaml
-          arg:
-            - {name: conf_name, value: $(var conf_name)}
-            - {name: camera, value: $(var camera)}
-            - {name: output_dir, value: $(var output_dir)}
+          pkg: hydra_ros
+          exec: hydra_ros_node
+          name: hydra
+          args: >-
+            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
+            --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
+            --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+            --config-utilities-yaml {log_path: $(var output_dir)/hydra, use_timestamp: false, overwrite: true}
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
