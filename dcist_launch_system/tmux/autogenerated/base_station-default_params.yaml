@@ -4,7 +4,7 @@ nodes_to_monitor:
   nlu_rviz_panel: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_panel: {}, omniplanner: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: default_params, logging_key: base_station-default_params}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_panel: {}, omniplanner: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: default_params, logging_key: base_station-default_params}
 options:
   default-command: /bin/zsh
 windows:

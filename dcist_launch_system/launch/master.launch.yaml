@@ -88,13 +88,14 @@ launch:
       exec: hydra_multi_ros_node
       name: hydra_multi
       param:
-        - {name: use_sim_time, value: $(var use_sim_time)}
+        - {name: use_sim_time, value: $(var sim_time)}
       remap:
         - {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
         - {from: ~/status, to: ros_system_monitor/hydra_multi/status}
       args: >
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+        --config-utilities-yaml {log_path: $(var output_dir)/hydra_multi, output: {use_timestamp: false, overwrite: true}}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
