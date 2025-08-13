@@ -47,17 +47,17 @@ if [ "$install_roman" = true ]; then
     # Build CLIPPER
     git submodule update --init --recursive
     mkdir -p dependencies/clipper/build
-    cd dependencies/clipper/build
+    pushd dependencies/clipper/build
     cmake .. && make && make pip-install
+    popd
 
     # Pip installs
-    cd $ADT4_WS/src/awesome_dcist_t4/roman
     pip install -e . --no-deps
     pip install -r $ADT4_WS/src/awesome_dcist_t4/install/roman_requirements.txt
 
     # Download FastSAM weights
     mkdir -p $ADT4_WS/weights
-    cd $ADT4_WS/weights
+    pushd $ADT4_WS/weights
     gdown 'https://drive.google.com/uc?id=1m1sjY4ihXBU1fZXdQ-Xdj-mDltW-2Rqv'
     MODEL_FILE="yolov7.pt"
     if [ ! -f "$MODEL_FILE" ]; then
@@ -66,16 +66,29 @@ if [ "$install_roman" = true ]; then
         echo "$MODEL_FILE already exists, skipping download."
     fi
     popd
+
+    # clean up environment after install
+    deactivate
+    popd
 fi
 
 ##################################
 # Install Spark
 ##################################
 if [ "$install_spark" = true ]; then
+    # make new environment
     python3 -m venv $ADT4_ENV/spark_env --system-site-packages
     source $ADT4_ENV/spark_env/bin/activate
-    pip install -r $ADT4_WS/src/awesome_dcist_t4/install/spark_requirements.txt
 
+    # move to the ADT4 repo and make sure the state is sane
+    pushd $ADT4_WS/src/awesome_dcist_t4
+    git submodule update --init
+
+    # install packages and spark_dsg
+    pip install -r install/spark_requirements.txt
+    pip install ./spark_dsg "numpy<2"
+
+    # install fast-downward
     if [ ! -d $ADT4_WS/src/fast_downward ]; then
         git clone https://github.com/aibasel/downward.git $ADT4_WS/src/fast_downward
         touch $ADT4_WS/src/fast_downward/COLCON_IGNORE
@@ -88,13 +101,18 @@ if [ "$install_spark" = true ]; then
         echo "*********************************************************************************************************"
     fi
 
+    # download weights
     mkdir -p $ADT4_WS/weights
-    cd $ADT4_WS/weights
-
+    pushd $ADT4_WS/weights
     MODEL_FILE="yolov8s-world.pt"
     if [ ! -f "$MODEL_FILE" ]; then
     	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODEL_FILE
     else
     	echo "$MODEL_FILE already exists, skipping download."
     fi
+    popd
+
+    # clean up environment after install
+    deactivate
+    popd
 fi
