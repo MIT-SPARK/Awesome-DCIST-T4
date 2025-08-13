@@ -82,14 +82,19 @@ launch:
 
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
-  - group:
-      - set_remap: {from: hydra_multi/status, to: ros_system_monitor/hydra_multi/status}
-      - include:
-          if: $(var launch_hydra_multi)
-          file: $(find-pkg-share dcist_launch_system)/launch/hydra_multi/multi_session.launch.yaml
-          arg:
-            - {name: conf_name, value: $(var conf_name)}
-            - {name: use_sim_time, value: $(var sim_time)}
+  - node:
+      if: $(var launch_hydra_multi)
+      pkg: hydra_multi_ros
+      exec: hydra_multi_ros_node
+      name: hydra_multi
+      param:
+        - {name: use_sim_time, value: $(var use_sim_time)}
+      remap:
+        - {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
+        - {from: ~/status, to: ros_system_monitor/hydra_multi/status}
+      args: >
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
