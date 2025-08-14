@@ -2,6 +2,17 @@
 world_frame: map
 robots:
   # NOTE(Yun): for now due to needing to call env variables, robot_id 0 corresponding to file input interface is defined in launch file
+  - type: UnitInterface
+    robot_id: 0
+    robot_name: prior_map
+    inputs:
+      dsg:
+        type: FileDsgInput
+        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+      dgraph:
+        type: FileDGraphInput
+        dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
+        include_priors: true
   - type: RosUnitInterface
     robot_id: 1
     robot_name: $<env ADT4_ROBOT_NAME>
