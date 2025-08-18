@@ -35,11 +35,11 @@ mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 
 Set up your environment variables (make sure you are in your workspace):
 ```bash
-echo export ADT4_WS=`pwd` >> ~/.zshrc
+echo export ADT4_WS=$(pwd) >> ~/.zshrc
 echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
 echo export ADT4_ENV=${HOME}/environments/dcist >> ~/.zshrc
 echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init >> ~/.zshrc
-echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
+echo export ADT4_ROBOT_NAME=spot >> ~/.zshrc
 
 # Source to update changes
 source ~/.zshrc
@@ -47,10 +47,10 @@ source ~/.zshrc
 
 You also will want to set up any secrets you have (**do not commit anywhere**):
 ```bash
-echo export ADT4_BOSDYN_USERNAME="user" >> ~/.zshrc
-echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
-echo export ADT4_OPENAI_API_KEY={your api key} >> ~/.zshrc
-echo export ADT4_DEEPGRAM_API_KEY="a" >> ~/.zshrc
+echo export ADT4_BOSDYN_USERNAME=user >> ~/.zshrc
+echo export ADT4_BOSDYN_PASSWORD=pass >> ~/.zshrc
+echo export ADT4_OPENAI_API_KEY=key >> ~/.zshrc
+echo export ADT4_DEEPGRAM_API_KEY=key >> ~/.zshrc
 ```
 
 Set up the ROS workspace and dependencies:
