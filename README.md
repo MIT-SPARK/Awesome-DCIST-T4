@@ -33,7 +33,7 @@ Make your workspace (feel free to choose a different path):
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
 ```
 
-Set up your environment variables (make sure you are in your workspace):
+Set up your environment variables (make sure you are in your workspace this):
 ```bash
 echo export ADT4_WS=$(pwd) >> ~/.zshrc
 echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
@@ -65,8 +65,8 @@ echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebI
 
 Set up the Python environments and packages:
 ```bash
-source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash
-sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
+sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
 ```
 
 You probably want to use Zenoh (see bottom of README for details):
@@ -77,7 +77,7 @@ source ~/.zshrc
 
 Then, build the workspace as follows:
 ```bash
-pushd $ADT4_WS  # this is CRUCIAL to get colcon to behave properly
+pushd ${ADT4_WS}  # this is CRUCIAL to get colcon to behave properly
 colcon build --continue-on-error
 popd
 ```
@@ -94,9 +94,9 @@ You should periodically rerun the python setup script to make sure everything is
 > :bangbang: **Important** </br>
 > The `spark_dsg` package needs to build python bindings every time it is updated. This means that you need to manually pip install `spark_dsg`!
 > You can do this without running the full python setup script by running
->    ```
->    source $ADT4_ENV/spark_env/bin/activate
->    pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+>    ```bash
+>    source ${ADT4_ENV}/spark_env/bin/activate
+>    pip install ${ADT4_WS}/src/awesome_dcist_t4/spark_dsg
 >    ```
 
 
