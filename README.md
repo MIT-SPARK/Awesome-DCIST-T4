@@ -37,8 +37,8 @@ Set up your environment variables (make sure you are in your workspace):
 ```bash
 echo export ADT4_WS=`pwd` >> ~/.zshrc
 echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
-echo export ADT4_ENV=${HOME}/environments/dcist) >> ~/.zshrc
-echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init) >> ~/.zshrc
+echo export ADT4_ENV=${HOME}/environments/dcist >> ~/.zshrc
+echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init >> ~/.zshrc
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
 # Source to update changes
