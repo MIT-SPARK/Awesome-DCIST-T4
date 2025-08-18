@@ -28,13 +28,17 @@ echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
 *(Required to run hydra online but not required for running from a bag with semantic inference data)*
 
-Set up your environment variables:
+Make your workspace (feel free to choose a different path):
 ```bash
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
+```
+
+Set up your environment variables (make sure you are in your workspace):
+```bash
 echo export ADT4_WS=`pwd` >> ~/.zshrc
-echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
 echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
-echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output/init) >> ~/.zshrc
+echo export ADT4_ENV=${HOME}/environments/dcist) >> ~/.zshrc
+echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init) >> ~/.zshrc
 echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
 
 # Source to update changes
