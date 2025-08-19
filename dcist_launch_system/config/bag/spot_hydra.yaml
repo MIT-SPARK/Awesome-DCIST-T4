@@ -3,7 +3,7 @@ robot_id: 0
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/body
+robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
 input:
   type: RosInput

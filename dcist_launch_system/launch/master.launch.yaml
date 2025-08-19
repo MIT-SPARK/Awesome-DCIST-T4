@@ -55,6 +55,7 @@ launch:
           pkg: hydra_ros
           exec: hydra_ros_node
           name: hydra
+          #launch-prefix: 'gdbserver localhost:3000'
           param:
             - {name: use_sim_time, value: $(var sim_time)}
           args: >-
