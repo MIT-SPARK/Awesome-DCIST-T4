@@ -51,7 +51,7 @@ class PriorDsgPublisher(Node):
 
     def publish_dsg(self):
         self.dsg_sender.publish(self.G)
-        self.get_logger().info("Published map")
+        self.get_logger().info("Published map", frame_id="map")
 
 
 def main(args=None):
