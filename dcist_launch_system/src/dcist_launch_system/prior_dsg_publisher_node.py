@@ -50,7 +50,7 @@ class PriorDsgPublisher(Node):
         self.timer = self.create_timer(timer_period_s, self.publish_dsg)
 
     def publish_dsg(self):
-        self.dsg_sender.publish(self.G)
+        self.dsg_sender.publish(self.G, frame_id="map")
         self.get_logger().info("Published map")
 
 

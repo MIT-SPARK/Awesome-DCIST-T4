@@ -7,18 +7,19 @@ nodes_to_monitor:
   spot_executor: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot_relocalize, logging_key: real_spot_relocalize-real_spot_relocalize}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra_multi: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot_relocalize, logging_key: real_spot_relocalize-real_spot_relocalize}
 options:
   default-command: /bin/zsh
 windows:
   - window_name: core
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 run rmw_zenoh_cpp rmw_zenohd]
+    panes: [ros2 run rmw_zenoh_cpp rmw_zenohd, "ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty && tmux send-keys -t roman.1 C-c \\"]
   - window_name: hydra_multi
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_semantic_inference:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_multi:=true
   - window_name: roman

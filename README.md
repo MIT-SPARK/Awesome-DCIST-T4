@@ -28,76 +28,82 @@ echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
 *(Required to run hydra online but not required for running from a bag with semantic inference data)*
 
-Set up the workspace:
+Make your workspace (feel free to choose a different path):
 ```bash
-# Feel free to change the workspace
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
-git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
-vcs import src < src/awesome_dcist_t4/install/packages.yaml
-rosdep install --from-paths src --ignore-src -r -y # Make sure you have sourced ROS!!!
-echo export ADT4_WS=`pwd` >> ~/.zshrc
+```
 
-# Feel free to change the environment directory path
-echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
-
-# Feel free to change the output directory (saved scene graphs, logs, etc)
-echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output) >> ~/.zshrc
+Set up your environment variables (make sure you are in your workspace this):
+```bash
+echo export ADT4_WS=$(pwd) >> ~/.zshrc
+echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
+echo export ADT4_ENV=${HOME}/environments/dcist >> ~/.zshrc
 
 # Source to update changes
 source ~/.zshrc
+```
 
-# This will create all necessary python environments to run DCIST code
-source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash
+You may want to leave these unspecified on development machines:
+```bash
+echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init >> ~/.zshrc
+echo export ADT4_ROBOT_NAME=spot >> ~/.zshrc
+```
 
-# The previous command will build fast-downward, but you need to install it:
-sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+You also will want to set up any secrets you have (**do not commit anywhere**):
+```bash
+echo export ADT4_BOSDYN_USERNAME=user >> ~/.zshrc
+echo export ADT4_BOSDYN_PASSWORD=pass >> ~/.zshrc
+echo export ADT4_BOSDYN_IP="192.168.80.3" >> ~/.zshrc
+echo export ADT4_OPENAI_API_KEY=key >> ~/.zshrc
+echo export ADT4_DEEPGRAM_API_KEY=key >> ~/.zshrc
+```
 
-# You also need to set the spot username/password. These cannot be empty, but
-# you can use dummy place-holders if you are simulating spot. Feel free to set
-# these to something other than `user` and `pass`.
+Set up the ROS workspace and dependencies:
+```bash
+# Set up the ROS packages
+cd ${ADT4_WS}
+git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
+vcs import src < src/awesome_dcist_t4/install/packages.yaml
+rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
+echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebInfo]}' > colcon_defaults.yaml
+```
 
-echo export ADT4_BOSDYN_USERNAME="user" >> ~/.zshrc
-echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
+Set up the Python environments and packages:
+```bash
+bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
+sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+```
 
-# You also need to set the robot name. Example:
-echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
-
-# You should set the following for convenience. Example:
-echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
-
-# Note that if you want to use an LLM, you need to provide an API key. This should never be committed to a repo.
-# We load API keys from environment variables. Below is an example of setting our expected environment variable (you can change this in the configs).
-echo export ADT4_OPENAI_API_KEY={your api key} >> ~/.zshrc
-echo export ADT4_DEEPGRAM_API_KEY="a" >> ~/.zshrc
-
-# If you want to use Zenoh, you need to run:
+You probably want to use Zenoh (see bottom of README for details):
+```bash
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
-# See the bottom of this README for details on setting up multi-host zenoh
-
-# Source to update all changes
 source ~/.zshrc
 ```
 
-Build:
-
-In the colcon workspace root directory, create a file called `colcon_defaults.yaml`
-with the following contents:
-```yaml
-build:
-    cmake-args:
-        - -DCMAKE_BUILD_TYPE=RelWithDebInfo
-```
 Then, build the workspace as follows:
 ```bash
-# this next step is CRUCIAL to get colcon to behave properly
-pushd $ADT4_WS
-# this will error most likely but it's fine...
+pushd ${ADT4_WS}  # this is CRUCIAL to get colcon to behave properly
 colcon build --continue-on-error
 popd
 ```
+
 If building the workspace is too memory intensive, set the `MAKEFLAGS` environment
 variable to restrict the number of parallel jobs and add the argument `--executor sequential`
 to the `colcon build` command.
+
+## Python environments
+
+Different nodes can use different python environments; we have two (`roman` and `spark_env`) currently.
+You should periodically rerun the python setup script to make sure everything is installed and up to date!
+
+> :bangbang: **Important** </br>
+> The `spark_dsg` package needs to build python bindings every time it is updated. This means that you need to manually pip install `spark_dsg`!
+> You can do this without running the full python setup script by running
+>    ```bash
+>    source ${ADT4_ENV}/spark_env/bin/activate
+>    pip install ${ADT4_WS}/src/awesome_dcist_t4/spark_dsg
+>    ```
+
 
 ### Environment Variable Summary
 
@@ -109,9 +115,7 @@ to the `colcon build` command.
 | ADT4\_BOSDYN\_USERNAME            | Spot username                                                     |
 | ADT4\_BOSDYN\_PASSWORD            | Spot password                                                     |
 | ADT4\_BOSDYN\_IP                  | Spot IP (e.g, 192.168.80.3 for wifi)                              |
-| ADT4\_PRIOR\_DSG\_PATH            | Prior scene graph for planning                                    |
-| ADT4\_PRIOR\_DGRF\_PATH           | Prior deformation graph for multi-robot scene graph optimization  |
-| ADT4\_PRIOR\_ROMAN\_PATH          | Prior ROMAN map for relocalization                                |
+| ADT4\_PRIOR\_MAP                  | Path to ADT4 output logging directory that includes stored map    |
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")                                          |
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package                             |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
@@ -142,28 +146,6 @@ to *something* in order to launch the system properly.
 | bonsai        | RRG dev computer      | ???.???.??.???  |
 | willow        | RRG base station      | 10.29.170.228   |
 
-
-## Python environments
-
-For the time being, we are assuming different modules can run with different
-python environments, although in the coming months we may want to use a single
-python environment.  These environments should be created in the directory
-`$ADT4_ENV` by the `install/python_setup.sh` script.
-
-To run different modules with different environments, it is important that the
-ROS packages are built **without** `--symlink-install`.
-
-### !!! Important !!!
-Finally, the `spark_dsg` package needs to build python bindings every time it
-is updated. This means that you need to manually pip install `spark_dsg`!
-Please run
-```
-source $ADT4_ENV/spark_env/bin/activate
-pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
-```
-now and any time `spark_dsg` updates.
-
-
 ## Example System Configurations
 
 ### Hydra with Bag
@@ -184,17 +166,23 @@ Then run
 ADT4_SIM_TIME=true tmuxp load dcist_launch_system/tmux/autogenerated/spot_bag-bag.yaml
 ```
 
-In a separate window, run the bag
+In a separate window, source the workspace and then run the bag
 
 ```
-ros2 bag play /path/to/spot_hydra_twocam_test --clock --qos-profile-overrides-path ~/.tf_overrides.yaml
+source /path/to/workspace/install/setup.zsh # if not source already
+ros2 run ianvs play_rosbag /path/to/spot_hydra_twocam_test --clock
 ```
 
 ### Prior Scene Graph and Movable Spot
 
 Alternatively, you can drive spot around (and plan in?) a prior scene graph.
-First you need to set the path to the prior scene graph in the environment
-variable `ADT4_PRIOR_DSG_PATH` to the absolute path to your prior graph.
+
+First, a quick discussion on logging.
+During each session, a directory is created from the path set in `$ADT4_OUTPUT_DIR`.
+Hydra scene graphs and ROMAN maps are stored in this directory (see [below](#saving-a-map))
+Before using a prior scene graph, you need to set the `ADT4_PRIOR_MAP` environment variable to
+the absolute path of the adt4 output directory used when creating the original scene graph
+(if you `ls $ADT4_PRIOR_MAP` you should see `hydra` and `roman` subdirectories).
 
 Then run
 ```
@@ -406,6 +394,18 @@ Then, start the `Zenoh router` after setting the `ZENOH_ROUTER_CONFIG_URI` envir
 echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5 >> ~/.zshrc
 ```
 For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/).
+
+### Saving a Map
+
+A current session's map will be saved to the `$ADT4_OUTPUT_DIR` directory when you either:
+
+* Press enter in the bottom pane in the `core` tmux window.
+This will automatically cause ROMAN and Hydra to log their outputs.
+* Or use `Ctrl-c` on the ROMAN mapping node (top right pane in the `roman` tmux window) and call the service: `ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty` to have Hydra shutdown
+
+After doing one of these two options, the following paths should exist:
+* `$ADT4_OUTPUT_DIR/roman/roman_map.pkl`
+* `$ADT4_OUTPUT_DIR/hydra`
 
 ## Sponsors
 
