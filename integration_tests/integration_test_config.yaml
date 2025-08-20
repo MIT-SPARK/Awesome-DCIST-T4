@@ -1,0 +1,80 @@
+# Integration Test Configuration for Prior DSG System
+# This file configures timeouts, expected components, and validation criteria
+
+system:
+  startup_timeout: 45  # seconds to wait for system startup
+  test_timeout: 10     # default timeout for individual tests
+  robot_name: "${ADT4_ROBOT_NAME}"  # Will be replaced with env var
+
+validation:
+  required_environment_variables:
+    - ADT4_WS
+    - ADT4_ENV  
+    - ADT4_OUTPUT_DIR
+    - ADT4_ROBOT_NAME
+    - ADT4_BOSDYN_USERNAME
+    - ADT4_BOSDYN_PASSWORD
+    - ADT4_PRIOR_DSG_PATH
+
+  expected_nodes:
+    # These are the key nodes that should be running
+    - dsg_saver
+    - spot_executor  
+    - omniplanner
+    - nlu_rviz_panel
+    - ros_system_monitor
+
+  expected_topics:
+    # Critical topics that must exist for system functionality
+    - "/{robot_name}/spot_executor_node/cmd_vel"
+    - "/{robot_name}/dsg_saver/save_dsg" 
+    - "/{robot_name}/omniplanner_node/language_planner/language_goal"
+    - "/{robot_name}/omniplanner_node/goto_points/goto_points_goal"
+    - "/global/ros_system_monitor/table_in"
+    - "/tf"
+    - "/tf_static"
+
+  expected_services:
+    # Key services that should be available
+    - "/{robot_name}/dsg_saver/save_dsg"
+    - "/{robot_name}/omniplanner_node/language_planner/language_goal"
+
+  expected_tf_frames:
+    # TF frames that should exist in the transform tree
+    - map
+    - body  
+    - odom
+    - base_link
+
+  data_flow_topics:
+    # Topics we should verify are actually publishing data
+    - "/global/ros_system_monitor/table_in"
+    - "/tf"
+
+test_scenarios:
+  basic_connectivity:
+    enabled: true
+    description: "Test that all components launch and can communicate"
+    
+  planning_pipeline:
+    enabled: true
+    description: "Test that planning system can receive and process goals"
+    test_goals:
+      - robot_id: "${robot_name}"
+        point_names_to_visit: ["R(70)"]
+      - robot_id: "${robot_name}" 
+        point_names_to_visit: ["R(69)", "R(83)"]
+  
+  system_health:
+    enabled: true
+    description: "Test system monitoring and health reporting"
+    
+  scene_graph:
+    enabled: true
+    description: "Test scene graph loading and publishing"
+
+reporting:
+  output_format: "json"  # json, yaml, or console
+  output_file: "${ADT4_OUTPUT_DIR}/integration_test_results.json"
+  include_details: true
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
