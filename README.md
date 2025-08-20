@@ -85,6 +85,7 @@ In the colcon workspace root directory, create a file called `colcon_defaults.ya
 with the following contents:
 ```yaml
 build:
+    symlink-install: true
     cmake-args:
         - -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
