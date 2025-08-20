@@ -172,7 +172,7 @@ Loading /home/nathan/dcist_ws/src/awesome_dcist_t4/dcist_launch_system/tmux/auto
 ┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ ADT4_ROBOT_NAME      │               hamilton │
 │ ADT4_OUTPUT_DIR      │ /home/nathan/test_adt4 │
-│ ADT4_PRIOR_MAP       │                   None │
+│ ADT4_PRIOR_MAP       │                    --- │
 │ ADT4_SIM_TIME        │                  false │
 └──────────────────────┴────────────────────────┘
 Are the settings correct? [y/N]:

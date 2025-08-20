@@ -54,7 +54,12 @@ def main(
     # NOTE(nathan) this only triggers when someone wants to be prompted for a prior map
     # and doesn't want to add it via command line.
     if prior_map == "???":
-        prior_map = pathlib.Path(input("prior map? ")).expanduser().absolute()
+        prior_map = input("prior map? ")
+        if not prior_map:
+            click.secho("No prior map entered! Continuing...", fg="yellow")
+
+    if prior_map:
+        prior_map = pathlib.Path(prior_map).expanduser().absolute()
         if not prior_map.exists():
             click.secho(f"Invalid prior map: '{prior_map}'!", fg="red")
             return 1
@@ -93,7 +98,8 @@ def main(
     env["ADT4_ROBOT_NAME"] = robot_name
     env["ADT4_SIM_TIME"] = "true" if sim_time else "false"
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
-    env["ADT4_PRIOR_MAP"] = str(prior_map)
+    if prior_map:
+        env["ADT4_PRIOR_MAP"] = str(prior_map)
 
     table = Table(title="Environment Variables")
     table.add_column("Environment Variable", justify="left", style="cyan")
