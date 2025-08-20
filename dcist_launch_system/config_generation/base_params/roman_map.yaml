@@ -1,11 +1,11 @@
 ---
 /**:
   ros__parameters:
-    base_link_frame_id: $(var robot_name)/body
-    map_frame_id: $(var robot_name)/odom
+    odom_frame_id: $(var robot_name)/odom
+    base_flu_frame_id: $(var robot_name)/body
     use_multiple_cams: false
     robot_id: 0
     visualize: true
     viz_min_viz_dt: 0.25
-    output_roman_map: $(var output_dir)/roman_map.pkl
+    output_roman_map: $(var output_dir)/roman/roman_map.pkl
     # default T_camera_flu assumes camera frame is right-down-forward (rdf)

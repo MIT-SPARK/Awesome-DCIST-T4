@@ -16,3 +16,4 @@ fastsam @ git+https://github.com/CASIA-IVA-Lab/FastSAM@4d153e9
 robotdatapy>=1.0.1
 transforms3d
 gdown
+transformers

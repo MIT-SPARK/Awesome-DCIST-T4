@@ -3,6 +3,7 @@ launch:
   - arg: {name: conf_name}
   - arg: {name: pyenv_path}
   - arg: {name: output_dir}
+  - arg: {name: use_sim_time}
   - pyenv_node:
       pkg: roman_ros2
       exec: roman_loop_closure_node.py
@@ -21,3 +22,4 @@ launch:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc_node.yaml
           allow_substs: true
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc.yaml}
+        - {name: use_sim_time, value: $(var use_sim_time)}
