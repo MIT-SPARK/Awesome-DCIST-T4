@@ -8,7 +8,7 @@ nodes_to_monitor:
   spot_executor: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot, logging_key: real_spot-real_spot}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_spot, logging_key: real_spot-real_spot}
 options:
   default-command: /bin/zsh
 windows:

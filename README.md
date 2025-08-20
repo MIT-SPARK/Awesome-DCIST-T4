@@ -28,75 +28,65 @@ echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
 *(Required to run hydra online but not required for running from a bag with semantic inference data)*
 
-Set up the workspace:
+Make your workspace (feel free to choose a different path):
 ```bash
-# Feel free to change the workspace
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
-git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
-vcs import src < src/awesome_dcist_t4/install/packages.yaml
-rosdep install --from-paths src --ignore-src -r -y # Make sure you have sourced ROS!!!
-echo export ADT4_WS=`pwd` >> ~/.zshrc
+```
 
-# Feel free to change the environment directory path
-echo export ADT4_ENV=$(realpath ~/environments/dcist) >> ~/.zshrc
-
-# This is where ADT4 output logs are generated and stored
-# For now, you will want to change this environment variable each time you run
-echo export ADT4_OUTPUT_DIR=$(realpath ~/adt4_output/init) >> ~/.zshrc
+Set up your environment variables (make sure you are in your workspace this):
+```bash
+echo export ADT4_WS=$(pwd) >> ~/.zshrc
+echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
+echo export ADT4_ENV=${HOME}/environments/dcist >> ~/.zshrc
 
 # Source to update changes
 source ~/.zshrc
+```
 
-# This will create all necessary python environments to run DCIST code
-source $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash
+You may want to leave these unspecified on development machines:
+```bash
+echo export ADT4_OUTPUT_DIR=${HOME}/adt4_output/init >> ~/.zshrc
+echo export ADT4_ROBOT_NAME=spot >> ~/.zshrc
+```
 
-# The previous command will build fast-downward, but you need to install it:
-sudo ln -s $ADT4_WS/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+You also will want to set up any secrets you have (**do not commit anywhere**):
+```bash
+echo export ADT4_BOSDYN_USERNAME=user >> ~/.zshrc
+echo export ADT4_BOSDYN_PASSWORD=pass >> ~/.zshrc
+echo export ADT4_BOSDYN_IP="192.168.80.3" >> ~/.zshrc
+echo export ADT4_OPENAI_API_KEY=key >> ~/.zshrc
+echo export ADT4_DEEPGRAM_API_KEY=key >> ~/.zshrc
+```
 
-# You also need to set the spot username/password. These cannot be empty, but
-# you can use dummy place-holders if you are simulating spot. Feel free to set
-# these to something other than `user` and `pass`.
+Set up the ROS workspace and dependencies:
+```bash
+# Set up the ROS packages
+cd ${ADT4_WS}
+git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git src/awesome_dcist_t4 --recursive
+vcs import src < src/awesome_dcist_t4/install/packages.yaml
+rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
+echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebInfo]}' > colcon_defaults.yaml
+```
 
-echo export ADT4_BOSDYN_USERNAME="user" >> ~/.zshrc
-echo export ADT4_BOSDYN_PASSWORD="pass" >> ~/.zshrc
+Set up the Python environments and packages:
+```bash
+bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
+sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
+```
 
-# You also need to set the robot name. Example:
-echo export ADT4_ROBOT_NAME="spot" >> ~/.zshrc
-
-# You should set the following for convenience. Example:
-echo export ADT4_DLS_PKG=${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system >> ~/.zshrc
-
-# Note that if you want to use an LLM, you need to provide an API key. This should never be committed to a repo.
-# We load API keys from environment variables. Below is an example of setting our expected environment variable (you can change this in the configs).
-echo export ADT4_OPENAI_API_KEY={your api key} >> ~/.zshrc
-echo export ADT4_DEEPGRAM_API_KEY="a" >> ~/.zshrc
-
-# If you want to use Zenoh, you need to run:
+You probably want to use Zenoh (see bottom of README for details):
+```bash
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
-# See the bottom of this README for details on setting up multi-host zenoh
-
-# Source to update all changes
 source ~/.zshrc
 ```
 
-Build:
-
-In the colcon workspace root directory, create a file called `colcon_defaults.yaml`
-with the following contents:
-```yaml
-build:
-    symlink-install: true
-    cmake-args:
-        - -DCMAKE_BUILD_TYPE=RelWithDebInfo
-```
 Then, build the workspace as follows:
 ```bash
-# this next step is CRUCIAL to get colcon to behave properly
-pushd $ADT4_WS
-# this will error most likely but it's fine...
+pushd ${ADT4_WS}  # this is CRUCIAL to get colcon to behave properly
 colcon build --continue-on-error
 popd
 ```
+
 If building the workspace is too memory intensive, set the `MAKEFLAGS` environment
 variable to restrict the number of parallel jobs and add the argument `--executor sequential`
 to the `colcon build` command.
@@ -106,12 +96,12 @@ to the `colcon build` command.
 Different nodes can use different python environments; we have two (`roman` and `spark_env`) currently.
 You should periodically rerun the python setup script to make sure everything is installed and up to date!
 
-> :danger: **Important** </br>
+> :bangbang: **Important** </br>
 > The `spark_dsg` package needs to build python bindings every time it is updated. This means that you need to manually pip install `spark_dsg`!
 > You can do this without running the full python setup script by running
->    ```
->    source $ADT4_ENV/spark_env/bin/activate
->    pip install $ADT4_WS/src/awesome_dcist_t4/spark_dsg
+>    ```bash
+>    source ${ADT4_ENV}/spark_env/bin/activate
+>    pip install ${ADT4_WS}/src/awesome_dcist_t4/spark_dsg
 >    ```
 
 
