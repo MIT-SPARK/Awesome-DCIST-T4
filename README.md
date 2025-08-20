@@ -68,6 +68,11 @@ rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
 echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebInfo]}' > colcon_defaults.yaml
 ```
 
+You probably want to add some scripts to your path for convenience:
+```bash
+echo 'export PATH=$PATH:$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/bin'
+```
+
 Set up the Python environments and packages:
 ```bash
 bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
