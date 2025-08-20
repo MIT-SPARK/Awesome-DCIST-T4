@@ -38,6 +38,7 @@ def _ws_path():
     "-p",
     envvar="ADT4_PRIOR_MAP",
     help="prior map",
+    is_flag=False,
     flag_value="???",
     type=click.Path(),
 )
