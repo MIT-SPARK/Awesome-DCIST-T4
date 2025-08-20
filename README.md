@@ -70,7 +70,7 @@ echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebI
 
 You probably want to add some scripts to your path for convenience:
 ```bash
-echo 'export PATH=$PATH:$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/bin'
+echo 'export PATH=$PATH:$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/bin' >> ~/.zshrc
 ```
 
 Set up the Python environments and packages:
