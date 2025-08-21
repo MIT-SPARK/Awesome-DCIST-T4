@@ -27,6 +27,4 @@ windows:
   - window_name: transform_publishers
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes:
-      - ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map
-      - ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom
+    panes: [ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map, ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom]
