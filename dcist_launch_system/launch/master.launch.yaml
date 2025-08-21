@@ -218,6 +218,7 @@ launch:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
       param:
         - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/rviz_node.yaml, allow_substs: true}
 
   # Omniplanner
   - arg: {name: launch_omniplanner, default: 'false'}
