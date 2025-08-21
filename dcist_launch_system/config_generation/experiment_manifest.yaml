@@ -17,6 +17,8 @@ launch_configs:
     prior_dsg: []
     hydra_multi: []
 
+    transform_publishers: []
+
     spot_bag:
         - core
         - hydra
@@ -66,6 +68,12 @@ launch_configs:
         - status
         - multi_status
 
+    real_spot_no_relocalize: 
+        - core
+        - spot_real 
+        - status
+        - transform_publishers
+
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -109,4 +117,8 @@ experiments:
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
+        config: [real_spot_relocalize]
+
+    real_spot_no_relocalize:
+        launch_config: real_spot_no_relocalize
         config: [real_spot_relocalize]
