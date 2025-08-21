@@ -2,15 +2,12 @@
 robots:
   - robot_name: euclid
     robot_type: spot
-    fixed_frame: map
     body_frame: euclid/body
   - robot_name: hamilton
     robot_type: spot
-    fixed_frame: map
     body_frame: hamilton/body
   - robot_name: hilbert
     robot_type: simulated-spot
-    fixed_frame: map
     body_frame: hilbert/body
 planners:
   goto_points:
