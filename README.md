@@ -150,6 +150,7 @@ to *something* in order to launch the system properly.
 | russell       | Aaron's laptop        | 10.29.129.166   |
 | bonsai        | RRG dev computer      | ???.???.??.???  |
 | willow        | RRG base station      | 10.29.170.228   |
+| gauss         | ACL husky laptop      | 10.29.242.128   |
 
 ## Running in the Field
 
@@ -458,7 +459,7 @@ echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.jso
 ```
 For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/).
 
-### Saving a Map
+## Saving a Map
 
 A current session's map will be saved to the `$ADT4_OUTPUT_DIR` directory when you either:
 
