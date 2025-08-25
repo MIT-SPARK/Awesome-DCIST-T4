@@ -13,6 +13,7 @@ robots:
         include_priors: true
   - type: RosUnitInterface
     robot_id: 1
+    rate: 10.0
     robot_name: $<env ADT4_ROBOT_NAME>
     robot_frame: $<env ADT4_ROBOT_NAME>/odom
     inputs:
@@ -22,7 +23,6 @@ robots:
         type: RosDsgInput
 backend:
   type: MultiBackendModule
-  add_places_to_deformation_graph: false
   add_objects_to_deformation_graph: false
   optimize_on_lc: true
   enable_node_merging: true
