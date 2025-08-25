@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="zed_tf_robot">
+
+  <!-- Define an argument for tf_prefix -->
+  <xacro:arg name="tf_prefix" default=""/>
+
+  <!-- frontleft -->
+  <link name="$(arg tf_prefix)/frontleft"/>
+
+  <!-- ZED link -->
+  <link name="$(arg tf_prefix)_zed_camera_link"/>
+
+  <!-- Identity transform from frontleft to zed_link -->
+  <joint name="$(arg tf_prefix)_frontleft_to_zed" type="fixed">
+    <parent link="$(arg tf_prefix)/frontleft"/>
+    <child link="$(arg tf_prefix)_zed_camera_link"/>
+    <origin xyz="0.15328051942917917 -0.04050819663274706 0.27851368390429043" rpy="0.5634780360151201 -1.1658878170279905 3.125602184434947"/>
+  </joint>
+
+</robot>
