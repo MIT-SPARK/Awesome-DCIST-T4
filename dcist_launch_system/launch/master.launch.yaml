@@ -6,6 +6,7 @@ launch:
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - let: {name: camera, value: $(var robot_name)_zed}
+  - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
   - let: {name: semantic_inference_labelspace_name, value: ade20k_mit}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
@@ -177,7 +178,7 @@ launch:
           exec: robot_state_publisher
           param:
             - {name: use_sim_time, value: $(var sim_time)}
-            - {name: robot_description, value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/topaz.urdf.xacro tf_prefix:=$(var robot_name)')}
+            - {name: robot_description, value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/$(var platform_id).urdf.xacro tf_prefix:=$(var robot_name)')}
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
