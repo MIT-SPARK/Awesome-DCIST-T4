@@ -139,7 +139,7 @@ to *something* in order to launch the system properly.
 | euclid        | Jasper Jockey         | 192.168.100.3    |
 | hamilton      | Topaz Jockey          | 192.167.100.2    |
 | samoyed       | ARL Husky             | 192.168.100.62  |
-| apollo        | ARL Spot              | 192.168.100.13  | 
+| apollo        | ARL Spot              | 192.168.100.13  |
 | russell       | Aaron's laptop        | 192.168.100.101  |
 | bonsai        | RRG dev computer      | ???.???.??.???  |
 | willow        | RRG base station      | 192.168.100.100  |
