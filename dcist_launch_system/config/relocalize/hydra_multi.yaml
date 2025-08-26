@@ -28,8 +28,6 @@ backend:
   enable_node_merging: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
-    objects: {type: UpdateObjectsFunctor}
-    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   initial_align:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.9
