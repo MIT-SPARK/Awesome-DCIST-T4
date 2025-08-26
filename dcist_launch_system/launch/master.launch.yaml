@@ -37,11 +37,11 @@ launch:
           remap:
             - {from: color/image_raw, to: rgb/image_rect_color}
           args: >
+            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
             --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
             --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
             --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
             --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
-            --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
