@@ -27,7 +27,8 @@ backend:
   add_objects_to_deformation_graph: false
   optimize_on_lc: true
   enable_node_merging: true
-  update_functors: []
+  update_functors:
+    agents: {type: UpdateAgentsFunctor}
   initial_align:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.9
