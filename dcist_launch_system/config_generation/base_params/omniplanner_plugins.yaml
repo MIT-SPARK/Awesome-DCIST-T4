@@ -15,10 +15,10 @@ robots:
     type: robot_executor
     robot_type: simulated-spot
     body_frame: hilbert/body
-  - robot_name: apollo
+  - robot_name: samoyed
     type: phoenix
-    robot_type: spot
-    body_frame: apollo/body
+    robot_type: husky
+    body_frame: samoyed/body
 planners:
   goto_points:
     plugin:
