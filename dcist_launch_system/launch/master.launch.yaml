@@ -166,7 +166,6 @@ launch:
         xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro
               tf_prefix:=$(var robot_name)/
               spot_color:=$(var robot_color)
-              extra_urdf:=$(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/extras.urdf.xacro
   - node:
       if: $(var launch_spot_state_publisher)
       pkg: robot_state_publisher
@@ -177,6 +176,14 @@ launch:
         - {name: robot_description, value: $(command $(var spot_urdf_command))}
       remap:
         - {from: /joint_states, to: joint_states}
+  - node:
+      if: $(var launch_spot_state_publisher)
+      pkg: dcist_launch_system
+      exec: static_tf_from_json
+      args: >
+        $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/zed_calibration.json
+        --frame-id $(var robot_name)/frontleft
+        --child-frame-id $(var robot_name)_zed_camera_link
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
