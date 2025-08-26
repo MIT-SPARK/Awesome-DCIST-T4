@@ -119,7 +119,7 @@ def main(
     env["ADT4_ROBOT_NAME"] = robot_name
     env["ADT4_PLATFORM_ID"] = platform_id
     env["ADT4_SIM_TIME"] = "true" if sim_time else "false"
-    env["ADT6_OUTPUT_DIR"] = str(output_dir)
+    env["ADT4_OUTPUT_DIR"] = str(output_dir)
     if prior_map:
         env["ADT4_PRIOR_MAP"] = str(prior_map)
 
