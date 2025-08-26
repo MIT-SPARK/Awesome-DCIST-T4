@@ -9,6 +9,7 @@ robots:
     robot_type: spot
     body_frame: hamilton/body
   - robot_name: apollo
+    type: robot_executor
     robot_type: spot
     body_frame: apollo/body
   - robot_name: hilbert
