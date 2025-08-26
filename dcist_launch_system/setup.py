@@ -19,7 +19,7 @@ def get_share_info(top_level, pattern, dest=None):
 launch_files = get_share_info("launch", "*.launch.yaml")
 config_files = get_share_info("config", "*.yaml")
 config_files_csv = get_share_info("config", "*.csv")
-platform_urdfs = get_share_info("platfomrs", "*.urdf.xacro")
+platform_urdfs = get_share_info("platforms", "*.urdf.xacro")
 platform_configs = get_share_info("platforms", "*.yaml")
 rviz_files = get_share_info("rviz", "*.rviz")
 
