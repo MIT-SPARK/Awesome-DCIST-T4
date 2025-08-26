@@ -2,5 +2,3 @@
 worker:
   max_queue_size: 1
   image_separation_s: 0.0
-image_rotator:
-  rotation: none
