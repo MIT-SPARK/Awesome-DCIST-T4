@@ -1,17 +1,24 @@
 ---
 robots:
   - robot_name: euclid
+    type: robot_executor
     robot_type: spot
     body_frame: euclid/body
   - robot_name: hamilton
+    type: robot_executor
     robot_type: spot
     body_frame: hamilton/body
   - robot_name: apollo
     robot_type: spot
     body_frame: apollo/body
   - robot_name: hilbert
+    type: robot_executor
     robot_type: simulated-spot
     body_frame: hilbert/body
+  - robot_name: samoyed
+    type: phoenix
+    robot_type: husky
+    body_frame: samoyed/body
 planners:
   goto_points:
     plugin:
