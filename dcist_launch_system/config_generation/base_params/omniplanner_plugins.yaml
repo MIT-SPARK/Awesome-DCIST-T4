@@ -6,6 +6,9 @@ robots:
   - robot_name: hamilton
     robot_type: spot
     body_frame: hamilton/body
+  - robot_name: apollo
+    robot_type: spot
+    body_frame: apollo/body
   - robot_name: hilbert
     robot_type: simulated-spot
     body_frame: hilbert/body
