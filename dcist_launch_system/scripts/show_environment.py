@@ -5,7 +5,13 @@ import os
 import rich
 from rich.table import Table
 
-ADT4_VARS = ["ADT4_ROBOT_NAME", "ADT4_OUTPUT_DIR", "ADT4_PRIOR_MAP", "ADT4_SIM_TIME"]
+ADT4_VARS = [
+    "ADT4_ROBOT_NAME",
+    "ADT4_PLATFORM_ID",
+    "ADT4_OUTPUT_DIR",
+    "ADT4_PRIOR_MAP",
+    "ADT4_SIM_TIME",
+]
 
 
 def main():

@@ -5,10 +5,14 @@ from setuptools import find_packages, setup
 package_name = "dcist_launch_system"
 
 
-def get_share_info(top_level, pattern, dest=None):
+def get_share_info(top_level, pattern="*", dest=None):
     curr_path = pathlib.Path(__file__).absolute().parent
     dest = pathlib.Path("share") / package_name if dest is None else pathlib.Path(dest)
-    files = [x.relative_to(curr_path) for x in (curr_path / top_level).rglob(pattern)]
+    files = [
+        x.relative_to(curr_path)
+        for x in (curr_path / top_level).rglob(pattern)
+        if x.is_file()
+    ]
     parent_map = {}
     for x in files:
         key = str(dest / x.parent)
@@ -19,10 +23,8 @@ def get_share_info(top_level, pattern, dest=None):
 launch_files = get_share_info("launch", "*.launch.yaml")
 config_files = get_share_info("config", "*.yaml")
 config_files_csv = get_share_info("config", "*.csv")
-urdf_files = get_share_info("urdf", "*.urdf.xacro")
-
+platform_files = get_share_info("platforms")
 rviz_files = get_share_info("rviz", "*.rviz")
-
 
 data_files = (
     [
@@ -32,8 +34,8 @@ data_files = (
     + launch_files
     + config_files
     + config_files_csv
+    + platform_files
     + rviz_files
-    + urdf_files
 )
 
 
@@ -56,6 +58,7 @@ setup(
             "example_2_node = dcist_launch_system.example_2:main",
             "prior_dsg_publisher_node = dcist_launch_system.prior_dsg_publisher_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
+            "static_tf_from_json = dcist_launch_system.static_tf_from_json:main",
         ],
     },
 )

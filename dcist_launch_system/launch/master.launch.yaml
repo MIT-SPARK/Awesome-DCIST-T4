@@ -6,6 +6,7 @@ launch:
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - let: {name: camera, value: $(var robot_name)_zed}
+  - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
   - let: {name: semantic_inference_labelspace_name, value: ade20k_mit}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
@@ -40,7 +41,8 @@ launch:
             --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
             --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
             --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
-            --config-utilities-yaml {worker: {max_queue_size: 1, image_separation_s: 0.0}}
+            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
+            --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
@@ -156,8 +158,14 @@ launch:
         - {from: ~/joint_states, to: joint_states}
 
   # Spot state publisher
-  - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}
   - arg: {name: launch_spot_state_publisher, default: 'false'}
+  - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}
+  - let:
+      name: spot_urdf_command
+      value: >
+        xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro
+              tf_prefix:=$(var robot_name)/
+              spot_color:=$(var robot_color)
   - node:
       if: $(var launch_spot_state_publisher)
       pkg: robot_state_publisher
@@ -165,19 +173,17 @@ launch:
       exec: robot_state_publisher
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - {name: robot_description, value: $(command 'xacro $(find-pkg-share spot_tools_ros)/urdf/spot.urdf.xacro tf_prefix:=$(var robot_name)/ spot_color:=$(var robot_color)')}
+        - {name: robot_description, value: $(command $(var spot_urdf_command))}
       remap:
         - {from: /joint_states, to: joint_states}
-  - group:
-      - set_remap: {from: robot_description, to: camera_description}
-      - node:
-          if: $(var launch_spot_state_publisher)
-          pkg: robot_state_publisher
-          name: cameras_state_publisher
-          exec: robot_state_publisher
-          param:
-            - {name: use_sim_time, value: $(var sim_time)}
-            - {name: robot_description, value: $(command 'xacro $(find-pkg-share dcist_launch_system)/urdf/topaz.urdf.xacro tf_prefix:=$(var robot_name)')}
+  - node:
+      if: $(var launch_spot_state_publisher)
+      pkg: dcist_launch_system
+      exec: static_tf_from_json
+      args: >
+        $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/zed_calibration.json
+        --frame-id $(var robot_name)/frontleft
+        --child-frame-id $(var robot_name)_zed_camera_link
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
