@@ -1,0 +1,6 @@
+---
+/**:
+  ros__parameters:
+    odom_frame: $(var robot_name)/odom
+    body_frame: $(var robot_name)/base_link
+    detector_model_path: $(env ADT4_WS)/weights/yolov8s-world.pt

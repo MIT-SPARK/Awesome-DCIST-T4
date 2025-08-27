@@ -1,0 +1,8 @@
+/**:
+  ros__parameters:
+    odom_frame: $(var robot_name)/odom
+    goal_tolerance: 2.8
+    semantic_model_path: path_to_semantic_model
+    labelspace_path: labelspace_path
+    labelspace_grouping_path: grouping_path
+    detector_model_path: $(env ADT4_WS)/weights/yolov8s-world.pt

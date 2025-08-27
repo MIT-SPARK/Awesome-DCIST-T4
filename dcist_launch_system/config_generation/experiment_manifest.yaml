@@ -9,6 +9,7 @@ launch_configs:
     sim_spot: []
     bag_spot: []
     spot_real: []
+    phoenix_real: []
 
     planning: []
 
@@ -39,6 +40,13 @@ launch_configs:
         - hydra
         - roman
         - spot_real
+        - status
+
+    real_phoenix:
+        - core
+        - hydra
+        - roman
+        - phoenix_real
         - status
 
     real_spot_relocalize:
@@ -83,6 +91,8 @@ configs:
     bag: []
     spot_prior_dsg: []
     real_spot: []
+    real_phoenix: []
+ 
     relocalize: []
 
     real_spot_relocalize: [real_spot, relocalize]
@@ -102,6 +112,10 @@ experiments:
     real_spot:
         launch_config: real_spot
         config: [real_spot]
+
+    real_phoenix:
+        launch_config: real_phoenix
+        config: [real_phoenix]
 
     data_collection:
         launch_config: data_collection
