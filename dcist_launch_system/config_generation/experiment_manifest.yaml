@@ -84,10 +84,9 @@ configs:
     spot_prior_dsg: []
     real_spot: []
     relocalize: []
-    apollo: []
 
     real_spot_relocalize: [real_spot, relocalize]
-    apollo_relocalize: [real_spot_relocalize, apollo]
+    apollo_relocalize: [real_spot_relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files

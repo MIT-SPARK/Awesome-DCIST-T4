@@ -168,6 +168,9 @@ def render_config(
             override_dirs = resolve_unique_dirs(
                 experiment_manifest["configs"], experiment_key
             )
+            if experiment_key not in override_dirs:
+                if (root_path / "experiment_overrides" / experiment_key).exists():
+                    override_dirs.append(experiment_key)
         except KeyError:
             log_error(
                 f"Error when processing {experiment_key}. Could not resolve config"
