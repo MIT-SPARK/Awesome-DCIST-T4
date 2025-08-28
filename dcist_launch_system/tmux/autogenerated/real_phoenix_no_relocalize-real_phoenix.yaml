@@ -1,0 +1,23 @@
+nodes_to_monitor: {}
+session_name: adt4_system
+suppress_history: false
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_phoenix, logging_key: real_phoenix_no_relocalize-real_phoenix}
+options:
+  default-command: /bin/zsh
+windows:
+  - window_name: core
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run rmw_zenoh_cpp rmw_zenohd
+      - python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py
+      - "ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty && tmux send-keys -t roman.1 C-c \\"
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+  - window_name: transform_publishers
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map, ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom]
