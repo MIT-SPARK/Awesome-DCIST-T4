@@ -1,0 +1,115 @@
+paths: [khronos, khronos_ros]
+robot_id: 1
+config_verbosity: 0
+map_frame: $<env ADT4_ROBOT_NAME>/odom
+odom_frame: $<env ADT4_ROBOT_NAME>/odom
+robot_frame: $<env ADT4_ROBOT_NAME>/body
+map_window: {type: spatial, max_radius_m: 14.0}
+input:
+  type: RosInput
+  inputs:
+    camera:
+      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
+      sensor:
+        type: camera_info
+        min_range: 0.2
+        max_range: 10.0
+        extrinsics: {type: ros}
+active_window:
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
+  type: ActiveWindow
+  projective_integrator:
+    semantic_integrator: {type: SingleLabelIntegrator}
+  object_detector:
+    type: ConnectedSemantics
+    min_cluster_size: 20
+    use_full_connectivity: true
+    use_3d: true
+    max_range: 10.0
+    grid_size: 0.2
+  tracker:
+    type: MaxIouTracker
+    track_by: voxels
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
+    voxel_size: 0.2
+    temporal_window: 3.0
+    min_num_observations: 10
+  object_extractor:
+    type: MeshObjectExtractor
+    verbosity: 0
+    min_object_allocation_confidence: 0.5
+    min_object_volume: 0.005
+    max_object_volume: 100.0
+    min_dynamic_displacement: 1
+    only_extract_reconstructed_objects: true
+    min_object_reconstruction_confidence: 0.5
+    min_object_reconstruction_observations: 10
+    object_reconstruction_resolution: -0.05
+    visualizer_classification: false
+    projective_integrator:
+      num_threads: 8
+  khronos_sinks:
+    - type: ActiveWindowVisualizer
+frontend:
+  type: GraphBuilder
+  enable_mesh_objects: false
+  clear_object_meshes: true
+  pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
+  graph_connector:
+    layers:
+      - parent_layer: MESH_PLACES
+        child_layers:
+          - {layer: OBJECTS}
+  graph_updater:
+    layer_updates:
+      OBJECTS:
+        prefix: O
+        matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
+  surface_places:
+    type: place_2d
+    prefix: P
+    pure_final_place_size: 3
+    enable_place_purity: false
+    impure_final_place_size: 1
+    cluster_tolerance: .3
+    min_cluster_size: 50
+    max_cluster_size: 100000
+    min_final_place_points: 10
+    place_max_neighbor_z_diff: .5
+    place_overlap_threshold: 0.0
+backend:
+  type: BackendModule
+  enable_zmq_interface: false
+  publish_backend_tf: false
+  serialize_dsg_mesh: false
+  min_dsg_separation_s: 1
+  publish_mesh: true
+  min_mesh_separation_s: 10
+  add_places_to_deformation_graph: false
+  optimize_on_lc: false
+  update_functors:
+    agents: {type: UpdateAgentsFunctor}
+    objects: {type: UpdateObjectsFunctor}
+    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
+  pgmo:
+    run_mode: FULL
+    embed_trajectory_delta_t: 5.0
+    num_interp_pts: 3
+    interp_horizon: 10.0
+    add_initial_prior: false
+    optimizer:
+      type: KimeraRpgoOptimizer
+      solver: LM
+      gnc: {inlier_probability: 0.9, mu_step: 1.6, max_iterations: 100}
+    covariance:
+      odom: 1.0e-02
+      loop_close: 5.0e-02
+      sg_loop_close: 1.0e-01
+      prior: 1.0e-02
+      mesh_mesh: 1.0e-02
+      pose_mesh: 1.0e-02
+      place_mesh: 1.0e-02
+      place_edge: 10.0
+      place_merge: 10.0
+      object_merge: 10.0

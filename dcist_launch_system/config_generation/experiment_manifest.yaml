@@ -86,6 +86,7 @@ configs:
     relocalize: []
 
     real_spot_relocalize: [real_spot, relocalize]
+    apollo_relocalize: [real_spot_relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
@@ -122,3 +123,7 @@ experiments:
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
         config: [real_spot_relocalize]
+
+    apollo_relocalize:
+        launch_config: real_spot_relocalize
+        config: [apollo_relocalize]
