@@ -14,3 +14,5 @@
     prior_session_maps: [""]
     prior_session_ids: [0]
     output_dir: $(var output_dir)/roman
+lc_required_associations: 5
+ego_flu_ref_frame: $(var robot_name)/base_link

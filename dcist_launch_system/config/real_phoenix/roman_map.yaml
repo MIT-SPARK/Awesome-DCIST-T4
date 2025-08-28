@@ -7,3 +7,4 @@
     visualize: true
     viz_min_viz_dt: 0.25
     output_roman_map: $(var output_dir)/roman/roman_map.pkl
+base_flu_frame_id: $(var robot_name)/base_link
