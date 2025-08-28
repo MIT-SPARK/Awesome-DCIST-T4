@@ -1,0 +1,14 @@
+nodes_to_monitor:
+  phoenix_executor: {}
+session_name: adt4_system
+suppress_history: false
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {phoenix_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_phoenix, logging_key: phoenix_only-real_phoenix}
+options:
+  default-command: /bin/zsh
+windows:
+  - window_name: real_phoenix
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - "pr2 && source install/setup.bash && phx run -e 'ros2 launch mit_launch $ADT4_ROBOT_NAME.launch.yaml'"
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true

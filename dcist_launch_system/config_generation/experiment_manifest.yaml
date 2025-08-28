@@ -49,6 +49,16 @@ launch_configs:
         - phoenix_real
         - status
 
+    phoenix_only:
+        - phoenix_real
+
+
+    husky_ex_phoenix:
+        - core
+        - hydra
+        - roman
+        - status
+
     real_spot_relocalize:
         - core
         - hydra_multi
@@ -122,6 +132,10 @@ experiments:
 
     real_phoenix:
         launch_config: real_phoenix
+        config: [real_phoenix]
+
+    phoenix_only:
+        launch_config: phoenix_only
         config: [real_phoenix]
 
     data_collection:
