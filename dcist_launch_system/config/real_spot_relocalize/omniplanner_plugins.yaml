@@ -18,7 +18,7 @@ robots:
   - robot_name: samoyed
     type: phoenix
     robot_type: husky
-    body_frame: samoyed/body
+    body_frame: samoyed/base_link
 planners:
   goto_points:
     plugin:
