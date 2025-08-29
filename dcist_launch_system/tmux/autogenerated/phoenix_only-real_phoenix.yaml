@@ -7,8 +7,9 @@ options:
   default-command: /bin/zsh
 windows:
   - window_name: real_phoenix
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - "cd ${PHOENIX_ROOT} && phx run \"export ADT4_PLATFORM_ID=$ADT4_PLATFORM_ID && source install/setup.bash && ros2 launch mit_launch $ADT4_PLATFORM_ID.launch.yaml\""
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true
+      - "cd /home/robot/phoenix-upstart && source install/setup.zsh && ros2 launch hardware_launch samoyed_hardware_launch.xml"
+      - "sleep 10 && ros2 lifecycle set /samoyed/sensors/ouster/driver 1"

@@ -5,7 +5,7 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
-session_name: adt4_system2
+session_name: adt4_system
 suppress_history: false
 environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, roman_lc: {}, roman_map: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: real_phoenix, logging_key: husky_ex_phoenix-real_phoenix}
 options:
