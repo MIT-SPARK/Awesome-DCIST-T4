@@ -134,6 +134,10 @@ experiments:
         launch_config: real_phoenix
         config: [real_phoenix]
 
+    husky_ex_phoenix:
+        launch_config: husky_ex_phoenix
+        config: [real_phoenix]
+
     phoenix_only:
         launch_config: phoenix_only
         config: [real_phoenix]
