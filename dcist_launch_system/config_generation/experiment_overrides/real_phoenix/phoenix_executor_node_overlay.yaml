@@ -1,0 +1,5 @@
+---
+/**:
+  ros__parameters:
+    use_fake_phoenix_interface: false
+    fake_phoenix_external_pose: false
