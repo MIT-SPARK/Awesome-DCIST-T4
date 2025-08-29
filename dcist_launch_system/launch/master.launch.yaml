@@ -21,6 +21,7 @@ launch:
         - {name: camera_model, value: zed2i}
         - {name: camera_name, value: $(var camera)}
         - {name: publish_tf, value: 'false'}
+        - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
