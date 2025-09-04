@@ -9,6 +9,7 @@ launch_configs:
     sim_spot: []
     bag_spot: []
     spot_real: []
+    phoenix_real: []
 
     planning: []
 
@@ -41,11 +42,35 @@ launch_configs:
         - spot_real
         - status
 
+    real_phoenix:
+        - core
+        - hydra
+        - roman
+        - phoenix_real
+        - status
+
+    phoenix_only:
+        - phoenix_real
+
+
+    husky_ex_phoenix:
+        - core
+        - hydra
+        - roman
+        - status
+
     real_spot_relocalize:
         - core
         - hydra_multi
         - roman
         - spot_real
+        - status
+
+    real_phoenix_relocalize:
+        - core
+        - hydra_multi
+        - roman
+        - phoenix_real
         - status
 
     data_collection:
@@ -74,6 +99,12 @@ launch_configs:
         - status
         - transform_publishers
 
+    real_phoenix_no_relocalize: 
+        - core
+        #- phoenix_real 
+        - status
+        - transform_publishers
+
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -83,6 +114,8 @@ configs:
     bag: []
     spot_prior_dsg: []
     real_spot: []
+    real_phoenix: []
+ 
     relocalize: []
 
     real_spot_relocalize: [real_spot, relocalize]
@@ -104,6 +137,18 @@ experiments:
         launch_config: real_spot
         config: [real_spot]
 
+    real_phoenix:
+        launch_config: real_phoenix
+        config: [real_phoenix]
+
+    husky_ex_phoenix:
+        launch_config: husky_ex_phoenix
+        config: [real_phoenix]
+
+    phoenix_only:
+        launch_config: phoenix_only
+        config: [real_phoenix]
+
     data_collection:
         launch_config: data_collection
         config: [real_spot]
@@ -123,6 +168,14 @@ experiments:
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
         config: [real_spot_relocalize]
+
+    real_phoenix_no_relocalize:
+        launch_config: real_phoenix_no_relocalize
+        config: [real_phoenix]
+
+    real_phoenix_relocalize:
+        launch_config: real_phoenix_relocalize
+        config: [real_phoenix]
 
     apollo_relocalize:
         launch_config: real_spot_relocalize

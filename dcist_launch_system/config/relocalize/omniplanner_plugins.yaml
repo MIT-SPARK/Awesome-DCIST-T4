@@ -18,7 +18,11 @@ robots:
   - robot_name: samoyed
     type: phoenix
     robot_type: husky
-    body_frame: samoyed/body
+    body_frame: samoyed/base_link
+  - robot_name: gauss
+    type: phoenix
+    robot_type: husky
+    body_frame: gauss/base_link
 planners:
   goto_points:
     plugin:
