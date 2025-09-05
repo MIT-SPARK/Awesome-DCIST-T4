@@ -10,6 +10,7 @@ alias gpl="git pull"
 
 # other aliases
 alias sz="source ~/.zshrc"
+alias vz="vim ~/.zshrc"
 
 # Setup pyshortcuts
 

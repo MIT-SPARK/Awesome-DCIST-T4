@@ -119,6 +119,7 @@ configs:
     relocalize: []
 
     real_spot_relocalize: [real_spot, relocalize]
+    real_phoenix_relocalize: [real_phoenix, relocalize]
     apollo_relocalize: [real_spot_relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
@@ -175,7 +176,7 @@ experiments:
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
-        config: [real_phoenix]
+        config: [real_phoenix_relocalize]
 
     apollo_relocalize:
         launch_config: real_spot_relocalize
