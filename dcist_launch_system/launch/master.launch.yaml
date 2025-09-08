@@ -276,8 +276,8 @@ launch:
   - arg: {name: launch_dsg_analyzer, default: 'false'}
   - pyenv_node:
       if: $(var launch_dsg_analyzer)
-      pkg: dsg_analyzer
-      exec: dsg_analyzer
+      pkg: dsg_analyzer_ros
+      exec: dsg_analyzer_node
       name: dsg_analyzer
       pyenv: $(var spark_env)
 
