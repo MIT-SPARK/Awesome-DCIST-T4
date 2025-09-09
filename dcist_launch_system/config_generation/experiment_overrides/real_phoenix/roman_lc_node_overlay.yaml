@@ -1,5 +1,5 @@
 ---
 /**:
   ros__parameters:
-    lc_required_associations: 5
+    lc_required_associations: 6
     ego_flu_ref_frame: $(var robot_name)/base_link

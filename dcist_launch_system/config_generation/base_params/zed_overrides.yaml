@@ -1,3 +1,4 @@
+---
 /**:
   ros__parameters:
     use_sim_time: false
@@ -23,7 +24,7 @@
       pub_frame_rate: 15.0
       enable_image_validity_check: 1
       gpu_id: -1
-      optional_opencv_calibration_file: ""
+      optional_opencv_calibration_file: ''
       async_image_retrieval: false
     video:
       saturation: 4
@@ -64,7 +65,7 @@
       publish_map_tf: true
       map_frame: map
       odometry_frame: odom
-      area_memory_db_path: ""
+      area_memory_db_path: ''
       area_memory: true
       reset_odom_with_loop_closure: true
       depth_min_range: 0.0
@@ -136,7 +137,7 @@
       thread_pointcloud_priority: 60
     debug:
       sdk_verbose: 1
-      sdk_verbose_log_file: ""
+      sdk_verbose_log_file: ''
       debug_common: false
       debug_sim: false
       debug_video_depth: false

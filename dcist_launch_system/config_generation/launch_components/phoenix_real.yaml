@@ -1,10 +1,9 @@
-#start_directory: ${PHOENIX_ROOT}
 ---
 nodes_to_monitor:
   phoenix_executor: {}
 windows:
   - window_name: real_phoenix
-    #shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    # shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - export ADT4_PLATFORM_ID=${ADT4_PLATFORM_ID} && cd ${PHOENIX_ROOT} && phx run -- bash -c source install/setup.bash && ros2 launch mit_launch $ADT4_PLATFORM_ID.launch.yaml'
