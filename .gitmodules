@@ -46,3 +46,6 @@
 [submodule "khronos"]
 	path = khronos
 	url = git@github.com:MIT-SPARK/Khronos.git
+[submodule "mid_level_planner"]
+	path = mid_level_planner
+	url = git@github.com:MIT-SPARK/mid_level_planner.git
