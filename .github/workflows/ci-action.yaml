@@ -59,6 +59,8 @@ jobs:
         working-directory: src/awesome_dcist_t4
         run: |
           git config --global url."https://github.com/".insteadOf git@github.com:
+          git config submodule.hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
+          echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | tr -d '\r' | ssh-add - > /dev/null
           git submodule update --init --recursive
 
       #- name: Pre-commit
@@ -70,7 +72,6 @@ jobs:
       - name: Setup Workspace
         shell: bash
         run: |
-            echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | tr -d '\r' | ssh-add - > /dev/null
             vcs import src < src/awesome_dcist_t4/install/packages.yaml
             rosdep update
             rosdep install -q --from-paths src --ignore-src -r -y || echo "Installed rosdeps"
