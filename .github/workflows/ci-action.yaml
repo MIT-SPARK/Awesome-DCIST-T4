@@ -67,8 +67,9 @@ jobs:
         working-directory: src/awesome_dcist_t4
         run: |
           git config --global url."https://github.com/".insteadOf git@github.com:
-          git config submodule.src/awesome_dcist_t4/hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
-          git config --get submodule.src/awesome_dcist_t4/hydra_multi.url
+          git config --global url."git@github.com:MIT-SPARK/Hydra-Multi.git".insteadOf git@github.com:MIT-SPARK/Hydra-Multi.git
+          #git config submodule.src/awesome_dcist_t4/hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
+          #git config --get submodule.src/awesome_dcist_t4/hydra_multi.url
 
       - name: Update submodules
         working-directory: src/awesome_dcist_t4
