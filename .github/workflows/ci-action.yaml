@@ -58,7 +58,7 @@ jobs:
       - name: Update submodules
         working-directory: src/awesome_dcist_t4
         run: |
-          'git config --global url."https://github.com/".insteadOf git@github.com:'
+          git config --global url."https://github.com/".insteadOf git@github.com:
           git submodule update --init --recursive
 
       #- name: Pre-commit
