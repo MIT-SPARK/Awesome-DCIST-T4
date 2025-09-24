@@ -40,6 +40,10 @@ jobs:
       #    chmod 600 ~/.ssh/id_ed25519
       #    ssh-keyscan github.com >> ~/.ssh/known_hosts
       #    chmod 644 ~/.ssh/known_hosts
+    - name: Setup SSH deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
 
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -60,7 +64,7 @@ jobs:
         run: |
           git config --global url."https://github.com/".insteadOf git@github.com:
           git config submodule.hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
-          echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | tr -d '\r' | ssh-add - > /dev/null
+          #echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | tr -d '\r' | ssh-add - > /dev/null
           git submodule update --init --recursive
 
       #- name: Pre-commit
