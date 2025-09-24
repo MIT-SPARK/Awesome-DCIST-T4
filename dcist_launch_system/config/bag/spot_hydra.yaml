@@ -1,9 +1,9 @@
 paths: [khronos, khronos_ros]
 robot_id: 0
 config_verbosity: 0
-map_frame: $<env ADT4_ROBOT_NAME>/map
-odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/body
+map_frame: hamilton/map
+odom_frame: hamilton/odom
+robot_frame: hamilton/body
 map_window: {type: spatial, max_radius_m: 14.0}
 input:
   type: RosInput
@@ -16,7 +16,7 @@ input:
         max_range: 10.0
         extrinsics: {type: ros}
 active_window:
-  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.10, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
@@ -32,7 +32,7 @@ active_window:
     track_by: voxels
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
-    voxel_size: 0.2
+    voxel_size: 0.1
     temporal_window: 3.0
     min_num_observations: 10
   object_extractor:
@@ -80,6 +80,7 @@ frontend:
     place_overlap_threshold: 0.0
 backend:
   type: BackendModule
+  enable_exhaustive_merging: true
   enable_zmq_interface: false
   publish_backend_tf: true
   serialize_dsg_mesh: false

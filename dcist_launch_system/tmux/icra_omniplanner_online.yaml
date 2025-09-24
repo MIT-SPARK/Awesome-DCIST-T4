@@ -1,0 +1,44 @@
+---
+session_name: adt4_system
+suppress_history: false
+environment:
+    sim_time: "false"
+    ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
+    ROBOT_NAME: hilbert
+    config: base_station
+    logging_key: real_spot_icra_planning
+options:
+    default-command: /bin/zsh
+windows:
+    - window_name: core
+      shell_command_before: source ${ADT4_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+          - ros2 run rmw_zenoh_cpp rmw_zenohd
+
+    - window_name: hydra
+      shell_command_before: source ${ADT4_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+          - ros2 launch heracles_ros heracles_publisher.launch.yaml robot_name:=$ROBOT_NAME
+          - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_hydra_visualizer:=true
+          - ros2 launch hydra_visualizer static_visualizer.launch.yaml scene_graph:=/home/ubuntu/lxc_datashare/heracles_evaluation_dsg_data/postprocess1/b45_clip_2_mesh.json start_rviz:=false
+
+    - window_name: planning
+      shell_command_before: source ${ADT4_WS}/install/setup.zsh
+      layout: tiled
+      panes:
+          - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_omniplanner:=true
+
+    #- window_name: sim_spot
+    #  shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    #  layout: tiled
+    #  panes:
+    #      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_spot_executor:=true
+    #      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_spot_state_publisher:=true
+    #      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_static_map_to_robot_map:=true launch_static_robot_map_to_odom:=true
+
+    - window_name: rviz
+      shell_command_before: source ${ADT4_WS}/install/setup.zsh
+      layout: tiled
+      panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ROBOT_NAME launch_rviz:=true]
