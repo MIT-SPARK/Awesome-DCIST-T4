@@ -40,7 +40,8 @@ jobs:
       #    chmod 600 ~/.ssh/id_ed25519
       #    ssh-keyscan github.com >> ~/.ssh/known_hosts
       #    chmod 644 ~/.ssh/known_hosts
-    - name: Setup SSH deploy key
+
+      - name: Setup SSH deploy key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
