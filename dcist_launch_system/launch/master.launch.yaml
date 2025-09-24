@@ -64,6 +64,7 @@ launch:
             --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
             --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
             --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
+            --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
