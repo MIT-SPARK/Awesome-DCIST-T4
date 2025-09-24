@@ -45,6 +45,8 @@ jobs:
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
+
+      - name: check loaded key
         run: ssh-add -l
 
       - name: Check out repository code
