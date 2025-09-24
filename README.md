@@ -126,6 +126,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
+| ADT4\_PHX\_ROOT                   | Root directory of phoenix for phoenix-using robots                |
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 Note that while some of these environment variables can be set to dummy values
