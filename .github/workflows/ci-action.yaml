@@ -64,7 +64,7 @@ jobs:
         working-directory: src/awesome_dcist_t4
         run: |
           git config --global url."https://github.com/".insteadOf git@github.com:
-          git config submodule.hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
+          git config submodule.src/aweseome_dcist_t4/hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
           git submodule update --init --recursive
 
       #- name: Pre-commit
