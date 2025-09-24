@@ -100,7 +100,7 @@ jobs:
       - name: Python Install
         shell: bash
         run: |
-            bash $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash --no-roman
+            CMAKE_CXX_COMPILER_LAUNCHER=ccache bash $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash --no-roman
 
       - name: Build Everything
         shell: bash
