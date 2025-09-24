@@ -57,7 +57,9 @@ jobs:
 
       - name: Update submodules
         working-directory: src/awesome_dcist_t4
-        run: git submodule update --init --recursive
+        run: |
+        'git config --global url."https://github.com/".insteadOf git@github.com:'
+        git submodule update --init --recursive
 
       #- name: Pre-commit
       #  shell: bash
@@ -69,7 +71,6 @@ jobs:
         shell: bash
         run: |
             echo "${{ secrets.SSH_KEY_HYDRA_MULTI }}" | tr -d '\r' | ssh-add - > /dev/null
-            'git config --global url."https://github.com/".insteadOf git@github.com:'
             vcs import src < src/awesome_dcist_t4/install/packages.yaml
             rosdep update
             rosdep install -q --from-paths src --ignore-src -r -y || echo "Installed rosdeps"
