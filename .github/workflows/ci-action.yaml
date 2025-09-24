@@ -11,7 +11,7 @@ on:
 env:
     ADT4_WS: ${{ github.workspace }}
     ADT4_ENV: ${{ github.workspace }}
-    #GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
+    GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 jobs:
   lint:
     runs-on: ubuntu-latest
