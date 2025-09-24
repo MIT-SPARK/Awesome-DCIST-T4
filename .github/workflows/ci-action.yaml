@@ -66,6 +66,7 @@ jobs:
       - name: Update submodule urls
         working-directory: src/awesome_dcist_t4
         run: |
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
           git config --global url."https://github.com/".insteadOf git@github.com:
           git config --global url."git@github.com:MIT-SPARK/Hydra-Multi.git".insteadOf git@github.com:MIT-SPARK/Hydra-Multi.git
           #git config submodule.src/awesome_dcist_t4/hydra_multi.url git@github.com:MIT-SPARK/Hydra-Multi.git
