@@ -61,6 +61,7 @@ launch:
           param:
             - {name: use_sim_time, value: $(var sim_time)}
           args: >-
+            --config-utilities-var robot_name=$(var robot_name)
             --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
             --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
             --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
@@ -78,6 +79,7 @@ launch:
           param:
             - {name: use_sim_time, value: $(var sim_time)}
           args: >
+            --config-utilities-var robot_name=$(var robot_name)
             --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
             --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
             --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
@@ -96,6 +98,7 @@ launch:
         - {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
         - {from: ~/status, to: ros_system_monitor/hydra_multi/status}
       args: >
+        --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra_multi, output: {use_timestamp: false, overwrite: true}}
