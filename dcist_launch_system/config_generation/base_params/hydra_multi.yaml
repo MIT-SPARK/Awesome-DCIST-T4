@@ -15,8 +15,8 @@ robots:
   - type: RosUnitInterface
     robot_id: 1
     rate: 10.0
-    robot_name: $<env ADT4_ROBOT_NAME>
-    robot_frame: $<env ADT4_ROBOT_NAME>/odom
+    robot_name: $<var robot_name>
+    robot_frame: $<var robot_name>/odom
     inputs:
       dgraph:
         type: RosDGraphInput
@@ -34,6 +34,7 @@ backend:
     alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10.0
+  partial_optimizer: {type: ''}
   pgmo:
     run_mode: FULL  # kimera_pgmo run mode FULL is required
     embed_trajectory_delta_t: 5.0
