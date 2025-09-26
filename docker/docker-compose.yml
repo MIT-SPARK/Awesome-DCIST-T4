@@ -1,0 +1,53 @@
+services:
+  # Development Environment
+  dev:
+    build:
+      context: .
+      target: base
+      # --- NEW: Pass the make jobs variable to the build ---
+      args:
+        - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
+    container_name: dcist_dev
+    volumes:
+      - ./adt4_src:/dcist_ws/src
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    env_file: .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    stdin_open: true
+    tty: true
+
+  # Deployment Environment
+  deploy:
+    build:
+      context: .
+      target: deployment
+      # --- NEW: Pass the make jobs variable to the build ---
+      args:
+        - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
+    container_name: dcist_deploy
+    env_file: .env
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    stdin_open: true
+    tty: true
