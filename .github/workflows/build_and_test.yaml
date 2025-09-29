@@ -31,7 +31,7 @@ jobs:
               - '!scripts/**'
               - '!.gitignore'
               - '!.dotfiles/**'
-            predicate-quantifier: 'every'
+          predicate-quantifier: 'every'
 
 
   Build-and-Test:
