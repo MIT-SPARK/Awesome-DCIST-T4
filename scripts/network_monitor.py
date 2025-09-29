@@ -33,20 +33,19 @@
 #
 
 
- 
-
-
-import psutil
-import time
 import argparse
 import csv
 import os
-import subprocess
 import shutil
+import subprocess
+import time
 from datetime import datetime
-import pandas as pd
-import matplotlib.pyplot as plt
+
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+import psutil
+
 
 def get_active_interfaces():
     """
@@ -62,6 +61,7 @@ def get_active_interfaces():
             active_interfaces.append(name)
     return active_interfaces
 
+
 def select_interface_interactively():
     """
     Lists active interfaces and prompts the user to select one.
@@ -76,7 +76,7 @@ def select_interface_interactively():
 
     print("Please select an interface to monitor:")
     for i, name in enumerate(interfaces):
-        print(f"  {i+1}: {name}")
+        print(f"  {i + 1}: {name}")
 
     while True:
         try:
@@ -92,6 +92,7 @@ def select_interface_interactively():
             print("\nSelection cancelled.")
             return None
 
+
 def monitor_bandwidth(interface, log_file, interval, pcap_file=None):
     """
     Monitors bandwidth and optionally captures packets with tshark.
@@ -104,30 +105,37 @@ def monitor_bandwidth(interface, log_file, interval, pcap_file=None):
     """
     if pcap_file and not shutil.which("tshark"):
         print("Error: 'tshark' is not installed or not in your PATH.")
-        print("Please install it to use the packet capture feature (e.g., 'sudo apt-get install tshark').")
-        pcap_file = None # Disable pcap functionality
+        print(
+            "Please install it to use the packet capture feature (e.g., 'sudo apt-get install tshark')."
+        )
+        pcap_file = None  # Disable pcap functionality
 
     tshark_process = None
     if pcap_file:
-        tshark_command = ['tshark', '-i', interface, '-w', pcap_file]
+        tshark_command = ["tshark", "-i", interface, "-w", pcap_file]
         try:
-            tshark_process = subprocess.Popen(tshark_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            tshark_process = subprocess.Popen(
+                tshark_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             print(f"Starting tshark packet capture on '{interface}'.")
         except (FileNotFoundError, PermissionError) as e:
             print(f"Error starting tshark: {e}")
             print("Continuing with bandwidth monitoring only.")
             tshark_process = None
 
-    print(f"Monitoring bandwidth on '{interface}' every {interval}s. Press Ctrl+C to stop.")
-    
-    header = ['timestamp', 'bytes_in', 'bytes_out', 'rx_mbps', 'tx_mbps']
+    print(
+        f"Monitoring bandwidth on '{interface}' every {interval}s. Press Ctrl+C to stop."
+    )
+
+    header = ["timestamp", "bytes_in", "bytes_out", "rx_mbps", "tx_mbps"]
     try:
-        with open(log_file, 'w', newline='') as f:
+        with open(log_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(header)
     except IOError as e:
         print(f"Error: Could not write to log file '{log_file}'. {e}")
-        if tshark_process: tshark_process.terminate()
+        if tshark_process:
+            tshark_process.terminate()
         return
 
     try:
@@ -136,26 +144,32 @@ def monitor_bandwidth(interface, log_file, interval, pcap_file=None):
 
         while True:
             time.sleep(interval)
-            
+
             try:
                 current_io = psutil.net_io_counters(pernic=True)[interface]
                 current_time = time.time()
             except KeyError:
-                print(f"\nError: Interface '{interface}' not found. It might have been disconnected.")
+                print(
+                    f"\nError: Interface '{interface}' not found. It might have been disconnected."
+                )
                 break
 
             time_diff = current_time - last_time
-            if time_diff == 0: continue
+            if time_diff == 0:
+                continue
 
             bytes_in = current_io.bytes_recv - last_io.bytes_recv
             bytes_out = current_io.bytes_sent - last_io.bytes_sent
             rx_mbps = (bytes_in * 8) / (time_diff * 1024 * 1024)
             tx_mbps = (bytes_out * 8) / (time_diff * 1024 * 1024)
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            print(f"\r{timestamp} | Download: {rx_mbps:6.2f} Mbps | Upload: {tx_mbps:6.2f} Mbps", end="")
+            print(
+                f"\r{timestamp} | Download: {rx_mbps:6.2f} Mbps | Upload: {tx_mbps:6.2f} Mbps",
+                end="",
+            )
 
-            with open(log_file, 'a', newline='') as f:
+            with open(log_file, "a", newline="") as f:
                 writer = csv.writer(f)
                 writer.writerow([timestamp, bytes_in, bytes_out, rx_mbps, tx_mbps])
 
@@ -190,28 +204,30 @@ def plot_from_log(log_file, output_file):
     except FileNotFoundError:
         print(f"Error: Log file not found at '{log_file}'")
         return
-    
+
     if df.empty:
         print(f"Log file '{log_file}' is empty. Nothing to plot.")
         return
 
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
 
     try:
-        plt.style.use('seaborn-v0_8-grid')
+        plt.style.use("seaborn-v0_8-grid")
     except (IOError, OSError):
         print("Warning: 'seaborn-v0_8-grid' style not found. Falling back to 'ggplot'.")
-        plt.style.use('ggplot')
+        plt.style.use("ggplot")
 
     fig, ax = plt.subplots(figsize=(15, 7))
 
-    ax.plot(df['timestamp'], df['rx_mbps'], label='Download (Mbps)', color='deepskyblue')
-    ax.plot(df['timestamp'], df['tx_mbps'], label='Upload (Mbps)', color='tomato')
+    ax.plot(
+        df["timestamp"], df["rx_mbps"], label="Download (Mbps)", color="deepskyblue"
+    )
+    ax.plot(df["timestamp"], df["tx_mbps"], label="Upload (Mbps)", color="tomato")
 
-    peak_rx = df['rx_mbps'].max()
-    peak_tx = df['tx_mbps'].max()
-    avg_rx = df['rx_mbps'].mean()
-    avg_tx = df['tx_mbps'].mean()
+    peak_rx = df["rx_mbps"].max()
+    peak_tx = df["tx_mbps"].max()
+    avg_rx = df["rx_mbps"].mean()
+    avg_tx = df["tx_mbps"].mean()
 
     title = (
         f"Bandwidth Over Time: {os.path.basename(log_file)}\n"
@@ -219,12 +235,12 @@ def plot_from_log(log_file, output_file):
         f"Avg Download: {avg_rx:.2f} Mbps | Avg Upload: {avg_tx:.2f} Mbps"
     )
     ax.set_title(title, fontsize=16)
-    ax.set_xlabel('Time', fontsize=12)
-    ax.set_ylabel('Bandwidth (Mbps)', fontsize=12)
+    ax.set_xlabel("Time", fontsize=12)
+    ax.set_ylabel("Bandwidth (Mbps)", fontsize=12)
     ax.legend(fontsize=10)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
 
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
     fig.autofmt_xdate()
 
     plt.tight_layout()
@@ -237,35 +253,73 @@ def plot_from_log(log_file, output_file):
 
     plt.show()
 
+
 def main():
     """Main function to parse arguments and run the script."""
     parser = argparse.ArgumentParser(
         description="Monitor and plot network bandwidth on Linux.",
-        formatter_class=argparse.RawTextHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter,
     )
-    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+    subparsers = parser.add_subparsers(
+        dest="command", required=True, help="Available commands"
+    )
 
     # --- Monitor command ---
     parser_monitor = subparsers.add_parser(
         "monitor",
         help="Monitor bandwidth and log to a file.",
-        description="Monitors bandwidth and can simultaneously capture packets to a .pcap file."
+        description="Monitors bandwidth and can simultaneously capture packets to a .pcap file.",
     )
-    parser_monitor.add_argument("-n", "--interface", help="Network interface name (e.g., wlp0s20f3). Skips interactive selection.")
-    parser_monitor.add_argument("-d", "--dir", default=".", help="Output directory for log/pcap files. If specified, filenames will be timestamped.")
-    parser_monitor.add_argument("-o", "--output", default="bandwidth.log", help="Output log file name (default: bandwidth.log). Ignored if -d is used.")
-    parser_monitor.add_argument("-i", "--interval", type=int, default=1, help="Monitoring interval in seconds (default: 1).")
-    parser_monitor.add_argument("--pcap", action='store_true', help="Enable packet capture. Creates a timestamped .pcap file if -d is used, or 'capture.pcap' otherwise.")
+    parser_monitor.add_argument(
+        "-n",
+        "--interface",
+        help="Network interface name (e.g., wlp0s20f3). Skips interactive selection.",
+    )
+    parser_monitor.add_argument(
+        "-d",
+        "--dir",
+        default=".",
+        help="Output directory for log/pcap files. If specified, filenames will be timestamped.",
+    )
+    parser_monitor.add_argument(
+        "-o",
+        "--output",
+        default="bandwidth.log",
+        help="Output log file name (default: bandwidth.log). Ignored if -d is used.",
+    )
+    parser_monitor.add_argument(
+        "-i",
+        "--interval",
+        type=int,
+        default=1,
+        help="Monitoring interval in seconds (default: 1).",
+    )
+    parser_monitor.add_argument(
+        "--pcap",
+        action="store_true",
+        help="Enable packet capture. Creates a timestamped .pcap file if -d is used, or 'capture.pcap' otherwise.",
+    )
 
     # --- Plot command ---
     parser_plot = subparsers.add_parser(
         "plot",
         help="Plot bandwidth from a log file.",
-        description="Reads a CSV log file and creates a plot. Can find the latest log in a directory."
+        description="Reads a CSV log file and creates a plot. Can find the latest log in a directory.",
     )
-    parser_plot.add_argument("-f", "--file", help="The specific log file to plot from. Overrides automatic detection via --dir.")
-    parser_plot.add_argument("-d", "--dir", help="Directory to search for the most recent .log file to plot.")
-    parser_plot.add_argument("-o", "--output", default=None, help="Output plot image file name. Defaults to a name based on the log file.")
+    parser_plot.add_argument(
+        "-f",
+        "--file",
+        help="The specific log file to plot from. Overrides automatic detection via --dir.",
+    )
+    parser_plot.add_argument(
+        "-d", "--dir", help="Directory to search for the most recent .log file to plot."
+    )
+    parser_plot.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help="Output plot image file name. Defaults to a name based on the log file.",
+    )
 
     args = parser.parse_args()
 
@@ -282,19 +336,28 @@ def main():
                     print(f"Error: Could not create directory '{output_dir}'. {e}")
                     return
 
-            if output_dir != '.':
-                timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            if output_dir != ".":
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 base_name = f"{timestamp}_{interface_name.replace(':', '-')}"
                 log_file_path = os.path.join(output_dir, f"{base_name}_bandwidth.log")
-                pcap_file_path = os.path.join(output_dir, f"{base_name}_capture.pcap") if args.pcap else None
+                pcap_file_path = (
+                    os.path.join(output_dir, f"{base_name}_capture.pcap")
+                    if args.pcap
+                    else None
+                )
             else:
                 log_file_path = os.path.join(output_dir, args.output)
-                pcap_file_path = os.path.join(output_dir, "capture.pcap") if args.pcap else None
-            
-            print(f"Logging bandwidth to: {log_file_path}")
-            if pcap_file_path: print(f"Capturing packets to: {pcap_file_path}")
+                pcap_file_path = (
+                    os.path.join(output_dir, "capture.pcap") if args.pcap else None
+                )
 
-            monitor_bandwidth(interface_name, log_file_path, args.interval, pcap_file_path)
+            print(f"Logging bandwidth to: {log_file_path}")
+            if pcap_file_path:
+                print(f"Capturing packets to: {pcap_file_path}")
+
+            monitor_bandwidth(
+                interface_name, log_file_path, args.interval, pcap_file_path
+            )
         else:
             print("No interface selected. Exiting.")
 
@@ -302,30 +365,35 @@ def main():
         log_file_to_plot = args.file
         if not log_file_to_plot and args.dir:
             try:
-                log_files = [f for f in os.listdir(args.dir) if f.endswith('.log')]
+                log_files = [f for f in os.listdir(args.dir) if f.endswith(".log")]
                 if not log_files:
                     print(f"Error: No .log files found in directory '{args.dir}'.")
                     return
-                latest_log_file = max([os.path.join(args.dir, f) for f in log_files], key=os.path.getmtime)
+                latest_log_file = max(
+                    [os.path.join(args.dir, f) for f in log_files], key=os.path.getmtime
+                )
                 log_file_to_plot = latest_log_file
-                print(f"Found latest log file to plot: {os.path.basename(log_file_to_plot)}")
+                print(
+                    f"Found latest log file to plot: {os.path.basename(log_file_to_plot)}"
+                )
             except FileNotFoundError:
                 print(f"Error: Directory not found at '{args.dir}'")
                 return
 
         if not log_file_to_plot:
-            parser.error("You must specify a log file with -f/--file or a directory with -d/--dir.")
+            parser.error(
+                "You must specify a log file with -f/--file or a directory with -d/--dir."
+            )
             return
 
         output_file_path = args.output
         if not output_file_path:
             base_name = os.path.splitext(os.path.basename(log_file_to_plot))[0]
-            plot_output_dir = os.path.dirname(log_file_to_plot) or '.'
+            plot_output_dir = os.path.dirname(log_file_to_plot) or "."
             output_file_path = os.path.join(plot_output_dir, f"{base_name}_plot.png")
 
         plot_from_log(log_file_to_plot, output_file_path)
 
+
 if __name__ == "__main__":
     main()
-
-
