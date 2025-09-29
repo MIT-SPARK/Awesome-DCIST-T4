@@ -3,51 +3,67 @@ name: Awesome-DCIST-T4
 on:
   merge_group:
     types: [checks_requested]
-    paths-ignore:
-      - README.md
-      - CONTRIBUTING.md
-      - 'scripts/**'
-      - .gitignore
-      - 'dotfiles/**'
   pull_request:
     branches:
       - main
       - develop
-    paths-ignore:
-      - README.md
-      - CONTRIBUTING.md
-      - 'scripts/**'
-      - .gitignore
-      - 'dotfiles/**'
 env:
   ADT4_WS: ${{ github.workspace }}
   ADT4_ENV: ${{ github.workspace }}
   GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 jobs:
+
+  changes:
+    runs-on: ubuntu-latest
+    # Required permissions
+    permissions:
+      pull-requests: read
+    outputs:
+      need_rebuild: ${{ steps.filter.outputs.need_rebuild }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            need_rebuild:
+              - '**'
+              - '!*.md'
+              - '!scripts/**'
+              - '!.gitignore'
+              - '!.dotfiles/**'
+          predicate-quantifier: 'every'
+
+
   Build-and-Test:
+    needs: changes
     runs-on: ubuntu-latest
     container: osrf/ros:jazzy-desktop-full
     steps:
       - name: Update Dependencies
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: |
             sudo apt update
             sudo apt install -y git python3-pip pipx python3 python3-venv ros-jazzy-ament-cmake wget ccache
 
       - name: Setup SSH deploy key
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_KEY_HYDRA_MULTI }}
 
       - name: check loaded key
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         run: ssh-add -l
 
       - name: Check out repository code
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         uses: actions/checkout@v4
         with:
           path: src/awesome_dcist_t4
           submodules: false
       - name: CCache
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
@@ -57,6 +73,7 @@ jobs:
             ${{ runner.os }}-ccache-
 
       - name: Update submodule urls
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         working-directory: src/awesome_dcist_t4
         run: |
           mkdir -p ~/.ssh
@@ -65,11 +82,13 @@ jobs:
           git config --global url."git@github.com:MIT-SPARK/Hydra-Multi.git".insteadOf git@github.com:MIT-SPARK/Hydra-Multi.git
 
       - name: Update submodules
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         working-directory: src/awesome_dcist_t4
         run: |
           git submodule update --init --recursive
 
       - name: Setup Workspace
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: |
             vcs import src < src/awesome_dcist_t4/install/packages.yaml
@@ -79,21 +98,25 @@ jobs:
             colcon build --packages-select config_utilities --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       - name: Config Checks
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: ./src/awesome_dcist_t4/dcist_launch_system/scripts/check_configs.sh
 
       - name: Python Install
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: |
             CMAKE_CXX_COMPILER_LAUNCHER=ccache bash $ADT4_WS/src/awesome_dcist_t4/install/python_setup.bash --no-roman
 
       - name: Build Everything
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: |
             source /opt/ros/jazzy/setup.bash
             colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       - name: Test Python Dependencies
+        if: ${{ needs.changes.outputs.need_rebuild == 'true' }}
         shell: bash
         run: |
           source $ADT4_WS/install/setup.bash
