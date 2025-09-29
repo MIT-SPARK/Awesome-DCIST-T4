@@ -6,7 +6,6 @@ windows:
     # shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - export ADT4_PLATFORM_ID=${ADT4_PLATFORM_ID} && cd ${PHOENIX_ROOT} && phx run -- bash -c source install/setup.bash && ros2 launch mit_launch $ADT4_PLATFORM_ID.launch.yaml'
       - source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true
-      # - cd ${PHOENIX_ROOT} && source install/setup.zsh && ros2 launch mit_launch ${ADT4_PLATFORM_ID}_hardware_launch.xml
-      - sleep 10 && ros2 lifecycle set /${ADT4_PLATFORM_ID}/sensors/ouster/driver 1
+      - sleep 5; tmux send-keys -t real_phoenix.2 "ros2 launch mit_launch gauss_mppi_only.launch.yaml" C-m
+      - cd ${ADT4_PHX_ROOT} && phx run
