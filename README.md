@@ -217,12 +217,9 @@ run-adt4 real_spot-real_spot.yaml
 
 ### Hydra with Bag
 
-If you want to see hydra running on real Spot data, get the bag from Aaron (and
-convert by `pipx install rosbags; rosbags-convert --src
-spot_hydra_twocam_test.bag --dst spot_hydra_twocam_test`).
-
-Make sure you have an override file for the tf qos, e.g., `~/.tf_overrides.yaml`
-looks like
+If you want to see hydra running on real Spot data, get the bag from [here](https://drive.google.com/file/d/155iqaDarCb7-KN8P_rBOqmAnIBj08TmH/view?usp=sharing).
+Make sure you have an override file for the tf qos, e.g.,
+`~/.tf_overrides.yaml` looks like
 
 ```yaml
 /tf_static: {depth: 1, durability: transient_local}
@@ -237,7 +234,7 @@ In a separate window, source the workspace and then run the bag
 
 ```
 source /path/to/workspace/install/setup.zsh # if not source already
-ros2 run ianvs play_rosbag /path/to/spot_hydra_twocam_test --clock
+ros2 run ianvs play_rosbag /path/to/rosbag --clock
 ```
 
 ### Prior Scene Graph and Movable Spot
