@@ -1,28 +1,30 @@
+---
 name: Awesome-DCIST-T4
 on:
-    push:
-        branches: main
-    merge_group:
-        types: [checks_requested]
-    pull_request:
-        branches:
-            - main
-            - develop
+  merge_group:
+    types: [checks_requested]
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - 'scripts/**'
+      - .gitignore
+      - 'dotfiles/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths-ignore:
+      - README.md
+      - CONTRIBUTING.md
+      - 'scripts/**'
+      - .gitignore
+      - 'dotfiles/**'
 env:
-    ADT4_WS: ${{ github.workspace }}
-    ADT4_ENV: ${{ github.workspace }}
-    GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
+  ADT4_WS: ${{ github.workspace }}
+  ADT4_ENV: ${{ github.workspace }}
+  GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Dependencies
-        run: sudo apt-get update && sudo apt install pipx
-      - name: Lint
-        run: pipx install pre-commit && cd ${{github.workspace}} && pre-commit run --all-files
-
-  Awesome-DCIST-T4:
+  Build-and-Test:
     runs-on: ubuntu-latest
     container: osrf/ros:jazzy-desktop-full
     steps:
