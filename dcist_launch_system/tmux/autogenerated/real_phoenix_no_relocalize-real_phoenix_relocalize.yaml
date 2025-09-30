@@ -17,6 +17,7 @@ windows:
     layout: tiled
     panes:
       - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true
   - window_name: transform_publishers
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

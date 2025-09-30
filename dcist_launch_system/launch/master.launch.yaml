@@ -271,6 +271,15 @@ launch:
       remap:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+  
+  # dsg_analyzer
+  - arg: {name: launch_dsg_analyzer, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_dsg_analyzer)
+      pkg: dsg_analyzer
+      exec: dsg_analyzer
+      name: dsg_analyzer
+      pyenv: $(var spark_env)
 
   # Static TF to replace Hydra multi map->robot/map TF.
   # Non-identity transform for verification.
