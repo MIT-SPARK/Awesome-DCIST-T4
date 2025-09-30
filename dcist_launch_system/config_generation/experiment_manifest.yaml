@@ -105,7 +105,7 @@ experiments:
 
     real_phoenix_no_relocalize:
         launch_config: no_relocalize
-        config: [real_phoenix]
+        config: [real_phoenix_relocalize]
 
     bag_phoenix:
         launch_config: bag_map
@@ -113,4 +113,4 @@ experiments:
 
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
-        config: [real_phoenix]
+        config: [real_phoenix_relocalize]
