@@ -1,6 +1,7 @@
 ---
 /**:
   ros__parameters:
+    occupancy_frame: $(var robot_name)/map
     odom_frame: $(var robot_name)/odom
     body_frame: $(var robot_name)/body
     spot_ip: $(env ADT4_BOSDYN_IP)
