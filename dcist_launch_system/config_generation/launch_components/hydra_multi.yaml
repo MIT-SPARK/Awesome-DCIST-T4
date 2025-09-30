@@ -1,5 +1,6 @@
 ---
 nodes_to_monitor:
+  hydra: {external_monitor: {type: JsonMonitor}}
   hydra_multi: {external_monitor: {type: JsonMonitor}}
 windows:
   - window_name: hydra_multi

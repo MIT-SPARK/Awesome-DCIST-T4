@@ -5,11 +5,11 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
-  nlu_rviz_panel: {}
+  nlu_rviz_instruction_panel: {}
   spot_executor: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_panel: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag, logging_key: spot_bag-bag}
+environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: bag, logging_key: spot_bag-bag}
 options:
   default-command: /bin/zsh
 windows:
