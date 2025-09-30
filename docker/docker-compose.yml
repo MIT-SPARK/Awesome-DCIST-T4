@@ -4,12 +4,14 @@ services:
     build:
       context: .
       target: base
-      # --- NEW: Pass the make jobs variable to the build ---
       args:
         - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
     container_name: dcist_dev
     volumes:
       - ./adt4_src:/dcist_ws/src
+      - ./data:/data:rw
+      - ./adt4_output:/root/adt4_output:rw
+      # For GUI forwarding
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     env_file: .env
     deploy:
@@ -31,10 +33,13 @@ services:
     build:
       context: .
       target: deployment
-      # --- NEW: Pass the make jobs variable to the build ---
       args:
         - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
     container_name: dcist_deploy
+    volumes:
+      - ./data:/data:rw
+      - ./adt4_output:/root/adt4_output:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     env_file: .env
     deploy:
       resources:
@@ -47,7 +52,5 @@ services:
     environment:
       - DISPLAY=${DISPLAY}
       - QT_X11_NO_MITSHM=1
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     stdin_open: true
     tty: true
