@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # network_monitor.py
 #
 # A Python script to monitor and plot network bandwidth on Linux.
