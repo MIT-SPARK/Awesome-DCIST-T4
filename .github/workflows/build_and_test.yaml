@@ -34,6 +34,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          working-directory: src/awesome_dcist_t4
           filters: |
             need_rebuild:
               - '**'
