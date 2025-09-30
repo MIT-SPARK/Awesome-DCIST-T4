@@ -1,18 +1,21 @@
+---
 services:
   # Development Environment
   dev:
     build:
       context: .
-      target: base
-      args:
-        - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
+      target: builder
+      args: ['WITH_TENSORRT=${DOCKER_WITH_TENSORRT:-true}', 'MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}']
     container_name: dcist_dev
     volumes:
+      # Mounts your local source code, overlaying the code that was built into the image.
       - ./adt4_src:/dcist_ws/src
+      # Mounts a local 'data' directory for input (e.g., bags)
       - ./data:/data:rw
+      # Mounts a local 'adt4_output' directory for output (e.g., logs, maps)
       - ./adt4_output:/root/adt4_output:rw
       # For GUI forwarding
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /tmp/.X.11-unix:/tmp/.X11-unix:rw
     env_file: .env
     deploy:
       resources:
@@ -22,9 +25,7 @@ services:
               count: all
               capabilities: [gpu]
     network_mode: host
-    environment:
-      - DISPLAY=${DISPLAY}
-      - QT_X11_NO_MITSHM=1
+    environment: ['DISPLAY=${DISPLAY}', QT_X11_NO_MITSHM=1]
     stdin_open: true
     tty: true
 
@@ -33,13 +34,9 @@ services:
     build:
       context: .
       target: deployment
-      args:
-        - MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}
+      args: ['WITH_TENSORRT=${DOCKER_WITH_TENSORRT:-true}', 'MAKE_JOBS=${DOCKER_MAKE_JOBS:-4}']
     container_name: dcist_deploy
-    volumes:
-      - ./data:/data:rw
-      - ./adt4_output:/root/adt4_output:rw
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    volumes: [./data:/data:rw, ./adt4_output:/root/adt4_output:rw, /tmp/.X11-unix:/tmp/.X11-unix:rw]
     env_file: .env
     deploy:
       resources:
@@ -49,8 +46,6 @@ services:
               count: all
               capabilities: [gpu]
     network_mode: host
-    environment:
-      - DISPLAY=${DISPLAY}
-      - QT_X11_NO_MITSHM=1
+    environment: ['DISPLAY=${DISPLAY}', QT_X11_NO_MITSHM=1]
     stdin_open: true
     tty: true

@@ -1,10 +1,18 @@
+Of course. You've provided a great base README. I will merge it with the final, corrected workflows and the additional configuration options we developed.
+
+This final version corrects the development mode instructions, adds the optional TensorRT build flag, and ensures all commands and file names are consistent with the complete setup.
+
+Here is the complete `README.md` file in Markdown format.
+
+---
+
 # Awesome DCIST T4 Docker Environment
 
 A complete Docker environment for building and running the [Awesome DCIST T4](https://github.com/MIT-SPARK/Awesome-DCIST-T4) repository.
 
 This setup provides a self-contained, reproducible environment with **ROS 2 Jazzy**, **NVIDIA CUDA**, and **TensorRT** support. It is designed for two primary workflows:
 1.  **Deployment:** Building a final, portable image with the application pre-compiled and ready to run.
-2.  **Development:** Mounting your local source code into the container for rapid, iterative development and debugging.
+2.  **Development:** Mounting your local source code into a pre-built container for rapid, iterative development and debugging.
 
 ## Prerequisites
 
@@ -20,12 +28,12 @@ Before you begin, ensure you have the following installed on your host machine:
 
 Follow these steps once to prepare your environment.
 
-**1. Clone this Repository**
+**1. Clone the Main Repository**
 
-Clone the repository containing this Docker setup.
+Clone the `Awesome-DCIST-T4` repository, which contains the `docker` directory.
 ```bash
 git clone git@github.com:MIT-SPARK/Awesome-DCIST-T4.git
-cd Awesome-DCIST-T4
+cd Awesome-DCIST-T4/docker
 ```
 
 **2. Configure Your Environment**
@@ -35,15 +43,16 @@ Copy the example environment file to `.env`. This file stores your secrets and c
 cp .env_example .env
 vim .env # Or your favorite editor
 ```
-Be sure to fill in your API keys and adjust settings like `DOCKER_MAKE_JOBS` if needed. This controlls the number of threads during the catkin build. If you have less than 32GB of RAM make sure to lower this from 8.
+Be sure to fill in your API keys and adjust the build configuration settings as needed.
 
 **3. Prepare the Source Code**
 
-Run the provided script to clone the `Awesome-DCIST-T4` repository and all its dependencies into a local `adt4_src` directory. This script uses **your host machine's SSH keys**, which is necessary for private submodules.
+Run the provided script to clone all necessary source code into a local `adt4_src` directory. This script uses **your host machine's SSH keys**, which is necessary for private submodules.
 ```bash
-chmod +x prepare_source.sh
-./prepare_source.sh
+chmod +x prepare_src.sh
+./prepare_src.sh
 ```
+> **Note:** This will still work if some repositories aren't accessible to you. However, features in those repositories will not be available. For example, if you don't have access to `hydra-multi`, map fusion won't work.
 
 **4. Prepare Data Directories**
 
@@ -63,11 +72,11 @@ You are now ready to choose a usage mode.
 
 ### 1. Deployment Mode (Recommended for Running)
 
-This mode builds a self-contained image with the entire workspace pre-compiled. The final image is portable and can be run on any machine with Docker and NVIDIA drivers.
+This mode builds a self-contained, clean image with the entire workspace pre-compiled. The final image is portable and can be run on any machine with Docker and NVIDIA drivers.
 
 **Step 1: Build the Image**
 
-This command builds the final `deployment` image. The `--no-cache` flag is recommended for the first build to ensure a clean state.
+This command builds the final `deployment` image. Use `--no-cache` for the first build or after making changes to the `Dockerfile`.
 ```bash
 docker compose build --no-cache deploy
 ```
@@ -81,40 +90,44 @@ docker compose up -d deploy
 
 **Step 3: Access the Container**
 
-You will be dropped into a `zsh` shell inside the container. The ROS 2 workspace is already built and sourced, and the environment is ready to use immediately.
+You will be dropped into a `zsh` shell. The ROS 2 workspace is already built and sourced, and the environment is ready to use immediately.
 ```bash
 docker compose exec deploy zsh
 ```
 
 ### 2. Development Mode (Recommended for Coding)
 
-This mode mounts your local `adt4_src` directory into the container. Any code changes you make on your host machine are instantly reflected inside the container, allowing you to use your favorite IDE.
+This mode provides a pre-built container and mounts your local `adt4_src` directory inside it. Code changes on your host are instantly reflected in the container.
 
-**Step 1: Start the Container**
+**Step 1: Build the Development Image**
 
-This command builds the `base` image (with all dependencies) and starts the container.
+The first time, you need to build the `dev` image. This will compile the entire workspace inside the container.
 ```bash
-docker compose up --build -d dev
+docker compose build --no-cache dev
 ```
 
-**Step 2: Access the Container**
+**Step 2: Start the Container**
 
-Get an interactive shell inside the running container.
+Start the `dev` service in the background. Subsequent starts will be very fast.
+```bash
+docker compose up -d dev
+```
+
+**Step 3: Access the Container**
+
+Get an interactive shell. The environment is fully built and sourced, with your local code mounted and ready for editing.
 ```bash
 docker compose exec dev zsh
 ```
 
-**Step 3: Build the Workspace (First Time Only)**
-
-> **Note:** In development mode, you must run the first build manually inside the container.
-
-Run the `colcon build` command. It will use the `DOCKER_MAKE_JOBS` variable from your `.env` file.
-```bash
-# Inside the dev container
-cd /dcist_ws
-colcon build --continue-on-error --executor sequential
-```
-After the build completes, your development environment is ready. You only need to re-run `colcon build` after making C++ changes. Python changes are reflected live.
+**Step 4: Making Code Changes**
+-   **Python/Launch/Config changes:** These are live instantly. Just re-run your `ros2` command.
+-   **C++ changes:** You only need to recompile the affected packages inside the container.
+    ```bash
+    # Inside the dev container
+    cd /dcist_ws
+    colcon build --packages-select <your_changed_package_name>
+    ```
 
 ---
 
@@ -150,13 +163,10 @@ rviz2
 
 ### Build Configuration
 
-You can control the RAM usage of the `colcon build` process by editing `DOCKER_MAKE_JOBS` in your `.env` file.
+You can control build options by editing your `.env` file. You must rebuild the image for these changes to take effect.
 
--   `DOCKER_MAKE_JOBS=8`: (Default) Good for machines with 32GB+ RAM.
--   `DOCKER_MAKE_JOBS=2`: Recommended for laptops with 16GB RAM.
--   `DOCKER_MAKE_JOBS=1`: Uses the least RAM but is the slowest.
-
-You must rebuild the image (`docker compose build --no-cache deploy`) for this change to take effect.
+-   **`DOCKER_MAKE_JOBS`**: Controls the number of parallel jobs during the `colcon build` to manage RAM usage. If you have less than 32GB of RAM, consider lowering this from the default of 8.
+-   **`DOCKER_WITH_TENSORRT`**: Set to `true` (default) or `false` to enable/disable the installation of NVIDIA TensorRT, which is required for online semantic inference.
 
 ## Common Commands
 
@@ -170,8 +180,12 @@ docker compose down
 docker compose logs -f deploy
 ```
 
-**Force a Clean Rebuild:**
+**Force a Clean Rebuild of a Service:**
 ```bash
+# For the development container
+docker compose build --no-cache dev
+
+# For the deployment container
 docker compose build --no-cache deploy
 ```
 
