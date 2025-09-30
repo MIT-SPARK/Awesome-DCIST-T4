@@ -46,3 +46,6 @@
 [submodule "khronos"]
 	path = khronos
 	url = git@github.com:MIT-SPARK/Khronos.git
+[submodule "dsg_analyzer"]
+	path = dsg_analyzer
+	url = git@github.com:MultyXu/dsg_analyzer.git
