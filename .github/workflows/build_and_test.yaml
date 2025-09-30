@@ -7,6 +7,9 @@ on:
     branches:
       - main
       - develop
+  workflow_dispatch: {}
+  schedule:
+    - cron: "52 23 * * FRI,TUE"
 env:
   ADT4_WS: ${{ github.workspace }}
   ADT4_ENV: ${{ github.workspace }}
@@ -21,6 +24,13 @@ jobs:
     outputs:
       need_rebuild: ${{ steps.filter.outputs.need_rebuild }}
     steps:
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          path: src/awesome_dcist_t4
+          submodules: false
+
       - uses: dorny/paths-filter@v3
         id: filter
         with:
