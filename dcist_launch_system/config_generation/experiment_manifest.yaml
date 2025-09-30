@@ -17,84 +17,31 @@ launch_configs:
     hydra: []
     prior_dsg: []
     hydra_multi: []
-
     transform_publishers: []
 
-    spot_bag:
-        - core
-        - hydra
-        - roman
-        - bag_spot
-        - status
-        - rviz
+    main: [core, status]
+    map: [main, hydra, roman]
+    bag_map: [map, rviz]
+    relocalize: [main, hydra_multi, roman]
+    bag_relocalize: [relocalize, rviz]
+    no_relocalize: [main, transform_publishers]
+    plan_prior: [main, prior_dsg, planning]
 
-    spot_prior_dsg:
-        - core
-        - prior_dsg
-        - sim_spot
-        - planning
-        - status
+    data_collection: [main, spot_real]
 
-    real_spot:
-        - core
-        - hydra
-        - roman
-        - spot_real
-        - status
+    spot_bag: [bag_map, bag_spot]
+    spot_bag_relocalize: [bag_relocalize, bag_spot]
 
-    real_phoenix:
-        - core
-        - hydra
-        - roman
-        - phoenix_real
-        - status
+    real_spot: [map, spot_real]
+    real_spot_relocalize: [relocalize, spot_real]
+    real_spot_no_relocalize: [no_relocalize, spot_real]
 
-    real_spot_relocalize:
-        - core
-        - hydra_multi
-        - roman
-        - spot_real
-        - status
+    real_phoenix: [map, phoenix_real]
+    real_phoenix_relocalize: [relocalize, phoenix_real]
+    real_phoenix_no_relocalize: [no_relocalize]
 
-    real_phoenix_relocalize:
-        - core
-        - hydra_multi
-        - roman
-        - phoenix_real
-        - status
-
-    data_collection:
-        - core
-        - spot_real
-        - status
-
-    spot_bag_relocalize:
-        - core
-        - hydra_multi
-        - roman
-        - bag_spot
-        - status
-        - rviz
-
-    base_station:
-        - core
-        - prior_dsg
-        - planning
-        - status
-        - multi_status
-
-    real_spot_no_relocalize: 
-        - core
-        - spot_real 
-        - status
-        - transform_publishers
-
-    real_phoenix_no_relocalize: 
-        - core
-        #- phoenix_real 
-        - status
-        - transform_publishers
-
+    spot_prior_dsg: [plan_prior, sim_spot]
+    base_station: [plan_prior, multi_status]
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -105,7 +52,7 @@ configs:
     spot_prior_dsg: []
     real_spot: []
     real_phoenix: []
- 
+
     relocalize: []
 
     real_spot_relocalize: [real_spot, relocalize]
@@ -116,50 +63,54 @@ configs:
 # launch files
 experiments:
 
-    spot_bag:
-        launch_config: spot_bag
-        config: [bag]
+    data_collection:
+        launch_config: data_collection
+        config: [real_spot]
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
         config: [spot_prior_dsg]
 
-    real_spot:
-        launch_config: real_spot
-        config: [real_spot]
+    base_station:
+        launch_config: base_station
+        config: [default_params]
 
-    real_phoenix:
-        launch_config: real_phoenix
-        config: [real_phoenix]
-
-    data_collection:
-        launch_config: data_collection
-        config: [real_spot]
+    spot_bag:
+        launch_config: spot_bag
+        config: [bag]
 
     spot_bag_relocalize:
         launch_config: spot_bag_relocalize
         config: [relocalize]
 
-    base_station:
-        launch_config: base_station
-        config: [default_params]
+    real_spot:
+        launch_config: real_spot
+        config: [real_spot]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
-        config: [real_spot_relocalize]
+        config: [real_spot_relocalize, apollo_relocalize]
 
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
         config: [real_spot_relocalize]
 
-    real_phoenix_no_relocalize:
-        launch_config: real_phoenix_no_relocalize
+    real_phoenix:
+        launch_config: real_phoenix
         config: [real_phoenix]
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
         config: [real_phoenix_relocalize]
 
-    apollo_relocalize:
-        launch_config: real_spot_relocalize
-        config: [apollo_relocalize]
+    real_phoenix_no_relocalize:
+        launch_config: no_relocalize
+        config: [real_phoenix_relocalize]
+
+    bag_phoenix:
+        launch_config: bag_map
+        config: [real_phoenix]
+
+    bag_phoenix_relocalize:
+        launch_config: bag_relocalize
+        config: [real_phoenix_relocalize]

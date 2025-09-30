@@ -18,6 +18,11 @@ windows:
       - ros2 run rmw_zenoh_cpp rmw_zenohd
       - python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py
       - "ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty && tmux send-keys -t roman.1 C-c \\"
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
   - window_name: hydra_multi
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
@@ -38,8 +43,3 @@ windows:
       - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
       - sleep 5; tmux send-keys -t real_phoenix.2 "ros2 launch mit_launch gauss_mppi_only.launch.yaml" C-m
       - "cd ${ADT4_PHX_ROOT} && phx run"
-  - window_name: status
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
