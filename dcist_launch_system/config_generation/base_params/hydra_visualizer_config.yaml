@@ -5,6 +5,8 @@ graph:
 plugins:
   mesh:
     use_color_adaptor: false
+  places_traversability:
+    type: TraversabilityPlugin
 renderer:
   layer_z_step: 5.5  # unit separation between layers
   collapse_layers: false  # whether or not to apply offsets to each of the layers
