@@ -1,3 +1,7 @@
+The script is called:
+build_adt4_docker.sh
+
+and this is my current README
 Of course. You've provided a great base README. I will merge it with the final, corrected workflows and the additional configuration options we developed.
 
 This final version corrects the development mode instructions, adds the optional TensorRT build flag, and ensures all commands and file names are consistent with the complete setup.
@@ -196,3 +200,6 @@ This container comes with several tools to improve the development experience:
 -   **Oh-My-Zsh** for themes and plugins.
 -   **Vim** and **Tmux** for terminal-based editing and session management.
 -   **Rich** for beautiful Python tracebacks.
+
+
+Please update the current README for the new script
