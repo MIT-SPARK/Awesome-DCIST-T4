@@ -1,0 +1,5 @@
+---
+/**:
+  ros__parameters:
+    heracles_ip: $(env ADT4_HERACLES_IP)
+    heracles_port: 7686
