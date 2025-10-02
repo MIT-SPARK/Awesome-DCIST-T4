@@ -6,7 +6,7 @@ robots:
     inputs:
       dsg:
         type: FileDsgInput
-        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg.json
       dgraph:
         type: FileDGraphInput
         dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
@@ -21,6 +21,7 @@ robots:
         type: RosDGraphInput
       dsg:
         type: RosDsgInput
+        subscribe_to_mesh: false
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false

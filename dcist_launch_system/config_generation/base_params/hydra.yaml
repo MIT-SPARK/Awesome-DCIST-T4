@@ -22,6 +22,7 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  min_output_separation: 0.5
   object_detector:
     type: ConnectedSemantics
     min_cluster_size: 20
@@ -56,6 +57,7 @@ active_window:
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
+  serialize_dsg_mesh: false
   clear_object_meshes: true
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:
