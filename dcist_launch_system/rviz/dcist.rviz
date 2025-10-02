@@ -84,9 +84,35 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        gauss/base_link:
+          Value: true
+        gauss/dlio/lidar_sensor:
+          Value: true
+        gauss/dlio/microstrain_imu:
+          Value: true
+        gauss/lidar:
+          Value: true
+        gauss/lidar_sensor:
+          Value: true
+        gauss/microstrain_imu:
+          Value: true
         gauss/odom:
           Value: true
+        gauss_zed_camera_center:
+          Value: true
+        gauss_zed_camera_link:
+          Value: true
+        gauss_zed_left_camera_frame:
+          Value: true
+        gauss_zed_left_camera_optical_frame:
+          Value: true
+        gauss_zed_right_camera_frame:
+          Value: true
+        gauss_zed_right_camera_optical_frame:
+          Value: true
         map:
+          Value: true
+        os_imu:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -96,7 +122,26 @@ Visualization Manager:
       Tree:
         map:
           gauss/odom:
-            {}
+            gauss/base_link:
+              gauss/dlio/lidar_sensor:
+                {}
+              gauss/dlio/microstrain_imu:
+                {}
+              gauss/lidar_sensor:
+                gauss/lidar:
+                  {}
+                os_imu:
+                  {}
+              gauss/microstrain_imu:
+                {}
+              gauss_zed_camera_link:
+                gauss_zed_camera_center:
+                  gauss_zed_left_camera_frame:
+                    gauss_zed_left_camera_optical_frame:
+                      {}
+                  gauss_zed_right_camera_frame:
+                    gauss_zed_right_camera_optical_frame:
+                      {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -114,7 +159,7 @@ Visualization Manager:
     - Class: kimera_pgmo_rviz/MeshDisplay
       Cull Backfaces: true
       Enable Lighting: false
-      Enabled: true
+      Enabled: false
       Name: Mesh
       Toggle Visibility All: true
       Topic:
@@ -124,8 +169,10 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
-      Value: true
-      Visible: true
+      Value: false
+      Visible:
+        0: true
+        Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -156,7 +203,20 @@ Visualization Manager:
       Enabled: true
       Name: Fused Scene Graph
       Namespaces:
-        {}
+        interlayer_edges_2_3[1]: true
+        interlayer_edges_3[1]_2: true
+        layer_2_bounding_boxes: true
+        layer_2_nodes: true
+        layer_2_text: true
+        layer_2p97_edges: true
+        layer_2p97_nodes: true
+        layer_2p97_text: true
+        layer_2p98_edges: true
+        layer_2p98_nodes: true
+        layer_2p98_text: true
+        layer_3p1_edges: true
+        layer_3p1_nodes: true
+        layer_3p1_polygon_boundaries: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -210,25 +270,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 55.82926940917969
+      Distance: 52.5397834777832
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 14.306068420410156
-        Y: 4.751355171203613
-        Z: -2.9939589500427246
+        X: 26.28230857849121
+        Y: 69.16333770751953
+        Z: -3.6438307762145996
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0247961282730103
+      Pitch: 1.1547960042953491
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.59359073638916
+      Yaw: 3.2035915851593018
     Saved: ~
 Window Geometry:
   Displays:
