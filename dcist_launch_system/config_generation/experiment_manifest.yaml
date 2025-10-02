@@ -17,6 +17,7 @@ launch_configs:
     roman: []
     hydra: []
     prior_dsg: []
+    heracles_prior_dsg: []
     hydra_multi: []
     transform_publishers: []
 
@@ -27,6 +28,7 @@ launch_configs:
     bag_relocalize: [relocalize, rviz, relocalize_viz]
     no_relocalize: [main, transform_publishers]
     plan_prior: [main, prior_dsg, planning]
+    plan_prior_heracles: [main, heracles_prior_dsg, planning]
 
     data_collection: [main, spot_real]
 
@@ -42,7 +44,9 @@ launch_configs:
     real_phoenix_no_relocalize: [no_relocalize]
 
     spot_prior_dsg: [plan_prior, sim_spot]
+    spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
     base_station: [plan_prior, multi_status]
+    base_station_heracles: [plan_prior_heracles, multi_status]
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -72,8 +76,16 @@ experiments:
         launch_config: spot_prior_dsg
         config: [spot_prior_dsg]
 
+    spot_prior_dsg_heracles:
+        launch_config: spot_prior_dsg_heracles
+        config: [spot_prior_dsg]
+
     base_station:
         launch_config: base_station
+        config: [default_params]
+
+    base_station_heracles:
+        launch_config: base_station_heracles
         config: [default_params]
 
     spot_bag:

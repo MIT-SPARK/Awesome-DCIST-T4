@@ -288,7 +288,7 @@ launch:
       remap:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
-  
+
   # dsg_analyzer
   - arg: {name: launch_dsg_analyzer, default: 'false'}
   - pyenv_node:
@@ -318,3 +318,18 @@ launch:
       pkg: tf2_ros
       exec: static_transform_publisher
       args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
+
+
+  - arg: {name: launch_heracles_publisher, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_heracles_publisher)
+      pkg: heracles_ros
+      exec: heracles_publisher_node
+      name: heracles_publisher_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_publisher_node.yaml, allow_substs: true}
+      remap:
+        - from: ~/dsg_out
+          to: hydra/backend/dsg
