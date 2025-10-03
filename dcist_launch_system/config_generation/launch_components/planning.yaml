@@ -1,7 +1,7 @@
 ---
 nodes_to_monitor:
   omniplanner: {}
-  nlu_rviz_panel: {}
+  nlu_rviz_instruction_panel: {}
 windows:
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh

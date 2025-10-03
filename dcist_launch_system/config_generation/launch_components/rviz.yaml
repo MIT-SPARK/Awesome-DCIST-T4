@@ -1,6 +1,6 @@
 ---
 nodes_to_monitor:
-  nlu_rviz_panel: {}
+  nlu_rviz_instruction_panel: {}
 windows:
   - window_name: rviz
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
