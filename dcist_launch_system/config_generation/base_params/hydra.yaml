@@ -10,6 +10,7 @@ map_window: {type: spatial, max_radius_m: 14.0}
 # modules
 input:
   type: RosInput
+  max_receiver_queue_size: 1
   inputs:
     camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
