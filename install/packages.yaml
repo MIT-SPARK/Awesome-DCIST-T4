@@ -14,7 +14,7 @@ repositories:
     version: main
   teaserpp:  # added by Nathan for Hydra
     type: git
-    url: https://github.com/nathanhhughes/TEASER-plusplus.git
+    url: https://github.com/MIT-SPARK/TEASER-plusplus.git
     version: master
   ros2_numpy:  # added by Mason for ROMAN
     type: git

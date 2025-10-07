@@ -4,7 +4,7 @@ bosdyn-choreography-client
 bosdyn-orbit
 onnxruntime
 openai
-deepgram-sdk
+deepgram-sdk<5
 ultralytics
 plum-dispatch
 git+https://github.com/openai/CLIP.git
