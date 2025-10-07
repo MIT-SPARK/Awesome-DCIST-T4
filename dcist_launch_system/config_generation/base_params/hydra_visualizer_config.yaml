@@ -1,5 +1,5 @@
 ---
-visualizer_frame: $<env ADT4_ROBOT_NAME>/map
+visualizer_frame: $<var robot_name>/map
 graph:
   type: GraphFromRos
 plugins:
