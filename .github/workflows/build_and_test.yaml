@@ -24,7 +24,6 @@ jobs:
     outputs:
       need_rebuild: ${{ steps.filter.outputs.need_rebuild }}
     steps:
-
       - name: Check out repository code
         uses: actions/checkout@v4
         with:

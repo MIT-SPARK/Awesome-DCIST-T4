@@ -3,10 +3,11 @@ robot_id: 1
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/body
+robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
 input:
   type: RosInput
+  max_receiver_queue_size: 1
   inputs:
     camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}

@@ -1,12 +1,13 @@
 paths: [khronos, khronos_ros]
-robot_id: 0
+robot_id: 1
 config_verbosity: 0
-map_frame: $<env ADT4_ROBOT_NAME>/map
+map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/base_link
+robot_frame: $<env ADT4_ROBOT_NAME>/body
 map_window: {type: spatial, max_radius_m: 14.0}
 input:
   type: RosInput
+  max_receiver_queue_size: 1
   inputs:
     camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
@@ -81,13 +82,13 @@ frontend:
 backend:
   type: BackendModule
   enable_zmq_interface: false
-  publish_backend_tf: true
+  publish_backend_tf: false
   serialize_dsg_mesh: false
   min_dsg_separation_s: 1
   publish_mesh: true
   min_mesh_separation_s: 10
   add_places_to_deformation_graph: false
-  optimize_on_lc: true
+  optimize_on_lc: false
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
@@ -97,7 +98,7 @@ backend:
     embed_trajectory_delta_t: 5.0
     num_interp_pts: 3
     interp_horizon: 10.0
-    add_initial_prior: true
+    add_initial_prior: false
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
