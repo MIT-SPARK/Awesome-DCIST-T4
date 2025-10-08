@@ -5,6 +5,7 @@ launch_configs:
     status: []
     multi_status: []
     rviz: []
+    relocalize_viz: []
 
     sim_spot: []
     bag_spot: []
@@ -23,7 +24,7 @@ launch_configs:
     map: [main, hydra, roman]
     bag_map: [map, rviz]
     relocalize: [main, hydra_multi, roman]
-    bag_relocalize: [relocalize, rviz]
+    bag_relocalize: [relocalize, rviz, relocalize_viz]
     no_relocalize: [main, transform_publishers]
     plan_prior: [main, prior_dsg, planning]
 
