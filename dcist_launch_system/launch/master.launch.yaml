@@ -91,7 +91,6 @@ launch:
       pkg: hydra_multi_ros
       exec: hydra_multi_ros_node
       name: hydra_multi
-      # launch-prefix: 'gdbserver localhost:3000'
       param:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
@@ -100,8 +99,10 @@ launch:
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
-        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra_multi, output: {use_timestamp: false, overwrite: true}}
+
+  # Hydra-Multi Visualizer
   - arg: {name: launch_hydra_multi_visualizer, default: 'false'}
   - node:
       if: $(var launch_hydra_multi_visualizer)
@@ -115,7 +116,7 @@ launch:
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer_config.yaml
-        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
+        --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
