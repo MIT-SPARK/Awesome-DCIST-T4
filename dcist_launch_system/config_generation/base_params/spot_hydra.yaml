@@ -10,6 +10,7 @@ map_window: {type: spatial, max_radius_m: 14.0}
 # modules
 input:
   type: RosInput
+  max_receiver_queue_size: 1
   inputs:
     camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
@@ -22,6 +23,7 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  min_output_separation: 0.5
   object_detector:
     type: ConnectedSemantics
     min_cluster_size: 20
