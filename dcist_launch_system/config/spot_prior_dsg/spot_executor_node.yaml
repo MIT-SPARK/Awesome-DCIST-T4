@@ -6,7 +6,9 @@
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
-    use_mid_level_planner: false
+    use_mid_level_planner: true
+    use_fake_occupancy_map: true
+    publish_fake_path_plan: false
     use_fake_spot_interface: true
     use_fake_spot_pose: true
     fake_spot_external_pose: false

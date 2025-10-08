@@ -1,0 +1,5 @@
+---
+/**:
+  ros__parameters:
+    use_mid_level_planner: true
+    publish_fake_path_plan: true

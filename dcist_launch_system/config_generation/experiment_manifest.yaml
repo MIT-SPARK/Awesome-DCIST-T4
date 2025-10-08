@@ -81,6 +81,7 @@ configs:
     default_params: []
 
     bag: []
+    spot_bag_MLP: [bag]
     spot_prior_dsg: []
     real_spot: []
     relocalize: []
@@ -95,6 +96,10 @@ experiments:
     spot_bag:
         launch_config: spot_bag
         config: [bag]
+    
+    spot_bag_MLP:
+        launch_config: spot_bag
+        config: [spot_bag_MLP]
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg

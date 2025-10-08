@@ -1,5 +1,7 @@
 ---
 /**:
   ros__parameters:
+    use_mid_level_planner: true
     use_fake_spot_pose: true
     fake_spot_external_pose: false
+    use_fake_occupancy_map: true
