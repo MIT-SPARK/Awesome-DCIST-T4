@@ -14,3 +14,4 @@ neo4j-rust-ext
 anthropic
 ollama
 tiktoken
+pydantic_settings
