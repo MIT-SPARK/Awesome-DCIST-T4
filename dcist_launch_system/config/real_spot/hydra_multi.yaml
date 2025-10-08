@@ -24,6 +24,7 @@ robots:
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false
+  anchor_robot0: false
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:
