@@ -10,8 +10,7 @@ plum-dispatch
 git+https://github.com/openai/CLIP.git
 numpy<2
 neo4j
-textual
-boto3
+neo4j-rust-ext
 anthropic
 ollama
 tiktoken
