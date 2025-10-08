@@ -15,6 +15,7 @@ environment:
   ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
   HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: real_phoenix_relocalize
