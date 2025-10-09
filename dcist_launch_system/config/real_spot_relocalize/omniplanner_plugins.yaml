@@ -27,6 +27,10 @@ robots:
     type: phoenix
     robot_type: husky
     body_frame: pascal/base_link
+  - robot_name: lewis
+    type: phoenix
+    robot_type: husky
+    body_frame: lewis/base_link
 planners:
   goto_points:
     plugin:
