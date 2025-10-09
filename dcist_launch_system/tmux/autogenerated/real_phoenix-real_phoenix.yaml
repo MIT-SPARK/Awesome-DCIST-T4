@@ -14,6 +14,7 @@ environment:
   ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
   HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME

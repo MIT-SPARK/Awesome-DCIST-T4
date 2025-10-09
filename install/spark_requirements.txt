@@ -15,3 +15,6 @@ anthropic
 ollama
 tiktoken
 pydantic_settings
+boto3
+textual
+textual-dev
