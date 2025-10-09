@@ -23,6 +23,7 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  min_output_separation: 0.5
   object_detector:
     type: ConnectedSemantics
     min_cluster_size: 20
