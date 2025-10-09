@@ -2,6 +2,7 @@ nodes_to_monitor:
   dsg_saver: {}
   omniplanner: {}
   nlu_rviz_instruction_panel: {}
+  spot_executor: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -12,10 +13,10 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, spot_executor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: default_params
-  logging_key: base_station-default_params
+  config: spot_prior_dsg
+  logging_key: spot_prior_dsg_heracles-spot_prior_dsg
 options:
   default-command: /bin/zsh
 windows:
@@ -36,8 +37,9 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_scene_graph_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
+      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
@@ -45,7 +47,11 @@ windows:
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_omniplanner:=true
-  - window_name: status
+  - window_name: sim_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_executor:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_state_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true launch_static_robot_map_to_odom:=true
+      - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel

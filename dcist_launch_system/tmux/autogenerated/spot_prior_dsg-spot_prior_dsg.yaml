@@ -1,11 +1,22 @@
 nodes_to_monitor:
   dsg_saver: {}
   omniplanner: {}
-  nlu_rviz_panel: {}
+  nlu_rviz_instruction_panel: {}
   spot_executor: {}
 session_name: adt4_system
 suppress_history: false
-environment: {sim_time: $ADT4_SIM_TIME, ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR, ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_panel: {}, omniplanner: {}, spot_executor: {}}}", ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME, config: spot_prior_dsg, logging_key: spot_prior_dsg-spot_prior_dsg}
+environment:
+  sim_time: $ADT4_SIM_TIME
+  ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP
+  ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
+  HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
+  HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
+  HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, spot_executor: {}}}"
+  ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
+  config: spot_prior_dsg
+  logging_key: spot_prior_dsg-spot_prior_dsg
 options:
   default-command: /bin/zsh
 windows:
