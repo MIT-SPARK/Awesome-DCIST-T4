@@ -1,6 +1,6 @@
 paths: [khronos, khronos_ros]
 robot_id: 0
-config_verbosity: 0
+config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/body
@@ -14,14 +14,16 @@ input:
       sensor:
         type: camera_info
         min_range: 0.2
-        max_range: 10.0
+        max_range: 4.0
         extrinsics: {type: ros}
 active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
-  type: ActiveWindow
+  type: ReconstructionModule
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
   min_output_separation: 0.5
+  tsdf:
+    semantic_integrator: {type: SingleLabelIntegrator}
   object_detector:
     type: ConnectedSemantics
     min_cluster_size: 20
@@ -51,11 +53,16 @@ active_window:
     visualizer_classification: false
     projective_integrator:
       num_threads: 8
+  sinks:
+    - type: ReconstructionVisualizer
+      sensor_displays:
+        min_distance: 0.0
+        max_distance: 5.0
   khronos_sinks:
     - type: ActiveWindowVisualizer
 frontend:
   type: GraphBuilder
-  enable_mesh_objects: false
+  enable_mesh_objects: true
   clear_object_meshes: true
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:
@@ -80,6 +87,23 @@ frontend:
     min_final_place_points: 10
     place_max_neighbor_z_diff: .5
     place_overlap_threshold: 0.0
+  traversability_places:
+    type: traversability
+    estimator:
+      type: HeightTraversabilityEstimator
+      height_below: 0
+      height_above: 0.5
+      min_confidence: 1.0
+      min_traversability: 1.0
+      pessimistic: true
+    clustering:
+      type: BlockTraversabilityClustering
+      min_place_width: &1 0.5
+      max_place_width: &2 1.0
+      recursive: true
+      simplify_boundary_traversability: false
+    sinks:
+      - type: TraversabilityVisualizer
 backend:
   type: BackendModule
   enable_zmq_interface: false
@@ -94,6 +118,12 @@ backend:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
     surface_places: {type: Update2dPlacesFunctor, min_size: 3}
+    traversability:
+      type: UpdateTraversabilityFunctor
+      min_place_size: *1
+      max_place_size: *2
+      use_metric_distance: false
+      tolerance: 0.1
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0
