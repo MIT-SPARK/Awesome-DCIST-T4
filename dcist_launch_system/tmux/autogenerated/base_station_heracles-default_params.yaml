@@ -15,7 +15,7 @@ environment:
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default_params
-  logging_key: base_station-default_params
+  logging_key: base_station_heracles-default_params
 options:
   default-command: /bin/zsh
 windows:
@@ -36,8 +36,9 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_scene_graph_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
+      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh

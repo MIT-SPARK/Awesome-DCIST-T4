@@ -126,6 +126,11 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
+| ADT4\_HERACLES\_AGENTS\_PATH      | Path to heracles\_agents package                                  |
+| ADT4\_HERACLES\_IP                | IP Address of the scene graph database (e.g. 127.0.0.1)           |
+| ADT4\_HERACLES\_PORT              | Port of the scene graph database (e.g. 7687)                      |
+| ADT4\_NEO4J\_USERNAME             | Username for the scene graph database (default: neo4j)            |
+| ADT4\_NEO4J\_PASSWORD             | Password for the scene graph database (default: neo4j_pw)         |
 | ADT4\_PHX\_ROOT                   | Root directory of phoenix for phoenix-using robots                |
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 

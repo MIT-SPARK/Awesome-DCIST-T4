@@ -9,3 +9,12 @@ ultralytics
 plum-dispatch
 git+https://github.com/openai/CLIP.git
 numpy<2
+neo4j
+neo4j-rust-ext
+anthropic
+ollama
+tiktoken
+pydantic_settings
+boto3
+textual
+textual-dev
