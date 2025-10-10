@@ -58,6 +58,7 @@ active_window:
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
+  serialize_dsg_mesh: false
   clear_object_meshes: true
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:
