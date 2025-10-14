@@ -59,6 +59,7 @@ setup(
             "prior_dsg_publisher_node = dcist_launch_system.prior_dsg_publisher_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
             "static_tf_from_json = dcist_launch_system.static_tf_from_json:main",
+            "run_offline_fusion = dcist_launch_system.run_offline_fusion:main",
         ],
     },
 )
