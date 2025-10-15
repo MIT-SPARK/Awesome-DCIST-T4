@@ -153,14 +153,14 @@ def main(
     robot_order = [x.stem for x in robot_directories]
     _info(f"Robot order: {robot_order}")
 
-    config = _hydra_multi_config(config)
+    hydra_multi_config = _hydra_multi_config(config)
     roman_config = _roman_config(config)
     lcd_file = lcd(roman_config, robot_directories, output)
 
     command = [
         "offline_fusion",
         "--config",
-        config,
+        str(hydra_multi_config),
         f"-v={verbosity}",
         "--output",
         str(output),
