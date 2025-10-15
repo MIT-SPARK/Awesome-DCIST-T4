@@ -333,3 +333,14 @@ launch:
       remap:
         - from: ~/dsg_out
           to: hydra/backend/dsg
+
+  # gps
+  - arg: {name: launch_gps, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_gps)
+      file: $(find-pkg-share gpsd_client)/launch/gpsd_client-launch.py
+  - pyenv_node:
+      if: $(var launch_gps)
+      pkg: gps_monitor
+      exec: gps_monitor_node
+      name: gps_monitor_node
