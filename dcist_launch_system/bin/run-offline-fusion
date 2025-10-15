@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""Parse robot files and add to single json file."""
+
+import copy
+import json
+import pathlib
+import shutil
+import sys
+from typing import List
+
+import click
+from roman.align.submap_align import submap_align
+from roman.params.submap_align_params import SubmapAlignInputOutput, SubmapAlignParams
+
+
+def _info(msg):
+    click.secho(f"[INFO] {msg}", fg="green")
+
+
+def _warn(msg):
+    click.secho(f"[WARNING] {msg}", fg="yellow")
+
+
+def _error(msg):
+    click.secho(f"[ERROR] {msg}", fg="red")
+
+
+def _normalize_path(path):
+    return pathlib.Path(path).expanduser().absolute()
+
+
+def _resolve_output(output, force, clean):
+    output = _normalize_path("fused") if output is None else _normalize_path(output)
+    _info(f"Writing results to {output}!")
+    if output.exists():
+        if clean:
+            if not force:
+                click.confirm(f"clean existing {output}?", abort=True, default=False)
+
+            shutil.rmtree(output)
+
+    output.mkdir(parents=True, exist_ok=True)
+    return output
+
+
+def _hydra_multi_config(config):
+    pkg_path = pathlib.Path(__file__).absolute().parent.parent
+    config_path = pkg_path / "config" / config / "offline_fusion.yaml"
+    if not config_path.exists():
+        _error(f"Invalid Hydra-Multi config: {config_path}")
+        sys.exit("Invalid config")
+
+    _info(f"Using Hydra-Multi config: {config_path}")
+    return config_path
+
+
+def _roman_config(config):
+    pkg_path = pathlib.Path(__file__).absolute().parent.parent
+    config_path = pkg_path / "config" / config / "roman_lc.yaml"
+    if not config_path.exists():
+        _error(f"Invalid ROMAN config: {config_path}")
+        sys.exit("Invalid config")
+
+    _info(f"Using ROMAN config: {config_path}")
+    return SubmapAlignParams.from_yaml(str(config_path))
+
+
+def _convert_time(contents, idx):
+    stamp_ns = int(contents["seconds"][idx] * 1.0e9)
+    return stamp_ns + int(contents["nanoseconds"][idx])
+
+
+def _convert_rot(contents):
+    return {k: v for k, v in zip(contents["rotation_convention"], contents["rotation"])}
+
+
+def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.Path):
+    """Run and collate loop closures between robots."""
+    lcd_output = output / "lcd"
+    lcd_output.mkdir(exist_ok=True)
+
+    out_path = output / "loop_closures.json"
+    if out_path.exists():
+        _info("LCD output exists! skipping")
+        return out_path
+
+    # iterate through every pair of robots
+    loop_closures = []
+    for i in range(len(robots)):
+        for j in range(i, len(robots)):
+            name = f"{robots[i].name}_{robots[j].name}"
+            order = [robots[i].name, robots[j].name]
+            input_files = [robots[i] / "roman_map.pkl", robots[j] / "roman_map.pkl"]
+            sm_io = SubmapAlignInputOutput(
+                inputs=[str(x) for x in input_files],
+                output_dir=str(lcd_output),
+                run_name=name,
+                robot_names=order,
+            )
+
+            config = copy.deepcopy(config)
+            config.single_robot_lc = i == j
+            submap_align(sm_params=config, sm_io=sm_io)
+            with open(sm_io.output_lc_json, "r") as fin:
+                contents = json.load(fin)
+                _info(f"Loaded {len(contents)} loop closures for {i} -> {j}")
+                for x in contents:
+                    # convention is names[1]_T_names[0]
+                    loop_closures.append(
+                        {
+                            "robot_from": order.index(x["names"][1]),
+                            "time_from": _convert_time(x, 1),
+                            "robot_to": order.index(x["names"][0]),
+                            "time_to": _convert_time(x, 0),
+                            "to_p_from": x["translation"],
+                            "to_R_from": _convert_rot(x),
+                        }
+                    )
+
+    with out_path.open("w") as fout:
+        json.dump(loop_closures, fout, indent=2)
+
+    _info(f"Wrote {len(loop_closures)} loop closures to {out_path}!")
+    return out_path
+
+
+@click.command()
+@click.argument("output", type=click.Path())
+@click.argument("robot_directories", nargs=-1, type=click.Path(exists=True))
+@click.option("-f", "--force", is_flag=True, help="proceed without prompting")
+@click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
+@click.option("-c", "--config", default="default_params", help="config to use")
+@click.option("--rerun", is_flag=True, help="remove previous output if it exists")
+@click.option("--gnc-alpha", default=None, type=float, help="gnc alpha to use")
+def main(
+    output,
+    robot_directories,
+    force,
+    verbosity,
+    config,
+    rerun,
+    gnc_alpha,
+):
+    """
+    Detect loop closures between robots and fuse scene graphs.
+
+    Arguments:
+        OUTPUT: directory to save results
+        ROBOT_DIRECTORIES: input directories for the robots
+    """
+    output = _resolve_output(output, force, rerun)
+    robot_directories = [_normalize_path(x) for x in robot_directories]
+    robot_order = [x.stem for x in robot_directories]
+    _info(f"Robot order: {robot_order}")
+
+    config = _hydra_multi_config(config)
+    roman_config = _roman_config(config)
+    lcd_file = lcd(roman_config, robot_directories, output)
+
+    command = [
+        "offline_fusion",
+        "--config",
+        config,
+        f"-v={verbosity}",
+        "--output",
+        str(output),
+        "--loopclosures",
+        str(lcd_file),
+    ] + [str(_normalize_path(x)) for x in robot_directories]
+    if gnc_alpha is not None:
+        command += ["--gnc_alpha", str(gnc_alpha)]
+
+    _info(f"cmd: {' '.join(command)}")
+
+
+#     ret = subprocess.run(command)
+# if ret.returncode != 0:
+# _error("Fusion failed!")
+
+
+if __name__ == "__main__":
+    main()
