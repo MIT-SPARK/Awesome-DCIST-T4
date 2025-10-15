@@ -90,7 +90,10 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
         for j in range(i, len(robots)):
             name = f"{robots[i].name}_{robots[j].name}"
             order = [robots[i].name, robots[j].name]
-            input_files = [robots[i] / "roman_map.pkl", robots[j] / "roman_map.pkl"]
+            input_files = [
+                robots[i] / "roman" / "roman_map.pkl",
+                robots[j] / "roman" / "roman_map.pkl",
+            ]
             sm_io = SubmapAlignInputOutput(
                 inputs=[str(x) for x in input_files],
                 output_dir=str(lcd_output),
@@ -106,11 +109,12 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
                 _info(f"Loaded {len(contents)} loop closures for {i} -> {j}")
                 for x in contents:
                     # convention is names[1]_T_names[0]
+                    # NOTE(nathan) we want to force the robot IDs to be 1-indexed
                     loop_closures.append(
                         {
-                            "robot_from": order.index(x["names"][1]),
+                            "robot_from": order.index(x["names"][1]) + 1,
                             "time_from": _convert_time(x, 1),
-                            "robot_to": order.index(x["names"][0]),
+                            "robot_to": order.index(x["names"][0]) + 1,
                             "time_to": _convert_time(x, 0),
                             "to_p_from": x["translation"],
                             "to_R_from": _convert_rot(x),
