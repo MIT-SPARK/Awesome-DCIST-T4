@@ -1,6 +1,7 @@
 ---
 nodes_to_monitor:
   spot_executor: {}
+  gps_monitor: {}
 windows:
   - window_name: real_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh

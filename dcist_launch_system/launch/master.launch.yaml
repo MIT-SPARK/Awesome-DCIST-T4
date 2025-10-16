@@ -336,10 +336,11 @@ launch:
 
   # gps
   - arg: {name: launch_gps, default: 'false'}
-  - pyenv_node:
+  - set_remap: {from: gps/status, to: ros_system_monitor/node_diagnostic_collector}
+  - include:
       if: $(var launch_gps)
       file: $(find-pkg-share gpsd_client)/launch/gpsd_client-launch.py
-  - pyenv_node:
+  - node:
       if: $(var launch_gps)
       pkg: gps_monitor
       exec: gps_monitor_node
