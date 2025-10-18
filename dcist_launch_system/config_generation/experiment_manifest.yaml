@@ -64,6 +64,10 @@ configs:
     real_phoenix_relocalize: [real_phoenix, relocalize]
     apollo_relocalize: [real_spot_relocalize]
 
+    relocalize_fused: []
+    real_spot_relocalize_fused: [real_spot, relocalize_fused]
+    real_phoenix_relocalize_fused: [real_phoenix, relocalize_fused]
+
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
 experiments:
@@ -94,7 +98,7 @@ experiments:
 
     spot_bag_relocalize:
         launch_config: spot_bag_relocalize
-        config: [relocalize]
+        config: [relocalize, relocalize_fused]
 
     real_spot:
         launch_config: real_spot
@@ -102,7 +106,7 @@ experiments:
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
-        config: [real_spot_relocalize, apollo_relocalize]
+        config: [real_spot_relocalize, apollo_relocalize, real_spot_relocalize_fused]
 
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
@@ -114,7 +118,7 @@ experiments:
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
-        config: [real_phoenix_relocalize]
+        config: [real_phoenix_relocalize, real_phoenix_relocalize_fused]
 
     real_phoenix_no_relocalize:
         launch_config: no_relocalize
@@ -126,4 +130,4 @@ experiments:
 
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
-        config: [real_phoenix_relocalize]
+        config: [real_phoenix_relocalize, real_phoenix_relocalize_fused]
