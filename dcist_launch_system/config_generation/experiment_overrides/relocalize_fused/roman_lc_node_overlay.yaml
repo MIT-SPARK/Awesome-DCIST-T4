@@ -1,0 +1,5 @@
+---
+/**:
+  ros__parameters:
+    prior_session_maps: !replace [$(env ADT4_PRIOR_MAP)/roman/]
+    ego_id: !replace 0
