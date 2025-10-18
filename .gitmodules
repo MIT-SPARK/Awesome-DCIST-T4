@@ -34,7 +34,6 @@
 [submodule "omniplanner"]
 	path = omniplanner
 	url = git@github.com:MIT-SPARK/Omniplanner.git
-	update = none
 [submodule "nlu_interface"]
 	path = nlu_interface
 	url = git@github.com:robustrobotics/nlu_interface.git
