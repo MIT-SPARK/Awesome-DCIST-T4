@@ -5,19 +5,20 @@ import copy
 import json
 import pathlib
 import shutil
+import subprocess
 import sys
 from typing import List
-import numpy as np
-import yaml
-import subprocess
 
 import click
-from roman.align.submap_align import submap_align
-from roman.params.submap_align_params import SubmapAlignInputOutput, SubmapAlignParams
-from roman.offline_rpgo.densify_optimized_sparse_trajectory import densify_optimized_sparse_trajectory
-from roman.params.data_params import DataParams, ImgDataParams, PoseDataParams
-from roman.map.offline_map_runner import mapping as offline_roman_mapping
+import numpy as np
 import robotdatapy as rdp
+import yaml
+from roman.align.submap_align import submap_align
+from roman.map.offline_map_runner import mapping as offline_roman_mapping
+from roman.offline_rpgo.densify_optimized_sparse_trajectory import (
+    densify_optimized_sparse_trajectory,
+)
+from roman.params.submap_align_params import SubmapAlignInputOutput, SubmapAlignParams
 
 
 def _info(msg):
@@ -71,6 +72,7 @@ def _roman_config(config):
     _info(f"Using ROMAN config: {config_path}")
     return SubmapAlignParams.from_yaml(str(config_path))
 
+
 def _fastsam_config(config):
     pkg_path = pathlib.Path(__file__).absolute().parent.parent
     config_path = pkg_path / "config" / config / "fastsam.yaml"
@@ -80,6 +82,7 @@ def _fastsam_config(config):
     _info(f"Using FastSAM config: {config_path}")
     return config_path
 
+
 def _roman_map_config(config):
     pkg_path = pathlib.Path(__file__).absolute().parent.parent
     config_path = pkg_path / "config" / config / "roman_map.yaml"
@@ -88,6 +91,7 @@ def _roman_map_config(config):
         sys.exit("Invalid config")
     _info(f"Using ROMAN Map config: {config_path}")
     return config_path
+
 
 def _convert_time(contents, idx):
     stamp_ns = int(contents["seconds"][idx] * 1.0e9)
@@ -151,38 +155,46 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
     _info(f"Wrote {len(loop_closures)} loop closures to {out_path}!")
     return out_path
 
-def densify(adt4_output_directories: List[pathlib.Path], 
-            names: List[pathlib.Path], 
-            optimized_trajectories: List[pathlib.Path],
-            output_dir: pathlib.Path):
+
+def densify(
+    adt4_output_directories: List[pathlib.Path],
+    names: List[pathlib.Path],
+    optimized_trajectories: List[pathlib.Path],
+    output_dir: pathlib.Path,
+):
     """Densify optimized trajectories using odometry data."""
     for i in range(len(adt4_output_directories)):
         optimized_pose_data = rdp.data.PoseData.from_kmd_gt_csv(
-            optimized_trajectories[i], time_tol=100.0)
+            optimized_trajectories[i], time_tol=100.0
+        )
         bag = adt4_output_directories[i] / "bag"
         try:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(bag), f"{names[i]}/odom", f"{names[i]}/base_link", time_tol=10.0)
-        except Exception as e:
+                str(bag), f"{names[i]}/odom", f"{names[i]}/base_link", time_tol=10.0
+            )
+        except Exception as _:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(bag), f"{names[i]}/odom", f"{names[i]}/body", time_tol=10.0)
-        
+                str(bag), f"{names[i]}/odom", f"{names[i]}/body", time_tol=10.0
+            )
+
         densified_optimized_trajectory = densify_optimized_sparse_trajectory(
-            dense_unoptimized=odometry_pose_data,
-            sparse_optimized=optimized_pose_data)
-        
-        densified_optimized_trajectory.to_csv(str(
-            output_dir / f"{adt4_output_directories[i].name}.csv"))
-        
-def rerun_roman(adt4_output_directories: List[pathlib.Path], 
-                names: List[pathlib.Path], 
-                dense_optimized_trajectories: List[pathlib.Path],
-                output_dir: pathlib.Path,
-                fastsam_params_path: str,
-                roman_map_params_path: str
-                ):
+            dense_unoptimized=odometry_pose_data, sparse_optimized=optimized_pose_data
+        )
+
+        densified_optimized_trajectory.to_csv(
+            str(output_dir / f"{adt4_output_directories[i].name}.csv")
+        )
+
+
+def rerun_roman(
+    adt4_output_directories: List[pathlib.Path],
+    names: List[pathlib.Path],
+    dense_optimized_trajectories: List[pathlib.Path],
+    output_dir: pathlib.Path,
+    fastsam_params_path: str,
+    roman_map_params_path: str,
+):
     """Rerun ROMAN with densified trajectories."""
-    
 
     for i in range(len(adt4_output_directories)):
         try:
@@ -191,61 +203,74 @@ def rerun_roman(adt4_output_directories: List[pathlib.Path],
                 f"{names[i]}/base_link",
                 f"{names[i]}_zed_left_camera_optical_frame",
             )
-        except Exception as e:
+        except Exception as _:
             T_base_camera = rdp.PoseData.any_static_tf_from_bag(
                 str(adt4_output_directories[i] / "bag"),
                 f"{names[i]}/body",
                 f"{names[i]}_zed_left_camera_optical_frame",
             )
         data_params_dict = {
-            'dt': 1/6,
-            'runs': [adt4_output_directories[i].name],
-            'img_data': {
-                'path': str(adt4_output_directories[i] / "bag"),
-                'topic': f"/{names[i]}/{names[i]}_zed/rgb/image_rect_color",
-                'camera_info_topic': f"/{names[i]}/{names[i]}_zed/rgb/camera_info",
-                'compressed': False,
-                'color_space': 'bgr8',
+            "dt": 1 / 6,
+            "runs": [adt4_output_directories[i].name],
+            "img_data": {
+                "path": str(adt4_output_directories[i] / "bag"),
+                "topic": f"/{names[i]}/{names[i]}_zed/rgb/image_rect_color",
+                "camera_info_topic": f"/{names[i]}/{names[i]}_zed/rgb/camera_info",
+                "compressed": False,
+                "color_space": "bgr8",
             },
-            'depth_data': {
-                'path': str(adt4_output_directories[i] / "bag"),
-                'topic': f"/{names[i]}/{names[i]}_zed/depth/depth_registered",
-                'camera_info_topic': f"/{names[i]}/{names[i]}_zed/depth/camera_info",
-                'compressed': False,
+            "depth_data": {
+                "path": str(adt4_output_directories[i] / "bag"),
+                "topic": f"/{names[i]}/{names[i]}_zed/depth/depth_registered",
+                "camera_info_topic": f"/{names[i]}/{names[i]}_zed/depth/camera_info",
+                "compressed": False,
             },
-            'pose_data': {
-                'type': 'csv',
-                'path': str(dense_optimized_trajectories[i]),
-                'csv_options': rdp.data.pose_data.KMD_GT_CSV_OPTIONS,
-                'time_tol': 10.0,
-                'T_camera_flu': {
-                    'input_type': 'matrix',
-                    'matrix': np.linalg.inv(T_base_camera).flatten().tolist()
+            "pose_data": {
+                "type": "csv",
+                "path": str(dense_optimized_trajectories[i]),
+                "csv_options": rdp.data.pose_data.KMD_GT_CSV_OPTIONS,
+                "time_tol": 10.0,
+                "T_camera_flu": {
+                    "input_type": "matrix",
+                    "matrix": np.linalg.inv(T_base_camera).flatten().tolist(),
                 },
-                'T_odombase_camera': {
-                    'input_type': 'matrix',
-                    'matrix': T_base_camera.flatten().tolist()
-                }
-            }
+                "T_odombase_camera": {
+                    "input_type": "matrix",
+                    "matrix": T_base_camera.flatten().tolist(),
+                },
+            },
         }
-        
+
         run_output_dir = output_dir / adt4_output_directories[i].name
         run_output_dir.mkdir(exist_ok=True)
         run_params_dir = run_output_dir / "params"
         run_params_dir.mkdir(exist_ok=True)
-        with open(run_params_dir / "data.yaml", 'w') as f:
+        with open(run_params_dir / "data.yaml", "w") as f:
             yaml.dump(data_params_dict, f)
-        subprocess.run(['cp', fastsam_params_path, str(run_params_dir / "fastsam.yaml")])
-        subprocess.run(['cp', roman_map_params_path, str(run_params_dir / "mapper.yaml")])
-        
+        subprocess.run(
+            ["cp", fastsam_params_path, str(run_params_dir / "fastsam.yaml")]
+        )
+        subprocess.run(
+            ["cp", roman_map_params_path, str(run_params_dir / "mapper.yaml")]
+        )
+
         offline_roman_mapping(
             params_path=str(run_params_dir),
-            output_path=str(run_output_dir / 'roman_map'),
+            output_path=str(run_output_dir / "roman_map"),
             run_name=adt4_output_directories[i].name,
-            max_time=600.0, # otherwise RAM usage gets too high
+            max_time=600.0,  # otherwise RAM usage gets too high
         )
-        
-        # will produce a file: roman / <run name> / roman_map.pkl 
+
+        # will produce a file: roman / <run name> / roman_map.pkl
+        subprocess.run(
+            [
+                "cp",
+                str(run_output_dir / "roman_map.pkl"),
+                str(output_dir / f"{i + 1}.roman_map.pkl"),
+            ]
+        )
+        # finally saves to output_dir / run_id.roman_map.pkl
+
 
 @click.command()
 @click.argument("output", type=click.Path())
@@ -297,27 +322,28 @@ def main(
 
     _info(f"cmd: {' '.join(command)}")
 
-
     #     ret = subprocess.run(command)
     # if ret.returncode != 0:
     # _error("Fusion failed!")
-    
+
     (output / "roman").mkdir(exist_ok=True)
     densify(
         adt4_output_directories=robot_directories,
         # names=names, # TODO: need to fix this to handle different robot names
         names=None,
         optimized_trajectories=[output / f"{x.stem}.csv" for x in robot_directories],
-        output_dir=output / "roman"
+        output_dir=output / "roman",
     )
     rerun_roman(
         adt4_output_directories=robot_directories,
         # names=names, # TODO: need to fix this to handle different robot names
         names=None,
-        dense_optimized_trajectories=[output / "roman" / f"{x.stem}.csv" for x in robot_directories],
+        dense_optimized_trajectories=[
+            output / "roman" / f"{x.stem}.csv" for x in robot_directories
+        ],
         output_dir=output / "roman",
         fastsam_params_path=str(fastsam_config),
-        roman_map_params_path=str(roman_map_config)
+        roman_map_params_path=str(roman_map_config),
     )
 
 
