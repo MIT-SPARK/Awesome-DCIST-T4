@@ -114,6 +114,7 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
 
     # iterate through every pair of robots
     loop_closures = []
+    robot_names = [x.name for x in robots]
     for i in range(len(robots)):
         for j in range(i, len(robots)):
             name = f"{robots[i].name}_{robots[j].name}"
@@ -140,9 +141,9 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
                     # NOTE(nathan) we want to force the robot IDs to be 1-indexed
                     loop_closures.append(
                         {
-                            "robot_from": order.index(x["names"][1]) + 1,
+                            "robot_from": robot_names.index(x["names"][1]) + 1,
                             "time_from": _convert_time(x, 1),
-                            "robot_to": order.index(x["names"][0]) + 1,
+                            "robot_to": robot_names.index(x["names"][0]) + 1,
                             "time_to": _convert_time(x, 0),
                             "to_p_from": x["translation"],
                             "to_R_from": _convert_rot(x),
@@ -277,21 +278,19 @@ def rerun_roman(
 @click.argument("robot_directories", nargs=-1, type=click.Path(exists=True))
 @click.option("-f", "--force", is_flag=True, help="proceed without prompting")
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
+@click.option("-l", "--log-level", type=int, default=0, help="glog level")
 @click.option("-c", "--config", default="default_params", help="config to use")
+@click.option(
+    "--run-roman/--no-run-roman", default=True, help="run roman after optimization"
+)
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
-@click.option("--gnc-alpha", default=None, type=float, help="gnc alpha to use")
 def main(
-    output,
-    robot_directories,
-    force,
-    verbosity,
-    config,
-    rerun,
-    gnc_alpha,
+    output, robot_directories, force, verbosity, log_level, config, run_roman, rerun
 ):
     """
     Detect loop closures between robots and fuse scene graphs.
 
+    \b
     Arguments:
         OUTPUT: directory to save results
         ROBOT_DIRECTORIES: input directories for the robots
@@ -307,24 +306,21 @@ def main(
     roman_map_config = _roman_map_config(config)
     lcd_file = lcd(roman_config, robot_directories, output)
 
-    command = [
-        "offline_fusion",
-        "--config",
-        str(hydra_multi_config),
-        f"-v={verbosity}",
-        "--output",
-        str(output),
-        "--loopclosures",
-        str(lcd_file),
-    ] + [str(_normalize_path(x)) for x in robot_directories]
-    if gnc_alpha is not None:
-        command += ["--gnc_alpha", str(gnc_alpha)]
+    command = ["hydra-multi-offline-fusion"]
+    command += ["--verbosity", f"{verbosity}", "--log-level", f"{log_level}"]
+    command += ["--starting-robot-id", "1"]
+    command += ["-o", str(output), "-l", str(lcd_file)]
+    command += [str(_normalize_path(x) / "hydra") for x in robot_directories]
+    command += ["--config-utilities-file", str(hydra_multi_config)]
+    # TODO(nathan) think about passing optimizer params
 
     _info(f"cmd: {' '.join(command)}")
+    ret = subprocess.run(command)
+    if ret.returncode != 0:
+        _error(f"Fusion failed: {ret.returncode}")
 
-    #     ret = subprocess.run(command)
-    # if ret.returncode != 0:
-    # _error("Fusion failed!")
+    if not run_roman:
+        return
 
     (output / "roman").mkdir(exist_ok=True)
     densify(
