@@ -34,8 +34,7 @@ windows:
   - window_name: recording
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes:
-      - ros2 run dcist_launch_system record_topics ${ADT4_OUTPUT_DIR}/recorded_data $(ros2 pkg prefix dcist_launch_system --share)/platforms/phoenix_record_topics.txt
+    panes: ["ros2 run dcist_launch_system record_topics ${ADT4_OUTPUT_DIR}/recorded_data $(ros2 pkg prefix dcist_launch_system --share)/platforms/phoenix_record_topics.txt"]
   - window_name: real_phoenix
     layout: tiled
     panes:
