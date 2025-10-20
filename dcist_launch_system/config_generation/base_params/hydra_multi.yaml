@@ -2,7 +2,7 @@
 world_frame: map
 robots:
   - type: UnitInterface
-    robot_id: 0
+    robot_id: 1
     robot_name: prior_map
     inputs:
       dsg:
@@ -12,8 +12,9 @@ robots:
         type: FileDGraphInput
         dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
         include_priors: true
+        force_robot_id: true
   - type: RosUnitInterface
-    robot_id: 1
+    robot_id: 0
     rate: 10.0
     robot_name: $<var robot_name>
     robot_frame: $<var robot_name>/odom

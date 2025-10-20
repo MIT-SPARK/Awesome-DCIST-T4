@@ -1,5 +1,5 @@
 paths: [khronos, khronos_ros]
-robot_id: 1
+robot_id: 0
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
