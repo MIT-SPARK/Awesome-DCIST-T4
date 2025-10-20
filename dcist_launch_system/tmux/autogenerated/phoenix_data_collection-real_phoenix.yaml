@@ -1,0 +1,45 @@
+nodes_to_monitor:
+  phoenix_executor: {}
+  gps_monitor: {}
+session_name: adt4_system
+suppress_history: false
+environment:
+  sim_time: $ADT4_SIM_TIME
+  ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP
+  ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
+  HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
+  HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
+  HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {}, phoenix_executor: {}}}"
+  ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
+  config: real_phoenix
+  logging_key: phoenix_data_collection-real_phoenix
+options:
+  default-command: /bin/zsh
+windows:
+  - window_name: core
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run rmw_zenoh_cpp rmw_zenohd
+      - python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py
+      - "ros2 service call /${ADT4_ROBOT_NAME}/shutdown std_srvs/Empty && tmux send-keys -t roman.1 C-c \\"
+  - window_name: status
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true
+  - window_name: recording
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run dcist_launch_system record_topics ${ADT4_OUTPUT_DIR}/recorded_data $(ros2 pkg prefix dcist_launch_system --share)/platforms/phoenix_record_topics.txt
+  - window_name: real_phoenix
+    layout: tiled
+    panes:
+      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
+      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true"
+      - sleep 5; tmux send-keys -t real_phoenix.3 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
+      - "cd ${ADT4_PHX_ROOT} && phx run"

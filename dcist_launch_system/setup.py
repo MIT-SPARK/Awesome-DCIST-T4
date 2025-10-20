@@ -58,6 +58,7 @@ setup(
             "example_2_node = dcist_launch_system.example_2:main",
             "prior_dsg_publisher_node = dcist_launch_system.prior_dsg_publisher_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
+            "record_topics = dcist_launch_system.record_topics:main",
             "static_tf_from_json = dcist_launch_system.static_tf_from_json:main",
         ],
     },

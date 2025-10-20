@@ -25,3 +25,9 @@ for command in `cat $PYSHORTCUTS_PATH | grep def | sed 's/def //' | sed 's/(.*):
 do
     alias $command="python3 $PYSHORTCUTS_PATH --$command"
 done
+
+function activate_ros2() {
+    source $1/setup.zsh
+    eval "$(register-python-argcomplete ros2)"
+    eval "$(register-python-argcomplete colcon)"
+}

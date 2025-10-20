@@ -26,6 +26,18 @@ launch:
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
 
+  # livox driver
+  - arg: {name: launch_livox, default: 'false'}
+  - node:
+      if: $(var launch_livox)
+      pkg: livox_ros_driver2
+      exec: livox_ros_driver2_node
+      name: livox_lidar_publisher
+      param:
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/livox.yaml}
+        - {name: frame_id, value: $(var robot_name)/livox}
+        - {name: user_config_path, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/livox.yaml}
+
   # Efficient-ViT
   - arg: {name: launch_semantic_inference, default: 'false'}
   - node:
