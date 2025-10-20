@@ -1,4 +1,0 @@
-/**:
-  ros__parameters:
-    odom_frame_id: $(var robot_name)/odom
-    base_flu_frame_id: $(var robot_name)/body
