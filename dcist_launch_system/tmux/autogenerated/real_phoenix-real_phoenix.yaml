@@ -6,6 +6,7 @@ nodes_to_monitor:
   roman_map: {}
   roman_lc: {}
   phoenix_executor: {}
+  gps_monitor: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -16,7 +17,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {}, hydra: {external_monitor: {type: JsonMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: real_phoenix
   logging_key: real_phoenix-real_phoenix
@@ -56,5 +57,6 @@ windows:
     layout: tiled
     panes:
       - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
-      - sleep 5; tmux send-keys -t real_phoenix.2 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
+      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true"
+      - sleep 5; tmux send-keys -t real_phoenix.3 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
       - "cd ${ADT4_PHX_ROOT} && phx run"
