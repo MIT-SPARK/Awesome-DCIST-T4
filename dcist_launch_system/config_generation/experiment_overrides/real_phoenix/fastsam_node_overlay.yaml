@@ -1,0 +1,4 @@
+---
+/**:
+  ros__parameters:
+    base_flu_frame_id: $(var robot_name)/base_link

@@ -2,7 +2,7 @@
   ros__parameters:
     submap_num_segments: 40
     submap_overlapping_segments: 20
-    lc_required_associations: 8
+    lc_required_associations: 5
     ego_id: 1
     ego_name: $(var robot_name)
     ego_flu_ref_frame: $(var robot_name)/body
@@ -14,4 +14,5 @@
     prior_session_maps: [$(env ADT4_PRIOR_MAP)/roman/roman_map.pkl]
     prior_session_ids: [0]
     output_dir: $(var output_dir)/roman
+    submap_knn: 5
 lc_required_associations: 5
