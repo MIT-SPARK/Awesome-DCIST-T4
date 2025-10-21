@@ -7,11 +7,11 @@ robots:
       dsg:
         type: FileDsgInput
         dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg.json
+        force_robot_id: true
       dgraph:
         type: FileDGraphInput
         dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
         include_priors: true
-        force_robot_id: true
   - type: RosUnitInterface
     robot_id: 0
     rate: 10.0
