@@ -6,6 +6,8 @@ launch_configs:
     multi_status: []
     rviz: []
     relocalize_viz: []
+    spot_recording: []
+    phoenix_recording: []
 
     sim_spot: []
     bag_spot: []
@@ -30,7 +32,8 @@ launch_configs:
     plan_prior: [main, prior_dsg, planning]
     plan_prior_heracles: [main, heracles_prior_dsg, planning]
 
-    data_collection: [main, spot_real]
+    spot_data_collection: [main, spot_recording, spot_real]
+    phoenix_data_collection: [main, phoenix_recording, phoenix_real]
 
     spot_bag: [bag_map, bag_spot]
     spot_bag_relocalize: [bag_relocalize, bag_spot]
@@ -68,9 +71,13 @@ configs:
 # launch files
 experiments:
 
-    data_collection:
-        launch_config: data_collection
+    spot_data_collection:
+        launch_config: spot_data_collection
         config: [real_spot]
+
+    phoenix_data_collection:
+        launch_config: phoenix_data_collection
+        config: [real_phoenix]
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
