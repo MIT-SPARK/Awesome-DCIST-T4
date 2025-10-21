@@ -3,7 +3,7 @@ printing: {width: 100}
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false
-  anchor_robot0: false
+  anchor_robot_id: 1
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:
@@ -25,6 +25,7 @@ backend:
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
+      use_gnc: true
       gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
     covariance:
       odom: 1.0e-04
