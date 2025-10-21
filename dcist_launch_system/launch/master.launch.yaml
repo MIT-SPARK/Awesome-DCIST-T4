@@ -349,20 +349,23 @@ launch:
   # gps
   - arg: { name: launch_gps, default: 'false' }
   - group:
-    - if: $(var launch_gps)
     - set_remap: {from: gps/status, to: ros_system_monitor/node_diagnostic_collector}
     - set_remap: {from: ntrip/status, to: ros_system_monitor/node_diagnostic_collector}
     - set_remap: {from: /rtcm, to: rtcm}
     - set_remap: {from: ublox_gps_node/fix, to: fix}
     - include:
+        if: $(var launch_gps)
         file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
     - include:
+        if: $(var launch_gps)
         file: $(find-pkg-share gps_dcist)/launch/upenn_ntrip.launch.py
     - node:
+        if: $(var launch_gps)
         pkg: gps_dcist
         exec: gps_monitor_node
         name: gps_monitor_node
     - node:
+        if: $(var launch_gps)
         pkg: gps_dcist
         exec: ntrip_monitor_node
         name: ntrip_monitor_node
