@@ -124,8 +124,8 @@ def _extract_input_files(input_config: pathlib.Path) -> List[FusionInput]:
                 bag_path=_normalize_path(x["bag"]),
                 robot_name=x["robot"]
             ))
-        except:
-            _error(f"Error loading input fusion config")
+        except Exception as e:
+            _error(f"Error loading input fusion config: {e}")
     
     return fusion_inputs
 
@@ -323,7 +323,7 @@ def main(
     """
     fusion_inputs = _extract_input_files(input_config)
     output = _resolve_output(output, force, rerun)
-    robot_order = [x.stem for x in fusion_inputs]
+    robot_order = [x.adt4_directory.stem for x in fusion_inputs]
     _info(f"Robot order: {robot_order}")
 
     hydra_multi_config = _hydra_multi_config(config)
