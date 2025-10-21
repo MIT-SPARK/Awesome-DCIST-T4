@@ -15,6 +15,7 @@ import robotdatapy as rdp
 import yaml
 from roman.align.submap_align import submap_align
 from roman.map.offline_map_runner import mapping as offline_roman_mapping
+from roman.map.offline_map_runner import VisualizationParams
 from roman.offline_rpgo.densify_optimized_sparse_trajectory import (
     densify_optimized_sparse_trajectory,
 )
@@ -91,17 +92,6 @@ def _fastsam_config(config):
         sys.exit("Invalid config")
     _info(f"Using FastSAM config: {config_path}")
     return config_path
-
-
-def _roman_map_config(config):
-    pkg_path = pathlib.Path(__file__).absolute().parent.parent
-    config_path = pkg_path / "config" / config / "roman_map.yaml"
-    if not config_path.exists():
-        _error(f"Invalid ROMAN Map config: {config_path}")
-        sys.exit("Invalid config")
-    _info(f"Using ROMAN Map config: {config_path}")
-    return config_path
-
 
 def _convert_time(contents, idx):
     stamp_ns = int(contents["seconds"][idx] * 1.0e9)
@@ -197,11 +187,11 @@ def densify(
         )
         try:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(fusion_inputs[i].bag), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/base_link", time_tol=10.0
+                str(fusion_inputs[i].bag_path), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/base_link", time_tol=10.0
             )
         except Exception as _:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(fusion_inputs[i].bag), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/body", time_tol=10.0
+                str(fusion_inputs[i].bag_path), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/body", time_tol=10.0
             )
 
         densified_optimized_trajectory = densify_optimized_sparse_trajectory(
@@ -218,20 +208,19 @@ def rerun_roman(
     dense_optimized_trajectories: List[pathlib.Path],
     output_dir: pathlib.Path,
     fastsam_params_path: str,
-    roman_map_params_path: str,
 ):
     """Rerun ROMAN with densified trajectories."""
 
     for i in range(len(fusion_inputs)):
         try:
-            T_base_camera = rdp.PoseData.any_static_tf_from_bag(
-                str(fusion_inputs[i].bag),
+            T_base_camera = rdp.data.PoseData.any_static_tf_from_bag(
+                str(fusion_inputs[i].bag_path),
                 f"{fusion_inputs[i].robot_name}/base_link",
                 f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
             )
         except Exception as _:
-            T_base_camera = rdp.PoseData.any_static_tf_from_bag(
-                str(fusion_inputs[i].bag),
+            T_base_camera = rdp.data.PoseData.any_static_tf_from_bag(
+                str(fusion_inputs[i].bag_path),
                 f"{fusion_inputs[i].robot_name}/body",
                 f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
             )
@@ -240,14 +229,14 @@ def rerun_roman(
             "dt": 1 / 6,
             "runs": [fusion_inputs[i].name],
             "img_data": {
-                "path": str(fusion_inputs[i].bag),
+                "path": str(fusion_inputs[i].bag_path),
                 "topic": f"/{robot_name}/{robot_name}_zed/rgb/image_rect_color",
                 "camera_info_topic": f"/{robot_name}/{robot_name}_zed/rgb/camera_info",
                 "compressed": False,
                 "color_space": "bgr8",
             },
             "depth_data": {
-                "path": str(fusion_inputs[i].bag),
+                "path": str(fusion_inputs[i].bag_path),
                 "topic": f"/{robot_name}/{robot_name}_zed/depth/depth_registered",
                 "camera_info_topic": f"/{robot_name}/{robot_name}_zed/depth/camera_info",
                 "compressed": False,
@@ -255,7 +244,7 @@ def rerun_roman(
             "pose_data": {
                 "type": "csv",
                 "path": str(dense_optimized_trajectories[i]),
-                "csv_options": rdp.data.pose_data.KMD_GT_CSV_OPTIONS,
+                "csv_options": rdp.data.pose_data.KIMERA_MULTI_GT_CSV_OPTIONS,
                 "time_tol": 10.0,
                 "T_camera_flu": {
                     "input_type": "matrix",
@@ -277,15 +266,14 @@ def rerun_roman(
         subprocess.run(
             ["cp", fastsam_params_path, str(run_params_dir / "fastsam.yaml")]
         )
-        subprocess.run(
-            ["cp", roman_map_params_path, str(run_params_dir / "mapper.yaml")]
-        )
-
+        viz_params = VisualizationParams()
+        viz_params.viz_map = False
         offline_roman_mapping(
             params_path=str(run_params_dir),
             output_path=str(run_output_dir / "roman_map"),
             run_name=fusion_inputs[i].name,
             max_time=600.0,  # otherwise RAM usage gets too high
+            viz_params=viz_params
         )
 
         # will produce a file: roman / <run name> / roman_map.pkl
@@ -329,7 +317,6 @@ def main(
     hydra_multi_config = _hydra_multi_config(config)
     roman_config = _roman_config(config)
     fastsam_config = _fastsam_config(config)
-    roman_map_config = _roman_map_config(config)
     lcd_file = lcd(roman_config, fusion_inputs, output)
 
     command = ["hydra-multi-offline-fusion"]
@@ -349,9 +336,10 @@ def main(
         return
 
     (output / "roman").mkdir(exist_ok=True)
+    sparse_optimized_trajectories = [output / "backend" / f"robot_{i+1}_trajectory.csv" for i, x in enumerate(fusion_inputs)]
     densify(
         fusion_inputs=fusion_inputs,
-        optimized_trajectories=[output / f"{x.adt4_directory.stem}.csv" for x in fusion_inputs],
+        optimized_trajectories=sparse_optimized_trajectories,
         output_dir=output / "roman",
     )
     rerun_roman(
@@ -361,7 +349,6 @@ def main(
         ],
         output_dir=output / "roman",
         fastsam_params_path=str(fastsam_config),
-        roman_map_params_path=str(roman_map_config),
     )
 
 
