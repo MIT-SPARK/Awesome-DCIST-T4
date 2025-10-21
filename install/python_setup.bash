@@ -40,7 +40,12 @@ mkdir -p $ADT4_ENV
 # Install ROMAN
 ##################################
 if [ "$install_roman" = true ]; then
-    python3 -m venv $ADT4_ENV/roman
+    if [ -d $ADT4_ENV/roman ]; then
+        echo "ROMAN environment already exists, skipping creation."
+    else
+        echo "Creating ROMAN environment."
+        python3 -m venv $ADT4_ENV/roman
+    fi
     source $ADT4_ENV/roman/bin/activate
     pushd $ADT4_WS/src/awesome_dcist_t4/roman
 
