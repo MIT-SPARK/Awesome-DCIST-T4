@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 from typing import List
-
+from dataclasses import dataclass
 import click
 import numpy as np
 import robotdatapy as rdp
@@ -20,6 +20,16 @@ from roman.offline_rpgo.densify_optimized_sparse_trajectory import (
 )
 from roman.params.submap_align_params import SubmapAlignInputOutput, SubmapAlignParams
 
+@dataclass
+class FusionInput:
+
+    adt4_directory: pathlib.Path
+    bag_path: pathlib.Path
+    robot_name: str
+
+    @property 
+    def name(self):
+        return self.adt4_directory.name 
 
 def _info(msg):
     click.secho(f"[INFO] {msg}", fg="green")
@@ -101,8 +111,26 @@ def _convert_time(contents, idx):
 def _convert_rot(contents):
     return {k: v for k, v in zip(contents["rotation_convention"], contents["rotation"])}
 
+def _extract_input_files(input_config: pathlib.Path) -> List[FusionInput]:
+    input_config = _normalize_path(input_config)
+    with input_config.open("r") as f:
+        input_config_dict = yaml.full_load(f)
+    
+    fusion_inputs = []
+    for x in input_config_dict:
+        try:
+            fusion_inputs.append(FusionInput(
+                adt4_directory=_normalize_path(x["adt4"]),
+                bag_path=_normalize_path(x["bag"]),
+                robot_name=x["robot"]
+            ))
+        except:
+            _error(f"Error loading input fusion config")
+    
+    return fusion_inputs
 
-def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.Path):
+
+def lcd(config: SubmapAlignParams, fusion_inputs: List[FusionInput], output: pathlib.Path):
     """Run and collate loop closures between robots."""
     lcd_output = output / "lcd"
     lcd_output.mkdir(exist_ok=True)
@@ -114,14 +142,14 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
 
     # iterate through every pair of robots
     loop_closures = []
-    robot_names = [x.name for x in robots]
-    for i in range(len(robots)):
-        for j in range(i, len(robots)):
-            name = f"{robots[i].name}_{robots[j].name}"
-            order = [robots[i].name, robots[j].name]
+    robot_names = [x.adt4_directory.name for x in fusion_inputs]
+    for i in range(len(fusion_inputs)):
+        for j in range(i, len(fusion_inputs)):
+            name = f"{fusion_inputs[i].name}_{fusion_inputs[j].name}"
+            order = [fusion_inputs[i].name, fusion_inputs[j].name]
             input_files = [
-                robots[i] / "roman" / "roman_map.pkl",
-                robots[j] / "roman" / "roman_map.pkl",
+                fusion_inputs[i].adt4_directory / "roman" / "roman_map.pkl",
+                fusion_inputs[j].adt4_directory / "roman" / "roman_map.pkl",
             ]
             sm_io = SubmapAlignInputOutput(
                 inputs=[str(x) for x in input_files],
@@ -158,24 +186,22 @@ def lcd(config: SubmapAlignParams, robots: List[pathlib.Path], output: pathlib.P
 
 
 def densify(
-    adt4_output_directories: List[pathlib.Path],
-    names: List[pathlib.Path],
+    fusion_inputs: List[FusionInput],
     optimized_trajectories: List[pathlib.Path],
     output_dir: pathlib.Path,
 ):
     """Densify optimized trajectories using odometry data."""
-    for i in range(len(adt4_output_directories)):
+    for i in range(len(fusion_inputs)):
         optimized_pose_data = rdp.data.PoseData.from_kmd_gt_csv(
             optimized_trajectories[i], time_tol=100.0
         )
-        bag = adt4_output_directories[i] / "bag"
         try:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(bag), f"{names[i]}/odom", f"{names[i]}/base_link", time_tol=10.0
+                str(fusion_inputs[i].bag), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/base_link", time_tol=10.0
             )
         except Exception as _:
             odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(bag), f"{names[i]}/odom", f"{names[i]}/body", time_tol=10.0
+                str(fusion_inputs[i].bag), f"{fusion_inputs[i].robot_name}/odom", f"{fusion_inputs[i].robot_name}/body", time_tol=10.0
             )
 
         densified_optimized_trajectory = densify_optimized_sparse_trajectory(
@@ -183,13 +209,12 @@ def densify(
         )
 
         densified_optimized_trajectory.to_csv(
-            str(output_dir / f"{adt4_output_directories[i].name}.csv")
+            str(output_dir / f"{fusion_inputs[i].name}.csv")
         )
 
 
 def rerun_roman(
-    adt4_output_directories: List[pathlib.Path],
-    names: List[pathlib.Path],
+    fusion_inputs: List[FusionInput],
     dense_optimized_trajectories: List[pathlib.Path],
     output_dir: pathlib.Path,
     fastsam_params_path: str,
@@ -197,33 +222,34 @@ def rerun_roman(
 ):
     """Rerun ROMAN with densified trajectories."""
 
-    for i in range(len(adt4_output_directories)):
+    for i in range(len(fusion_inputs)):
         try:
             T_base_camera = rdp.PoseData.any_static_tf_from_bag(
-                str(adt4_output_directories[i] / "bag"),
-                f"{names[i]}/base_link",
-                f"{names[i]}_zed_left_camera_optical_frame",
+                str(fusion_inputs[i].bag),
+                f"{fusion_inputs[i].robot_name}/base_link",
+                f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
             )
         except Exception as _:
             T_base_camera = rdp.PoseData.any_static_tf_from_bag(
-                str(adt4_output_directories[i] / "bag"),
-                f"{names[i]}/body",
-                f"{names[i]}_zed_left_camera_optical_frame",
+                str(fusion_inputs[i].bag),
+                f"{fusion_inputs[i].robot_name}/body",
+                f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
             )
+        robot_name = fusion_inputs[i].robot_name
         data_params_dict = {
             "dt": 1 / 6,
-            "runs": [adt4_output_directories[i].name],
+            "runs": [fusion_inputs[i].name],
             "img_data": {
-                "path": str(adt4_output_directories[i] / "bag"),
-                "topic": f"/{names[i]}/{names[i]}_zed/rgb/image_rect_color",
-                "camera_info_topic": f"/{names[i]}/{names[i]}_zed/rgb/camera_info",
+                "path": str(fusion_inputs[i].bag),
+                "topic": f"/{robot_name}/{robot_name}_zed/rgb/image_rect_color",
+                "camera_info_topic": f"/{robot_name}/{robot_name}_zed/rgb/camera_info",
                 "compressed": False,
                 "color_space": "bgr8",
             },
             "depth_data": {
-                "path": str(adt4_output_directories[i] / "bag"),
-                "topic": f"/{names[i]}/{names[i]}_zed/depth/depth_registered",
-                "camera_info_topic": f"/{names[i]}/{names[i]}_zed/depth/camera_info",
+                "path": str(fusion_inputs[i].bag),
+                "topic": f"/{robot_name}/{robot_name}_zed/depth/depth_registered",
+                "camera_info_topic": f"/{robot_name}/{robot_name}_zed/depth/camera_info",
                 "compressed": False,
             },
             "pose_data": {
@@ -242,7 +268,7 @@ def rerun_roman(
             },
         }
 
-        run_output_dir = output_dir / adt4_output_directories[i].name
+        run_output_dir = output_dir / fusion_inputs[i].name
         run_output_dir.mkdir(exist_ok=True)
         run_params_dir = run_output_dir / "params"
         run_params_dir.mkdir(exist_ok=True)
@@ -258,7 +284,7 @@ def rerun_roman(
         offline_roman_mapping(
             params_path=str(run_params_dir),
             output_path=str(run_output_dir / "roman_map"),
-            run_name=adt4_output_directories[i].name,
+            run_name=fusion_inputs[i].name,
             max_time=600.0,  # otherwise RAM usage gets too high
         )
 
@@ -274,8 +300,8 @@ def rerun_roman(
 
 
 @click.command()
+@click.argument("input_config", nargs=1, type=click.Path(exists=True))
 @click.argument("output", type=click.Path())
-@click.argument("robot_directories", nargs=-1, type=click.Path(exists=True))
 @click.option("-f", "--force", is_flag=True, help="proceed without prompting")
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
 @click.option("-l", "--log-level", type=int, default=0, help="glog level")
@@ -285,7 +311,7 @@ def rerun_roman(
 )
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
 def main(
-    output, robot_directories, force, verbosity, log_level, config, run_roman, rerun
+    input_config, output, force, verbosity, log_level, config, run_roman, rerun
 ):
     """
     Detect loop closures between robots and fuse scene graphs.
@@ -295,22 +321,22 @@ def main(
         OUTPUT: directory to save results
         ROBOT_DIRECTORIES: input directories for the robots
     """
+    fusion_inputs = _extract_input_files(input_config)
     output = _resolve_output(output, force, rerun)
-    robot_directories = [_normalize_path(x) for x in robot_directories]
-    robot_order = [x.stem for x in robot_directories]
+    robot_order = [x.stem for x in fusion_inputs]
     _info(f"Robot order: {robot_order}")
 
     hydra_multi_config = _hydra_multi_config(config)
     roman_config = _roman_config(config)
     fastsam_config = _fastsam_config(config)
     roman_map_config = _roman_map_config(config)
-    lcd_file = lcd(roman_config, robot_directories, output)
+    lcd_file = lcd(roman_config, fusion_inputs, output)
 
     command = ["hydra-multi-offline-fusion"]
     command += ["--verbosity", f"{verbosity}", "--log-level", f"{log_level}"]
     command += ["--starting-robot-id", "1"]
     command += ["-o", str(output), "-l", str(lcd_file)]
-    command += [str(_normalize_path(x) / "hydra") for x in robot_directories]
+    command += [str(_normalize_path(x.adt4_directory) / "hydra") for x in fusion_inputs]
     command += ["--config-utilities-file", str(hydra_multi_config)]
     # TODO(nathan) think about passing optimizer params
 
@@ -324,18 +350,14 @@ def main(
 
     (output / "roman").mkdir(exist_ok=True)
     densify(
-        adt4_output_directories=robot_directories,
-        # names=names, # TODO: need to fix this to handle different robot names
-        names=None,
-        optimized_trajectories=[output / f"{x.stem}.csv" for x in robot_directories],
+        fusion_inputs=fusion_inputs,
+        optimized_trajectories=[output / f"{x.adt4_directory.stem}.csv" for x in fusion_inputs],
         output_dir=output / "roman",
     )
     rerun_roman(
-        adt4_output_directories=robot_directories,
-        # names=names, # TODO: need to fix this to handle different robot names
-        names=None,
+        fusion_inputs=fusion_inputs,
         dense_optimized_trajectories=[
-            output / "roman" / f"{x.stem}.csv" for x in robot_directories
+            output / "roman" / f"{x.adt4_directory.stem}.csv" for x in fusion_inputs
         ],
         output_dir=output / "roman",
         fastsam_params_path=str(fastsam_config),
