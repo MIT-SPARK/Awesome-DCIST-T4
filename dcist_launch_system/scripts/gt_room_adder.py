@@ -41,13 +41,15 @@ class RoomExtents:
 
 
 def add_gt_rooms(
-    dsg: spark_dsg.DynamicSceneGraph, room_boxes: list[list[spark_dsg.BoundingBox]]
+    dsg: spark_dsg.DynamicSceneGraph,
+    room_boxes: list[list[spark_dsg.BoundingBox]],
+    semantic_labels: list[int],
 ):
     for idx, boxes in enumerate(room_boxes):
         box_centers = np.mean([b.world_P_center for b in boxes], axis=0)
         room_position = box_centers
         room_attrs = spark_dsg.RoomNodeAttributes()
-        room_attrs.semantic_label = 0
+        room_attrs.semantic_label = semantic_labels[idx]
         room_attrs.position = room_position
         dsg.add_node(
             spark_dsg.DsgLayers.ROOMS, spark_dsg.NodeSymbol("R", idx), room_attrs
@@ -77,7 +79,8 @@ if __name__ == "__main__":
 
     extents = RoomExtents(bb_path)
 
-    add_gt_rooms(G, extents.boxes)
+    semantic_labels = [0, 1]
+    add_gt_rooms(G, extents.boxes, semantic_labels)
     add_manual_connections(G, manual_room_connections)
 
     for node in G.get_layer(spark_dsg.DsgLayers.ROOMS).nodes:
