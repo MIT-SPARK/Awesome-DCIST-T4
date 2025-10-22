@@ -312,7 +312,10 @@ def rerun_roman(
     "--run-roman/--no-run-roman", default=True, help="run roman after optimization"
 )
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
-def main(input_config, output, force, verbosity, log_level, config, run_roman, rerun):
+@click.option("--no-lcd", is_flag=True, help="no loop closures to hydra_multi")
+def main(
+    input_config, output, force, verbosity, log_level, config, run_roman, rerun, no_lcd
+):
     """
     Detect loop closures between robots and fuse scene graphs.
 
@@ -334,7 +337,10 @@ def main(input_config, output, force, verbosity, log_level, config, run_roman, r
     command = ["hydra-multi-offline-fusion"]
     command += ["--verbosity", f"{verbosity}", "--log-level", f"{log_level}"]
     command += ["--starting-robot-id", "1"]
-    command += ["-o", str(output), "-l", str(lcd_file)]
+    command += ["-o", str(output)]
+    if not no_lcd:
+        command += ["-l", str(lcd_file)]
+
     command += [str(_normalize_path(x.adt4_directory) / "hydra") for x in fusion_inputs]
     command += ["--config-utilities-file", str(hydra_multi_config)]
     # TODO(nathan) think about passing optimizer params
