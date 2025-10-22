@@ -39,6 +39,7 @@ launch_configs:
     spot_bag_relocalize: [bag_relocalize, bag_spot]
 
     real_spot: [map, spot_real]
+    real_spot_bag: [map, spot_recording, spot_real]
     real_spot_relocalize: [relocalize, spot_real]
     real_spot_no_relocalize: [no_relocalize, spot_real]
 
@@ -105,6 +106,10 @@ experiments:
 
     real_spot:
         launch_config: real_spot
+        config: [real_spot]
+
+    real_spot_bag:
+        launch_config: real_spot_bag
         config: [real_spot]
 
     real_spot_relocalize:
