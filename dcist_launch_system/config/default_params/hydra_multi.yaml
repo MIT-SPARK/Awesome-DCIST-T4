@@ -6,7 +6,7 @@ robots:
     inputs:
       dsg:
         type: FileDsgInput
-        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg.json
       dgraph:
         type: FileDGraphInput
         dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
@@ -14,16 +14,18 @@ robots:
   - type: RosUnitInterface
     robot_id: 1
     rate: 10.0
-    robot_name: $<env ADT4_ROBOT_NAME>
-    robot_frame: $<env ADT4_ROBOT_NAME>/odom
+    robot_name: $<var robot_name>
+    robot_frame: $<var robot_name>/odom
     inputs:
       dgraph:
         type: RosDGraphInput
       dsg:
         type: RosDsgInput
+        subscribe_to_mesh: false
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false
+  anchor_robot0: false
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:
@@ -33,6 +35,7 @@ backend:
     alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10.0
+  partial_optimizer: {type: ""}
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0

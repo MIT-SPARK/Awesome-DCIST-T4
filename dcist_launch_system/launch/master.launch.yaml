@@ -21,67 +21,69 @@ launch:
         - {name: camera_model, value: zed2i}
         - {name: camera_name, value: $(var camera)}
         - {name: publish_tf, value: 'false'}
+        - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
 
   # Efficient-ViT
   - arg: {name: launch_semantic_inference, default: 'false'}
-  - group:
-      - node:
-          if: $(var launch_semantic_inference)
-          pkg: semantic_inference_ros
-          exec: closed_set_node
-          namespace: $(var camera)
-          name: segmentation
-          remap:
-            - {from: color/image_raw, to: rgb/image_rect_color}
-          args: >
-            --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
-            --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
-            --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
-            --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
-            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
-            --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
+  - node:
+      if: $(var launch_semantic_inference)
+      pkg: semantic_inference_ros
+      exec: closed_set_node
+      namespace: $(var camera)
+      name: segmentation
+      remap:
+        - {from: color/image_raw, to: rgb/image_rect_color}
+      args: >
+        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
+        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
+        --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
-  - group:
-      - set_remap: {from: hydra/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
-      - set_remap: {from: hydra/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
-      - set_remap: {from: hydra/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
-      - set_remap: {from: hydra/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
-      - set_remap: {from: hydra/status, to: ros_system_monitor/hydra/status}
-      - node:
-          if: $(var launch_hydra)
-          pkg: hydra_ros
-          exec: hydra_ros_node
-          name: hydra
-          param:
-            - {name: use_sim_time, value: $(var sim_time)}
-          args: >-
-            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_hydra.yaml
-            --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
-            --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
-            --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
-            --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
+  - node:
+      if: $(var launch_hydra)
+      pkg: hydra_ros
+      exec: hydra_ros_node
+      name: hydra
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
+        - {from: ~/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
+        - {from: ~/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
+        - {from: ~/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
+        - {from: ~/status, to: ros_system_monitor/hydra/status}
+      args: >-
+        --config-utilities-var robot_name=$(var robot_name)
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
+        --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+        --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
+        --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
 
   # Hydra Visualizer
   - arg: {name: launch_hydra_visualizer, default: 'false'}
-  - group:
-      - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
-      - node:
-          if: $(var launch_hydra_visualizer)
-          pkg: hydra_visualizer
-          exec: hydra_visualizer_node
-          name: hydra_visualizer
-          param:
-            - {name: use_sim_time, value: $(var sim_time)}
-          args: >
-            --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
-            --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
-            --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
-            --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
+  - node:
+      if: $(var launch_hydra_visualizer)
+      pkg: hydra_visualizer
+      exec: hydra_visualizer_node
+      name: hydra_visualizer
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/dsg, to: hydra/backend/dsg}
+      args: >
+        --config-utilities-var robot_name=$(var robot_name)
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
+        --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
+        --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
+        --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
 
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
@@ -96,9 +98,26 @@ launch:
         - {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
         - {from: ~/status, to: ros_system_monitor/hydra_multi/status}
       args: >
+        --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra_multi, output: {use_timestamp: false, overwrite: true}}
+
+  # Hydra-Multi Visualizer
+  - arg: {name: launch_hydra_multi_visualizer, default: 'false'}
+  - node:
+      if: $(var launch_hydra_multi_visualizer)
+      pkg: hydra_visualizer
+      exec: hydra_visualizer_node
+      name: hydra_multi_visualizer
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/dsg, to: hydra_multi/backend/dsg}
+      args: >
+        --config-utilities-var robot_name=$(var robot_name)
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer_config.yaml
+        --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
@@ -189,16 +208,15 @@ launch:
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
-  - group:
-      - pyenv_node:
-          if: $(var launch_spot_camera_driver)
-          pkg: spot_tools_ros
-          exec: spot_sensor_node
-          name: spot_sensor_node
-          pyenv: $(var spark_env)
-          param:
-            - {name: use_sim_time, value: $(var sim_time)}
-            - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml, allow_substs: true}
+  - pyenv_node:
+      if: $(var launch_spot_camera_driver)
+      pkg: spot_tools_ros
+      exec: spot_sensor_node
+      name: spot_sensor_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_sensor_node.yaml, allow_substs: true}
 
   # Decompression for spot camera topics
   - arg: {name: launch_spot_camera_decompression, default: 'false'}
@@ -273,6 +291,18 @@ launch:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 
+  # dsg_analyzer
+  - arg: {name: launch_dsg_analyzer, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_dsg_analyzer)
+      pkg: dsg_analyzer_ros
+      exec: dsg_analyzer_node
+      name: dsg_analyzer
+      pyenv: $(var spark_env)
+      remap:
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_stats_out, to: dsg_analyzer/dsg_stats}
+
   # Static TF to replace Hydra multi map->robot/map TF.
   # Non-identity transform for verification.
   - arg: {name: launch_static_map_to_robot_map, default: 'false'}
@@ -290,3 +320,30 @@ launch:
       pkg: tf2_ros
       exec: static_transform_publisher
       args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
+
+
+  - arg: {name: launch_heracles_publisher, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_heracles_publisher)
+      pkg: heracles_ros
+      exec: heracles_publisher_node
+      name: heracles_publisher_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_publisher_node.yaml, allow_substs: true}
+      remap:
+        - from: ~/dsg_out
+          to: hydra/backend/dsg
+
+  # gps
+  - arg: {name: launch_gps, default: 'false'}
+  - set_remap: {from: gps/status, to: ros_system_monitor/node_diagnostic_collector}
+  - include:
+      if: $(var launch_gps)
+      file: $(find-pkg-share gpsd_client)/launch/gpsd_client-launch.py
+  - node:
+      if: $(var launch_gps)
+      pkg: gps_monitor
+      exec: gps_monitor_node
+      name: gps_monitor_node

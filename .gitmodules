@@ -46,3 +46,15 @@
 [submodule "khronos"]
 	path = khronos
 	url = git@github.com:MIT-SPARK/Khronos.git
+[submodule "dsg_analyzer"]
+	path = dsg_analyzer
+	url = git@github.com:MultyXu/dsg_analyzer.git
+[submodule "heracles"]
+	path = heracles
+	url = git@github.com:GoldenZephyr/heracles.git
+[submodule "heracles_agents"]
+	path = heracles_agents
+	url = git@github.com:GoldenZephyr/heracles_agents.git
+[submodule "gps_monitor"]
+	path = gps_monitor
+	url = git@github.com:fishberg/ros2_dcist-gps-monitor.git

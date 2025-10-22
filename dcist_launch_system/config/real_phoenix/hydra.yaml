@@ -3,10 +3,11 @@ robot_id: 0
 config_verbosity: 0
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/body
+robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
 input:
   type: RosInput
+  max_receiver_queue_size: 1
   inputs:
     camera:
       receiver: {type: ClosedSetImageReceiver, queue_size: 30}
@@ -20,6 +21,7 @@ active_window:
   type: ActiveWindow
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
+  min_output_separation: 0.5
   object_detector:
     type: ConnectedSemantics
     min_cluster_size: 20
@@ -54,6 +56,7 @@ active_window:
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
+  serialize_dsg_mesh: false
   clear_object_meshes: true
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:

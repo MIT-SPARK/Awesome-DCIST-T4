@@ -1,0 +1,7 @@
+---
+/**:
+  ros__parameters:
+    heracles_ip: $(env ADT4_HERACLES_IP)
+    heracles_port: $(env ADT4_HERACLES_PORT)
+    heracles_neo4j_user: $(env ADT4_NEO4J_USERNAME)
+    heracles_neo4j_pass: $(env ADT4_NEO4J_PASSWORD)
