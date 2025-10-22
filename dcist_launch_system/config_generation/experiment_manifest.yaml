@@ -54,7 +54,6 @@ configs:
     default_params: []
 
     bag: []
-    spot_bag_MLP: [bag]
     spot_prior_dsg: []
     real_spot: []
     real_phoenix: []
