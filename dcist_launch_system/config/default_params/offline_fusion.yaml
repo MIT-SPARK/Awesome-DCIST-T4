@@ -11,7 +11,6 @@ backend:
     objects:
       type: GenericUpdateFunctor
       layer: OBJECTS
-      deformation_interpolator: {num_control_points: 0}
       matcher: {type: IoUNodeMatcher, min_same_iou: 0.05, min_cross_iou: 0.5}
     surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   initial_align:
