@@ -55,6 +55,6 @@
 [submodule "heracles_agents"]
 	path = heracles_agents
 	url = git@github.com:GoldenZephyr/heracles_agents.git
-[submodule "gps_monitor"]
-	path = gps_monitor
-	url = git@github.com:fishberg/ros2_dcist-gps-monitor.git
+[submodule "gps"]
+	path = gps
+	url = git@github.com:fishberg/ros2_gps-dcist.git

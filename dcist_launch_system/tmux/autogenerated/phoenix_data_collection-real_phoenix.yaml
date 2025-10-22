@@ -1,6 +1,7 @@
 nodes_to_monitor:
   phoenix_executor: {}
   gps_monitor: {}
+  ntrip_monitor: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -11,7 +12,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {}, phoenix_executor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {}, ntrip_monitor: {}, phoenix_executor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: real_phoenix
   logging_key: phoenix_data_collection-real_phoenix
