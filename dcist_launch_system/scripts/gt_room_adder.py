@@ -56,10 +56,12 @@ def add_gt_rooms(
         )
 
     for idx, boxes in enumerate(room_boxes):
+        print(f"{idx}, {boxes}")
         for box in boxes:
             for node in dsg.get_layer(spark_dsg.DsgLayers.MESH_PLACES).nodes:
                 pos = node.attributes.position
                 if box.contains(pos):
+                    print(f"R{idx} -> {node.id}")
                     dsg.insert_edge(spark_dsg.NodeSymbol("R", idx), node.id)
 
 
@@ -71,15 +73,16 @@ def add_manual_connections(dsg, connections):
 
 
 if __name__ == "__main__":
-    dsg_path = "/home/aaron/adt4_output/tues_morning_spot_bag_construction_area_2_processed/hydra/backend/dsg_with_mesh.json"
+    dsg_path = "/home/aaron/adt4_output/wednesday_afternoon_1_processed/hydra/backend/dsg_with_mesh.json"
     G = spark_dsg.DynamicSceneGraph.load(dsg_path)
 
-    manual_room_connections = [(0, 1)]
+    manual_room_connections = [(0, 1), (1, 2), (2, 3)]
     bb_path = "gt_room_bounding_boxes.yaml"
 
     extents = RoomExtents(bb_path)
 
-    semantic_labels = [0, 1]
+    semantic_labels = [2, 0, 1]
+
     add_gt_rooms(G, extents.boxes, semantic_labels)
     add_manual_connections(G, manual_room_connections)
 

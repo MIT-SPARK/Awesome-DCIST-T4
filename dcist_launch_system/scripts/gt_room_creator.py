@@ -74,7 +74,9 @@ def onkey(event):
 
 
 # Load the .ply file
-mesh_fn = "/home/aaron/adt4_output/tues_morning_spot_bag_construction_area_2_processed/hydra/backend/mesh.ply"
+mesh_fn = (
+    "/home/aaron/adt4_output/wednesday_afternoon_1_processed/hydra/backend/mesh.ply"
+)
 mesh = trimesh.load(mesh_fn)
 
 # Extract vertex positions (Nx3)
