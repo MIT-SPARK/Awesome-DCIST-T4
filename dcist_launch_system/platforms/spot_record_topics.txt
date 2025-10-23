@@ -1,7 +1,7 @@
 /tf
 /tf_static
 /${ADT4_ROBOT_NAME}/joint_states
-/${ADT4_ROBOT_NAME}/extended_fix
+/${ADT4_ROBOT_NAME}/rtcm
 /${ADT4_ROBOT_NAME}/fix
 /${ADT4_ROBOT_NAME}/${ADT4_ROBOT_NAME}_zed/imu/data
 /${ADT4_ROBOT_NAME}/${ADT4_ROBOT_NAME}_zed/imu/mag
