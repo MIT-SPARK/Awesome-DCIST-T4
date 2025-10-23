@@ -385,3 +385,13 @@ launch:
         pkg: gps_dcist
         exec: ntrip_monitor_node
         name: ntrip_monitor_node
+
+  # tx_rx
+  - arg: { name: launch_tx_rx, default: 'false' }
+  - group:
+    - set_remap: {from: tx_rx/status, to: ros_system_monitor/node_diagnostic_collector}
+    - node:
+        if: $(var launch_tx_rx)
+        pkg: tx_rx_monitor_dcist
+        exec: tx_rx_monitor_node
+        name: tx_rx_monitor_node

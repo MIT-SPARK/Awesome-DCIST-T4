@@ -8,6 +8,7 @@ nodes_to_monitor:
   spot_executor: {}
   gps_monitor: {}
   ntrip_monitor: {}
+  tx_rx_monitor: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -18,7 +19,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {}, roman_lc: {}, roman_map: {}, spot_executor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {}, roman_lc: {}, roman_map: {}, spot_executor: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: real_spot
   logging_key: real_spot-real_spot
@@ -65,3 +66,4 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_livox:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true

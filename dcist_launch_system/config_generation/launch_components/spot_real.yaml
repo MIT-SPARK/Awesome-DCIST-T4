@@ -3,6 +3,7 @@ nodes_to_monitor:
   spot_executor: {}
   gps_monitor: {}
   ntrip_monitor: {}
+  tx_rx_monitor: {}
 windows:
   - window_name: real_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
@@ -15,3 +16,4 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_livox:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true
