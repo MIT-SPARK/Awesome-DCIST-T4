@@ -243,6 +243,21 @@ launch:
           arg:
             - {name: camera_ns, value: frontright}
 
+  # Decompression for zed
+  - arg: {name: launch_zed_camera_decompression, default: 'false'}
+  - group:
+      - node:
+          if: $(var launch_zed_camera_decompression)
+          namespace: $(var robot_name)_zed
+          pkg: image_transport
+          exec: republish
+          param:
+            - {name: in_transport, value: compressed}
+            - {name: out_transport, value: raw}
+          remap:
+            - {from: in/compressed, to: rgb/image_rect_color/compressed}
+            - {from: out, to: rgb/image_rect_color}
+
   # Rviz
   - arg: {name: launch_rviz, default: 'false'}
   - node:
