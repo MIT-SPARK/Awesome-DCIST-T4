@@ -1,0 +1,4 @@
+---
+/**:
+  ros__parameters:
+    publish_fake_path_plan: true
