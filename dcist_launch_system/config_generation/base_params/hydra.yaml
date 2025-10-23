@@ -55,6 +55,12 @@ active_window:
       num_threads: 8
   khronos_sinks:
     - type: ActiveWindowVisualizer
+  sinks:
+    - type: TsdfOccupancyPublisher
+      min_distance: 0.25
+      use_relative_height: true
+      slice_height: 0.0
+      num_slices: 1
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false

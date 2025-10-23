@@ -6,6 +6,10 @@
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
+    mid_level_planner_type: identity
+    occupancy_inflation_radius: 0.4  # meters
+    lookahead_distance: 50  # grid
+    use_fake_path_plan: false
     use_fake_spot_interface: true
     use_fake_spot_pose: false
     fake_spot_external_pose: true

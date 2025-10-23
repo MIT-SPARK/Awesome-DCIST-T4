@@ -187,6 +187,7 @@ launch:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
         - {from: ~/action_sequence_subscriber, to: omniplanner_node/compiled_plan_out}
         - {from: ~/joint_states, to: joint_states}
+        - {from: ~/occupancy_grid, to: hydra/tsdf/occupancy}
 
   # Spot state publisher
   - arg: {name: launch_spot_state_publisher, default: 'false'}
