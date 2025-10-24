@@ -60,5 +60,5 @@ windows:
       - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
       - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true"
       - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true"
-      - sleep 5; tmux send-keys -t real_phoenix.3 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
+      - sleep 5; tmux send-keys -t real_phoenix.4 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
       - "cd ${ADT4_PHX_ROOT} && phx run"
