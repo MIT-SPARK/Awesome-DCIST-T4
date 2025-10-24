@@ -2,6 +2,7 @@
   ros__parameters:
     odom_frame: $(var robot_name)/odom
     body_frame: $(var robot_name)/body
+    output_dir: $(env ADT4_OUTPUT_DIR)/spot_executor
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
