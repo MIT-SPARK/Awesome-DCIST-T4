@@ -8,6 +8,7 @@ launch_configs:
     relocalize_viz: []
     spot_recording: []
     phoenix_recording: []
+    base_station_recording: []
 
     sim_spot: []
     bag_spot: []
@@ -130,7 +131,7 @@ experiments:
 
     real_spot_relocalize_record:
         launch_config: real_spot_relocalize_record
-        config: [real_spot_relocalize_record, apollo_relocalize]
+        config: [real_spot_relocalize, apollo_relocalize]
 
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
