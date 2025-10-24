@@ -13,3 +13,5 @@
 /${ADT4_ROBOT_NAME}/microstrain/imu/data
 /${ADT4_ROBOT_NAME}/dlio/odom_node/odom
 /${ADT4_ROBOT_NAME}/tx_rx_usage
+/${ADT4_ROBOT_NAME}/platform/cmd_vel
+/${ADT4_ROBOT_NAME}/joy_teleop/cmd_vel
