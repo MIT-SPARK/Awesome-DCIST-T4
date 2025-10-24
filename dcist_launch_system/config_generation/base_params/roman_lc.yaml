@@ -15,4 +15,4 @@ force_rm_lc_roll_pitch: true
 force_rm_upside_down: true
 use_object_bottom_middle: false
 submap_descriptor: mean_semantic
-submap_descriptor_thresh: 0.3
+submap_descriptor_thresh: 0.0
