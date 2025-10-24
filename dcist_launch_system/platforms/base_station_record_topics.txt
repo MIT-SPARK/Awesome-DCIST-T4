@@ -1,0 +1,9 @@
+/global/ros_system_monitor/table_in
+/${ADT4_ROBOT_NAME}/tx_rx_usage
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_viz_out
+/euclid/omniplanner_node/compiled_plan_out
+/hamilton/omniplanner_node/compiled_plan_out
+/gauss/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/omniplanner_node/multi_robot_pddl/pddl_goal
+/${ADT4_ROBOT_NAME}/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
+/${ADT4_ROBOT_NAME}/omniplanner_node/multirobot_region_rearrange_objects_pddl/pddl_goal

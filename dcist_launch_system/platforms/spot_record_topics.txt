@@ -12,3 +12,7 @@
 /${ADT4_ROBOT_NAME}/livox/lidar
 /${ADT4_ROBOT_NAME}/livox/imu
 /${ADT4_ROBOT_NAME}/tx_rx_usage
+/${ADT4_ROBOT_NAME}/spot_executor_node/takeover
+/euclid/omniplanner_node/compiled_plan_out
+/hamilton/omniplanner_node/compiled_plan_out
+/gauss/omniplanner_node/compiled_plan_out

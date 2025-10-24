@@ -8,6 +8,7 @@ launch_configs:
     relocalize_viz: []
     spot_recording: []
     phoenix_recording: []
+    base_station_recording: []
 
     sim_spot: []
     bag_spot: []
@@ -39,18 +40,22 @@ launch_configs:
     spot_bag_relocalize: [bag_relocalize, bag_spot]
 
     real_spot: [map, spot_real]
-    real_spot_bag: [map, spot_recording, spot_real]
+    real_spot_record: [map, spot_real, spot_recording]
     real_spot_relocalize: [relocalize, spot_real]
+    real_spot_relocalize_record: [relocalize, spot_real, spot_recording]
     real_spot_no_relocalize: [no_relocalize, spot_real]
 
     real_phoenix: [map, phoenix_real]
     real_phoenix_relocalize: [relocalize, phoenix_real]
+    real_phoenix_relocalize_record: [relocalize, phoenix_real, phoenix_recording]
     real_phoenix_no_relocalize: [no_relocalize]
 
     spot_prior_dsg: [plan_prior, sim_spot]
     spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
     base_station: [plan_prior, multi_status]
     base_station_heracles: [plan_prior_heracles, multi_status]
+    base_station_record: [plan_prior, multi_status, base_station_recording]
+    base_station_heracles_record: [plan_prior_heracles, multi_status, base_station_recording]
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -92,8 +97,16 @@ experiments:
         launch_config: base_station
         config: [default_params]
 
+    base_station_record:
+        launch_config: base_station_record
+        config: [default_params]
+
     base_station_heracles:
         launch_config: base_station_heracles
+        config: [default_params]
+
+    base_station_heracles_record:
+        launch_config: base_station_heracles_record
         config: [default_params]
 
     spot_bag:
@@ -108,12 +121,16 @@ experiments:
         launch_config: real_spot
         config: [real_spot]
 
-    real_spot_bag:
-        launch_config: real_spot_bag
+    real_spot_record:
+        launch_config: real_spot_record
         config: [real_spot]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
+        config: [real_spot_relocalize, apollo_relocalize]
+
+    real_spot_relocalize_record:
+        launch_config: real_spot_relocalize_record
         config: [real_spot_relocalize, apollo_relocalize]
 
     real_spot_no_relocalize:
@@ -126,6 +143,10 @@ experiments:
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
+        config: [real_phoenix_relocalize]
+
+    real_phoenix_relocalize_record:
+        launch_config: real_phoenix_relocalize_record
         config: [real_phoenix_relocalize]
 
     real_phoenix_no_relocalize:
