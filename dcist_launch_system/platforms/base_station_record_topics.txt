@@ -6,3 +6,4 @@
 /gauss/omniplanner_node/compiled_plan_out
 /${ADT4_ROBOT_NAME}/omniplanner_node/multi_robot_pddl/pddl_goal
 /${ADT4_ROBOT_NAME}/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
+/${ADT4_ROBOT_NAME}/omniplanner_node/multirobot_region_rearrange_objects_pddl/pddl_goal

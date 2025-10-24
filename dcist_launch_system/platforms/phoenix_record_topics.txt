@@ -15,3 +15,6 @@
 /${ADT4_ROBOT_NAME}/tx_rx_usage
 /${ADT4_ROBOT_NAME}/platform/cmd_vel
 /${ADT4_ROBOT_NAME}/joy_teleop/cmd_vel
+/euclid/omniplanner_node/compiled_plan_out
+/hamilton/omniplanner_node/compiled_plan_out
+/gauss/omniplanner_node/compiled_plan_out
