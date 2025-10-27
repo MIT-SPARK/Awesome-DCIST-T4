@@ -4,3 +4,5 @@
     heracles_port: $(env ADT4_HERACLES_PORT)
     heracles_neo4j_user: $(env ADT4_NEO4J_USERNAME)
     heracles_neo4j_pass: $(env ADT4_NEO4J_PASSWORD)
+    object_labelspace: ade20k_mit_label_space.yaml
+    region_labelspace: b45_label_space.yaml
