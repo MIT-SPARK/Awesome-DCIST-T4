@@ -2,6 +2,7 @@
 nodes_to_monitor:
   dsg_saver: {}
   hydra: {external_monitor: {type: JsonMonitor}}
+  semantic_inference: {external_monitor: {type: JsonMonitor}}
 windows:
   - window_name: hydra
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
