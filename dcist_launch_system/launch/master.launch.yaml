@@ -48,6 +48,8 @@ launch:
       name: segmentation
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
+        # hard-coded top level namespace because of extra camera node namespace
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor

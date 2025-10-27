@@ -2,6 +2,8 @@ nodes_to_monitor:
   dsg_saver: {}
   hydra:
     external_monitor: {type: JsonMonitor}
+  semantic_inference:
+    external_monitor: {type: JsonMonitor}
   fastsam: {}
   roman_map: {}
   roman_lc: {}
@@ -16,7 +18,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, roman_lc: {}, roman_map: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: real_phoenix
   logging_key: bag_phoenix-real_phoenix
