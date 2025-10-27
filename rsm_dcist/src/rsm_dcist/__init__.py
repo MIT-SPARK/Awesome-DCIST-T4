@@ -1,2 +1,1 @@
 from rsm_dcist.example1_monitor import Example1NodeMonitorConfig
-from rsm_dcist.json_monitor import JsonMonitorConfig
