@@ -5,7 +5,7 @@ backend:
   add_objects_to_deformation_graph: false
   anchor_robot_id: 1
   optimize_on_lc: true
-  enable_node_merging: false
+  enable_node_merging: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects:
@@ -29,7 +29,8 @@ backend:
       type: KimeraRpgoOptimizer
       solver: LM
       use_gnc: true
-      gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
+      print_iterations: false
+      gnc: {inlier_probability: 0.01, mu_step: 1.6, max_iterations: 100, barc_sq: 10000.0}
     covariance:
       odom: 1.0e-04
       loop_close: 1.0e-01
