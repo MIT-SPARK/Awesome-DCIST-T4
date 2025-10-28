@@ -469,6 +469,30 @@ After doing one of these two options, the following paths should exist:
 * `$ADT4_OUTPUT_DIR/roman/roman_map.pkl`
 * `$ADT4_OUTPUT_DIR/hydra`
 
+## Citations and Related Papers
+
+This system was developed to support the line of work from the following paper.
+```
+@misc{strader2025languagegroundedhierarchicalplanningexecution,
+      title={Language-Grounded Hierarchical Planning and Execution with Multi-Robot {3D} Scene Graphs},
+      author={Jared Strader and Aaron Ray and Jacob Arkin and Mason B. Peterson and Yun Chang and Nathan Hughes and Christopher Bradley and Yi Xuan Jia and Carlos Nieto-Granda and Rajat Talak and Chuchu Fan and Luca Carlone and Jonathan P. How and Nicholas Roy},
+      year={2025},
+      eprint={2506.07454},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2506.07454},
+}
+```
+
+Additionally, various components of the system presented here rely on
+* Hydra [code](https://github.com/MIT-SPARK/Hydra-ROS) [paper](https://journals.sagepub.com/doi/full/10.1177/02783649241229725)
+* Hydra-Multi [paper](https://ieeexplore.ieee.org/abstract/document/10341838)
+* Khronos [code](https://github.com/MIT-SPARK/Khronos) [paper](https://arxiv.org/abs/2402.13817)
+* ROMAN [code](https://github.com/mit-acl/roman) [paper](https://arxiv.org/abs/2410.08262)
+* Heracles [code](https://github.com/GoldenZephyr/heracles_agents) [paper](https://arxiv.org/abs/2510.16643)
+* TAMP in Hierachical 3D Scene Graphs [paper](https://arxiv.org/abs/2403.08094)
+
+
 ## Sponsors
 
 A big thank you to our sponsors for their generous support:
