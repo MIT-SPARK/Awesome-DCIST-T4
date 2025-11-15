@@ -47,7 +47,7 @@ def log_debug(msg):
 
 
 def enforce_unique_filenames(paths):
-    fns = [p.split("/")[-1] for p in paths]
+    fns = [p.name for p in paths]
     counts = compute_list_counts(fns)
 
     for k, v in counts.items():
