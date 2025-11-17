@@ -1,42 +1,21 @@
 ---
-world_frame: map
-robots:
-  - type: UnitInterface
-    robot_id: 1
-    robot_name: prior_map
-    inputs:
-      dsg:
-        type: FileDsgInput
-        dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg.json
-        force_robot_id: true
-      dgraph:
-        type: FileDGraphInput
-        dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
-        include_priors: true
-  - type: RosUnitInterface
-    robot_id: 0
-    rate: 10.0
-    robot_name: $<var robot_name>
-    robot_frame: $<var robot_name>/odom
-    inputs:
-      dgraph:
-        type: RosDGraphInput
-      dsg:
-        type: RosDsgInput
-        subscribe_to_mesh: false
+printing: {width: 100}
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false
-  anchor_robot_id: -1
+  anchor_robot_id: 1
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
+    objects: {type: UpdateObjectsFunctor}
+    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   initial_align:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10.0
+  external_loop_closures: {max_time_difference: 1.5}
   partial_optimizer: {type: ''}
   pgmo:
     run_mode: FULL  # kimera_pgmo run mode FULL is required
@@ -46,6 +25,7 @@ backend:
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
+      use_gnc: true
       gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
     covariance:
       odom: 1.0e-04
