@@ -1,12 +1,17 @@
 #!/bin/bash
 # ./python_setup.sh [--no-roman] [--no-spark]
 
+ci_running=false
 install_roman=true
 install_spark=true
 
 while :; do
     echo $1
     case $1 in
+        --is-ci)
+            ci_running=true
+            shift
+            ;;
         --no-roman)
             install_roman=false
             shift
@@ -85,6 +90,9 @@ if [ "$install_spark" = true ]; then
     git submodule update --init
 
     # install packages and spark_dsg
+    if [ "$ci_running" = true ]; then
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    fi
     pip install -r install/spark_requirements.txt
     pip install ./spark_dsg "numpy<2"
 
@@ -105,7 +113,7 @@ if [ "$install_spark" = true ]; then
     mkdir -p $ADT4_WS/weights
     pushd $ADT4_WS/weights
     MODEL_FILE="yolov8s-world.pt"
-    if [ ! -f "$MODEL_FILE" ]; then
+    if [[ ! -f "$MODEL_FILE" && "$ci_running" = false ]]; then
     	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODEL_FILE
     else
     	echo "$MODEL_FILE already exists, skipping download."
