@@ -36,10 +36,11 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true launch_heracles_state_updater:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
-      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
+      - "cd $ADT4_DLS_PKG/../dsg_updater/dsg_updater/examples && source $ADT4_ENV/spark_env/bin/activate && ./update_robot_holding_object_state.py"
+      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
