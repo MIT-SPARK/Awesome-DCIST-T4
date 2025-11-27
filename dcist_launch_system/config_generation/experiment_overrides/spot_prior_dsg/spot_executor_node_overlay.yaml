@@ -1,6 +1,6 @@
 ---
 /**:
   ros__parameters:
-    mid_level_planner_type: astar
+    mid_level_planner_type: identity
     use_fake_spot_pose: true
     fake_spot_external_pose: false

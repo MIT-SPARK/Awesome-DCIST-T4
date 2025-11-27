@@ -1,0 +1,6 @@
+---
+/**:
+  ros__parameters:
+    map_frame: map
+    robot_name: $(var robot_name)
+    publish_rate: 1.0

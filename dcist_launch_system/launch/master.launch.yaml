@@ -349,7 +349,6 @@ launch:
       exec: static_transform_publisher
       args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
 
-
   - arg: {name: launch_heracles_publisher, default: 'false'}
   - pyenv_node:
       if: $(var launch_heracles_publisher)
@@ -363,6 +362,20 @@ launch:
       remap:
         - from: ~/dsg_out
           to: hydra/backend/dsg
+
+  - arg: {name: launch_heracles_state_updater, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_heracles_state_updater)
+      pkg: heracles_ros
+      exec: heracles_state_updater_node
+      name: heracles_state_updater_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_state_updater_node.yaml, allow_substs: true}
+      remap:
+        - from: ~/update_holding_state
+          to: /$(var robot_name)/update_holding_state
 
   # gps
   - arg: { name: launch_gps, default: 'false' }
