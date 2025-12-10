@@ -1,5 +1,4 @@
 ---
 /**:
   ros__parameters:
-    prior_session_maps: !replace [$(env ADT4_PRIOR_MAP)/roman/roman_map.pkl]
-    prior_session_ids: !replace [0]
+    prior_session_maps: !replace [$(env ADT4_PRIOR_MAP)/roman/]

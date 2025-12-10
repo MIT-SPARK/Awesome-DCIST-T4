@@ -1,6 +1,5 @@
 ---
 map_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_id: 1
 backend:
   publish_backend_tf: false
   optimize_on_lc: false
