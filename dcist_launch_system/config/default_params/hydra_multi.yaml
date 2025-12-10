@@ -1,18 +1,19 @@
 world_frame: map
 robots:
   - type: UnitInterface
-    robot_id: 0
+    robot_id: 1
     robot_name: prior_map
     inputs:
       dsg:
         type: FileDsgInput
         dsg_json: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg.json
+        force_robot_id: true
       dgraph:
         type: FileDGraphInput
         dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
         include_priors: true
   - type: RosUnitInterface
-    robot_id: 1
+    robot_id: 0
     rate: 10.0
     robot_name: $<var robot_name>
     robot_frame: $<var robot_name>/odom
@@ -25,7 +26,7 @@ robots:
 backend:
   type: MultiBackendModule
   add_objects_to_deformation_graph: false
-  anchor_robot0: false
+  anchor_robot_id: -1
   optimize_on_lc: true
   enable_node_merging: true
   update_functors:

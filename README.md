@@ -311,6 +311,10 @@ ros2 service call /dsg_saver/save_dsg dcist_launch_system_msgs/srv/SaveDsg "{sav
 ```
 If you leave `save_path`, it will default to saving under `$ADT4_OUTPUT_DIR`
 
+### Running Offline-Fusion
+
+Don't. But the script for this lives [here](dcist_launch_system/bin/run-offline-fusion).
+
 ## Configuring Parameters
 
 This section will give some technical explanation about how parameters are
