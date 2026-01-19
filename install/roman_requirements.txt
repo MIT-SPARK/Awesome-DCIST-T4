@@ -1,5 +1,6 @@
 # gtsam does not exist in pypi for python3.12 and ROMAN does not
 # need it for what we are doing so install other ROMAN dependencies here.
+--extra-index-url https://download.pytorch.org/whl/cu128
 numpy<2
 scipy
 matplotlib
@@ -10,8 +11,8 @@ yolov7-package
 shapely
 opencv-python>=4.6.0
 pyyaml
-torch==2.4.0
-torchvision==0.19.0
+torch==2.7.0
+torchvision==0.22.0
 fastsam @ git+https://github.com/CASIA-IVA-Lab/FastSAM@4d153e9
 robotdatapy>=1.0.1
 transforms3d
