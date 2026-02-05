@@ -102,13 +102,8 @@ Different nodes can use different python environments; we have two (`roman` and 
 You should periodically rerun the python setup script to make sure everything is installed and up to date!
 
 > :bangbang: **Important** </br>
-> The `spark_dsg` package needs to build python bindings every time it is updated. This means that you need to manually pip install `spark_dsg`!
-> You can do this without running the full python setup script by running
->    ```bash
->    source ${ADT4_ENV}/spark_env/bin/activate
->    pip install ${ADT4_WS}/src/awesome_dcist_t4/spark_dsg
->    ```
-
+> The `spark_dsg` package automatically installs the python bindings in the colcon workspace!
+> You do NOT need to manually install it and manually installing it WILL cause problems!
 
 ### Environment Variable Summary
 
