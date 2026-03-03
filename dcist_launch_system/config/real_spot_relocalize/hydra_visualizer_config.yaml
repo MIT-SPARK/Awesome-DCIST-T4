@@ -37,11 +37,14 @@ renderer:
       z_offset_scale: 0.0
       visualize: true
       nodes:
-        scale: 0.05
+        scale: 0.1
         alpha: 1.0
         use_sphere: true
         color: {type: PartitionColorAdapter}
-      edges: {scale: 0.05, alpha: 1.0}
+      edges:
+        scale: 0.1
+        alpha: 1.0
+        color: {type: ""}
       text: {draw_layer: true, height: 0.9, scale: 0.8}
     3p1:
       z_offset_scale: 3.0
