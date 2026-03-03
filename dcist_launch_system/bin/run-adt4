@@ -9,10 +9,14 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import click
 import rich
+import yaml
 from rich.columns import Columns
+from rich.panel import Panel
+from rich.syntax import Syntax
 from rich.table import Table
 
 ADT4_VARS = [
@@ -63,9 +67,7 @@ def _resolve_session_path(session_path):
 
     session_path = tmux_ws_path / session_path
     if not session_path.exists():
-        click.secho(
-            f"Invalid tmuxp session filepath: '{session_path}'! Available:", fg="red"
-        )
+        click.secho(f"Invalid tmuxp file: '{session_path}'!", fg="red")
         click.echo(f"Available: {pprint.pformat([x.stem for x in tmux_files])}")
         sys.exit("invalid session file")
 
@@ -92,6 +94,40 @@ def _show_vars(env):
         table.add_row(name, env.get(name) or "---")
 
     rich.print(table)
+
+
+def _run_session(session_path, env, tmuxp_args, dry_run):
+    cmd = [shutil.which("tmuxp"), "load", str(session_path)]
+    if tmuxp_args:
+        cmd += shlex.split(tmuxp_args)
+
+    if dry_run:
+        click.secho(f"command: {' '.join(cmd)}", fg="green")
+        return 0
+
+    return subprocess.run(cmd, env=env).returncode
+
+
+def _write_session_to_file(session_path, bag, bag_delay, fout, verbose=False):
+    with session_path.open("r") as fin:
+        contents = yaml.safe_load(fin.read())
+
+    bag_args = ["--delay", str(bag_delay)]
+    contents["windows"].append(
+        {
+            "layout": "tiled",
+            "panes": [f"ros2 run ianvs play_rosbag {bag} {' '.join(bag_args)}"],
+            "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+            "window_name": "play_rosbag",
+        }
+    )
+
+    contents = yaml.dump(contents)
+    fout.write(contents)
+    fout.flush()
+    if verbose:
+        console = rich.console.Console()
+        console.print(Panel(Syntax(contents, "yaml")))
 
 
 @click.command()
@@ -124,7 +160,8 @@ def _show_vars(env):
 @click.option("--yes", "-y", is_flag=True, help="skip env variable check")
 @click.option("--force", "-f", is_flag=True, help="clear output if it exists")
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
-@click.option("--bag", "-b", default=None, type=click.Path(), help="bag to run")
+@click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
+@click.option("--bag-delay", default=5.0, help="bag playback delay")
 def main(
     session_path,
     tmuxp_args,
@@ -137,6 +174,7 @@ def main(
     force,
     dry_run,
     bag,
+    bag_delay,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -145,6 +183,7 @@ def main(
     prior_map = _resolve_prior_map(prior_map)
     session_path = _resolve_session_path(session_path)
     output_dir = _resolve_output_dir(output_dir, force)
+    bag = pathlib.Path(bag).expanduser().absolute() if bag else None
 
     env = os.environ.copy()
     env["ADT4_ROBOT_NAME"] = robot_name
@@ -159,15 +198,12 @@ def main(
     if not yes:
         click.confirm("Are the settings correct?", abort=True)
 
-    cmd = [shutil.which("tmuxp"), "load", str(session_path)]
-    if tmuxp_args:
-        cmd += shlex.split(tmuxp_args)
+    if not bag:
+        return _run_session(session_path, env, tmuxp_args, dry_run)
 
-    if dry_run:
-        click.secho(f"command: {' '.join(cmd)}", fg="green")
-        return
-
-    return subprocess.run(cmd, env=env).returncode
+    with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
+        _write_session_to_file(session_path, bag, bag_delay, fout, verbse=dry_run)
+        return _run_session(fout.name, env, tmuxp_args, dry_run)
 
 
 if __name__ == "__main__":
