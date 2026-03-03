@@ -25,9 +25,6 @@ pipx install -f pre-commit
 echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc
 ```
 
-Set up semantic inference dependencies [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies)
-*(Required to run hydra online but not required for running from a bag with semantic inference data)*
-
 Make your workspace (feel free to choose a different path):
 ```bash
 mkdir -p ~/colcon_ws/src && cd ~/colcon_ws
@@ -67,6 +64,12 @@ vcs import src < src/awesome_dcist_t4/install/packages.yaml
 rosdep install --from-paths src --ignore-src -r -y --rosdistro jazzy
 echo 'build: {symlink-install: true, cmake-args: [-DCMAKE_BUILD_TYPE=RelWithDebInfo]}' > colcon_defaults.yaml
 ```
+
+Set up semantic inference dependencies *(required to run hydra online but not required for running from a bag with semantic inference data)*:
+```
+bash src/awesome_dcist_t4/semantic_inference/install/setup.sh
+```
+You can find more details about the set up [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies).
 
 You probably want to add some scripts to your path for convenience:
 ```bash
