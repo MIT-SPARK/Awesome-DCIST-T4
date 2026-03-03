@@ -109,16 +109,28 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
 
 
 def _write_session_to_file(
-    session_path, robot_name, bag, bag_delay, fout, verbose=False
+    session_path, robot_name, sim_time, bag, bag_delay, fout, verbose=False
 ):
     with session_path.open("r") as fin:
         contents = yaml.safe_load(fin.read())
 
-    bag_args = ["--delay", str(bag_delay), "-k", f"'.*{robot_name}.*'", "--filter-tf"]
+    to_drop = [".*leg.*", ".*foot.*", ".*rail.*"]
+    to_drop = [f"-f '{x}'" for x in to_drop]
+    bag_args = [
+        "--delay",
+        str(bag_delay),
+        "--filter-tf",
+        "-k",
+        f"'.*{robot_name}.*'",
+    ] + to_drop
+    if sim_time:
+        bag_args.append("--clock")
+
+    bag_args = " ".join(bag_args)
     contents["windows"].append(
         {
             "layout": "tiled",
-            "panes": [f"ros2 run ianvs play_rosbag {bag} {' '.join(bag_args)}"],
+            "panes": [f"ros2 run ianvs play_rosbag {bag} {bag_args}"],
             "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
             "window_name": "play_rosbag",
         }
@@ -205,7 +217,7 @@ def main(
 
     with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
         _write_session_to_file(
-            session_path, robot_name, bag, bag_delay, fout, verbose=dry_run
+            session_path, robot_name, sim_time, bag, bag_delay, fout, verbose=dry_run
         )
         return _run_session(fout.name, env, tmuxp_args, dry_run)
 
