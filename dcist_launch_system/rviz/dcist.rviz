@@ -80,79 +80,79 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        hamilton/base_link:
+        euclid/base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        hamilton/body:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        hamilton/front_left_hip:
+        euclid/body:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/front_left_lower_leg:
+        euclid/front_left_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/front_left_upper_leg:
+        euclid/front_left_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/front_rail:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hamilton/front_right_hip:
+        euclid/front_left_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/front_right_lower_leg:
+        euclid/front_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        euclid/front_right_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/front_right_upper_leg:
+        euclid/front_right_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_left_hip:
+        euclid/front_right_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_left_lower_leg:
+        euclid/rear_left_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_left_upper_leg:
+        euclid/rear_left_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_rail:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        hamilton/rear_right_hip:
+        euclid/rear_left_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_right_lower_leg:
+        euclid/rear_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        euclid/rear_right_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        hamilton/rear_right_upper_leg:
+        euclid/rear_right_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        euclid/rear_right_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -172,77 +172,19 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        hamilton/arm0.link_wr1:
+        euclid/base_link:
           Value: true
-        hamilton/base_link:
+        euclid/body:
           Value: true
-        hamilton/body:
+        euclid/front_rail:
           Value: true
-        hamilton/feet_center:
+        euclid/frontleft:
           Value: true
-        hamilton/flat_body:
+        euclid/odom:
           Value: true
-        hamilton/front_left_hip:
+        euclid/rear_rail:
           Value: true
-        hamilton/front_left_lower_leg:
-          Value: true
-        hamilton/front_left_upper_leg:
-          Value: true
-        hamilton/front_rail:
-          Value: true
-        hamilton/front_right_hip:
-          Value: true
-        hamilton/front_right_lower_leg:
-          Value: true
-        hamilton/front_right_upper_leg:
-          Value: true
-        hamilton/frontleft:
-          Value: true
-        hamilton/frontleft_fisheye:
-          Value: true
-        hamilton/frontright:
-          Value: true
-        hamilton/frontright_fisheye:
-          Value: true
-        hamilton/gpe:
-          Value: true
-        hamilton/hand:
-          Value: true
-        hamilton/head:
-          Value: true
-        hamilton/kinematic:
-          Value: true
-        hamilton/link_wr1:
-          Value: true
-        hamilton/map:
-          Value: true
-        hamilton/odom:
-          Value: true
-        hamilton/rear_left_hip:
-          Value: true
-        hamilton/rear_left_lower_leg:
-          Value: true
-        hamilton/rear_left_upper_leg:
-          Value: true
-        hamilton/rear_rail:
-          Value: true
-        hamilton/rear_right_hip:
-          Value: true
-        hamilton/rear_right_lower_leg:
-          Value: true
-        hamilton/rear_right_upper_leg:
-          Value: true
-        hamilton_zed_camera_center:
-          Value: true
-        hamilton_zed_camera_link:
-          Value: true
-        hamilton_zed_left_camera_frame:
-          Value: true
-        hamilton_zed_left_camera_optical_frame:
-          Value: true
-        hamilton_zed_right_camera_frame:
-          Value: true
-        hamilton_zed_right_camera_optical_frame:
+        euclid_zed_camera_link:
           Value: true
         map:
           Value: true
@@ -253,72 +195,15 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          hamilton/map:
-            hamilton/odom:
-              hamilton/body:
-                hamilton/arm0.link_wr1:
-                  {}
-                hamilton/base_link:
-                  {}
-                hamilton/feet_center:
-                  {}
-                hamilton/flat_body:
-                  {}
-                hamilton/front_left_hip:
-                  hamilton/front_left_upper_leg:
-                    hamilton/front_left_lower_leg:
-                      {}
-                hamilton/front_rail:
-                  {}
-                hamilton/front_right_hip:
-                  hamilton/front_right_upper_leg:
-                    hamilton/front_right_lower_leg:
-                      {}
-                hamilton/hand:
-                  {}
-                hamilton/head:
-                  hamilton/frontleft:
-                    hamilton/frontleft_fisheye:
-                      {}
-                    hamilton_zed_camera_link:
-                      hamilton_zed_camera_center:
-                        hamilton_zed_left_camera_frame:
-                          hamilton_zed_left_camera_optical_frame:
-                            {}
-                        hamilton_zed_right_camera_frame:
-                          hamilton_zed_right_camera_optical_frame:
-                            {}
-                  hamilton/frontright:
-                    hamilton/frontright_fisheye:
-                      {}
-                hamilton/kinematic:
-                  hamilton/gpe:
-                    {}
-                hamilton/link_wr1:
-                  {}
-                hamilton/rear_left_hip:
-                  hamilton/rear_left_upper_leg:
-                    hamilton/rear_left_lower_leg:
-                      {}
-                hamilton/rear_rail:
-                  {}
-                hamilton/rear_right_hip:
-                  hamilton/rear_right_upper_leg:
-                    hamilton/rear_right_lower_leg:
-                      {}
+          euclid/odom:
+            {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Scene Graph
       Namespaces:
-        layer2p97_edges: true
-        layer2p97_nodes: true
-        layer2p97_text: true
-        layer3p1_edges: true
-        layer3p1_nodes: true
-        layer3p1_polygon_boundaries: true
-        layer3p1_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -340,9 +225,7 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
       Value: true
-      Visible:
-        0: true
-        Value: true
+      Visible: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -368,6 +251,18 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /omniplanner_node/compiled_plan_viz_out
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Multi-Robot Scene Graph
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: hydra_multi_visualizer/graph
       Value: true
   Enabled: true
   Global Options:
@@ -415,25 +310,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 163.03228759765625
+      Distance: 353.30322265625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -55.53947448730469
-        Y: -6.214339733123779
-        Z: -7.237149238586426
+        X: -46.458621978759766
+        Y: -19.695674896240234
+        Z: -1.9284772872924805
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4897960126399994
+      Pitch: 0.6497958898544312
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.8485746383666992
+      Yaw: 0.8435746431350708
     Saved: ~
 Window Geometry:
   Displays:
