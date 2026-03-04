@@ -15,15 +15,15 @@ renderer:
     2p*:
       z_offset_scale: 0.0
       visualize: true
-      nodes: {scale: 0.1, alpha: 1.0, use_sphere: true, color: {type: PartitionColorAdapter}}
-      edges: {scale: 0.1, alpha: 1.0, color: {type: ''}}
+      nodes: {scale: 0.6, alpha: 1.0, use_sphere: true, color: {type: PartitionColorAdapter, colormap: {palette: colorbrewer}}}
+      edges: {scale: 0.6, alpha: 1.0, color: {type: ''}}
       text: {draw_layer: true, height: 0.9, scale: 0.8}
     3p1:
-      z_offset_scale: 3.0
-      visualize: true
+      z_offset_scale: 0.0
+      visualize: false
       nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
       boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
-      text: {draw: true, collapse: false, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
+      text: {draw: false, collapse: false, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
       edges: {scale: 0.01, alpha: 0.5, color: {type: UniformEdgeColorAdapter}}
   interlayer_edges:
     - {from: 3*, to: 2p*, draw: false}

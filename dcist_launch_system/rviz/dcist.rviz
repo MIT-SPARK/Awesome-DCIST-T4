@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Grid1
         - /TF1/Frames1
         - /Omniplanner Viz1/Topic1
       Splitter Ratio: 0.5
@@ -37,8 +38,8 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.20000000298023224
-      Cell Size: 0.5
+    - Alpha: 0.10000000149011612
+      Cell Size: 1
       Class: rviz_default_plugins/Grid
       Color: 160; 160; 164
       Enabled: true
@@ -172,19 +173,75 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        euclid/arm0.link_wr1:
+          Value: true
         euclid/base_link:
           Value: true
         euclid/body:
           Value: true
+        euclid/feet_center:
+          Value: true
+        euclid/flat_body:
+          Value: true
+        euclid/front_left_hip:
+          Value: true
+        euclid/front_left_lower_leg:
+          Value: true
+        euclid/front_left_upper_leg:
+          Value: true
         euclid/front_rail:
+          Value: true
+        euclid/front_right_hip:
+          Value: true
+        euclid/front_right_lower_leg:
+          Value: true
+        euclid/front_right_upper_leg:
           Value: true
         euclid/frontleft:
           Value: true
+        euclid/frontleft_fisheye:
+          Value: true
+        euclid/frontright:
+          Value: true
+        euclid/frontright_fisheye:
+          Value: true
+        euclid/gpe:
+          Value: true
+        euclid/hand:
+          Value: true
+        euclid/head:
+          Value: true
+        euclid/kinematic:
+          Value: true
+        euclid/link_wr1:
+          Value: true
         euclid/odom:
+          Value: true
+        euclid/rear_left_hip:
+          Value: true
+        euclid/rear_left_lower_leg:
+          Value: true
+        euclid/rear_left_upper_leg:
           Value: true
         euclid/rear_rail:
           Value: true
+        euclid/rear_right_hip:
+          Value: true
+        euclid/rear_right_lower_leg:
+          Value: true
+        euclid/rear_right_upper_leg:
+          Value: true
+        euclid_zed_camera_center:
+          Value: true
         euclid_zed_camera_link:
+          Value: true
+        euclid_zed_left_camera_frame:
+          Value: true
+        euclid_zed_left_camera_optical_frame:
+          Value: true
+        euclid_zed_right_camera_frame:
+          Value: true
+        euclid_zed_right_camera_optical_frame:
           Value: true
         map:
           Value: true
@@ -196,7 +253,57 @@ Visualization Manager:
       Tree:
         map:
           euclid/odom:
-            {}
+            euclid/body:
+              euclid/arm0.link_wr1:
+                {}
+              euclid/base_link:
+                {}
+              euclid/feet_center:
+                {}
+              euclid/flat_body:
+                {}
+              euclid/front_left_hip:
+                euclid/front_left_upper_leg:
+                  euclid/front_left_lower_leg:
+                    {}
+              euclid/front_rail:
+                {}
+              euclid/front_right_hip:
+                euclid/front_right_upper_leg:
+                  euclid/front_right_lower_leg:
+                    {}
+              euclid/hand:
+                {}
+              euclid/head:
+                euclid/frontleft:
+                  euclid/frontleft_fisheye:
+                    {}
+                  euclid_zed_camera_link:
+                    euclid_zed_camera_center:
+                      euclid_zed_left_camera_frame:
+                        euclid_zed_left_camera_optical_frame:
+                          {}
+                      euclid_zed_right_camera_frame:
+                        euclid_zed_right_camera_optical_frame:
+                          {}
+                euclid/frontright:
+                  euclid/frontright_fisheye:
+                    {}
+              euclid/kinematic:
+                euclid/gpe:
+                  {}
+              euclid/link_wr1:
+                {}
+              euclid/rear_left_hip:
+                euclid/rear_left_upper_leg:
+                  euclid/rear_left_lower_leg:
+                    {}
+              euclid/rear_rail:
+                {}
+              euclid/rear_right_hip:
+                euclid/rear_right_upper_leg:
+                  euclid/rear_right_lower_leg:
+                    {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -225,7 +332,9 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
       Value: true
-      Visible: true
+      Visible:
+        0: true
+        Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -256,7 +365,12 @@ Visualization Manager:
       Enabled: true
       Name: Multi-Robot Scene Graph
       Namespaces:
-        {}
+        layer2p97_edges: true
+        layer2p97_nodes: true
+        layer2p97_text: true
+        layer2p98_edges: true
+        layer2p98_nodes: true
+        layer2p98_text: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -310,25 +424,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 353.30322265625
+      Distance: 106.79825592041016
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -46.458621978759766
-        Y: -19.695674896240234
-        Z: -1.9284772872924805
-      Focal Shape Fixed Size: true
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6497958898544312
+      Pitch: 0.7053982615470886
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.8435746431350708
+      Yaw: 1.2103978395462036
     Saved: ~
 Window Geometry:
   Displays:

@@ -113,7 +113,7 @@ launch:
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi.yaml
-        --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 5}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra_multi, output: {use_timestamp: false, overwrite: true}}
 
   # Hydra-Multi Visualizer
@@ -130,7 +130,7 @@ launch:
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer_config.yaml
-        --config-utilities-yaml {glog_level: 1, glog_verbosity: 0}
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
   # ROMAN
   - arg: {name: launch_fastsam, default: 'false'}
