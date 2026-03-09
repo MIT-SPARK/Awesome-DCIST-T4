@@ -21,6 +21,7 @@ launch_configs:
     hydra: []
     prior_dsg: []
     heracles_prior_dsg: []
+    change_detection_prior_dsg: []
     hydra_multi: []
     transform_publishers: []
 
@@ -29,6 +30,7 @@ launch_configs:
     bag_map: [map, rviz]
     relocalize: [main, hydra_multi, roman]
     bag_relocalize: [relocalize, rviz, relocalize_viz]
+    bag_relocalize_cd: [bag_relocalize, change_detection_prior_dsg]
     no_relocalize: [main, transform_publishers]
     plan_prior: [main, prior_dsg, planning]
     plan_prior_heracles: [main, heracles_prior_dsg, planning]
@@ -49,6 +51,7 @@ launch_configs:
     real_phoenix_relocalize: [relocalize, phoenix_real]
     real_phoenix_relocalize_record: [relocalize, phoenix_real, phoenix_recording]
     real_phoenix_no_relocalize: [no_relocalize]
+    real_phoenix_relocalize_cd: [real_phoenix_relocalize, change_detection_prior_dsg]
 
     spot_prior_dsg: [plan_prior, sim_spot]
     spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
@@ -69,8 +72,11 @@ configs:
 
     relocalize: []
 
+    change_detection: []
+
     real_spot_relocalize: [real_spot, relocalize]
     real_phoenix_relocalize: [real_phoenix, relocalize]
+    real_phoenix_relocalize_cd: [real_phoenix_relocalize, change_detection]
     apollo_relocalize: [real_spot_relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
@@ -160,3 +166,7 @@ experiments:
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
         config: [real_phoenix_relocalize]
+    
+    bag_phoenix_relocalize_cd:
+        launch_config: bag_relocalize_cd
+        config: [real_phoenix_relocalize_cd]

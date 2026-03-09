@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    prior_dsg_filepath: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg_with_mesh.json
+    run_autoabstr: false
+    autoabstr_config_filepath: ""

@@ -1,0 +1,10 @@
+---
+/**:
+  ros__parameters:
+    cameras: [frontleft, frontright]
+    robot:
+      setup_logging: false
+      should_retry: true
+      ip: $(env ADT4_BOSDYN_IP)
+      username: $(env ADT4_BOSDYN_USERNAME)
+      password: $(env ADT4_BOSDYN_PASSWORD)

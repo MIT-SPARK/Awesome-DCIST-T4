@@ -5,6 +5,7 @@ launch:
   - arg: {name: robot_name}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - arg: {name: backend_dsg_topic, default: hydra/backend/dsg}
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
@@ -90,7 +91,7 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
-        - {from: ~/dsg, to: hydra/backend/dsg}
+        - {from: ~/dsg, to: $(var backend_dsg_topic)}
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
@@ -109,6 +110,7 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
         - {from: ~/external_loop_closures, to: roman/roman_lc/pose_graph_update}
+        - {from: ~/dsg, to: $(var backend_dsg_topic)}
         - {from: ~/status, to: ros_system_monitor/hydra_multi/status}
       args: >
         --config-utilities-var robot_name=$(var robot_name)
@@ -126,7 +128,7 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
-        - {from: ~/dsg, to: hydra_multi/backend/dsg}
+        - {from: ~/dsg, to: $(var backend_dsg_topic)}
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer_config.yaml
@@ -287,7 +289,7 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml, allow_substs: true}
       remap:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
-        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_in, to: $(var backend_dsg_topic)}
         - {from: ~/llm_response, to: rviz2_node/llm_response}
 
   # Scene Graph Publisher
@@ -302,7 +304,7 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml, allow_substs: true}
       remap:
-        - {from: ~/dsg_out, to: hydra/backend/dsg}
+        - {from: ~/dsg_out, to: $(var backend_dsg_topic)}
 
   # DSG Saver
   - arg: {name: launch_dsg_saver, default: 'false'}
@@ -316,7 +318,7 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml, allow_substs: true}
       remap:
-        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_in, to: $(var backend_dsg_topic)}
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 
   # dsg_analyzer
@@ -328,7 +330,7 @@ launch:
       name: dsg_analyzer
       pyenv: $(var spark_env)
       remap:
-        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_in, to: $(var backend_dsg_topic)}
         - {from: ~/dsg_stats_out, to: dsg_analyzer/dsg_stats}
 
   # Static TF to replace Hydra multi map->robot/map TF.
@@ -361,7 +363,7 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_publisher_node.yaml, allow_substs: true}
       remap:
         - from: ~/dsg_out
-          to: hydra/backend/dsg
+          to: $(var backend_dsg_topic)
 
   - arg: {name: launch_heracles_state_updater, default: 'false'}
   - pyenv_node:
