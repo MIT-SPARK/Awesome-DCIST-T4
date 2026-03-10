@@ -99,7 +99,6 @@ if [ "$install_spark" = true ]; then
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
     fi
     pip install -r install/spark_requirements.txt
-    pip install ./spark_dsg "numpy<2"
 
     # install fast-downward
     if [ ! -d $ADT4_WS/src/fast_downward ]; then
