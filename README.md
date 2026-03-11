@@ -87,6 +87,8 @@ sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-dow
 ` or other torch+cuda version that support Blackwell.
 > 
 > In addition, on `"${HOME}/environments/dcist/roman/lib/python3.12/site-packages/ultralytics/nn/tasks.py", line 518`, add an additional `weights_only=False` argument to the `torch_load` function. (This is changed in torch 2.6.0+)
+> 
+> In new ROMAN repo, we have solution to wrap around the torch load function to always use weights only = False
 >
 > **TODO**: Upgrade to newer version of ultralytics. However, new version changes the way ultralytics call out the model, some code refactor might be needed.
 
