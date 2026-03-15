@@ -4,6 +4,7 @@ nodes_to_monitor:
     external_monitor: {type: JsonMonitor}
   semantic_inference:
     external_monitor: {type: JsonMonitor}
+  instance_seg: {}
   fastsam: {}
   roman_map: {}
   roman_lc: {}
@@ -19,7 +20,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, instance_seg: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: bag
   logging_key: spot_bag-bag
@@ -43,8 +44,9 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_semantic_inference:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
+      # - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_semantic_inference:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_instance_segmentation:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true semantic_inference_labelspace_name:=instance_seg
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true

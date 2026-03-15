@@ -5,10 +5,11 @@ launch:
   - arg: {name: robot_name}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - arg: {name: instance_seg_env, default: $(env HOME)/environments/gdsam2} # TODO(multy): need to merge this to adt4 envs
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
-  - let: {name: semantic_inference_labelspace_name, value: ade20k_mit}
+  - arg: {name: semantic_inference_labelspace_name, default: ade20k_mit}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
 
   # Zed camera driver (has to be above push_ros_namespace)
@@ -57,6 +58,24 @@ launch:
         --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
         --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
+  
+  # Instance Segmentation
+  - arg: {name: launch_instance_segmentation, default: 'false'}
+  - pyenv_node:  
+      if: $(var launch_instance_segmentation)
+      pkg: semantic_inference_ros
+      exec: instance_segmentation_node
+      namespace: $(var camera)
+      name: semantic_inference
+      pyenv: $(var instance_seg_env)
+      on_exit: shutdown
+      param:
+        - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/instance_seg.yaml, type: str}
+      # args: >-
+      #   --ros-args --log-level $(var log-level) # TODO(multy): add log level arg
+      remap:
+        - {from: color/image_raw, to: rgb/image_rect_color}
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/instance_seg/status}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
