@@ -75,7 +75,7 @@ launch:
       #   --ros-args --log-level $(var log-level) # TODO(multy): add log level arg
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
-        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/instance_seg/status}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
