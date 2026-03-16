@@ -1,0 +1,23 @@
+networks:
+  mit_wifi:   { subnet: "10.29.0.0/16" }
+  penn_wifi:  { subnet: "192.168.129.0/24" }
+  silvus:     { subnet: "192.168.100.0/24" }
+
+machines:
+  euclid:   { role: robot, desc: "Smaug Jockey",   addresses: { mit_wifi: "10.29.142.76",  penn_wifi: "192.168.129.234", silvus: "192.168.100.3" } }
+  hamilton:  { role: robot, desc: "Topaz Jockey",   addresses: { mit_wifi: "10.29.208.146", penn_wifi: "192.168.129.210", silvus: "192.168.100.2" } }
+  gauss:     { role: robot, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.146.126" } }
+  lewis:     { role: robot, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.202.81",  penn_wifi: "192.168.129.218", silvus: "192.168.100.105" } }
+  apollo:    { role: robot, desc: "ARL Spot",       addresses: { silvus: "192.168.100.13" } }
+  samoyed:   { role: robot, desc: "ARL Husky",      addresses: { silvus: "192.168.100.62" } }
+  russell:   { role: base_station, desc: "Aaron's laptop",    addresses: { mit_wifi: "10.29.129.166", silvus: "192.168.100.101" } }
+  bonsai:    { role: base_station, desc: "RRG dev computer",  addresses: { penn_wifi: "192.168.129.217" } }
+  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.31.129.172", silvus: "192.168.100.100" } }
+
+zenoh:
+  port: 7447
+  connect_network: silvus
+
+ssh:
+  base_station_user: "rrg"
+  robot_user: "swarm"
