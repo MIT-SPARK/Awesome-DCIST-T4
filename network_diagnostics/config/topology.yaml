@@ -17,14 +17,13 @@ machines:
 silvus_radios:
   mgmt_subnet: "172.20.0.0/16"
   api_endpoint: "/cgi-bin/streamscape_api"
+  # Radios are auto-detected at runtime — no static machine binding needed.
+  # Run: silvus_status.sh detect  (to identify which radio is connected to this machine)
   radios:
-    willow_radio:   { mgmt_ip: "172.20.187.45",  data_ip: "192.168.100.100", node_id: 310061, attached_to: willow }
-    euclid_radio:   { mgmt_ip: "172.20.187.210", data_ip: "192.168.100.3",   node_id: 310226, attached_to: euclid }
-    hamilton_radio: { mgmt_ip: "",                data_ip: "192.168.100.2",   attached_to: hamilton }
-    lewis_radio:    { mgmt_ip: "",                data_ip: "192.168.100.105", attached_to: lewis }
-    russell_radio:  { mgmt_ip: "",                data_ip: "192.168.100.101", attached_to: russell }
-    apollo_radio:   { mgmt_ip: "",                data_ip: "192.168.100.13",  attached_to: apollo }
-    samoyed_radio:  { mgmt_ip: "",                data_ip: "192.168.100.62",  attached_to: samoyed }
+    radio_310061: { mgmt_ip: "172.20.187.45",  node_id: 310061 }
+    radio_310226: { mgmt_ip: "172.20.187.210", node_id: 310226 }
+    # Add more radios as discovered:
+    # radio_XXXXXX: { mgmt_ip: "172.20.x.x", node_id: XXXXXX }
   udp_telemetry:
     listen_port: 5100
 
