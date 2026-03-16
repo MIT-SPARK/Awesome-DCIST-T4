@@ -5,27 +5,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOPOLOGY="${SCRIPT_DIR}/../config/topology.yaml"
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
+
+# ---------------------------------------------------------------------------
+# Topology helpers
+# ---------------------------------------------------------------------------
 
 get_silvus_interface() {
     python3 -c "
-import yaml, subprocess, socket
-with open('${TOPOLOGY}') as f:
-    data = yaml.safe_load(f)
-hostname = socket.gethostname()
-machines = data.get('machines', {})
-if hostname in machines:
-    silvus_ip = machines[hostname].get('addresses', {}).get('silvus', '')
-    if silvus_ip:
-        result = subprocess.run(['ip', '-o', 'addr', 'show'], capture_output=True, text=True)
-        for line in result.stdout.strip().split('\n'):
-            if silvus_ip in line:
-                print(line.split()[1])
-                break
+import subprocess
+result = subprocess.run(['ip', '-o', 'addr', 'show'], capture_output=True, text=True)
+for line in result.stdout.strip().split('\n'):
+    if '192.168.100.' in line:
+        print(line.split()[1])
+        break
 "
 }
 
-get_radio_info() {
+get_radio_mgmt_ips() {
     python3 -c "
 import yaml
 with open('${TOPOLOGY}') as f:
@@ -33,10 +30,9 @@ with open('${TOPOLOGY}') as f:
 radios = data.get('silvus_radios', {}).get('radios', {})
 for name, info in sorted(radios.items()):
     mgmt = info.get('mgmt_ip', '') or ''
-    data_ip = info.get('data_ip', '') or ''
-    attached = info.get('attached_to', '') or ''
-    node_id = info.get('node_id', '') or ''
-    print(f'{name}|{mgmt}|{data_ip}|{attached}|{node_id}')
+    if mgmt:
+        node_id = info.get('node_id', '') or ''
+        print(f'{name}|{mgmt}|{node_id}')
 "
 }
 
@@ -49,10 +45,116 @@ print(data.get('silvus_radios', {}).get('mgmt_subnet', '172.20.0.0/16'))
 "
 }
 
+# ---------------------------------------------------------------------------
+# Auto-detection: find which radio is directly connected to this machine
+# ---------------------------------------------------------------------------
+
+detect_local_radio() {
+    # Strategy:
+    #   1. Find the Silvus ethernet interface on this machine
+    #   2. Check ARP table on that interface for 172.20.x.x entries
+    #   3. Query each ARP-reachable 172.20.x.x via JSON-RPC to get its nodeid
+    #   4. The one that responds is our directly-connected radio
+    #
+    # If no ARP entries, fall back to querying all known mgmt_ips and picking
+    # the fastest responder (local radio responds in <1ms, remote via mesh ~10ms+)
+
+    local iface
+    iface=$(get_silvus_interface)
+    if [[ -z "$iface" ]]; then
+        return 1
+    fi
+
+    # Check ARP table for direct 172.20.x.x neighbors
+    local arp_ips
+    arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
+
+    if [[ -n "$arp_ips" ]]; then
+        for ip in $arp_ips; do
+            local result
+            result=$(python3 -c "
+import urllib.request, json
+url = 'http://${ip}/cgi-bin/streamscape_api'
+batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
+         {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
+try:
+    req = urllib.request.Request(url, data=json.dumps(batch).encode(),
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=2) as resp:
+        results = json.loads(resp.read())
+    nid = ''; addr = ''
+    for r in results:
+        if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
+        if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
+    print(f'{nid}|{addr}')
+except:
+    pass
+" 2>/dev/null)
+            if [[ -n "$result" ]]; then
+                echo "$result"
+                return 0
+            fi
+        done
+    fi
+
+    # Fallback: race all known mgmt_ips, pick fastest
+    python3 -c "
+import yaml, urllib.request, json, time, concurrent.futures
+
+with open('${TOPOLOGY}') as f:
+    data = yaml.safe_load(f)
+
+radios = data.get('silvus_radios', {}).get('radios', {})
+mgmt_ips = []
+for name, info in radios.items():
+    mgmt = info.get('mgmt_ip', '')
+    if mgmt:
+        mgmt_ips.append(mgmt)
+
+def query(ip):
+    url = f'http://{ip}/cgi-bin/streamscape_api'
+    batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
+             {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
+    start = time.monotonic()
+    try:
+        req = urllib.request.Request(url, data=json.dumps(batch).encode(),
+                                     headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            results = json.loads(resp.read())
+        elapsed = time.monotonic() - start
+        nid = ''; addr = ''
+        for r in results:
+            if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
+            if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
+        return (elapsed, nid, addr)
+    except:
+        return (999, '', '')
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=len(mgmt_ips)) as pool:
+    futures = {pool.submit(query, ip): ip for ip in mgmt_ips}
+    results = []
+    for f in concurrent.futures.as_completed(futures):
+        elapsed, nid, addr = f.result()
+        if nid:
+            results.append((elapsed, nid, addr))
+
+if results:
+    results.sort(key=lambda x: x[0])
+    fastest = results[0]
+    # Local radio typically responds in <5ms; remote ~10ms+
+    # Only claim it's local if significantly faster than the next
+    print(f'{fastest[1]}|{fastest[2]}')
+" 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# JSON-RPC query
+# ---------------------------------------------------------------------------
+
 query_radio_api() {
     local mgmt_ip="$1"
     python3 -c "
-import urllib.request, json, sys
+import urllib.request, json, time
 
 url = 'http://${mgmt_ip}/cgi-bin/streamscape_api'
 batch = [
@@ -72,11 +174,13 @@ batch = [
 method_names = {r['id']: r['method'] for r in batch}
 
 try:
+    start = time.monotonic()
     payload = json.dumps(batch).encode()
     req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=5) as resp:
         results = json.loads(resp.read())
-    out = {}
+    elapsed_ms = (time.monotonic() - start) * 1000
+    out = {'_response_ms': elapsed_ms}
     for r in results:
         rid = r.get('id', 0)
         method = method_names.get(rid, '?')
@@ -90,54 +194,52 @@ except Exception as e:
 " 2>/dev/null
 }
 
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
 cmd_status() {
     echo -e "${BOLD}=== Silvus Radio Status ===${NC}"
     echo ""
 
-    # Data plane ping
-    echo -e "${BOLD}Data plane (ping):${NC}"
-    printf "  ${BOLD}%-16s %-18s %-12s %-8s %s${NC}\n" "RADIO" "DATA_IP" "ATTACHED" "STATUS" "RTT"
-    echo "  ----------------------------------------------------------------"
-
-    while IFS='|' read -r name mgmt_ip data_ip attached node_id; do
-        [[ -z "$name" ]] && continue
-        [[ -z "$data_ip" ]] && continue
-        if result=$(ping -c 1 -W 2 "$data_ip" 2>/dev/null | grep 'time='); then
-            rtt=$(echo "$result" | sed -n 's/.*time=\([0-9.]*\).*/\1/p')
-            printf "  %-16s %-18s %-12s ${GREEN}%-8s${NC} %s ms\n" "$name" "$data_ip" "$attached" "UP" "$rtt"
-        else
-            printf "  %-16s %-18s %-12s ${RED}%-8s${NC}\n" "$name" "$data_ip" "$attached" "DOWN"
-        fi
-    done < <(get_radio_info)
-
+    # Detect local radio
+    echo -ne "Detecting local radio... "
+    local local_info
+    local_info=$(detect_local_radio 2>/dev/null) || true
+    local local_nodeid=""
+    local local_mgmt=""
+    if [[ -n "$local_info" ]]; then
+        local_nodeid=$(echo "$local_info" | cut -d'|' -f1)
+        local_mgmt=$(echo "$local_info" | cut -d'|' -f2)
+        echo -e "${GREEN}found${NC} node ${local_nodeid} at ${local_mgmt}"
+    else
+        echo -e "${YELLOW}not detected (no Silvus interface or route to 172.20.x.x)${NC}"
+    fi
     echo ""
 
-    # JSON-RPC status for radios with mgmt IPs
-    echo -e "${BOLD}Radio details (JSON-RPC API):${NC}"
+    # Query all known radios
+    echo -e "${BOLD}Radio status (JSON-RPC API):${NC}"
     echo ""
 
-    while IFS='|' read -r name mgmt_ip data_ip attached node_id; do
+    while IFS='|' read -r name mgmt_ip node_id; do
         [[ -z "$name" ]] && continue
-        if [[ -z "$mgmt_ip" ]]; then
-            echo -e "  ${YELLOW}${name}${NC} (${attached}): mgmt_ip not configured"
-            continue
-        fi
+        [[ -z "$mgmt_ip" ]] && continue
 
         echo -ne "  Querying ${name} (${mgmt_ip})... "
         local api_result
         api_result=$(query_radio_api "$mgmt_ip")
 
         python3 -c "
-import json, sys
+import json, sys, re
 
 data = json.loads('''${api_result}''')
 if 'error' in data:
     print('\033[0;31mFAILED\033[0m: ' + data['error'])
+    print()
     sys.exit()
 
-print('\033[0;32mOK\033[0m')
-name = '${name}'
-attached = '${attached}'
+resp_ms = data.get('_response_ms', 0)
+local_nodeid = '${local_nodeid}'
 
 battery = data.get('battery_percent')
 voltage = data.get('input_voltage_monitoring')
@@ -150,14 +252,20 @@ routing = data.get('routing_tree')
 gps_mode = data.get('gps_mode')
 gps_coords = data.get('gps_coordinates')
 
+nid = nodeid[0] if nodeid else '?'
+
+# Check if this is the locally-connected radio
+is_local = (nid == local_nodeid) if local_nodeid else (resp_ms < 5)
+local_tag = ' \033[0;36m(LOCAL)\033[0m' if is_local else ''
+
+print(f'\033[0;32mOK\033[0m ({resp_ms:.0f}ms){local_tag}')
+
 bat_str = f'{float(battery[0]):.0f}%' if battery else '?'
 volt_str = f'{float(voltage[0])/1000:.2f}V' if voltage else '?'
 temp_str = f'{temp[0]}°C' if temp else '?'
-nid = nodeid[0] if nodeid else '?'
 mdl = model[0] if model else '?'
 bld = (build[0].replace('streamscape_', '') if build else '?')
 
-# Color battery
 bat_val = float(battery[0]) if battery else -1
 if bat_val >= 50:
     bat_color = '\033[0;32m'
@@ -171,7 +279,6 @@ print(f'    Node ID:  {nid}')
 print(f'    Battery:  {bat_color}{bat_str}\033[0m  Voltage: {volt_str}  Temp: {temp_str}')
 
 if uptime_raw:
-    import re
     up = uptime_raw[0]
     up = re.sub(r'^.*up\s*', '', up)
     up = re.sub(r',\s*\d+ users.*', '', up)
@@ -190,7 +297,7 @@ if gps_mode:
 print()
 " 2>/dev/null || echo -e "${RED}parse error${NC}"
 
-    done < <(get_radio_info)
+    done < <(get_radio_mgmt_ips)
 }
 
 cmd_topology() {
@@ -198,20 +305,19 @@ cmd_topology() {
     echo ""
 
     python3 -c "
-import yaml, urllib.request, json
+import yaml, urllib.request, json, socket
 
 with open('${TOPOLOGY}') as f:
     data = yaml.safe_load(f)
 
 radios = data.get('silvus_radios', {}).get('radios', {})
-node_map = {}  # node_id -> radio name
+node_map = {}
 
 for name, info in radios.items():
     nid = info.get('node_id')
     if nid:
         node_map[int(nid)] = name
 
-# Query each reachable radio for its routing tree
 trees = {}
 for name, info in sorted(radios.items()):
     mgmt_ip = info.get('mgmt_ip', '')
@@ -236,14 +342,13 @@ for name, info in sorted(radios.items()):
     except:
         print(f'  \033[1;33m{name}: unreachable\033[0m')
 
-# Build combined node set
 all_nodes = set()
 for tree in trees.values():
     all_nodes.update(tree)
 
 print('Nodes in mesh:')
 for nid in sorted(all_nodes):
-    label = node_map.get(nid, 'unknown')
+    label = node_map.get(nid, f'unknown ({nid})')
     print(f'  Node {nid} -> {label}')
 
 print()
@@ -254,12 +359,125 @@ for rname, tree in sorted(trees.items()):
 " 2>/dev/null
 }
 
+cmd_detect() {
+    echo -e "${BOLD}=== Detect Local Radio ===${NC}"
+    echo ""
+
+    local iface
+    iface=$(get_silvus_interface)
+    if [[ -z "$iface" ]]; then
+        echo -e "${RED}No Silvus interface found (no 192.168.100.x address).${NC}"
+        return 1
+    fi
+    echo -e "Silvus interface: ${CYAN}${iface}${NC}"
+
+    # Check for mgmt route
+    local mgmt_subnet
+    mgmt_subnet=$(get_mgmt_subnet)
+    if ! ip route show | grep -q "$mgmt_subnet"; then
+        echo -e "${YELLOW}No route to ${mgmt_subnet}. Adding...${NC}"
+        sudo ip route add "$mgmt_subnet" dev "$iface" 2>/dev/null || {
+            echo -e "${RED}Failed. Run: sudo ip route add ${mgmt_subnet} dev ${iface}${NC}"
+            return 1
+        }
+    fi
+
+    # ARP-based detection
+    echo ""
+    echo "Checking ARP table for directly-connected radio..."
+    local arp_ips
+    arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
+
+    if [[ -z "$arp_ips" ]]; then
+        echo "No ARP entries. Pinging known radio management IPs to populate ARP..."
+        while IFS='|' read -r name mgmt_ip node_id; do
+            [[ -z "$mgmt_ip" ]] && continue
+            ping -c 1 -W 1 "$mgmt_ip" &>/dev/null &
+        done < <(get_radio_mgmt_ips)
+        wait
+        sleep 1
+        arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
+    fi
+
+    if [[ -z "$arp_ips" ]]; then
+        echo -e "${YELLOW}No radio management IPs reachable on ${iface}.${NC}"
+        echo ""
+        echo "Falling back to timing-based detection..."
+    fi
+
+    # Query all reachable radios and measure response time
+    echo ""
+    echo -e "${BOLD}Querying all known radios (timing responses):${NC}"
+    printf "  ${BOLD}%-20s %-18s %-10s %-12s %s${NC}\n" "RADIO" "MGMT_IP" "NODE_ID" "RESPONSE" "LOCAL?"
+    echo "  ------------------------------------------------------------------"
+
+    python3 -c "
+import yaml, urllib.request, json, time, concurrent.futures
+
+with open('${TOPOLOGY}') as f:
+    data = yaml.safe_load(f)
+
+radios = data.get('silvus_radios', {}).get('radios', {})
+
+def query(name, ip):
+    url = f'http://{ip}/cgi-bin/streamscape_api'
+    batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1}]
+    start = time.monotonic()
+    try:
+        req = urllib.request.Request(url, data=json.dumps(batch).encode(),
+                                     headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            results = json.loads(resp.read())
+        elapsed_ms = (time.monotonic() - start) * 1000
+        nid = ''
+        for r in results:
+            if r['id'] == 1 and 'error' not in r:
+                nid = r['result'][0]
+        return (name, ip, nid, elapsed_ms)
+    except:
+        return (name, ip, '', -1)
+
+tasks = []
+for name, info in sorted(radios.items()):
+    mgmt = info.get('mgmt_ip', '')
+    if mgmt:
+        tasks.append((name, mgmt))
+
+results = []
+with concurrent.futures.ThreadPoolExecutor(max_workers=len(tasks)) as pool:
+    futures = [pool.submit(query, n, ip) for n, ip in tasks]
+    for f in concurrent.futures.as_completed(futures):
+        results.append(f.result())
+
+results.sort(key=lambda x: x[3] if x[3] >= 0 else 99999)
+
+# The local radio is the fastest responder — typically <10ms direct L2 vs 20ms+ via mesh
+fastest_ms = results[0][3] if results and results[0][3] >= 0 else 99999
+
+for name, ip, nid, ms in results:
+    if ms < 0:
+        print(f'  {name:<20s} {ip:<18s} {\"?\":<10s} {\"TIMEOUT\":<12s}')
+    else:
+        is_local = (ms <= fastest_ms * 1.5 and ms < 15)  # local is direct L2, very fast
+        tag = '\033[0;36m<-- LOCAL\033[0m' if is_local else ''
+        color = '\033[0;32m' if ms < 15 else '\033[1;33m'
+        print(f'  {name:<20s} {ip:<18s} {nid:<10s} {color}{ms:>7.1f}ms\033[0m   {tag}')
+
+if results and fastest_ms < 15:
+    local = results[0]
+    print()
+    print(f'  \033[1mDetected local radio: {local[0]} (node {local[2]}, {local[1]})\033[0m')
+else:
+    print()
+    print('  \033[1;33mCould not determine local radio (all responses slow or timed out)\033[0m')
+" 2>/dev/null
+}
+
 cmd_discover() {
     local iface
     iface=$(get_silvus_interface)
     if [[ -z "$iface" ]]; then
         echo -e "${RED}Could not find Silvus network interface.${NC}"
-        echo "This machine may not have a Silvus radio connected."
         return 1
     fi
 
@@ -271,7 +489,6 @@ cmd_discover() {
     echo -e "Management subnet: ${CYAN}${mgmt_subnet}${NC}"
     echo ""
 
-    # Ensure route exists for mgmt subnet
     if ! ip route show | grep -q "$mgmt_subnet"; then
         echo -e "${YELLOW}Adding route for ${mgmt_subnet} via ${iface}...${NC}"
         sudo ip route add "$mgmt_subnet" dev "$iface" 2>/dev/null || {
@@ -291,9 +508,8 @@ cmd_discover() {
     while IFS= read -r line; do
         local ip
         ip=$(echo "$line" | awk '{print $1}')
-        if [[ -z "$ip" ]]; then continue; fi
+        [[ -z "$ip" ]] && continue
         echo -ne "  ${ip}: "
-        # Try JSON-RPC API
         local result
         result=$(python3 -c "
 import urllib.request, json
@@ -301,7 +517,6 @@ url = 'http://${ip}/cgi-bin/streamscape_api'
 batch = [
     {'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
     {'jsonrpc': '2.0', 'method': 'model', 'params': [], 'id': 2},
-    {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 3},
 ]
 try:
     payload = json.dumps(batch).encode()
@@ -475,7 +690,8 @@ usage() {
     echo "Usage: $(basename "$0") <command>"
     echo ""
     echo "Commands:"
-    echo "  status              Query all radios via JSON-RPC (battery, voltage, temp, mesh)"
+    echo "  status              Query all radios (battery, voltage, temp, mesh) + detect local"
+    echo "  detect              Identify which radio is directly connected to this machine"
     echo "  topology            Show mesh routing topology"
     echo "  discover            Scan for radio management IPs on 172.20.x.x"
     echo "  listen [port]       Listen for UDP telemetry (RSSI/voltage/temp) [default: 5100]"
@@ -486,11 +702,11 @@ usage() {
     echo "  1. Ensure route exists: sudo ip route add 172.20.0.0/16 dev <silvus_iface>"
     echo "  2. Run 'discover' or set mgmt_ip in topology.yaml"
     echo "  3. Run 'status' to query all radios"
-    echo "  4. Optionally configure UDP streaming on Node Diagnostics page, then 'listen'"
 }
 
 case "${1:-}" in
     status)     cmd_status ;;
+    detect)     cmd_detect ;;
     topology)   cmd_topology ;;
     discover)   cmd_discover ;;
     listen)     cmd_listen "${2:-5100}" ;;

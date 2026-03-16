@@ -139,7 +139,13 @@ sudo ip route add 172.20.0.0/16 dev <your_silvus_interface>
 **Usage:**
 ```bash
 # Query all radios — battery, voltage, temp, model, mesh, GPS
+# Automatically detects which radio is directly connected to this machine
 ./scripts/silvus_status.sh status
+
+# Explicitly identify which radio is plugged into this machine
+# Uses ARP + response timing: local radio responds in <5ms (direct L2),
+# remote radios respond in 10-20ms+ (through mesh)
+./scripts/silvus_status.sh detect
 
 # Show mesh routing topology
 ./scripts/silvus_status.sh topology
@@ -152,19 +158,27 @@ sudo ip route add 172.20.0.0/16 dev <your_silvus_interface>
 ./scripts/silvus_status.sh listen [port]
 ```
 
+**Auto-detection:** Radios are not statically bound to machines — they can be swapped freely. The `status` and `detect` commands automatically determine which radio is directly connected by:
+1. Checking the ARP table on the Silvus interface for 172.20.x.x entries
+2. Querying all known radios in parallel and comparing response times (local radio responds via direct L2 in <5ms; remote radios go through the mesh at 10-20ms+)
+
 **Example output:**
 ```
 === Silvus Radio Status ===
 
-Data plane (ping):
-  RADIO            DATA_IP            ATTACHED     STATUS   RTT
-  ----------------------------------------------------------------
-  euclid_radio     192.168.100.3      euclid       UP       8.76 ms
-  willow_radio     192.168.100.100    willow       UP       0.069 ms
+Detecting local radio... found node 310061 at 172.20.187.45
 
-Radio details (JSON-RPC API):
+Radio status (JSON-RPC API):
 
-  Querying euclid_radio (172.20.187.210)... OK
+  Querying radio_310061 (172.20.187.45)... OK (3ms) (LOCAL)
+    Model:    SC4200H (firmware v5.0.1.8)
+    Node ID:  310061
+    Battery:  91%  Voltage: 11.95V  Temp: 38°C
+    Uptime:   1:50
+    Mesh:     2 node(s) in routing tree: [310226, 310061]
+    GPS:      unlocked
+
+  Querying radio_310226 (172.20.187.210)... OK (18ms)
     Model:    SC4200H (firmware v5.0.1.8)
     Node ID:  310226
     Battery:  90%  Voltage: 12.03V  Temp: 39°C
