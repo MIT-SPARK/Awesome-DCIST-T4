@@ -16,16 +16,15 @@ machines:
 
 silvus_radios:
   mgmt_subnet: "172.20.0.0/16"
-  # Management IPs for each radio (172.20.x.x, printed on radio label)
-  # Update these after running: silvus_status.sh --discover
+  api_endpoint: "/cgi-bin/streamscape_api"
   radios:
-    willow_radio:  { mgmt_ip: "", data_ip: "192.168.100.100", attached_to: willow }
-    euclid_radio:  { mgmt_ip: "", data_ip: "192.168.100.3",   attached_to: euclid }
-    hamilton_radio: { mgmt_ip: "", data_ip: "192.168.100.2",  attached_to: hamilton }
-    lewis_radio:   { mgmt_ip: "", data_ip: "192.168.100.105", attached_to: lewis }
-    russell_radio: { mgmt_ip: "", data_ip: "192.168.100.101", attached_to: russell }
-    apollo_radio:  { mgmt_ip: "", data_ip: "192.168.100.13",  attached_to: apollo }
-    samoyed_radio: { mgmt_ip: "", data_ip: "192.168.100.62",  attached_to: samoyed }
+    willow_radio:   { mgmt_ip: "172.20.187.45",  data_ip: "192.168.100.100", node_id: 310061, attached_to: willow }
+    euclid_radio:   { mgmt_ip: "172.20.187.210", data_ip: "192.168.100.3",   node_id: 310226, attached_to: euclid }
+    hamilton_radio: { mgmt_ip: "",                data_ip: "192.168.100.2",   attached_to: hamilton }
+    lewis_radio:    { mgmt_ip: "",                data_ip: "192.168.100.105", attached_to: lewis }
+    russell_radio:  { mgmt_ip: "",                data_ip: "192.168.100.101", attached_to: russell }
+    apollo_radio:   { mgmt_ip: "",                data_ip: "192.168.100.13",  attached_to: apollo }
+    samoyed_radio:  { mgmt_ip: "",                data_ip: "192.168.100.62",  attached_to: samoyed }
   udp_telemetry:
     listen_port: 5100
 
