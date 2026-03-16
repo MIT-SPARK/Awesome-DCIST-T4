@@ -2,6 +2,7 @@
 launch_configs:
 
     core: []
+    net_diag: []
     status: []
     multi_status: []
     rviz: []
