@@ -48,9 +48,23 @@ check_local_zenohd() {
         echo -e "  ${GREEN}RUNNING${NC} (PID: ${pid})"
         return 0
     else
-        echo -e "  ${RED}NOT RUNNING${NC}"
-        echo -e "  ${YELLOW}Start with: ros2 run rmw_zenoh_cpp rmw_zenohd${NC}"
-        return 1
+        echo -e "  ${YELLOW}NOT RUNNING — starting zenohd...${NC}"
+        if command -v ros2 &>/dev/null; then
+            ros2 run rmw_zenoh_cpp rmw_zenohd &>/dev/null &
+            local new_pid=$!
+            sleep 2
+            if kill -0 "$new_pid" 2>/dev/null; then
+                echo -e "  ${GREEN}STARTED${NC} (PID: ${new_pid})"
+                return 0
+            else
+                echo -e "  ${RED}FAILED to start zenohd${NC}"
+                return 1
+            fi
+        else
+            echo -e "  ${RED}ros2 not found — source your workspace first${NC}"
+            echo -e "  ${YELLOW}source \${ADT4_WS}/install/setup.zsh${NC}"
+            return 1
+        fi
     fi
 }
 
