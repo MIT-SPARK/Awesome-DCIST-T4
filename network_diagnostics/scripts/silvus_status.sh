@@ -97,54 +97,37 @@ except:
         done
     fi
 
-    # Fallback: race all known mgmt_ips, pick fastest
-    python3 -c "
-import yaml, urllib.request, json, time, concurrent.futures
-
-with open('${TOPOLOGY}') as f:
-    data = yaml.safe_load(f)
-
-radios = data.get('silvus_radios', {}).get('radios', {})
-mgmt_ips = []
-for name, info in radios.items():
-    mgmt = info.get('mgmt_ip', '')
-    if mgmt:
-        mgmt_ips.append(mgmt)
-
-def query(ip):
-    url = f'http://{ip}/cgi-bin/streamscape_api'
-    batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
-             {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
-    start = time.monotonic()
-    try:
-        req = urllib.request.Request(url, data=json.dumps(batch).encode(),
-                                     headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            results = json.loads(resp.read())
-        elapsed = time.monotonic() - start
-        nid = ''; addr = ''
-        for r in results:
-            if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
-            if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
-        return (elapsed, nid, addr)
-    except:
-        return (999, '', '')
-
-with concurrent.futures.ThreadPoolExecutor(max_workers=len(mgmt_ips)) as pool:
-    futures = {pool.submit(query, ip): ip for ip in mgmt_ips}
-    results = []
-    for f in concurrent.futures.as_completed(futures):
-        elapsed, nid, addr = f.result()
-        if nid:
-            results.append((elapsed, nid, addr))
-
-if results:
-    results.sort(key=lambda x: x[0])
-    fastest = results[0]
-    # Local radio typically responds in <5ms; remote ~10ms+
-    # Only claim it's local if significantly faster than the next
-    print(f'{fastest[1]}|{fastest[2]}')
-" 2>/dev/null
+    # Fallback: try each known mgmt_ip with TTL=1 ping — only the directly-connected
+    # radio will respond (single L2 hop). Remote radios need mesh hops and won't reply.
+    while IFS='|' read -r rname mgmt_ip rnode_id; do
+        [[ -z "$mgmt_ip" ]] && continue
+        if ping -c 1 -W 1 -t 1 "$mgmt_ip" &>/dev/null; then
+            # TTL=1 succeeded — this radio is directly connected
+            local result
+            result=$(python3 -c "
+import urllib.request, json
+url = 'http://${mgmt_ip}/cgi-bin/streamscape_api'
+batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
+         {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
+try:
+    req = urllib.request.Request(url, data=json.dumps(batch).encode(),
+                                 headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=3) as resp:
+        results = json.loads(resp.read())
+    nid = ''; addr = ''
+    for r in results:
+        if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
+        if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
+    print(f'{nid}|{addr}')
+except:
+    pass
+" 2>/dev/null)
+            if [[ -n "$result" ]]; then
+                echo "$result"
+                return 0
+            fi
+        fi
+    done < <(get_radio_mgmt_ips)
 }
 
 # ---------------------------------------------------------------------------
@@ -305,20 +288,25 @@ cmd_topology() {
     echo ""
 
     python3 -c "
-import yaml, urllib.request, json, socket
+import yaml, urllib.request, json
 
 with open('${TOPOLOGY}') as f:
     data = yaml.safe_load(f)
 
 radios = data.get('silvus_radios', {}).get('radios', {})
-node_map = {}
+node_map = {}    # node_id -> radio name
+node_mgmt = {}   # node_id -> mgmt_ip
 
 for name, info in radios.items():
     nid = info.get('node_id')
+    mgmt = info.get('mgmt_ip', '')
     if nid:
         node_map[int(nid)] = name
+        if mgmt:
+            node_mgmt[int(nid)] = mgmt
 
 trees = {}
+radio_details = {}  # name -> {nodeid, mgmt_ip, local_address}
 for name, info in sorted(radios.items()):
     mgmt_ip = info.get('mgmt_ip', '')
     if not mgmt_ip:
@@ -328,6 +316,7 @@ for name, info in sorted(radios.items()):
         batch = [
             {'jsonrpc': '2.0', 'method': 'routing_tree', 'params': [], 'id': 1},
             {'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 2},
+            {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 3},
         ]
         payload = json.dumps(batch).encode()
         req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
@@ -339,6 +328,9 @@ for name, info in sorted(radios.items()):
             if r['id'] == 2 and 'error' not in r:
                 nid = int(r['result'][0])
                 node_map[nid] = name
+                radio_details.setdefault(name, {})['nodeid'] = nid
+            if r['id'] == 3 and 'error' not in r:
+                radio_details.setdefault(name, {})['mgmt_ip'] = r['result'][0]
     except:
         print(f'  \033[1;33m{name}: unreachable\033[0m')
 
@@ -348,14 +340,19 @@ for tree in trees.values():
 
 print('Nodes in mesh:')
 for nid in sorted(all_nodes):
-    label = node_map.get(nid, f'unknown ({nid})')
-    print(f'  Node {nid} -> {label}')
+    label = node_map.get(nid, 'unknown')
+    mgmt = node_mgmt.get(nid, '?')
+    print(f'  Node {nid}  mgmt={mgmt:<18s}  ({label})')
 
 print()
 print('Routing trees:')
 for rname, tree in sorted(trees.items()):
-    labels = [node_map.get(n, str(n)) for n in tree]
-    print(f'  {rname}: {\" -> \".join(labels)}')
+    parts = []
+    for n in tree:
+        label = node_map.get(n, str(n))
+        mgmt = node_mgmt.get(n, '?')
+        parts.append(f'{label} ({mgmt})')
+    print(f'  {rname}: {\" -> \".join(parts)}')
 " 2>/dev/null
 }
 
@@ -405,72 +402,40 @@ cmd_detect() {
         echo "Falling back to timing-based detection..."
     fi
 
-    # Query all reachable radios and measure response time
+    # TTL=1 ping test — only the directly-connected radio will respond
     echo ""
-    echo -e "${BOLD}Querying all known radios (timing responses):${NC}"
-    printf "  ${BOLD}%-20s %-18s %-10s %-12s %s${NC}\n" "RADIO" "MGMT_IP" "NODE_ID" "RESPONSE" "LOCAL?"
-    echo "  ------------------------------------------------------------------"
+    echo -e "${BOLD}Testing radios with TTL=1 ping (only direct L2 neighbor responds):${NC}"
+    printf "  ${BOLD}%-20s %-18s %-10s %s${NC}\n" "RADIO" "MGMT_IP" "NODE_ID" "RESULT"
+    echo "  ----------------------------------------------------------"
 
-    python3 -c "
-import yaml, urllib.request, json, time, concurrent.futures
+    local detected_name=""
+    local detected_nid=""
+    while IFS='|' read -r name mgmt_ip node_id; do
+        [[ -z "$name" ]] && continue
+        [[ -z "$mgmt_ip" ]] && continue
 
-with open('${TOPOLOGY}') as f:
-    data = yaml.safe_load(f)
+        if ping -c 1 -W 1 -t 1 "$mgmt_ip" &>/dev/null; then
+            printf "  %-20s %-18s %-10s ${CYAN}%s${NC}\n" "$name" "$mgmt_ip" "$node_id" "<-- LOCAL (TTL=1 OK)"
+            detected_name="$name"
+            detected_nid="$node_id"
+        else
+            # Check if reachable at all (multi-hop)
+            if ping -c 1 -W 2 "$mgmt_ip" &>/dev/null; then
+                printf "  %-20s %-18s %-10s %s\n" "$name" "$mgmt_ip" "$node_id" "reachable (multi-hop)"
+            else
+                printf "  %-20s %-18s %-10s ${RED}%s${NC}\n" "$name" "$mgmt_ip" "$node_id" "unreachable"
+            fi
+        fi
+    done < <(get_radio_mgmt_ips)
 
-radios = data.get('silvus_radios', {}).get('radios', {})
-
-def query(name, ip):
-    url = f'http://{ip}/cgi-bin/streamscape_api'
-    batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1}]
-    start = time.monotonic()
-    try:
-        req = urllib.request.Request(url, data=json.dumps(batch).encode(),
-                                     headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            results = json.loads(resp.read())
-        elapsed_ms = (time.monotonic() - start) * 1000
-        nid = ''
-        for r in results:
-            if r['id'] == 1 and 'error' not in r:
-                nid = r['result'][0]
-        return (name, ip, nid, elapsed_ms)
-    except:
-        return (name, ip, '', -1)
-
-tasks = []
-for name, info in sorted(radios.items()):
-    mgmt = info.get('mgmt_ip', '')
-    if mgmt:
-        tasks.append((name, mgmt))
-
-results = []
-with concurrent.futures.ThreadPoolExecutor(max_workers=len(tasks)) as pool:
-    futures = [pool.submit(query, n, ip) for n, ip in tasks]
-    for f in concurrent.futures.as_completed(futures):
-        results.append(f.result())
-
-results.sort(key=lambda x: x[3] if x[3] >= 0 else 99999)
-
-# The local radio is the fastest responder — typically <10ms direct L2 vs 20ms+ via mesh
-fastest_ms = results[0][3] if results and results[0][3] >= 0 else 99999
-
-for name, ip, nid, ms in results:
-    if ms < 0:
-        print(f'  {name:<20s} {ip:<18s} {\"?\":<10s} {\"TIMEOUT\":<12s}')
-    else:
-        is_local = (ms <= fastest_ms * 1.5 and ms < 15)  # local is direct L2, very fast
-        tag = '\033[0;36m<-- LOCAL\033[0m' if is_local else ''
-        color = '\033[0;32m' if ms < 15 else '\033[1;33m'
-        print(f'  {name:<20s} {ip:<18s} {nid:<10s} {color}{ms:>7.1f}ms\033[0m   {tag}')
-
-if results and fastest_ms < 15:
-    local = results[0]
-    print()
-    print(f'  \033[1mDetected local radio: {local[0]} (node {local[2]}, {local[1]})\033[0m')
-else:
-    print()
-    print('  \033[1;33mCould not determine local radio (all responses slow or timed out)\033[0m')
-" 2>/dev/null
+    echo ""
+    if [[ -n "$detected_name" ]]; then
+        echo -e "${BOLD}Detected local radio: ${detected_name} (node ${detected_nid})${NC}"
+    else
+        echo -e "${YELLOW}Could not detect local radio via TTL=1.${NC}"
+        echo "This may happen if the radio is on the same L2 broadcast domain."
+        echo "Try: silvus_status.sh status (uses API response timing as fallback)"
+    fi
 }
 
 cmd_discover() {
