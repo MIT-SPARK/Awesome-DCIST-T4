@@ -41,7 +41,7 @@ for name, info in sorted(machines.items()):
 }
 
 check_local_zenohd() {
-    echo -e "${BOLD}[1/3] Local rmw_zenohd process${NC}"
+    echo -e "${BOLD}[1/4] Local rmw_zenohd process${NC}"
     if pgrep -f "rmw_zenohd" &>/dev/null; then
         local pid
         pid=$(pgrep -f "rmw_zenohd" | head -1)
@@ -70,7 +70,7 @@ check_local_zenohd() {
 
 check_local_port() {
     local port="$1"
-    echo -e "\n${BOLD}[2/3] Local port ${port} listener${NC}"
+    echo -e "\n${BOLD}[2/4] Local port ${port} listener${NC}"
     if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
         echo -e "  ${GREEN}LISTENING${NC} on port ${port}"
         return 0
@@ -80,13 +80,89 @@ check_local_port() {
     fi
 }
 
+check_admin_space() {
+    local admin_port="${1:-8000}"
+    echo -e "\n${BOLD}[4/4] Zenoh admin space (port ${admin_port})${NC}"
+
+    if ! curl -s -m 2 "http://localhost:${admin_port}/@/router/local" &>/dev/null; then
+        echo -e "  ${YELLOW}Admin REST API not available on port ${admin_port}${NC}"
+        echo -e "  ${YELLOW}Generate config with admin space enabled:${NC}"
+        echo -e "  ${YELLOW}  $(dirname "$0")/gen_zenoh_config.sh --network <net> > /tmp/zenoh_config.json5${NC}"
+        return 1
+    fi
+
+    # Router info
+    echo -e "  ${BOLD}Router info:${NC}"
+    curl -s -m 2 "http://localhost:${admin_port}/@/router/local" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if isinstance(data, list):
+        for item in data:
+            key = item.get('key', '')
+            value = item.get('value', {})
+            zid = value.get('zid', 'unknown')
+            print(f'    Router ID: {zid}')
+            for md_k, md_v in value.get('metadata', {}).items():
+                print(f'    {md_k}: {md_v}')
+    elif isinstance(data, dict):
+        zid = data.get('zid', data.get('value', {}).get('zid', 'unknown'))
+        print(f'    Router ID: {zid}')
+except:
+    print('    (could not parse response)')
+" 2>/dev/null || echo "    (could not parse response)"
+
+    # Sessions / peers
+    echo -e "  ${BOLD}Connected sessions:${NC}"
+    curl -s -m 2 "http://localhost:${admin_port}/@/router/local/link/**" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if not data:
+        print('    (no active sessions)')
+    else:
+        items = data if isinstance(data, list) else [data]
+        for item in items:
+            value = item.get('value', item)
+            dst = value.get('dst', 'unknown')
+            whatami = value.get('whatami', '')
+            print(f'    -> {dst} ({whatami})')
+except:
+    print('    (could not parse response)')
+" 2>/dev/null || echo "    (could not parse response)"
+
+    # Subscribers
+    echo -e "  ${BOLD}Active subscribers:${NC}"
+    curl -s -m 2 "http://localhost:${admin_port}/@/router/local/subscriber/**" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if not data:
+        print('    (none)')
+    else:
+        items = data if isinstance(data, list) else [data]
+        seen = set()
+        for item in items:
+            ke = item.get('key', '')
+            value = item.get('value', item)
+            ke_expr = value.get('key_expr', ke)
+            if ke_expr and ke_expr not in seen:
+                seen.add(ke_expr)
+                print(f'    {ke_expr}')
+        if not seen:
+            print('    (none)')
+except:
+    print('    (could not parse response)')
+" 2>/dev/null || echo "    (could not parse response)"
+}
+
 check_remote_peers() {
     local network="$1"
     local port="$2"
     local hostname
     hostname=$(hostname)
 
-    echo -e "\n${BOLD}[3/3] Remote Zenoh port reachability (${network}, port ${port})${NC}"
+    echo -e "\n${BOLD}[3/4] Remote Zenoh port reachability (${network}, port ${port})${NC}"
     printf "  ${BOLD}%-12s %-18s %-12s${NC}\n" "HOST" "IP" "STATUS"
     echo "  ----------------------------------------"
 
@@ -126,6 +202,7 @@ main() {
     check_local_zenohd || ((errors++)) || true
     check_local_port "$port" || ((errors++)) || true
     check_remote_peers "$network" "$port"
+    check_admin_space 8000 || true
 
     echo ""
     if [[ $errors -eq 0 ]]; then

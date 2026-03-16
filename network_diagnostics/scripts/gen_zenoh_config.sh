@@ -77,6 +77,14 @@ config = {
             'enabled': False,
         },
     },
+    'adminspace': {
+        'enabled': True,
+    },
+    'plugins': {
+        'rest': {
+            'http_port': 8000,
+        },
+    },
 }
 
 # Output as JSON5-compatible JSON (JSON is valid JSON5)
