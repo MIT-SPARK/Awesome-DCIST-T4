@@ -32,11 +32,11 @@ with open('${TOPOLOGY}') as f:
     data = yaml.safe_load(f)
 radios = data.get('silvus_radios', {}).get('radios', {})
 for name, info in sorted(radios.items()):
-    mgmt = info.get('mgmt_ip', '')
-    data_ip = info.get('data_ip', '')
-    attached = info.get('attached_to', '')
-    node_id = info.get('node_id', '')
-    print(f'{name} {mgmt} {data_ip} {attached} {node_id}')
+    mgmt = info.get('mgmt_ip', '') or ''
+    data_ip = info.get('data_ip', '') or ''
+    attached = info.get('attached_to', '') or ''
+    node_id = info.get('node_id', '') or ''
+    print(f'{name}|{mgmt}|{data_ip}|{attached}|{node_id}')
 "
 }
 
@@ -99,7 +99,7 @@ cmd_status() {
     printf "  ${BOLD}%-16s %-18s %-12s %-8s %s${NC}\n" "RADIO" "DATA_IP" "ATTACHED" "STATUS" "RTT"
     echo "  ----------------------------------------------------------------"
 
-    while IFS=' ' read -r name mgmt_ip data_ip attached node_id; do
+    while IFS='|' read -r name mgmt_ip data_ip attached node_id; do
         [[ -z "$name" ]] && continue
         [[ -z "$data_ip" ]] && continue
         if result=$(ping -c 1 -W 2 "$data_ip" 2>/dev/null | grep 'time='); then
@@ -116,7 +116,7 @@ cmd_status() {
     echo -e "${BOLD}Radio details (JSON-RPC API):${NC}"
     echo ""
 
-    while IFS=' ' read -r name mgmt_ip data_ip attached node_id; do
+    while IFS='|' read -r name mgmt_ip data_ip attached node_id; do
         [[ -z "$name" ]] && continue
         if [[ -z "$mgmt_ip" ]]; then
             echo -e "  ${YELLOW}${name}${NC} (${attached}): mgmt_ip not configured"
