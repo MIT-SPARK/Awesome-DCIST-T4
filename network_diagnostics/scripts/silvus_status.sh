@@ -49,15 +49,19 @@ print(data.get('silvus_radios', {}).get('mgmt_subnet', '172.20.0.0/16'))
 # Auto-detection: find which radio is directly connected to this machine
 # ---------------------------------------------------------------------------
 
+CACHE_DIR="${HOME}/.cache/silvus_diagnostics"
+
 detect_local_radio() {
-    # Strategy:
-    #   1. Find the Silvus ethernet interface on this machine
-    #   2. Check ARP table on that interface for 172.20.x.x entries
-    #   3. Query each ARP-reachable 172.20.x.x via JSON-RPC to get its nodeid
-    #   4. The one that responds is our directly-connected radio
+    # The Silvus mesh is L2-bridged, so all radios appear as direct neighbors.
+    # Network-based detection (TTL, ARP, timing) cannot reliably distinguish
+    # the physically-connected radio from remote ones.
     #
-    # If no ARP entries, fall back to querying all known mgmt_ips and picking
-    # the fastest responder (local radio responds in <1ms, remote via mesh ~10ms+)
+    # Strategy: use a cache file keyed by the USB-ethernet adapter MAC address.
+    # The adapter MAC is stable and unique per machine, so once we know which
+    # radio is connected to which adapter, the mapping persists even if the
+    # radio is moved to a different machine (different adapter MAC = re-detect).
+    #
+    # Cache: ~/.cache/silvus_diagnostics/adapter_<MAC>.radio
 
     local iface
     iface=$(get_silvus_interface)
@@ -65,69 +69,38 @@ detect_local_radio() {
         return 1
     fi
 
-    # Check ARP table for direct 172.20.x.x neighbors
-    local arp_ips
-    arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
-
-    if [[ -n "$arp_ips" ]]; then
-        for ip in $arp_ips; do
-            local result
-            result=$(python3 -c "
-import urllib.request, json
-url = 'http://${ip}/cgi-bin/streamscape_api'
-batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
-         {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
-try:
-    req = urllib.request.Request(url, data=json.dumps(batch).encode(),
-                                 headers={'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=2) as resp:
-        results = json.loads(resp.read())
-    nid = ''; addr = ''
-    for r in results:
-        if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
-        if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
-    print(f'{nid}|{addr}')
-except:
-    pass
-" 2>/dev/null)
-            if [[ -n "$result" ]]; then
-                echo "$result"
-                return 0
-            fi
-        done
+    # Get adapter MAC
+    local adapter_mac
+    adapter_mac=$(ip link show "$iface" 2>/dev/null | grep 'link/ether' | awk '{print $2}' | tr ':' '-')
+    if [[ -z "$adapter_mac" ]]; then
+        return 1
     fi
 
-    # Fallback: try each known mgmt_ip with TTL=1 ping — only the directly-connected
-    # radio will respond (single L2 hop). Remote radios need mesh hops and won't reply.
-    while IFS='|' read -r rname mgmt_ip rnode_id; do
-        [[ -z "$mgmt_ip" ]] && continue
-        if ping -c 1 -W 1 -t 1 "$mgmt_ip" &>/dev/null; then
-            # TTL=1 succeeded — this radio is directly connected
-            local result
-            result=$(python3 -c "
-import urllib.request, json
-url = 'http://${mgmt_ip}/cgi-bin/streamscape_api'
-batch = [{'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
-         {'jsonrpc': '2.0', 'method': 'local_address', 'params': [], 'id': 2}]
-try:
-    req = urllib.request.Request(url, data=json.dumps(batch).encode(),
-                                 headers={'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=3) as resp:
-        results = json.loads(resp.read())
-    nid = ''; addr = ''
-    for r in results:
-        if r['id'] == 1 and 'error' not in r: nid = r['result'][0]
-        if r['id'] == 2 and 'error' not in r: addr = r['result'][0]
-    print(f'{nid}|{addr}')
-except:
-    pass
-" 2>/dev/null)
-            if [[ -n "$result" ]]; then
-                echo "$result"
-                return 0
-            fi
-        fi
-    done < <(get_radio_mgmt_ips)
+    # Check cache
+    mkdir -p "$CACHE_DIR" 2>/dev/null || true
+    local cache_file="${CACHE_DIR}/adapter_${adapter_mac}.radio"
+    if [[ -f "$cache_file" ]]; then
+        cat "$cache_file"
+        return 0
+    fi
+
+    return 1
+}
+
+save_local_radio() {
+    local node_id="$1"
+    local mgmt_ip="$2"
+
+    local iface
+    iface=$(get_silvus_interface)
+    [[ -z "$iface" ]] && return 1
+
+    local adapter_mac
+    adapter_mac=$(ip link show "$iface" 2>/dev/null | grep 'link/ether' | awk '{print $2}' | tr ':' '-')
+    [[ -z "$adapter_mac" ]] && return 1
+
+    mkdir -p "$CACHE_DIR" 2>/dev/null || true
+    echo "${node_id}|${mgmt_ip}" > "${CACHE_DIR}/adapter_${adapter_mac}.radio"
 }
 
 # ---------------------------------------------------------------------------
@@ -366,7 +339,27 @@ cmd_detect() {
         echo -e "${RED}No Silvus interface found (no 192.168.100.x address).${NC}"
         return 1
     fi
-    echo -e "Silvus interface: ${CYAN}${iface}${NC}"
+
+    local adapter_mac
+    adapter_mac=$(ip link show "$iface" 2>/dev/null | grep 'link/ether' | awk '{print $2}')
+    echo -e "Silvus interface: ${CYAN}${iface}${NC} (MAC: ${adapter_mac})"
+
+    # Check cache
+    local cached
+    cached=$(detect_local_radio 2>/dev/null) || true
+    if [[ -n "$cached" ]]; then
+        local cached_nid cached_mgmt
+        cached_nid=$(echo "$cached" | cut -d'|' -f1)
+        cached_mgmt=$(echo "$cached" | cut -d'|' -f2)
+        echo -e "Cached mapping: adapter ${adapter_mac} -> node ${GREEN}${cached_nid}${NC} (${cached_mgmt})"
+        echo ""
+        echo -n "Use cached mapping? [Y/n] "
+        read -r answer
+        if [[ "$answer" != "n" && "$answer" != "N" ]]; then
+            echo -e "${BOLD}Local radio: node ${cached_nid} (${cached_mgmt})${NC}"
+            return 0
+        fi
+    fi
 
     # Check for mgmt route
     local mgmt_subnet
@@ -379,62 +372,51 @@ cmd_detect() {
         }
     fi
 
-    # ARP-based detection
+    # List all reachable radios
     echo ""
-    echo "Checking ARP table for directly-connected radio..."
-    local arp_ips
-    arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
-
-    if [[ -z "$arp_ips" ]]; then
-        echo "No ARP entries. Pinging known radio management IPs to populate ARP..."
-        while IFS='|' read -r name mgmt_ip node_id; do
-            [[ -z "$mgmt_ip" ]] && continue
-            ping -c 1 -W 1 "$mgmt_ip" &>/dev/null &
-        done < <(get_radio_mgmt_ips)
-        wait
-        sleep 1
-        arp_ips=$(ip neigh show dev "$iface" 2>/dev/null | grep '172.20' | grep -v FAILED | awk '{print $1}')
-    fi
-
-    if [[ -z "$arp_ips" ]]; then
-        echo -e "${YELLOW}No radio management IPs reachable on ${iface}.${NC}"
-        echo ""
-        echo "Falling back to timing-based detection..."
-    fi
-
-    # TTL=1 ping test — only the directly-connected radio will respond
+    echo -e "The Silvus mesh is L2-bridged — all radios appear as direct neighbors."
+    echo -e "Listing reachable radios for manual selection:"
     echo ""
-    echo -e "${BOLD}Testing radios with TTL=1 ping (only direct L2 neighbor responds):${NC}"
-    printf "  ${BOLD}%-20s %-18s %-10s %s${NC}\n" "RADIO" "MGMT_IP" "NODE_ID" "RESULT"
-    echo "  ----------------------------------------------------------"
 
-    local detected_name=""
-    local detected_nid=""
+    local radio_list=()
+    local idx=0
     while IFS='|' read -r name mgmt_ip node_id; do
         [[ -z "$name" ]] && continue
         [[ -z "$mgmt_ip" ]] && continue
 
-        if ping -c 1 -W 1 -t 1 "$mgmt_ip" &>/dev/null; then
-            printf "  %-20s %-18s %-10s ${CYAN}%s${NC}\n" "$name" "$mgmt_ip" "$node_id" "<-- LOCAL (TTL=1 OK)"
-            detected_name="$name"
-            detected_nid="$node_id"
+        if ping -c 1 -W 2 "$mgmt_ip" &>/dev/null; then
+            ((idx++))
+            radio_list+=("${node_id}|${mgmt_ip}|${name}")
+            printf "  ${GREEN}%d)${NC} %-20s node=%-10s mgmt=%s\n" "$idx" "$name" "$node_id" "$mgmt_ip"
         else
-            # Check if reachable at all (multi-hop)
-            if ping -c 1 -W 2 "$mgmt_ip" &>/dev/null; then
-                printf "  %-20s %-18s %-10s %s\n" "$name" "$mgmt_ip" "$node_id" "reachable (multi-hop)"
-            else
-                printf "  %-20s %-18s %-10s ${RED}%s${NC}\n" "$name" "$mgmt_ip" "$node_id" "unreachable"
-            fi
+            printf "  ${RED}-${NC} %-20s node=%-10s mgmt=%s ${RED}(unreachable)${NC}\n" "$name" "$node_id" "$mgmt_ip"
         fi
     done < <(get_radio_mgmt_ips)
 
+    if [[ ${#radio_list[@]} -eq 0 ]]; then
+        echo -e "${RED}No radios reachable.${NC}"
+        return 1
+    fi
+
     echo ""
-    if [[ -n "$detected_name" ]]; then
-        echo -e "${BOLD}Detected local radio: ${detected_name} (node ${detected_nid})${NC}"
+    echo -n "Which radio is physically connected to this machine? [1-${#radio_list[@]}] "
+    read -r choice
+
+    if [[ "$choice" -ge 1 && "$choice" -le ${#radio_list[@]} ]] 2>/dev/null; then
+        local selected="${radio_list[$((choice-1))]}"
+        local sel_nid sel_mgmt sel_name
+        sel_nid=$(echo "$selected" | cut -d'|' -f1)
+        sel_mgmt=$(echo "$selected" | cut -d'|' -f2)
+        sel_name=$(echo "$selected" | cut -d'|' -f3)
+
+        save_local_radio "$sel_nid" "$sel_mgmt"
+        echo ""
+        echo -e "${GREEN}Saved:${NC} adapter ${adapter_mac} -> node ${sel_nid} (${sel_mgmt})"
+        echo -e "This mapping is cached at ${DIM}~/.cache/silvus_diagnostics/${NC}"
+        echo -e "Run '$(basename "$0") detect' again to re-detect if the radio is swapped."
     else
-        echo -e "${YELLOW}Could not detect local radio via TTL=1.${NC}"
-        echo "This may happen if the radio is on the same L2 broadcast domain."
-        echo "Try: silvus_status.sh status (uses API response timing as fallback)"
+        echo -e "${RED}Invalid selection.${NC}"
+        return 1
     fi
 }
 
