@@ -161,3 +161,7 @@ experiments:
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
         config: [real_phoenix_relocalize]
+
+    net_diag:
+        launch_config: net_diag
+        config: [default_params]
