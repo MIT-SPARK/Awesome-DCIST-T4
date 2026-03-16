@@ -14,6 +14,21 @@ machines:
   bonsai:    { role: base_station, desc: "RRG dev computer",  addresses: { penn_wifi: "192.168.129.217" } }
   willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.31.129.172", silvus: "192.168.100.100" } }
 
+silvus_radios:
+  mgmt_subnet: "172.20.0.0/16"
+  # Management IPs for each radio (172.20.x.x, printed on radio label)
+  # Update these after running: silvus_status.sh --discover
+  radios:
+    willow_radio:  { mgmt_ip: "", data_ip: "192.168.100.100", attached_to: willow }
+    euclid_radio:  { mgmt_ip: "", data_ip: "192.168.100.3",   attached_to: euclid }
+    hamilton_radio: { mgmt_ip: "", data_ip: "192.168.100.2",  attached_to: hamilton }
+    lewis_radio:   { mgmt_ip: "", data_ip: "192.168.100.105", attached_to: lewis }
+    russell_radio: { mgmt_ip: "", data_ip: "192.168.100.101", attached_to: russell }
+    apollo_radio:  { mgmt_ip: "", data_ip: "192.168.100.13",  attached_to: apollo }
+    samoyed_radio: { mgmt_ip: "", data_ip: "192.168.100.62",  attached_to: samoyed }
+  udp_telemetry:
+    listen_port: 5100
+
 zenoh:
   port: 7447
   connect_network: silvus
