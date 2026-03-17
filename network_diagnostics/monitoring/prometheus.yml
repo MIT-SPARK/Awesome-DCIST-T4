@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "adt4_local"
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          machine: "local"
+
+  # Uncomment and add more exporters running on other machines:
+  # - job_name: "adt4_euclid"
+  #   static_configs:
+  #     - targets: ["192.168.100.3:9100"]
+  #       labels:
+  #         machine: "euclid"
+  # - job_name: "adt4_willow"
+  #   static_configs:
+  #     - targets: ["192.168.100.100:9100"]
+  #       labels:
+  #         machine: "willow"
