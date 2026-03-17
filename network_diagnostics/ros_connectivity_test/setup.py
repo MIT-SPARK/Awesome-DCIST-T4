@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'connectivity_pub = ros_connectivity_test.pub_node:main',
             'connectivity_sub = ros_connectivity_test.sub_node:main',
+            'bw_monitor = ros_connectivity_test.bw_monitor_node:main',
         ],
     },
 )

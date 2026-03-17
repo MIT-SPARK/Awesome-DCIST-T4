@@ -42,6 +42,19 @@ class SourceTracker:
             return 0.0
         return self.dropped / total
 
+    def percentiles(self):
+        if not self.latencies:
+            return {'p50': 0.0, 'p95': 0.0, 'p99': 0.0, 'max': 0.0, 'min': 0.0}
+        s = sorted(self.latencies)
+        n = len(s)
+        return {
+            'p50': s[n // 2],
+            'p95': s[min(int(n * 0.95), n - 1)],
+            'p99': s[min(int(n * 0.99), n - 1)],
+            'max': s[-1],
+            'min': s[0],
+        }
+
 
 class ConnectivitySubNode(Node):
 
@@ -120,12 +133,18 @@ class ConnectivitySubNode(Node):
             if not alive:
                 self.get_logger().warn(f'Source {src} silent for {silent_for:.1f}s')
 
+            pct = tracker.percentiles()
             report[src] = {
                 'alive': alive,
                 'count': tracker.count,
                 'dropped': tracker.dropped,
                 'loss_rate': round(tracker.loss_rate, 4),
                 'avg_latency_ms': round(tracker.avg_latency * 1000, 2),
+                'p50_latency_ms': round(pct['p50'] * 1000, 2),
+                'p95_latency_ms': round(pct['p95'] * 1000, 2),
+                'p99_latency_ms': round(pct['p99'] * 1000, 2),
+                'max_latency_ms': round(pct['max'] * 1000, 2),
+                'min_latency_ms': round(pct['min'] * 1000, 2),
                 'silent_for_sec': round(silent_for, 2),
             }
 
@@ -141,7 +160,8 @@ class ConnectivitySubNode(Node):
             # Log summary
             lines = [f'  {src}: {"OK" if d["alive"] else "SILENT"} '
                      f'(rx={d["count"]}, drop={d["dropped"]}, '
-                     f'lat={d["avg_latency_ms"]:.1f}ms)'
+                     f'lat={d["avg_latency_ms"]:.1f}ms, '
+                     f'p95={d["p95_latency_ms"]:.1f}ms)'
                      for src, d in report.items()]
             self.get_logger().info('Connectivity status:\n' + '\n'.join(lines))
 
