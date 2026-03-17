@@ -633,15 +633,454 @@ while True:
 "
 }
 
+cmd_rssi_matrix() {
+    echo -e "${BOLD}=== RSSI Link Quality Matrix ===${NC}"
+    echo ""
+
+    python3 -c "
+import yaml, urllib.request, json, sys
+
+with open('${TOPOLOGY}') as f:
+    data = yaml.safe_load(f)
+
+radios = data.get('silvus_radios', {}).get('radios', {})
+radio_list = []  # [(name, mgmt_ip, node_id)]
+for name, info in sorted(radios.items()):
+    mgmt = info.get('mgmt_ip', '')
+    nid = info.get('node_id', '')
+    if mgmt:
+        radio_list.append((name, mgmt, str(nid)))
+
+if len(radio_list) < 2:
+    print('  Need at least 2 radios in topology.yaml for a matrix.')
+    sys.exit()
+
+# Query each radio for per-neighbor RSSI via routing_tree + rssi data
+# The StreamScape API gives RSSI per antenna; we collect from each radio's perspective
+results = {}  # name -> {nodeid: ..., rssi_per_neighbor: {nid: val}}
+for name, mgmt_ip, node_id in radio_list:
+    try:
+        url = f'http://{mgmt_ip}/cgi-bin/streamscape_api'
+        batch = [
+            {'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 1},
+            {'jsonrpc': '2.0', 'method': 'routing_tree', 'params': [], 'id': 2},
+            {'jsonrpc': '2.0', 'method': 'neighbor_list', 'params': [], 'id': 3},
+            {'jsonrpc': '2.0', 'method': 'rssi', 'params': [], 'id': 4},
+            {'jsonrpc': '2.0', 'method': 'link_stats', 'params': [], 'id': 5},
+            {'jsonrpc': '2.0', 'method': 'snr_stats', 'params': [], 'id': 6},
+        ]
+        payload = json.dumps(batch).encode()
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            resp_data = json.loads(resp.read())
+        parsed = {}
+        for r in resp_data:
+            rid = r.get('id', 0)
+            if 'error' not in r:
+                parsed[rid] = r['result']
+            else:
+                parsed[rid] = None
+        results[name] = {
+            'nodeid': parsed.get(1, [node_id])[0] if parsed.get(1) else node_id,
+            'routing_tree': parsed.get(2, []),
+            'neighbor_list': parsed.get(3),
+            'rssi': parsed.get(4),
+            'link_stats': parsed.get(5),
+            'snr_stats': parsed.get(6),
+        }
+    except Exception as e:
+        results[name] = {'error': str(e)}
+
+# Build node_id -> name map
+nid_to_name = {}
+for name, mgmt_ip, node_id in radio_list:
+    nid_to_name[node_id] = name
+    if name in results and 'nodeid' in results[name]:
+        nid_to_name[str(results[name]['nodeid'])] = name
+
+# Display what we got
+names = [r[0] for r in radio_list]
+max_name = max(len(n) for n in names)
+
+# Try to build matrix from available data
+has_link_stats = any(results.get(n, {}).get('link_stats') for n in names)
+has_rssi = any(results.get(n, {}).get('rssi') for n in names)
+
+# Print header
+header = ' ' * (max_name + 2)
+for n in names:
+    header += f'{n:>14s}'
+print(header)
+print(' ' * (max_name + 2) + '-' * (14 * len(names)))
+
+for src_name in names:
+    row = f'{src_name:<{max_name}s}  '
+    info = results.get(src_name, {})
+    if 'error' in info:
+        row += f'\033[0;31m(unreachable)\033[0m'
+        print(row)
+        continue
+
+    for dst_name in names:
+        if src_name == dst_name:
+            row += f'         \033[2m ---\033[0m'
+            continue
+
+        # Try to extract RSSI from link_stats or other data
+        val = None
+        link = info.get('link_stats')
+        rssi = info.get('rssi')
+        snr = info.get('snr_stats')
+
+        # link_stats and rssi may be lists or dicts keyed by neighbor
+        # Try multiple formats since the API varies
+        dst_nid = None
+        for nid, nm in nid_to_name.items():
+            if nm == dst_name:
+                dst_nid = nid
+                break
+
+        if rssi and isinstance(rssi, list) and len(rssi) > 0:
+            # rssi might be a flat value (single neighbor case)
+            try:
+                val = float(rssi[0]) / 2.0 if len(names) == 2 else None
+            except (ValueError, TypeError):
+                pass
+
+        if link and isinstance(link, (list, dict)):
+            # Try to extract per-neighbor from link_stats
+            if isinstance(link, dict) and dst_nid and dst_nid in link:
+                try:
+                    val = float(link[dst_nid])
+                except (ValueError, TypeError):
+                    pass
+
+        # Check routing tree membership as fallback
+        tree = info.get('routing_tree', [])
+        in_mesh = dst_nid and int(dst_nid) in [int(x) for x in tree] if dst_nid and tree else False
+
+        if val is not None:
+            if val > -60:
+                color = '\033[0;32m'  # green
+            elif val > -80:
+                color = '\033[1;33m'  # yellow
+            else:
+                color = '\033[0;31m'  # red
+            row += f'{color}{val:>12.1f}dB\033[0m'
+        elif in_mesh:
+            row += f'  \033[0;32m    linked\033[0m'
+        else:
+            row += f'          \033[2m?\033[0m'
+
+    print(row)
+
+print()
+
+# Print raw data summary for debugging
+print('Raw API data per radio:')
+for name in names:
+    info = results.get(name, {})
+    if 'error' in info:
+        print(f'  {name}: \033[0;31m{info[\"error\"]}\033[0m')
+        continue
+    parts = []
+    if info.get('routing_tree'):
+        tree_names = [nid_to_name.get(str(n), str(n)) for n in info['routing_tree']]
+        parts.append(f'mesh=[{\", \".join(tree_names)}]')
+    if info.get('rssi') is not None:
+        parts.append(f'rssi={info[\"rssi\"]}')
+    if info.get('link_stats') is not None:
+        parts.append(f'link_stats={info[\"link_stats\"]}')
+    if info.get('snr_stats') is not None:
+        parts.append(f'snr_stats={info[\"snr_stats\"]}')
+    if info.get('neighbor_list') is not None:
+        parts.append(f'neighbors={info[\"neighbor_list\"]}')
+    print(f'  {name}: {\"  \".join(parts)}')
+" 2>/dev/null
+}
+
+cmd_battery_watch() {
+    local threshold="${1:-20}"
+    local interval="${2:-30}"
+    echo -e "${BOLD}=== Battery Watch ===${NC} (threshold: ${threshold}%, interval: ${interval}s)"
+    echo -e "Press Ctrl+C to stop."
+    echo ""
+
+    trap 'echo -e "\n${NC}Stopped."; exit 0' INT
+
+    while true; do
+        local ts
+        ts=$(date '+%H:%M:%S')
+
+        while IFS='|' read -r name mgmt_ip node_id; do
+            [[ -z "$name" ]] && continue
+            [[ -z "$mgmt_ip" ]] && continue
+
+            local result
+            result=$(python3 -c "
+import urllib.request, json
+url = 'http://${mgmt_ip}/cgi-bin/streamscape_api'
+batch = [
+    {'jsonrpc': '2.0', 'method': 'battery_percent', 'params': [], 'id': 1},
+    {'jsonrpc': '2.0', 'method': 'input_voltage_monitoring', 'params': [], 'id': 2},
+]
+try:
+    payload = json.dumps(batch).encode()
+    req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        results = json.loads(resp.read())
+    bat = None; volt = None
+    for r in results:
+        if r['id'] == 1 and 'error' not in r: bat = r['result'][0]
+        if r['id'] == 2 and 'error' not in r: volt = r['result'][0]
+    print(f'{bat}|{volt}')
+except:
+    print('ERR|ERR')
+" 2>/dev/null)
+
+            local bat volt
+            bat=$(echo "$result" | cut -d'|' -f1)
+            volt=$(echo "$result" | cut -d'|' -f2)
+
+            if [[ "$bat" == "ERR" ]]; then
+                echo -e "[${ts}] ${name}: ${RED}unreachable${NC}"
+                continue
+            fi
+
+            local bat_val
+            bat_val=$(echo "$bat" | cut -d'.' -f1)
+            local volt_str=""
+            if [[ "$volt" != "None" && -n "$volt" ]]; then
+                volt_str=$(python3 -c "print(f'{float(${volt})/1000:.2f}V')" 2>/dev/null || echo "")
+            fi
+
+            if [[ -n "$bat_val" ]] && [[ "$bat_val" -le "$threshold" ]] 2>/dev/null; then
+                echo -e "[${ts}] ${RED}${BOLD}ALERT${NC} ${name}: battery ${RED}${bat_val}%${NC} ${volt_str} \a"
+            else
+                echo -e "[${ts}] ${name}: battery ${GREEN}${bat_val}%${NC} ${volt_str}"
+            fi
+        done < <(get_radio_mgmt_ips)
+
+        sleep "$interval"
+    done
+}
+
+cmd_radio_config() {
+    echo -e "${BOLD}=== Radio Configuration ===${NC}"
+    echo ""
+
+    while IFS='|' read -r name mgmt_ip node_id; do
+        [[ -z "$name" ]] && continue
+        [[ -z "$mgmt_ip" ]] && continue
+
+        echo -ne "  ${name} (${mgmt_ip}): "
+        python3 -c "
+import urllib.request, json
+
+url = 'http://${mgmt_ip}/cgi-bin/streamscape_api'
+batch = [
+    {'jsonrpc': '2.0', 'method': 'model', 'params': [], 'id': 1},
+    {'jsonrpc': '2.0', 'method': 'build_tag', 'params': [], 'id': 2},
+    {'jsonrpc': '2.0', 'method': 'nodeid', 'params': [], 'id': 3},
+    {'jsonrpc': '2.0', 'method': 'radio_mode', 'params': [], 'id': 4},
+    {'jsonrpc': '2.0', 'method': 'frequency', 'params': [], 'id': 5},
+    {'jsonrpc': '2.0', 'method': 'bandwidth', 'params': [], 'id': 6},
+    {'jsonrpc': '2.0', 'method': 'channel', 'params': [], 'id': 7},
+    {'jsonrpc': '2.0', 'method': 'tx_power', 'params': [], 'id': 8},
+    {'jsonrpc': '2.0', 'method': 'capabilities', 'params': [], 'id': 9},
+    {'jsonrpc': '2.0', 'method': 'board_type', 'params': [], 'id': 10},
+    {'jsonrpc': '2.0', 'method': 'encryption_mode', 'params': [], 'id': 11},
+    {'jsonrpc': '2.0', 'method': 'mimo_mode', 'params': [], 'id': 12},
+    {'jsonrpc': '2.0', 'method': 'version', 'params': [], 'id': 13},
+    {'jsonrpc': '2.0', 'method': 'antenna_config', 'params': [], 'id': 14},
+]
+
+method_names = {r['id']: r['method'] for r in batch}
+
+try:
+    payload = json.dumps(batch).encode()
+    req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        results = json.loads(resp.read())
+    out = {}
+    for r in results:
+        rid = r.get('id', 0)
+        method = method_names.get(rid, '?')
+        if 'error' not in r:
+            out[method] = r['result']
+        else:
+            out[method] = None
+
+    print()
+
+    def val(key, idx=0):
+        v = out.get(key)
+        if v is None: return '(not supported)'
+        if isinstance(v, list) and len(v) > idx: return v[idx]
+        return str(v)
+
+    mdl = val('model')
+    bld = val('build_tag').replace('streamscape_', '') if out.get('build_tag') else '?'
+    ver = val('version')
+    nid = val('nodeid')
+    board = val('board_type')
+    print(f'    Model:       {mdl} ({board})')
+    print(f'    Firmware:    {bld} (version {ver})')
+    print(f'    Node ID:     {nid}')
+
+    rm = val('radio_mode')
+    freq = val('frequency')
+    bw = val('bandwidth')
+    ch = val('channel')
+    txp = val('tx_power')
+    print(f'    Radio mode:  {rm}')
+    print(f'    Frequency:   {freq} MHz')
+    print(f'    Bandwidth:   {bw} MHz')
+    print(f'    Channel:     {ch}')
+    print(f'    TX power:    {txp}')
+
+    mimo = val('mimo_mode')
+    ant = val('antenna_config')
+    enc = val('encryption_mode')
+    print(f'    MIMO mode:   {mimo}')
+    print(f'    Antenna:     {ant}')
+    print(f'    Encryption:  {enc}')
+
+    caps = out.get('capabilities')
+    if caps and isinstance(caps, list):
+        print(f'    Capabilities: {caps}')
+
+    print()
+except Exception as e:
+    print(f'\033[0;31mFAILED: {e}\033[0m')
+    print()
+" 2>/dev/null || echo -e "${RED}unreachable${NC}"
+
+    done < <(get_radio_mgmt_ips)
+}
+
+cmd_config_diff() {
+    echo -e "${BOLD}=== Radio Configuration Diff ===${NC}"
+    echo ""
+    echo "Comparing settings across all radios..."
+    echo ""
+
+    python3 -c "
+import urllib.request, json, yaml
+
+with open('${TOPOLOGY}') as f:
+    data = yaml.safe_load(f)
+
+radios = data.get('silvus_radios', {}).get('radios', {})
+
+methods = [
+    'radio_mode', 'frequency', 'bandwidth', 'channel', 'tx_power',
+    'encryption_mode', 'mimo_mode', 'antenna_config', 'build_tag',
+    'model', 'board_type',
+]
+
+# Query all radios
+all_configs = {}  # name -> {method: value}
+radio_names = []
+for name, info in sorted(radios.items()):
+    mgmt_ip = info.get('mgmt_ip', '')
+    if not mgmt_ip:
+        continue
+    radio_names.append(name)
+    try:
+        url = f'http://{mgmt_ip}/cgi-bin/streamscape_api'
+        batch = [{'jsonrpc': '2.0', 'method': m, 'params': [], 'id': i+1}
+                 for i, m in enumerate(methods)]
+        payload = json.dumps(batch).encode()
+        req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            results = json.loads(resp.read())
+        cfg = {}
+        for r in results:
+            idx = r.get('id', 0) - 1
+            if 0 <= idx < len(methods):
+                method = methods[idx]
+                if 'error' not in r:
+                    val = r['result']
+                    if isinstance(val, list) and len(val) == 1:
+                        val = val[0]
+                    cfg[method] = val
+                else:
+                    cfg[method] = None
+        all_configs[name] = cfg
+    except Exception as e:
+        all_configs[name] = {'_error': str(e)}
+
+if len(all_configs) < 2:
+    print('  Need at least 2 reachable radios to diff.')
+    import sys; sys.exit()
+
+# Find differences
+max_name = max(len(n) for n in radio_names)
+max_method = max(len(m) for m in methods)
+
+# Header
+header = f'  {\"Parameter\":<{max_method}s}'
+for n in radio_names:
+    header += f'  {n:>{max_name + 2}s}'
+print(header)
+print('  ' + '-' * (max_method + (max_name + 4) * len(radio_names)))
+
+has_diff = False
+for method in methods:
+    values = []
+    for name in radio_names:
+        cfg = all_configs.get(name, {})
+        if '_error' in cfg:
+            values.append('(error)')
+        else:
+            v = cfg.get(method)
+            if v is None:
+                values.append('N/A')
+            elif isinstance(v, str):
+                values.append(v.replace('streamscape_', ''))
+            else:
+                values.append(str(v))
+
+    # Check if all values are the same
+    unique = set(values)
+    is_diff = len(unique) > 1
+
+    if is_diff:
+        has_diff = True
+        row = f'  \033[1;33m{method:<{max_method}s}\033[0m'
+    else:
+        row = f'  {method:<{max_method}s}'
+
+    for v in values:
+        if is_diff:
+            row += f'  \033[1;33m{v:>{max_name + 2}s}\033[0m'
+        else:
+            row += f'  {v:>{max_name + 2}s}'
+
+    print(row)
+
+print()
+if has_diff:
+    print('\033[1;33mDifferences found (highlighted above)\033[0m')
+else:
+    print('\033[0;32mAll radios have matching configuration.\033[0m')
+" 2>/dev/null
+}
+
 usage() {
     echo "Usage: $(basename "$0") <command>"
     echo ""
     echo "Commands:"
-    echo "  status              Query all radios (battery, voltage, temp, mesh) + detect local"
-    echo "  detect              Identify which radio is directly connected to this machine"
-    echo "  topology            Show mesh routing topology"
-    echo "  discover            Scan for radio management IPs on 172.20.x.x"
-    echo "  listen [port]       Listen for UDP telemetry (RSSI/voltage/temp) [default: 5100]"
+    echo "  status                    Query all radios (battery, voltage, temp, mesh)"
+    echo "  detect                    Identify which radio is connected to this machine"
+    echo "  topology                  Show mesh routing topology"
+    echo "  discover                  Scan for radio management IPs on 172.20.x.x"
+    echo "  listen [port]             Listen for UDP telemetry (RSSI/voltage/temp)"
+    echo "  rssi                      Show RSSI link quality matrix between radios"
+    echo "  battery-watch [thr] [int] Monitor battery levels (threshold%, interval sec)"
+    echo "  radio-config              Show detailed radio configuration"
+    echo "  config-diff               Compare settings across all radios"
     echo ""
     echo "JSON-RPC API endpoint: /cgi-bin/streamscape_api (StreamScape 5)"
     echo ""
@@ -652,12 +1091,16 @@ usage() {
 }
 
 case "${1:-}" in
-    status)     cmd_status ;;
-    detect)     cmd_detect ;;
-    topology)   cmd_topology ;;
-    discover)   cmd_discover ;;
-    listen)     cmd_listen "${2:-5100}" ;;
-    -h|--help)  usage ;;
-    "")         cmd_status ;;
-    *)          echo "Unknown command: $1"; usage; exit 1 ;;
+    status)         cmd_status ;;
+    detect)         cmd_detect ;;
+    topology)       cmd_topology ;;
+    discover)       cmd_discover ;;
+    listen)         cmd_listen "${2:-5100}" ;;
+    rssi)           cmd_rssi_matrix ;;
+    battery-watch)  cmd_battery_watch "${2:-20}" "${3:-30}" ;;
+    radio-config)   cmd_radio_config ;;
+    config-diff)    cmd_config_diff ;;
+    -h|--help)      usage ;;
+    "")             cmd_status ;;
+    *)              echo "Unknown command: $1"; usage; exit 1 ;;
 esac
