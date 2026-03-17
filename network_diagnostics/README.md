@@ -8,6 +8,9 @@ Tools for diagnosing and managing network connectivity across the ADT4 multi-rob
 # From any ADT4 machine with the repo checked out:
 cd ~/dcist_ws/src/awesome_dcist_t4/network_diagnostics
 
+# Pre-flight checklist (go/no-go before an experiment)
+./scripts/preflight.sh --network silvus
+
 # Run the full diagnostic suite
 ./scripts/net_diag.sh --network silvus
 
@@ -17,6 +20,11 @@ cd ~/dcist_ws/src/awesome_dcist_t4/network_diagnostics
 # Check Zenoh connectivity (auto-starts zenohd if not running)
 source ~/dcist_ws/install/setup.zsh
 ./scripts/zenoh_check.sh
+
+# Start monitoring dashboard (Grafana + Prometheus)
+python3 scripts/prometheus_exporter.py &
+cd monitoring && docker compose up -d
+# Open http://localhost:3001 (admin / adt4)
 ```
 
 ## Prerequisites
@@ -24,6 +32,7 @@ source ~/dcist_ws/install/setup.zsh
 - Python 3 with PyYAML (included in all ROS2 installations)
 - ROS2 workspace sourced (for Zenoh and ROS2 tools): `source ~/dcist_ws/install/setup.zsh`
 - SSH keys set up for robot/base station access (for `ssh_check.sh`)
+- Docker (for Grafana/Prometheus monitoring stack)
 - Route to Silvus management network (for `silvus_status.sh`):
   ```bash
   # Find your Silvus ethernet interface
@@ -47,6 +56,28 @@ This file defines:
 > Silvus data IPs (192.168.100.x) and radio management IPs (172.20.x.x) are static.
 
 ## Tools Reference
+
+### `preflight.sh` — Pre-Flight Checklist
+
+Go/no-go checklist before experiments. Exits 0 (all pass) or 1 (failures). Checks:
+1. Network interfaces detected
+2. All peers pingable on selected network
+3. Silvus radios reachable with battery above threshold
+4. Zenoh router running and port listening
+5. Remote Zenoh peers reachable
+6. SSH access to all machines
+7. ROS2 environment configured
+
+```bash
+# Full preflight on Silvus
+./scripts/preflight.sh --network silvus
+
+# Skip slow checks
+./scripts/preflight.sh --network silvus --skip-ssh --skip-silvus
+
+# Custom battery threshold
+./scripts/preflight.sh --network silvus --battery-threshold 30
+```
 
 ### `net_diag.sh` — Full Diagnostic Suite
 
@@ -106,6 +137,27 @@ source ~/dcist_ws/install/setup.zsh
 3. Can we reach Zenoh port on each remote peer?
 4. Zenoh admin space (router info, sessions, subscribers) — requires admin-enabled config
 
+### `zenoh_watchdog.sh` — Zenoh Session Monitor
+
+Continuously monitors Zenoh peer connections and alerts on connect/disconnect events.
+
+```bash
+# Default: poll every 5 seconds
+./scripts/zenoh_watchdog.sh
+
+# Custom interval and admin port
+./scripts/zenoh_watchdog.sh --interval 10 --admin-port 8000
+```
+
+Output:
+```
+[14:30:15] Current sessions:
+  * abc123def456 (router)
+[14:30:20] + CONNECTED  789abc012345 (client)
+[14:31:05] - DISCONNECTED  789abc012345 (client)
+[14:31:05] ! PORT UNREACHABLE  euclid (192.168.100.3:7447)
+```
+
 ### `gen_zenoh_config.sh` — Zenoh Router Config Generator
 
 Generates a Zenoh router config with connect endpoints for all peers on a given network. Enables admin space and REST API for diagnostics.
@@ -121,7 +173,7 @@ ZENOH_ROUTER_CONFIG_URI=/tmp/zenoh_config.json5 ros2 run rmw_zenoh_cpp rmw_zenoh
 curl http://localhost:8000/@/router/local
 ```
 
-### `silvus_status.sh` — Silvus Radio Status
+### `silvus_status.sh` — Silvus Radio Status & Diagnostics
 
 Queries Silvus StreamCaster radios via their JSON-RPC API (StreamScape 5) at `/cgi-bin/streamscape_api`.
 
@@ -133,34 +185,43 @@ sudo ip route add 172.20.0.0/16 dev <your_silvus_interface>
 # 2. Discover radio management IPs (if not in topology.yaml)
 ./scripts/silvus_status.sh discover
 
-# 3. Update topology.yaml with discovered mgmt_ip values
-```
-
-**Usage:**
-```bash
-# Query all radios — battery, voltage, temp, model, mesh, GPS
-# Automatically detects which radio is directly connected to this machine
-./scripts/silvus_status.sh status
-
-# Explicitly identify which radio is plugged into this machine
-# Uses ARP + response timing: local radio responds in <5ms (direct L2),
-# remote radios respond in 10-20ms+ (through mesh)
+# 3. Identify which radio is connected to this machine
 ./scripts/silvus_status.sh detect
 
-# Show mesh routing topology
+# 4. Update topology.yaml with discovered mgmt_ip values
+```
+
+**Commands:**
+```bash
+# Query all radios — battery, voltage, temp, model, mesh, GPS
+./scripts/silvus_status.sh status
+
+# Identify which radio is plugged into this machine (interactive, cached)
+./scripts/silvus_status.sh detect
+
+# Show mesh routing topology with management IPs
 ./scripts/silvus_status.sh topology
+
+# RSSI link quality matrix between all radios
+./scripts/silvus_status.sh rssi
+
+# Monitor battery levels with alerts (threshold%, interval seconds)
+./scripts/silvus_status.sh battery-watch 20 30
+
+# Show detailed radio configuration (frequency, bandwidth, TX power, MIMO, encryption)
+./scripts/silvus_status.sh radio-config
+
+# Compare settings across all radios — highlights differences
+./scripts/silvus_status.sh config-diff
 
 # Discover radio management IPs via ARP scan
 ./scripts/silvus_status.sh discover
 
 # Listen for UDP telemetry (RSSI, voltage, temperature)
-# Requires configuring UDP streaming on each radio's Node Diagnostics web page
 ./scripts/silvus_status.sh listen [port]
 ```
 
-**Auto-detection:** Radios are not statically bound to machines — they can be swapped freely. The `status` and `detect` commands automatically determine which radio is directly connected by:
-1. Checking the ARP table on the Silvus interface for 172.20.x.x entries
-2. Querying all known radios in parallel and comparing response times (local radio responds via direct L2 in <5ms; remote radios go through the mesh at 10-20ms+)
+**Auto-detection:** Radios are not statically bound to machines — they can be swapped freely. The `detect` command uses a cache keyed by the USB-ethernet adapter's MAC address. Run `detect` once per adapter; the mapping persists across reboots and is invalidated if the adapter changes.
 
 **Example output:**
 ```
@@ -202,11 +263,12 @@ Radio status (JSON-RPC API):
 | `gps_mode` | GPS lock status | `["unlocked"]` |
 | `gps_coordinates` | [lat, lon, alt] | `["0", "0", "0"]` |
 | `local_address` | Management IP | `["172.20.187.45"]` |
-| `board_type` | Board identifier | `["SC4022"]` |
-| `capabilities` | Array of radio capabilities | encryption, frequency ranges |
-| `node_labels` | Custom node labels dict | `{}` |
 | `radio_mode` | Current radio mode | `["0"]` |
-| `version` | API version | `["0.105"]` |
+| `frequency` | Center frequency MHz | |
+| `bandwidth` | Channel bandwidth MHz | |
+| `tx_power` | Transmit power | |
+| `encryption_mode` | Encryption setting | |
+| `mimo_mode` | MIMO configuration | |
 
 ### `switch_network.sh` — WiFi / Silvus Switching
 
@@ -253,6 +315,91 @@ Tests SSH connectivity to all machines using the per-role users from topology.ya
 ./scripts/ssh_check.sh --network silvus --timeout 5
 ```
 
+### `collect_logs.sh` — Diagnostic Snapshot
+
+Captures a full diagnostic snapshot to a timestamped log file for post-mortem analysis. ANSI color codes are stripped.
+
+```bash
+# Full snapshot
+./scripts/collect_logs.sh
+
+# Specify network and output directory
+./scripts/collect_logs.sh --network silvus --output-dir /tmp/diag
+
+# Skip Silvus radio queries (faster if radios are off)
+./scripts/collect_logs.sh --skip-silvus
+```
+
+**Captures:**
+- System info (hostname, kernel, IPs, routes, interface stats)
+- Ping sweep results
+- Silvus radio status, config, config diff, topology
+- Zenoh connectivity check
+- ROS2 node and topic lists
+- SSH access check
+
+Output: `~/adt4_diagnostics/diag_<hostname>_<YYYYMMDD_HHMMSS>.log`
+
+### `prometheus_exporter.py` — Prometheus Metrics Exporter
+
+Zero-dependency Python HTTP server that exposes ADT4 metrics for Prometheus scraping.
+
+```bash
+# Start exporter (default port 9100, 15s scrape interval)
+python3 scripts/prometheus_exporter.py
+
+# Custom port and interval
+python3 scripts/prometheus_exporter.py --port 9200 --interval 30
+```
+
+**Exposed metrics:**
+| Metric | Type | Labels |
+|--------|------|--------|
+| `adt4_radio_battery_percent` | gauge | radio |
+| `adt4_radio_voltage_mv` | gauge | radio |
+| `adt4_radio_temperature_c` | gauge | radio |
+| `adt4_radio_mesh_nodes` | gauge | radio |
+| `adt4_radio_reachable` | gauge | radio |
+| `adt4_peer_reachable` | gauge | target, network |
+| `adt4_peer_ping_rtt_ms` | gauge | target, network |
+| `adt4_zenoh_router_running` | gauge | |
+| `adt4_zenoh_admin_reachable` | gauge | |
+| `adt4_zenoh_session_count` | gauge | |
+
+### Monitoring Stack (Grafana + Prometheus)
+
+Pre-configured Docker Compose setup with a Grafana dashboard.
+
+```bash
+# 1. Start the metrics exporter
+python3 scripts/prometheus_exporter.py &
+
+# 2. Start Grafana + Prometheus
+cd monitoring
+docker compose up -d
+
+# 3. Open Grafana
+# http://localhost:3000 (or GRAFANA_PORT if 3000 is taken)
+# Login: admin / adt4
+# Dashboard: ADT4 > ADT4 Network Overview
+```
+
+**Dashboard panels:**
+- Radio battery gauge (color-coded: green >50%, yellow >20%, red <20%)
+- Radio voltage and temperature time series
+- Radio and peer reachability status
+- Mesh node count
+- Zenoh router/admin status
+- Peer ping RTT history
+- Peer reachability table
+
+```bash
+# If port 3000 is in use:
+GRAFANA_PORT=3001 docker compose up -d
+
+# To scrape exporters on other machines, edit monitoring/prometheus.yml
+```
+
 ### ROS2 Connectivity Test (`ros_connectivity_test` package)
 
 ROS2 pub/sub heartbeat test for verifying end-to-end middleware communication.
@@ -268,6 +415,9 @@ ros2 run ros_connectivity_test connectivity_pub
 
 # On machine B: subscribe and report
 ros2 run ros_connectivity_test connectivity_sub
+
+# Monitor topic bandwidth
+ros2 run ros_connectivity_test bw_monitor
 ```
 
 **Publisher** sends JSON heartbeats on `/$ADT4_ROBOT_NAME/connectivity_test/heartbeat` at 1 Hz:
@@ -277,10 +427,12 @@ ros2 run ros_connectivity_test connectivity_sub
 
 **Subscriber** auto-discovers all heartbeat topics and reports per-source:
 - Message count, dropped packets, loss rate
-- Average latency (rolling 100-message window)
+- Latency percentiles (avg, p50, p95, p99, min, max) over rolling 100-message window
 - Alerts when a source goes silent (default: 5s threshold)
 
 Publishes summary on `/connectivity_test/status`.
+
+**Bandwidth Monitor** auto-discovers String topics and reports bytes/sec and msgs/sec per topic. Publishes on `/connectivity_test/bandwidth`.
 
 **Parameters** (via `config/connectivity_test.yaml`):
 - `publish_rate_hz`: Heartbeat rate (default: 1.0)
@@ -292,18 +444,15 @@ Publishes summary on `/connectivity_test/status`.
 ### Pre-experiment connectivity check
 
 ```bash
-# 1. Verify Silvus mesh is up
-./scripts/silvus_status.sh status
+# Quick go/no-go
+./scripts/preflight.sh --network silvus
 
-# 2. Check all peers reachable
-./scripts/ping_sweep.sh sweep --network silvus
-
-# 3. Verify Zenoh middleware
+# Or step by step:
+./scripts/silvus_status.sh status       # Radio health
+./scripts/ping_sweep.sh sweep --network silvus  # Peer reachability
 source ~/dcist_ws/install/setup.zsh
-./scripts/zenoh_check.sh
-
-# 4. Or just run everything at once
-./scripts/net_diag.sh --network silvus
+./scripts/zenoh_check.sh                # Zenoh middleware
+./scripts/net_diag.sh --network silvus  # Everything at once
 ```
 
 ### Debugging a connectivity issue
@@ -321,8 +470,23 @@ source ~/dcist_ws/install/setup.zsh
 # Check radio health (battery, overheating?)
 ./scripts/silvus_status.sh status
 
+# Are the radios configured the same?
+./scripts/silvus_status.sh config-diff
+
 # Watch link stability over time
 ./scripts/link_monitor.sh 2
+
+# Watch for Zenoh peer disconnects
+./scripts/zenoh_watchdog.sh
+```
+
+### Post-experiment analysis
+
+```bash
+# Capture full diagnostic snapshot
+./scripts/collect_logs.sh --network silvus
+
+# Logs saved to ~/adt4_diagnostics/diag_<host>_<timestamp>.log
 ```
 
 ### Setting up Zenoh for a new network
@@ -351,12 +515,29 @@ sudo ip route add 172.20.0.0/16 dev enx306893ab9ba5
 ./scripts/silvus_status.sh status
 ```
 
+### Setting up monitoring dashboards
+
+```bash
+# Start the exporter on each machine
+python3 scripts/prometheus_exporter.py &
+
+# On the base station, start Grafana + Prometheus
+cd monitoring && docker compose up -d
+
+# Edit monitoring/prometheus.yml to add remote exporters:
+#   - targets: ["192.168.100.3:9100"]  # euclid via Silvus
+
+# Open http://<base-station-ip>:3001
+```
+
 ## Launch System Integration
 
-The `launch_components/network_diagnostics.yaml` tmux component starts connectivity pub/sub nodes and provides a diagnostic shell:
+The connectivity pub/sub nodes are included in the `status` and `multi_status` tmux windows, so they run automatically with any experiment that includes `main`.
+
+A standalone `net_diag` launch component is also available:
 
 ```yaml
-# In experiment_manifest.yaml, net_diag is available as a launch component:
+# In experiment_manifest.yaml:
 launch_configs:
     my_experiment: [core, net_diag, ...]
 ```
@@ -368,18 +549,33 @@ network_diagnostics/
 ├── config/
 │   └── topology.yaml              # Network topology (IPs, roles, networks, radios)
 ├── scripts/
-│   ├── net_diag.sh                # Full diagnostic suite (start here)
+│   ├── net_diag.sh                # Full diagnostic suite
+│   ├── preflight.sh               # Pre-flight go/no-go checklist
+│   ├── collect_logs.sh            # Diagnostic snapshot to file
 │   ├── ping_sweep.sh              # Ping, bandwidth, MTU, traceroute
 │   ├── zenoh_check.sh             # Zenoh router status + auto-start
+│   ├── zenoh_watchdog.sh          # Zenoh session connect/disconnect monitor
 │   ├── gen_zenoh_config.sh        # Generate Zenoh config from topology
 │   ├── silvus_status.sh           # Silvus radio JSON-RPC API client
 │   ├── switch_network.sh          # WiFi ↔ Silvus switching
 │   ├── link_monitor.sh            # Live ping dashboard
-│   └── ssh_check.sh               # SSH access verification
+│   ├── ssh_check.sh               # SSH access verification
+│   └── prometheus_exporter.py     # Prometheus metrics HTTP server
+├── monitoring/
+│   ├── docker-compose.yaml        # Grafana + Prometheus stack
+│   ├── prometheus.yml             # Prometheus scrape config
+│   ├── dashboards/
+│   │   └── adt4_overview.json     # Pre-built Grafana dashboard
+│   └── provisioning/              # Grafana auto-provisioning
+│       ├── datasources/
+│       │   └── datasource.yml
+│       └── dashboards/
+│           └── dashboards.yml
 ├── ros_connectivity_test/         # ROS2 heartbeat pub/sub package
 │   ├── ros_connectivity_test/
 │   │   ├── pub_node.py            # Heartbeat publisher
-│   │   └── sub_node.py            # Heartbeat subscriber + reporter
+│   │   ├── sub_node.py            # Heartbeat subscriber + latency reporter
+│   │   └── bw_monitor_node.py     # Topic bandwidth monitor
 │   ├── config/
 │   │   └── connectivity_test.yaml
 │   ├── package.xml
