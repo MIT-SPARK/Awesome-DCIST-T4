@@ -1,6 +1,7 @@
 # gtsam does not exist in pypi for python3.12 and ROMAN does not
 # need it for what we are doing so install other ROMAN dependencies here.
 numpy<2
+setuptools<70
 scipy
 matplotlib
 #gtsam
@@ -12,8 +13,8 @@ opencv-python>=4.6.0
 pyyaml
 torch==2.4.0
 torchvision==0.19.0
-fastsam @ git+https://github.com/CASIA-IVA-Lab/FastSAM@4d153e9
 robotdatapy>=1.0.1
 transforms3d
 gdown
 transformers
+wheel
