@@ -2,7 +2,7 @@
 renderer:
   layer_z_step: 3.0
   layers:
-    3p1: !replace
+    3p1: !reset
       z_offset_scale: 3.0
       visualize: true
       nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}

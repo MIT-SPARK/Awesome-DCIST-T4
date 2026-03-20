@@ -75,18 +75,6 @@ frontend:
       OBJECTS:
         prefix: O
         matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
-  surface_places:
-    type: place_2d
-    prefix: P
-    pure_final_place_size: 3
-    enable_place_purity: false
-    impure_final_place_size: 1
-    cluster_tolerance: .3
-    min_cluster_size: 50
-    max_cluster_size: 100000
-    min_final_place_points: 10
-    place_max_neighbor_z_diff: .5
-    place_overlap_threshold: 0.0
   traversability_places:
     type: traversability
     estimator:
@@ -115,7 +103,6 @@ backend:
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
-    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0
