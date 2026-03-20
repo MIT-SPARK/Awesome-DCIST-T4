@@ -23,6 +23,7 @@ launch_configs:
     heracles_prior_dsg: []
     hydra_multi: []
     transform_publishers: []
+    hydra_experimental: []
 
     main: [core, status]
     map: [main, hydra, roman]
@@ -57,17 +58,19 @@ launch_configs:
     base_station_record: [plan_prior, multi_status, base_station_recording]
     base_station_heracles_record: [plan_prior_heracles, multi_status, base_station_recording]
 
+    hydra_devel: [core, status, hydra]
+
 # Configs build the set of rosparams that will be loaded
 configs:
 
     default_params: []
-
     bag: []
-    spot_prior_dsg: []
-    real_spot: []
-    real_phoenix: []
 
+    devel: []
+    real_phoenix: []
+    real_spot: []
     relocalize: []
+    spot_prior_dsg: []
 
     real_spot_relocalize: [real_spot, relocalize]
     real_phoenix_relocalize: [real_phoenix, relocalize]
@@ -160,3 +163,7 @@ experiments:
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
         config: [real_phoenix_relocalize]
+
+    hydra_devel:
+        launch_config: hydra_devel
+        config: [devel]
