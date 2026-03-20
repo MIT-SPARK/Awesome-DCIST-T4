@@ -1,0 +1,46 @@
+---
+map_window: {type: spatial, max_radius_m: 14.0}
+active_window:
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
+  type: ActiveWindow
+  min_output_separation: 0.5
+  sinks: !replace
+    - type: TsdfOccupancyPublisher
+      min_distance: 0.25
+      use_relative_height: true
+      slice_height: 0.0
+      num_slices: 1
+frontend: !replace
+  type: GraphBuilder
+  enable_mesh_objects: false
+  serialize_dsg_mesh: false
+  clear_object_meshes: true
+  pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
+  graph_connector:
+    layers:
+      - {parent_layer: MESH_PLACES, child_layers: [layer: OBJECTS]}
+  graph_updater:
+    layer_updates:
+      OBJECTS: {prefix: O, matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}}
+  traversability_places:
+    type: traversability
+    estimator:
+      type: HeightTraversabilityEstimator
+      height_below: 0
+      height_above: 0.5
+      min_confidence: 1.0
+      min_traversability: 1.0
+      pessimistic: true
+    clustering:
+      type: RegionGrowingTraversabilityClustering
+      max_radius: 4.0
+      num_orientation_bins: 20
+    sinks:
+      - type: TraversabilityVisualizer
+backend:
+  update_functors: !replace
+    agents: {type: UpdateAgentsFunctor}
+    objects: {type: UpdateObjectsFunctor}
+    traversability:
+      type: UpdateRegionGrowingTraversabilityFunctor
+      layer: MESH_PLACES
