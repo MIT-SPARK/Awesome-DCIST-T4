@@ -1,5 +1,4 @@
 nodes_to_monitor:
-  dsg_saver: {}
   hydra:
     external_monitor: {type: JsonMonitor}
   semantic_inference:
@@ -14,7 +13,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, hydra: {external_monitor: {type: JsonMonitor}}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {hydra: {external_monitor: {type: JsonMonitor}}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: devel
   logging_key: hydra_devel-devel
@@ -41,5 +40,4 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_semantic_inference:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true

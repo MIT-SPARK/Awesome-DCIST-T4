@@ -116,9 +116,6 @@ backend:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
     surface_places: {type: Update2dPlacesFunctor, min_size: 3}
-    traversability:
-      type: UpdateRegionGrowingTraversabilityFunctor
-      layer: MESH_PLACES
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0

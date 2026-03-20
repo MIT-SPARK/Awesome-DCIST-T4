@@ -41,6 +41,6 @@ backend:
   update_functors: !replace
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
-    traversability:
-      type: UpdateRegionGrowingTraversabilityFunctor
-      layer: MESH_PLACES
+    # traversability:
+    #   type: UpdateRegionGrowingTraversabilityFunctor
+    #   layer: MESH_PLACES
