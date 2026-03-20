@@ -4,13 +4,13 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   min_output_separation: 0.5
-  sinks: !replace
+  sinks: !reset
     - type: TsdfOccupancyPublisher
       min_distance: 0.25
       use_relative_height: true
       slice_height: 0.0
       num_slices: 1
-frontend: !replace
+frontend: !reset
   type: GraphBuilder
   enable_mesh_objects: false
   serialize_dsg_mesh: false
@@ -38,7 +38,7 @@ frontend: !replace
     sinks:
       - type: TraversabilityVisualizer
 backend:
-  update_functors: !replace
+  update_functors: !reset
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
     # traversability:
