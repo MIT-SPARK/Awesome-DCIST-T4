@@ -8,7 +8,10 @@
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
     mid_level_planner_type: identity
-    occupancy_inflation_radius: 0.4  # meters
+    occupancy_inflation_radius: 0.2  # meters
+    use_cost_map: True
+    cost_map_safe_distance: 1.0 # meters
+    cost_map_nearest_obstacle_cost: 5.0 # rbf kernel cost at zero distance
     lookahead_distance: 50  # grid
     use_fake_path_plan: false
     use_fake_spot_interface: true
