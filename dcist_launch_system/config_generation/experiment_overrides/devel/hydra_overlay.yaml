@@ -24,6 +24,7 @@ frontend: !reset
       OBJECTS: {prefix: O, matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}}
   traversability_places:
     type: traversability
+    layer: MESH_PLACES
     estimator:
       type: HeightTraversabilityEstimator
       height_below: 0

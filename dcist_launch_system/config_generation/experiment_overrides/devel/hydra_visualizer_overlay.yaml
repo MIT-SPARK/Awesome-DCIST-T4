@@ -1,9 +1,13 @@
 ---
+plugins:
+  traversability: {type: TraversabilityPlugin}
 renderer:
-  layer_z_step: 3.0
+  layer_z_step: 2.0
   layers:
+    2: {z_offset_scale: 1.0}
+    4: {z_offset_scale: 3.0}
     3p1: !reset
-      z_offset_scale: 3.0
+      z_offset_scale: 2.0
       visualize: true
       nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
       boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
