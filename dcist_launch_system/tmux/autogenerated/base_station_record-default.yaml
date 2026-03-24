@@ -14,8 +14,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: default_params
-  logging_key: base_station-default_params
+  config: default
+  logging_key: base_station_record-default
 options:
   default-command: /bin/zsh
 windows:
@@ -49,3 +49,7 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]
+  - window_name: recording
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: ["ros2 run dcist_launch_system record_topics ${ADT4_OUTPUT_DIR}/recorded_data $(ros2 pkg prefix dcist_launch_system --share)/platforms/base_station_record_topics.txt"]

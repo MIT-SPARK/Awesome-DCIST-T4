@@ -23,8 +23,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: real_spot
-  logging_key: real_spot-real_spot
+  config: default
+  logging_key: real_spot-default
 options:
   default-command: /bin/zsh
 windows:

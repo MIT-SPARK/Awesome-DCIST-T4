@@ -14,8 +14,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: default_params
-  logging_key: base_station_heracles_record-default_params
+  config: default
+  logging_key: base_station_heracles_record-default
 options:
   default-command: /bin/zsh
 windows:

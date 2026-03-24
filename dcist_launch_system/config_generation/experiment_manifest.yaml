@@ -63,18 +63,15 @@ launch_configs:
 # Configs build the set of rosparams that will be loaded
 configs:
 
-    default_params: []
+    default: []
     bag: []
-
     devel: []
-    real_phoenix: []
-    real_spot: []
     relocalize: []
-    spot_prior_dsg: []
+    real_phoenix: []
 
-    real_spot_relocalize: [real_spot, relocalize]
+    spot_prior_dsg: []
     real_phoenix_relocalize: [real_phoenix, relocalize]
-    apollo_relocalize: [real_spot_relocalize]
+    apollo_relocalize: [relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
 # launch files
@@ -82,7 +79,7 @@ experiments:
 
     spot_data_collection:
         launch_config: spot_data_collection
-        config: [real_spot]
+        config: [default]
 
     phoenix_data_collection:
         launch_config: phoenix_data_collection
@@ -98,19 +95,19 @@ experiments:
 
     base_station:
         launch_config: base_station
-        config: [default_params]
+        config: [default]
 
     base_station_record:
         launch_config: base_station_record
-        config: [default_params]
+        config: [default]
 
     base_station_heracles:
         launch_config: base_station_heracles
-        config: [default_params]
+        config: [default]
 
     base_station_heracles_record:
         launch_config: base_station_heracles_record
-        config: [default_params]
+        config: [default]
 
     spot_bag:
         launch_config: spot_bag
@@ -122,23 +119,23 @@ experiments:
 
     real_spot:
         launch_config: real_spot
-        config: [real_spot]
+        config: [default, devel]
 
     real_spot_record:
         launch_config: real_spot_record
-        config: [real_spot]
+        config: [default]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
-        config: [real_spot_relocalize, apollo_relocalize]
+        config: [relocalize, apollo_relocalize]
 
     real_spot_relocalize_record:
         launch_config: real_spot_relocalize_record
-        config: [real_spot_relocalize, apollo_relocalize]
+        config: [relocalize, apollo_relocalize]
 
     real_spot_no_relocalize:
         launch_config: real_spot_no_relocalize
-        config: [real_spot_relocalize]
+        config: [relocalize]
 
     real_phoenix:
         launch_config: real_phoenix

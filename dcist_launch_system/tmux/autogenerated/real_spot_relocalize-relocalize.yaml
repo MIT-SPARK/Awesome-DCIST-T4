@@ -22,8 +22,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, gps_monitor: {}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {}, roman_lc: {}, roman_map: {}, spot_executor: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: real_spot_relocalize
-  logging_key: real_spot_relocalize-real_spot_relocalize
+  config: relocalize
+  logging_key: real_spot_relocalize-relocalize
 options:
   default-command: /bin/zsh
 windows:
