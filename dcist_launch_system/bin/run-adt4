@@ -109,7 +109,7 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
 
 
 def _write_session_to_file(
-    session_path, robot_name, sim_time, bag, bag_delay, fout, verbose=False
+    session_path, robot_name, sim_time, bag, bag_delay, trajectory, fout, verbose=False
 ):
     with session_path.open("r") as fin:
         contents = yaml.safe_load(fin.read())
@@ -123,18 +123,26 @@ def _write_session_to_file(
         "-k",
         f"'.*{robot_name}.*'",
     ] + to_drop
+
     if sim_time:
         bag_args.append("--clock")
 
+    if trajectory:
+        bag_args.append("-f '.*odom.*'")
+
     bag_args = " ".join(bag_args)
-    contents["windows"].append(
-        {
-            "layout": "tiled",
-            "panes": [f"ros2 run ianvs play_rosbag {bag} {bag_args}"],
-            "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
-            "window_name": "play_rosbag",
-        }
-    )
+    window_config = {
+        "layout": "tiled",
+        "panes": [f"ros2 run ianvs play_rosbag {bag} {bag_args}"],
+        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "window_name": "play_rosbag",
+    }
+    if trajectory:
+        cmd = ["ros2", "run", "hydra_ros", "csv_to_tf" f"{trajectory}"]
+        cmd += ["--parent", f"{robot_name}/odom", "--child", f"{robot_name}/base_link"]
+        window_config["panes"].append(" ".join(cmd))
+
+    contents["windows"].append(window_config)
 
     contents = yaml.dump(contents)
     fout.write(contents)
@@ -176,6 +184,13 @@ def _write_session_to_file(
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
+@click.option(
+    "--trajectory",
+    "-t",
+    default=None,
+    type=click.Path(exists=True),
+    help="trajectory to use when replaying bag",
+)
 def main(
     session_path,
     tmuxp_args,
@@ -189,6 +204,7 @@ def main(
     dry_run,
     bag,
     bag_delay,
+    trajectory,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -217,7 +233,14 @@ def main(
 
     with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
         _write_session_to_file(
-            session_path, robot_name, sim_time, bag, bag_delay, fout, verbose=dry_run
+            session_path,
+            robot_name,
+            sim_time,
+            bag,
+            bag_delay,
+            trajectory,
+            fout,
+            verbose=dry_run,
         )
         return _run_session(fout.name, env, tmuxp_args, dry_run)
 
