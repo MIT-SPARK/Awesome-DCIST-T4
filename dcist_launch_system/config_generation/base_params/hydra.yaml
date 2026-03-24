@@ -20,8 +20,9 @@ input:
         max_range: 10.0
         extrinsics: {type: ros}
 active_window:
-  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
+  map_window: {type: temporal, window_sec: 3.0}
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   min_output_separation: 0.5
   object_detector:
