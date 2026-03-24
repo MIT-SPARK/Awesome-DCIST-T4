@@ -109,7 +109,15 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
 
 
 def _write_session_to_file(
-    session_path, robot_name, sim_time, bag, bag_delay, trajectory, fout, verbose=False
+    session_path,
+    robot_name,
+    sim_time,
+    bag,
+    bag_delay,
+    trajectory,
+    trajectory_args,
+    fout,
+    verbose=False,
 ):
     with session_path.open("r") as fin:
         contents = yaml.safe_load(fin.read())
@@ -138,8 +146,11 @@ def _write_session_to_file(
         "window_name": "play_rosbag",
     }
     if trajectory:
-        cmd = ["ros2", "run", "hydra_ros", "csv_to_tf" f"{trajectory}"]
-        cmd += ["--parent", f"{robot_name}/odom", "--child", f"{robot_name}/base_link"]
+        cmd = ["ros2", "run", "hydra_ros", "csv_to_tf", f"{trajectory}"]
+        cmd += ["--parent", f"{robot_name}/odom", "--child", f"{robot_name}/body"]
+        cmd += ["--order", """'["x", "y", "z", "qx", "qy", "qz", "qw"]'"""]
+        cmd += [trajectory_args]
+        cmd += ["--ros-args", "-p", "use_sim_time:=true"]
         window_config["panes"].append(" ".join(cmd))
 
     contents["windows"].append(window_config)
@@ -191,6 +202,9 @@ def _write_session_to_file(
     type=click.Path(exists=True),
     help="trajectory to use when replaying bag",
 )
+@click.option(
+    "--trajectory-args", default=None, help="args to forward to csv publisher"
+)
 def main(
     session_path,
     tmuxp_args,
@@ -205,6 +219,7 @@ def main(
     bag,
     bag_delay,
     trajectory,
+    trajectory_args,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -239,6 +254,7 @@ def main(
             bag,
             bag_delay,
             trajectory,
+            trajectory_args,
             fout,
             verbose=dry_run,
         )
