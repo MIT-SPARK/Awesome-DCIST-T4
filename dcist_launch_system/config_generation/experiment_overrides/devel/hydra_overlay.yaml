@@ -1,6 +1,7 @@
 ---
 map_window: {type: spatial, max_radius_m: 14.0}
 active_window:
+  map_window: !reset {}
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   min_output_separation: 0.5
