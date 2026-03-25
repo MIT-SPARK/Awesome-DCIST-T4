@@ -869,7 +869,7 @@ def _launch_tui(network, topology_path, output_root):
                 Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
                 Input(placeholder="date_description", id="experiment_input"),
                 Rule(),
-                Label("Prior map (select or type custom path below):"),
+                Label("Prior map folder (must have hydra + roman; auto-transferred to targets):"),
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
@@ -893,17 +893,19 @@ def _launch_tui(network, topology_path, output_root):
             return selected[0] if selected else ""
 
         def _get_prior_map(self):
+            """Return (prior_path, source_machine_name) or ("", None)."""
             custom = self.query_one("#prior_input", Input).value.strip()
             if custom:
-                return custom
+                return custom, None
             sel = self.query_one("#prior_select", SelectionList)
             selected = list(sel.selected)
             if selected and selected[0] != "(none)":
                 val = selected[0]
-                if " -> " in val:
-                    return val.split(" -> ", 1)[1]
-                return val
-            return ""
+                info = getattr(self, "_prior_map_info", {})
+                if val in info:
+                    return info[val]  # (path, source_machine)
+                return val, None
+            return "", None
 
         def action_browse_prior(self):
             log = self.query_one("#launch_log", RichLog)
@@ -917,23 +919,22 @@ def _launch_tui(network, topology_path, output_root):
                     exps = list_remote_experiments(m["user"], m["ip"], output_root)
                     for exp in exps:
                         subdirs = exp.get("subdirs", [])
-                        if "hydra" in subdirs:
-                            path = f"{output_root}/{exp['name']}/hydra/frontend/dsg_with_mesh.json"
-                            label = f"{m['name']}:{exp['name']}/hydra -> {path}"
-                            prior_maps.append(label)
-                        if "roman" in subdirs:
-                            path = f"{output_root}/{exp['name']}/roman"
-                            label = f"{m['name']}:{exp['name']}/roman -> {path}"
-                            prior_maps.append(label)
+                        if "hydra" in subdirs and "roman" in subdirs:
+                            path = f"{output_root}/{exp['name']}"
+                            label = f"{m['name']}:{exp['name']} ({exp.get('size', '?')})"
+                            prior_maps.append((label, path, m["name"]))
                 return prior_maps
 
             def on_done(prior_maps):
+                self._prior_map_info = {}  # value -> (path, source_machine)
                 sel = self.query_one("#prior_select", SelectionList)
                 sel.clear_options()
                 sel.add_option(("(none)", "(none)"))
-                for pm in prior_maps:
-                    sel.add_option((pm, pm))
-                log.write(f"[green]Found {len(prior_maps)} prior maps.[/]")
+                for label, path, source in prior_maps:
+                    val = f"{source}:{path}"
+                    self._prior_map_info[val] = (path, source)
+                    sel.add_option((label, val))
+                log.write(f"[green]Found {len(prior_maps)} prior maps (with both hydra + roman).[/]")
 
             def bg():
                 results = do_fetch()
@@ -946,25 +947,42 @@ def _launch_tui(network, topology_path, output_root):
             selected = list(sel.selected)
             session = self._get_selected_session()
             experiment = self.query_one("#experiment_input", Input).value.strip()
-            prior = self._get_prior_map()
+            prior_path, prior_source = self._get_prior_map()
 
             if not session or not experiment:
-                return None, "Session and experiment are required."
+                return None, None, "Session and experiment are required."
             if not selected:
-                return None, "Select at least one robot."
+                return None, None, "Select at least one robot."
+
+            # If prior map comes from a source machine, targets get it as prior_<name>
+            if prior_path and prior_source:
+                exp_name = pathlib.Path(prior_path).name
+                dest_prior = f"{output_root}/prior_{exp_name}"
+                # Source machine uses original path, others use transferred path
+                prior_paths = {}
+                for rname in selected:
+                    if rname == prior_source:
+                        prior_paths[rname] = prior_path
+                    else:
+                        prior_paths[rname] = dest_prior
+            else:
+                prior_paths = {rname: prior_path for rname in selected}
 
             cmds = []
             for rname in selected:
                 m = runtime_config[rname]
                 out_dir = f"{output_root}/{experiment}"
-                prior_flag = f" -p {prior}" if prior else ""
+                rprior = prior_paths.get(rname, "")
+                prior_flag = f" -p {rprior}" if rprior else ""
                 remote_cmd = (
                     f"cd ~/dcist_ws && source install/setup.zsh && "
                     f"run-adt4 {session} -n {m['name']} -c {m['platform_id']} "
                     f"-o {out_dir} -y{prior_flag}"
                 )
                 cmds.append((m, remote_cmd))
-            return cmds, None
+
+            prior_info = (prior_path, prior_source) if prior_path else None
+            return cmds, prior_info, None
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
             if event.button.id == "dry_run_btn":
@@ -976,19 +994,81 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_dry_run(self):
             log = self.query_one("#launch_log", RichLog)
-            cmds, err = self._build_commands()
+            cmds, prior_info, err = self._build_commands()
             if err:
                 log.write(f"[yellow]{err}[/]")
                 return
             log.write("[bold cyan]Dry run:[/]")
+            if prior_info:
+                prior_path, prior_source = prior_info
+                if prior_source:
+                    exp_name = pathlib.Path(prior_path).name
+                    dest_name = f"prior_{exp_name}"
+                    for m, cmd in cmds:
+                        if m["name"] != prior_source:
+                            log.write(
+                                f"  [dim]Transfer prior map: {prior_source} -> {m['name']} "
+                                f"({exp_name} as {dest_name})[/]"
+                            )
+                    log.write(f"  [dim]Prior map path on targets: {output_root}/{dest_name}[/]")
             for m, cmd in cmds:
                 log.write(f"  ssh {m['user']}@{m['ip']} \"{cmd}\"")
+
+        def _transfer_prior_to_robot(self, prior_path, prior_source, target_machine, log):
+            """Transfer prior map from source machine to target if it doesn't exist."""
+            exp_name = pathlib.Path(prior_path).name
+            dest_name = f"prior_{exp_name}"
+            dest_path = f"{output_root}/{dest_name}"
+
+            # Check if prior already exists on target
+            rc, out, _ = ssh_cmd(
+                target_machine["user"], target_machine["ip"],
+                f"test -d {dest_path}/hydra && test -d {dest_path}/roman && echo OK",
+                timeout=10,
+            )
+            if "OK" in out:
+                self.app.call_from_thread(
+                    log.write,
+                    f"  [dim]{target_machine['name']}: prior map already present ({dest_name})[/]"
+                )
+                return True, dest_path
+
+            # Need to transfer
+            self.app.call_from_thread(
+                log.write,
+                f"  [cyan]Transferring prior map to {target_machine['name']}...[/]"
+            )
+            src = runtime_config.get(prior_source)
+            if not src:
+                self.app.call_from_thread(
+                    log.write,
+                    f"  [red]Source machine '{prior_source}' not found in config.[/]"
+                )
+                return False, ""
+
+            ok, method, msg = rsync_transfer(
+                src["user"], src["ip"], prior_path,
+                target_machine["user"], target_machine["ip"], dest_path,
+                relay=False, exclude=["recorded_data/"],
+            )
+            if ok:
+                self.app.call_from_thread(
+                    log.write,
+                    f"  [green]{target_machine['name']}: prior map transferred ({method})[/]"
+                )
+                return True, dest_path
+            else:
+                self.app.call_from_thread(
+                    log.write,
+                    f"  [red]{target_machine['name']}: prior map transfer FAILED: {msg}[/]"
+                )
+                return False, ""
 
         def action_do_launch(self):
             if self._launching:
                 return
             log = self.query_one("#launch_log", RichLog)
-            cmds, err = self._build_commands()
+            cmds, prior_info, err = self._build_commands()
             if err:
                 log.write(f"[yellow]{err}[/]")
                 return
@@ -998,6 +1078,31 @@ def _launch_tui(network, topology_path, output_root):
 
             def do_launch():
                 try:
+                    # Phase 1: Transfer prior maps if needed
+                    if prior_info:
+                        prior_path, prior_source = prior_info
+                        if prior_source:
+                            self.app.call_from_thread(
+                                log.write, "[bold]Phase 1: Ensuring prior maps on all robots...[/]"
+                            )
+                            for m, cmd in cmds:
+                                if m["name"] == prior_source:
+                                    continue  # source already has it
+                                ok, dest_path = self._transfer_prior_to_robot(
+                                    prior_path, prior_source, m, log
+                                )
+                                if not ok:
+                                    self.app.call_from_thread(
+                                        log.write,
+                                        f"  [bold red]ABORT: could not transfer prior to {m['name']}[/]"
+                                    )
+                                    return
+
+                    # Phase 2: Launch on each robot
+                    self.app.call_from_thread(
+                        log.write,
+                        "[bold]" + ("Phase 2: " if prior_info else "") + "Launching...[/]"
+                    )
                     for m, cmd in cmds:
                         out_dir = f"{output_root}/{experiment}"
                         rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {out_dir} && echo EXISTS", timeout=5)
@@ -1009,7 +1114,7 @@ def _launch_tui(network, topology_path, output_root):
                             )
                             continue
                         self.app.call_from_thread(
-                            log.write, f"Launching on [bold]{m['name']}[/]..."
+                            log.write, f"  Launching on [bold]{m['name']}[/]..."
                         )
                         rc, out, launch_err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
                         if rc == 0:
