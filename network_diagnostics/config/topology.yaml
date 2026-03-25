@@ -4,15 +4,15 @@ networks:
   silvus:     { subnet: "192.168.100.0/24" }
 
 machines:
-  euclid:   { role: robot, platform_id: smaug,   desc: "Smaug Jockey",   addresses: { mit_wifi: "10.29.142.76",  penn_wifi: "192.168.129.234", silvus: "192.168.100.3" } }
-  hamilton:  { role: robot, platform_id: topaz,   desc: "Topaz Jockey",   addresses: { mit_wifi: "10.29.208.146", penn_wifi: "192.168.129.210", silvus: "192.168.100.2" } }
+  euclid:   { role: robot, platform_id: smaug,   desc: "Smaug Jockey",   addresses: { mit_wifi: "10.29.141.193", penn_wifi: "192.168.129.234", silvus: "192.168.100.3" } }
+  hamilton:  { role: robot, platform_id: topaz,   desc: "Topaz Jockey",   addresses: { mit_wifi: "10.29.132.168", penn_wifi: "192.168.129.210", silvus: "192.168.100.2" } }
   gauss:     { role: robot, platform_id: samoyed, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.146.126" } }
   lewis:     { role: robot, platform_id: samoyed, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.202.81",  penn_wifi: "192.168.129.218", silvus: "192.168.100.105" } }
   apollo:    { role: robot, platform_id: apollo,  desc: "ARL Spot",       addresses: { silvus: "192.168.100.13" } }
   samoyed:   { role: robot, platform_id: samoyed, desc: "ARL Husky",      addresses: { silvus: "192.168.100.62" } }
   russell:   { role: base_station, desc: "Aaron's laptop",    addresses: { mit_wifi: "10.29.129.166", silvus: "192.168.100.101" } }
   bonsai:    { role: base_station, desc: "RRG dev computer",  addresses: { penn_wifi: "192.168.129.217" } }
-  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.31.129.172", silvus: "192.168.100.100" } }
+  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.29.144.89",  silvus: "192.168.100.100" } }
 
 silvus_radios:
   mgmt_subnet: "172.20.0.0/16"
