@@ -865,10 +865,8 @@ def _launch_tui(network, topology_path, output_root):
                 Label("Session:"),
                 SelectionList(*session_items, id="session_select"),
                 Rule(),
-                Horizontal(
-                    Label("Experiment: "),
-                    Input(placeholder="experiment name for output dir", id="experiment_input"),
-                ),
+                Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
+                Input(placeholder="date_description", id="experiment_input"),
                 Rule(),
                 Label("Prior map (select or type custom path below):"),
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
