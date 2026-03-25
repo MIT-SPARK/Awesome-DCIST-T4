@@ -333,10 +333,11 @@ def verify(ctx, experiment, machine):
 @click.option("--experiment", "-e", required=True, help="Experiment name (for output dir)")
 @click.option("--prior-map", "-p", default=None, help="Prior map path on remote machines")
 @click.option("--base-station", is_flag=True, help="Also launch base station on willow")
+@click.option("--force", "-f", is_flag=True, help="Overwrite existing output directories")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
 @click.option("--dry-run", "-d", is_flag=True, help="Show commands without executing")
 @click.pass_context
-def launch(ctx, machine, session, experiment, prior_map, base_station, yes, dry_run):
+def launch(ctx, machine, session, experiment, prior_map, base_station, force, yes, dry_run):
     """Launch run-adt4 remotely on fleet robots."""
     fc = FleetContext(
         ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"]
@@ -366,13 +367,14 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, yes, dry_
     table.add_column("Prior Map")
 
     cmds = []
+    force_flag = " -f" if force else ""
     for m, sess in targets:
         output_dir = f"{fc.output_root}/{experiment}"
         prior_flag = f" -p {prior_map}" if prior_map else ""
         remote_cmd = (
             f"cd ~/dcist_ws && source install/setup.zsh && "
             f"run-adt4 {sess} -n {m['name']} -c {m['platform_id']} "
-            f"-o {output_dir} -y -f{prior_flag}"
+            f"-o {output_dir} -y{force_flag}{prior_flag}"
         )
         table.add_row(
             m["name"], sess, m["platform_id"] or "---",
@@ -834,7 +836,14 @@ def _launch_tui(network, topology_path, output_root):
     # ---- Launch Screen ----
 
     class LaunchScreen(ModalScreen):
-        BINDINGS = [Binding("escape", "dismiss", "Back")]
+        BINDINGS = [
+            Binding("escape", "dismiss", "Back"),
+            Binding("p", "browse_prior", "Browse Prior Maps"),
+            Binding("ctrl+d", "dry_run", "Dry Run"),
+            Binding("ctrl+l", "do_launch", "Launch"),
+        ]
+
+        _launching = False
 
         def compose(self) -> ComposeResult:
             robots = [
@@ -845,6 +854,7 @@ def _launch_tui(network, topology_path, output_root):
             sessions = sorted(
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
+            session_items = [(s, s) for s in sessions]
 
             yield Vertical(
                 Label("[bold]Launch[/] — configure and launch run-adt4 on robots"),
@@ -852,39 +862,81 @@ def _launch_tui(network, topology_path, output_root):
                 Label("Select robots:"),
                 SelectionList(*robots, id="robot_select"),
                 Rule(),
-                Horizontal(
-                    Label("Session: "),
-                    Input(placeholder="e.g. real_spot-real_spot", id="session_input"),
-                ),
+                Label("Session:"),
+                SelectionList(*session_items, id="session_select"),
+                Rule(),
                 Horizontal(
                     Label("Experiment: "),
                     Input(placeholder="experiment name for output dir", id="experiment_input"),
                 ),
-                Horizontal(
-                    Label("Prior map: "),
-                    Input(placeholder="(optional) path on remote machines", id="prior_input"),
-                ),
                 Rule(),
-                Label(
-                    "Available sessions: "
-                    + ", ".join(sessions[:10])
-                    + ("..." if len(sessions) > 10 else ""),
-                    id="sessions_hint",
-                ),
+                Label("Prior map (select or type custom path below):"),
+                SelectionList(*[("(none)", "(none)")], id="prior_select"),
+                Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
-                Horizontal(
-                    Label("Press [bold]D[/] for dry-run, [bold]Enter[/] to launch"),
-                ),
+                Label("[bold]Ctrl+D[/] dry-run  |  [bold]Ctrl+L[/] launch  |  [bold]P[/] refresh prior maps"),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
                 Footer(),
             )
 
+        def on_mount(self):
+            self.action_browse_prior()
+
+        def _get_selected_session(self):
+            sel = self.query_one("#session_select", SelectionList)
+            selected = list(sel.selected)
+            return selected[0] if selected else ""
+
+        def _get_prior_map(self):
+            custom = self.query_one("#prior_input", Input).value.strip()
+            if custom:
+                return custom
+            sel = self.query_one("#prior_select", SelectionList)
+            selected = list(sel.selected)
+            if selected and selected[0] != "(none)":
+                val = selected[0]
+                if " -> " in val:
+                    return val.split(" -> ", 1)[1]
+                return val
+            return ""
+
+        def action_browse_prior(self):
+            log = self.query_one("#launch_log", RichLog)
+            log.write("[dim]Fetching prior maps from online machines...[/]")
+
+            def do_fetch():
+                prior_maps = []
+                for m in runtime_config.values():
+                    if not m.get("online", False):
+                        continue
+                    exps = list_remote_experiments(m["user"], m["ip"], output_root)
+                    for exp in exps:
+                        if "hydra" in exp.get("subdirs", []):
+                            path = f"{output_root}/{exp['name']}/hydra/frontend/dsg_with_mesh.json"
+                            label = f"{m['name']}:{exp['name']} -> {path}"
+                            prior_maps.append(label)
+                return prior_maps
+
+            def on_done(prior_maps):
+                sel = self.query_one("#prior_select", SelectionList)
+                sel.clear_options()
+                sel.add_option(("(none)", "(none)"))
+                for pm in prior_maps:
+                    sel.add_option((pm, pm))
+                log.write(f"[green]Found {len(prior_maps)} prior maps.[/]")
+
+            def bg():
+                results = do_fetch()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
         def _build_commands(self):
             sel = self.query_one("#robot_select", SelectionList)
             selected = list(sel.selected)
-            session = self.query_one("#session_input", Input).value.strip()
+            session = self._get_selected_session()
             experiment = self.query_one("#experiment_input", Input).value.strip()
-            prior = self.query_one("#prior_input", Input).value.strip()
+            prior = self._get_prior_map()
 
             if not session or not experiment:
                 return None, "Session and experiment are required."
@@ -899,12 +951,12 @@ def _launch_tui(network, topology_path, output_root):
                 remote_cmd = (
                     f"cd ~/dcist_ws && source install/setup.zsh && "
                     f"run-adt4 {session} -n {m['name']} -c {m['platform_id']} "
-                    f"-o {out_dir} -y -f{prior_flag}"
+                    f"-o {out_dir} -y{prior_flag}"
                 )
                 cmds.append((m, remote_cmd))
             return cmds, None
 
-        def key_d(self):
+        def action_dry_run(self):
             log = self.query_one("#launch_log", RichLog)
             cmds, err = self._build_commands()
             if err:
@@ -914,28 +966,45 @@ def _launch_tui(network, topology_path, output_root):
             for m, cmd in cmds:
                 log.write(f"  ssh {m['user']}@{m['ip']} \"{cmd}\"")
 
-        def key_enter(self):
+        def action_do_launch(self):
+            if self._launching:
+                return
             log = self.query_one("#launch_log", RichLog)
             cmds, err = self._build_commands()
             if err:
                 log.write(f"[yellow]{err}[/]")
                 return
 
+            self._launching = True
+            experiment = self.query_one("#experiment_input", Input).value.strip()
+
             def do_launch():
-                for m, cmd in cmds:
-                    self.app.call_from_thread(
-                        log.write, f"Launching on [bold]{m['name']}[/]..."
-                    )
-                    rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
-                    if rc == 0:
+                try:
+                    for m, cmd in cmds:
+                        out_dir = f"{output_root}/{experiment}"
+                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {out_dir} && echo EXISTS", timeout=5)
+                        if "EXISTS" in out:
+                            self.app.call_from_thread(
+                                log.write,
+                                f"  [bold red]SKIP {m['name']}: {out_dir} already exists. "
+                                f"Use CLI with --force to override.[/]"
+                            )
+                            continue
                         self.app.call_from_thread(
-                            log.write, f"  [green]{m['name']}: launched[/]"
+                            log.write, f"Launching on [bold]{m['name']}[/]..."
                         )
-                    else:
-                        self.app.call_from_thread(
-                            log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {err}[/]"
-                        )
-                self.app.call_from_thread(log.write, "[bold]Launch sequence complete.[/]")
+                        rc, out, launch_err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
+                        if rc == 0:
+                            self.app.call_from_thread(
+                                log.write, f"  [green]{m['name']}: launched[/]"
+                            )
+                        else:
+                            self.app.call_from_thread(
+                                log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {launch_err}[/]"
+                            )
+                    self.app.call_from_thread(log.write, "[bold]Launch sequence complete.[/]")
+                finally:
+                    self._launching = False
 
             threading.Thread(target=do_launch, daemon=True).start()
 
