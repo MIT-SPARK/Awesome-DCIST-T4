@@ -756,46 +756,85 @@ def _launch_tui(network, topology_path, output_root):
     class ConfigScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back"),
-            Binding("r", "recheck", "Recheck All"),
         ]
 
         def compose(self) -> ComposeResult:
             yield Vertical(
-                Label("[bold]Fleet Configuration[/] — edit platform IDs and IPs"),
+                Label("[bold]Fleet Configuration[/] — edit machines for this session"),
+                Label("[dim]Changes apply to this session only (topology.yaml is not modified).[/]"),
                 Rule(),
                 VerticalScroll(id="config_form"),
                 Rule(),
+                Label("[bold]Add Machine[/]"),
+                Horizontal(
+                    Label(" Name: "),
+                    Input(placeholder="e.g. newton", id="add_name"),
+                    Label(" Role: "),
+                    Input(placeholder="robot or base_station", id="add_role", value="robot"),
+                    Label(" IP: "),
+                    Input(placeholder="e.g. 192.168.100.50", id="add_ip"),
+                    Label(" Platform: "),
+                    Input(placeholder="e.g. smaug", id="add_platform"),
+                    id="add_row",
+                ),
+                Horizontal(
+                    Button("Add Machine", variant="success", id="add_btn"),
+                    Button("Recheck All", variant="default", id="recheck_btn"),
+                    id="config_buttons",
+                ),
+                Rule(),
                 RichLog(id="config_log", highlight=True, markup=True, max_lines=20),
-                Label("[R] recheck connectivity  |  [Escape] back  |  Changes apply to this session."),
                 Footer(),
             )
 
         def on_mount(self):
+            self._rebuild_form()
+
+        def _rebuild_form(self):
             form = self.query_one("#config_form", VerticalScroll)
-            for mname, mconf in sorted(runtime_config.items()):
+            form.remove_children()
+            ssh_conf = topo.get("ssh", {})
+            robot_user = ssh_conf.get("robot_user", "swarm")
+            base_user = ssh_conf.get("base_station_user", "rrg")
+
+            for mname in sorted(runtime_config):
+                mconf = runtime_config[mname]
                 online = mconf.get("online")
-                status = "[green]ONLINE[/]" if online else (
-                    "[yellow]NO SSH[/]" if mconf.get("ping") else (
-                        "[red]OFFLINE[/]" if online is not None else "[dim]?[/]"
-                    )
-                )
-                platform_input = Input(
-                    value=mconf.get("platform_id", ""),
-                    id=f"plat_{mname}",
-                    placeholder="platform_id",
-                ) if mconf["role"] == "robot" else Static("---")
+                if online:
+                    dot = "[green]\u25cf[/]"
+                elif online is None:
+                    dot = "[dim]\u25cb[/]"
+                elif mconf.get("ping"):
+                    dot = "[yellow]\u25cf[/]"
+                else:
+                    dot = "[red]\u25cf[/]"
+
+                role_label = mconf["role"]
+                is_robot = role_label == "robot"
 
                 form.mount(
-                    Horizontal(
-                        Label(f"  {status} {mname} ({mconf['role']}):  "),
-                        Label(" platform="),
-                        platform_input,
-                        Label(" ip="),
-                        Input(
-                            value=mconf.get("ip", ""),
-                            id=f"ip_{mname}",
-                            placeholder="IP address",
+                    Vertical(
+                        Horizontal(
+                            Label(f" {dot} [bold]{mname}[/] ({role_label})  "),
+                            Button("Remove", variant="error", id=f"rm_{mname}"),
                         ),
+                        Horizontal(
+                            Label("   IP: "),
+                            Input(
+                                value=mconf.get("ip", ""),
+                                id=f"ip_{mname}",
+                                placeholder="IP address",
+                            ),
+                            Label("  Platform ID: "),
+                            Input(
+                                value=mconf.get("platform_id", ""),
+                                id=f"plat_{mname}",
+                                placeholder="platform_id" if is_robot else "N/A",
+                            ) if is_robot else Static("[dim]N/A[/]"),
+                            Label(f"  User: {mconf.get('user', '?')}"),
+                        ),
+                        Rule(line_style="dashed"),
+                        id=f"row_{mname}",
                     )
                 )
 
@@ -812,8 +851,54 @@ def _launch_tui(network, topology_path, output_root):
                 if mname in runtime_config:
                     runtime_config[mname]["ip"] = event.value
 
-        def action_recheck(self):
+        def on_button_pressed(self, event: Button.Pressed) -> None:
             log = self.query_one("#config_log", RichLog)
+            bid = event.button.id
+            if bid == "add_btn":
+                self._add_machine(log)
+            elif bid == "recheck_btn":
+                self._recheck(log)
+            elif bid and bid.startswith("rm_"):
+                mname = bid[3:]
+                if mname in runtime_config:
+                    del runtime_config[mname]
+                    log.write(f"Removed [bold]{mname}[/] from session.")
+                    self._rebuild_form()
+
+        def _add_machine(self, log):
+            name = self.query_one("#add_name", Input).value.strip()
+            role = self.query_one("#add_role", Input).value.strip()
+            ip = self.query_one("#add_ip", Input).value.strip()
+            platform = self.query_one("#add_platform", Input).value.strip()
+
+            if not name or not ip:
+                log.write("[yellow]Name and IP are required.[/]")
+                return
+            if name in runtime_config:
+                log.write(f"[yellow]{name} already exists. Edit it above or remove first.[/]")
+                return
+            if role not in ("robot", "base_station"):
+                log.write("[yellow]Role must be 'robot' or 'base_station'.[/]")
+                return
+
+            ssh_conf = topo.get("ssh", {})
+            user = ssh_conf.get("base_station_user", "rrg") if role == "base_station" else ssh_conf.get("robot_user", "swarm")
+            runtime_config[name] = {
+                "name": name,
+                "role": role,
+                "ip": ip,
+                "user": user,
+                "desc": "",
+                "platform_id": platform if role == "robot" else "",
+            }
+            log.write(f"Added [bold]{name}[/] ({role}) at {ip}")
+            # Clear the add fields
+            self.query_one("#add_name", Input).value = ""
+            self.query_one("#add_ip", Input).value = ""
+            self.query_one("#add_platform", Input).value = ""
+            self._rebuild_form()
+
+        def _recheck(self, log):
             log.write("[dim]Rechecking connectivity...[/]")
 
             def do_check():
@@ -824,9 +909,7 @@ def _launch_tui(network, topology_path, output_root):
             def on_done(all_machines):
                 n_online = sum(1 for m in all_machines if m.get("online"))
                 log.write(f"[green]{n_online}/{len(all_machines)} machines online.[/]")
-                # Rebuild the form to show updated status
-                self.query_one("#config_form", VerticalScroll).remove_children()
-                self.on_mount()
+                self._rebuild_form()
 
             def bg():
                 results = do_check()
