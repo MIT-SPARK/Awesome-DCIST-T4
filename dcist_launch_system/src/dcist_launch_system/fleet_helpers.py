@@ -17,6 +17,28 @@ _DEFAULT_TOPOLOGY = (
 
 _DEFAULT_OUTPUT_ROOT = "~/adt4_output"
 
+_local_ips_cache = None
+
+def get_local_ips():
+    global _local_ips_cache
+    if _local_ips_cache is not None:
+        return _local_ips_cache
+    _local_ips_cache = ["127.0.0.1"]
+    try:
+        result = subprocess.run(["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True)
+        for line in result.stdout.strip().splitlines():
+            parts = line.split()
+            for p in parts:
+                if "/" in p:
+                    try:
+                        ipaddress.ip_interface(p)
+                        _local_ips_cache.append(p.split("/")[0])
+                    except ValueError:
+                        pass
+    except Exception:
+        pass
+    return _local_ips_cache
+
 
 def load_topology(path=None):
     """Parse topology.yaml and return the dict."""
@@ -90,6 +112,9 @@ def check_machine(machine, timeout=3):
 
     Returns dict with keys: ping (bool), ssh (bool), online (bool).
     """
+    if machine["ip"] in get_local_ips():
+        return {"ping": True, "ssh": True, "online": True}
+
     p = ping_host(machine["ip"], timeout=timeout)
     s = False
     if p:
@@ -133,7 +158,21 @@ def ping_host(ip, timeout=2):
 
 
 def ssh_cmd(user, ip, cmd, timeout=5):
-    """Run a command via SSH. Returns (returncode, stdout, stderr)."""
+    """Run a command via SSH (or locally if ip is local). Returns (returncode, stdout, stderr)."""
+    if ip in get_local_ips():
+        try:
+            result = subprocess.run(
+                ["bash", "-c", cmd],
+                capture_output=True,
+                text=True,
+                timeout=timeout + 10,
+            )
+            return result.returncode, result.stdout.strip(), result.stderr.strip()
+        except subprocess.TimeoutExpired:
+            return -1, "", "Local command timeout"
+        except OSError as e:
+            return -1, "", str(e)
+
     ssh_args = [
         "ssh",
         "-o", "ConnectTimeout=" + str(timeout),
