@@ -24,6 +24,7 @@ launch_configs:
     hydra_multi: []
     transform_publishers: []
     hydra_experimental: []
+    gps: []
 
     main: [core, status]
     map: [main, hydra, roman]
@@ -34,22 +35,22 @@ launch_configs:
     plan_prior: [main, prior_dsg, planning]
     plan_prior_heracles: [main, heracles_prior_dsg, planning]
 
-    spot_data_collection: [main, spot_recording, spot_real]
-    phoenix_data_collection: [main, phoenix_recording, phoenix_real]
+    spot_data_collection: [main, spot_recording, spot_real, gps]
+    phoenix_data_collection: [main, phoenix_recording, phoenix_real, gps]
 
     spot_bag: [bag_map, bag_spot]
     spot_bag_relocalize: [bag_relocalize, bag_spot]
 
-    real_spot: [map, spot_real]
-    real_spot_record: [map, spot_real, spot_recording]
-    real_spot_relocalize: [relocalize, spot_real]
-    real_spot_relocalize_record: [relocalize, spot_real, spot_recording]
-    real_spot_no_relocalize: [no_relocalize, spot_real]
+    real_spot: [map, spot_real, gps]
+    real_spot_record: [map, spot_real, spot_recording, gps]
+    real_spot_relocalize: [relocalize, spot_real, gps]
+    real_spot_relocalize_record: [relocalize, spot_real, spot_recording, gps]
+    real_spot_no_relocalize: [no_relocalize, spot_real, gps]
 
-    real_phoenix: [map, phoenix_real]
-    real_phoenix_relocalize: [relocalize, phoenix_real]
-    real_phoenix_relocalize_record: [relocalize, phoenix_real, phoenix_recording]
-    real_phoenix_no_relocalize: [no_relocalize]
+    real_phoenix: [map, phoenix_real, gps]
+    real_phoenix_relocalize: [relocalize, phoenix_real, gps]
+    real_phoenix_relocalize_record: [relocalize, phoenix_real, phoenix_recording, gps]
+    real_phoenix_no_relocalize: [no_relocalize, gps]
 
     spot_prior_dsg: [plan_prior, sim_spot]
     spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
