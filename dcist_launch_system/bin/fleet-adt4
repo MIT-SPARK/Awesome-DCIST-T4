@@ -374,7 +374,7 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, force, ye
         prior_flag = f" -p {prior_map}" if prior_map else ""
         remote_cmd = (
             f"cd ~/dcist_ws && source install/setup.zsh && "
-            f"run-adt4 {sess} -n {m['name']} -c {m['platform_id']} "
+            f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 {sess} -n {m['name']} -c {m['platform_id']} "
             f"-o {output_dir} -y{force_flag}{prior_flag}"
         )
         table.add_row(
@@ -1128,7 +1128,7 @@ def _launch_tui(network, topology_path, output_root):
                 prior_flag = f" -p {rprior}" if rprior else ""
                 remote_cmd = (
                     f"cd ~/dcist_ws && source install/setup.zsh && "
-                    f"run-adt4 {session} -n {m['name']} -c {m['platform_id']} "
+                    f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 {session} -n {m['name']} -c {m['platform_id']} "
                     f"-o {out_dir} -y{prior_flag}"
                 )
                 cmds.append((m, remote_cmd))
