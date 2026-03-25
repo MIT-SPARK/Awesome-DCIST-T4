@@ -1,5 +1,6 @@
 """Shared helpers for fleet-adt4: topology loading, SSH, rsync, and remote queries."""
 
+import base64
 import ipaddress
 import pathlib
 import subprocess
@@ -325,10 +326,10 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     return hashes
 
 
-def get_remote_status(user, ip):
+def get_remote_status(user, ip, silvus_ips=None):
     """Get system status from a remote machine.
 
-    Returns dict with keys: tmux_sessions, ros2_procs, load, disk.
+    Returns dict with keys: tmux_sessions, ros2_procs, load, disk, radio.
     """
     cmd = (
         "echo '---TMUX---'; tmux list-sessions 2>/dev/null || echo 'none'; "
@@ -336,9 +337,58 @@ def get_remote_status(user, ip):
         "echo '---LOAD---'; uptime | sed 's/.*load average: //'; "
         "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'"
     )
+
+    if silvus_ips:
+        # Inject Python script to query Silvus radio JSON-RPC
+        py_script = """
+import urllib.request, json, time, sys, glob
+mgmt_ips = sys.argv[1:]
+local_mgmt = None
+# Check cache first
+for f in glob.glob('/home/*/.cache/silvus_diagnostics/*.radio'):
+    try:
+        with open(f) as fp:
+            local_mgmt = fp.read().strip().split('|')[1]
+            break
+    except: pass
+if not local_mgmt and mgmt_ips:
+    best_t = 999
+    for ip in mgmt_ips:
+        try:
+            t0 = time.time()
+            urllib.request.urlopen(f'http://{ip}/cgi-bin/streamscape_api', timeout=0.2)
+            dt = time.time()-t0
+            if dt < best_t: best_t, local_mgmt = dt, ip
+        except: pass
+if local_mgmt:
+    try:
+        url = f'http://{local_mgmt}/cgi-bin/streamscape_api'
+        batch = [
+            {'jsonrpc':'2.0', 'method':'battery_percent', 'id':1},
+            {'jsonrpc':'2.0', 'method':'routing_tree', 'id':2}
+        ]
+        req = urllib.request.Request(url, data=json.dumps(batch).encode(), headers={'Content-Type':'application/json'})
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            data = {r['id']: r.get('result') for r in json.loads(resp.read())}
+            bat = data.get(1, ['?'])[0]
+            if bat and bat != '?':
+                bat = f"{float(bat):.0f}%"
+            else:
+                bat = '?'
+            mesh = len(data.get(2) or [])
+            print(f"Bat: {bat}, Mesh: {mesh}")
+    except Exception as e:
+        print('API Error')
+else:
+    print('N/A')
+"""
+        encoded = base64.b64encode(py_script.encode()).decode()
+        args = " ".join(silvus_ips)
+        cmd += f"; echo '---SILVUS---'; echo '{encoded}' | base64 -d | python3 - {args}"
+
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
     if rc != 0 or not stdout:
-        return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "disk": "N/A"}
+        return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "disk": "N/A", "radio": "N/A"}
 
     sections = {}
     current = None
@@ -357,4 +407,5 @@ def get_remote_status(user, ip):
         "ros2_procs": (sections.get("ROS2", ["0"])[0] or "0"),
         "load": (sections.get("LOAD", ["N/A"])[0] or "N/A"),
         "disk": (sections.get("DISK", ["N/A"])[0] or "N/A"),
+        "radio": (sections.get("SILVUS", ["N/A"])[0] or "N/A"),
     }
