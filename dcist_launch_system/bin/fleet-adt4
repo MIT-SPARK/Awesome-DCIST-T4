@@ -839,9 +839,9 @@ def _launch_tui(network, topology_path, output_root):
     class LaunchScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back"),
-            Binding("ctrl+p", "browse_prior", "Refresh Prior Maps"),
-            Binding("ctrl+d", "dry_run", "Dry Run"),
-            Binding("ctrl+g", "do_launch", "Launch"),
+            Binding("f3", "browse_prior", "Refresh Prior Maps"),
+            Binding("f4", "dry_run", "Dry Run"),
+            Binding("f5", "do_launch", "Launch"),
         ]
 
         _launching = False
@@ -874,9 +874,9 @@ def _launch_tui(network, topology_path, output_root):
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
                 Horizontal(
-                    Button("Dry Run (Ctrl+D)", variant="default", id="dry_run_btn"),
-                    Button("Launch (Ctrl+G)", variant="success", id="launch_btn"),
-                    Button("Refresh Prior Maps (Ctrl+P)", variant="default", id="refresh_prior_btn"),
+                    Button("Dry Run [F4]", variant="default", id="dry_run_btn"),
+                    Button("Launch [F5]", variant="success", id="launch_btn"),
+                    Button("Refresh Prior Maps [F3]", variant="default", id="refresh_prior_btn"),
                     id="launch_buttons",
                 ),
                 Rule(),
@@ -916,9 +916,14 @@ def _launch_tui(network, topology_path, output_root):
                         continue
                     exps = list_remote_experiments(m["user"], m["ip"], output_root)
                     for exp in exps:
-                        if "hydra" in exp.get("subdirs", []):
+                        subdirs = exp.get("subdirs", [])
+                        if "hydra" in subdirs:
                             path = f"{output_root}/{exp['name']}/hydra/frontend/dsg_with_mesh.json"
-                            label = f"{m['name']}:{exp['name']} -> {path}"
+                            label = f"{m['name']}:{exp['name']}/hydra -> {path}"
+                            prior_maps.append(label)
+                        if "roman" in subdirs:
+                            path = f"{output_root}/{exp['name']}/roman"
+                            label = f"{m['name']}:{exp['name']}/roman -> {path}"
                             prior_maps.append(label)
                 return prior_maps
 
