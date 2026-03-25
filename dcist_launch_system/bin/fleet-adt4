@@ -528,9 +528,15 @@ def _launch_tui(network, topology_path, output_root):
 
         def compose(self) -> ComposeResult:
             yield Vertical(
-                Label("[bold]Map Browser[/] — select an experiment, then [T]ransfer or [V]erify"),
+                Label("[bold]Map Browser[/] — click an experiment, then use buttons below"),
                 Rule(),
                 Tree("Fleet Maps", id="map_tree"),
+                Rule(),
+                Horizontal(
+                    Button("Transfer", variant="primary", id="maps_transfer_btn"),
+                    Button("Verify", variant="default", id="maps_verify_btn"),
+                    Button("Refresh", variant="default", id="maps_refresh_btn"),
+                ),
                 Rule(),
                 RichLog(id="map_log", highlight=True, markup=True, max_lines=50),
                 Footer(),
@@ -577,6 +583,14 @@ def _launch_tui(network, topology_path, output_root):
                 self.app.call_from_thread(on_done, results)
 
             threading.Thread(target=bg, daemon=True).start()
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "maps_transfer_btn":
+                self.action_transfer_selected()
+            elif event.button.id == "maps_verify_btn":
+                self.action_verify_selected()
+            elif event.button.id == "maps_refresh_btn":
+                self._refresh_maps()
 
         def on_tree_node_selected(self, event):
             node = event.node
@@ -629,15 +643,16 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 SelectionList(*others, id="dest_select"),
                 Rule(),
-                Label("Press [bold]Enter[/] to start transfer, [bold]Escape[/] to cancel"),
+                Button("Start Transfer", variant="success", id="start_transfer_btn"),
                 RichLog(id="transfer_log", highlight=True, markup=True, max_lines=100),
                 Footer(),
             )
 
-        def on_selection_list_selected_changed(self, event):
-            pass
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "start_transfer_btn":
+                self._do_transfer()
 
-        def key_enter(self):
+        def _do_transfer(self):
             sel = self.query_one("#dest_select", SelectionList)
             selected_names = list(sel.selected)
             if not selected_names:
@@ -968,9 +983,6 @@ def _launch_tui(network, topology_path, output_root):
     class LaunchScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
-            Binding("f3", "browse_prior", "Refresh Prior Maps", priority=True),
-            Binding("f4", "dry_run", "Dry Run", priority=True),
-            Binding("f5", "do_launch", "Launch", priority=True),
         ]
 
         _launching = False
@@ -1003,9 +1015,9 @@ def _launch_tui(network, topology_path, output_root):
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
                 Horizontal(
-                    Button("Dry Run [F4]", variant="default", id="dry_run_btn"),
-                    Button("Launch [F5]", variant="success", id="launch_btn"),
-                    Button("Refresh Prior Maps [F3]", variant="default", id="refresh_prior_btn"),
+                    Button("Dry Run", variant="default", id="dry_run_btn"),
+                    Button("Launch", variant="success", id="launch_btn"),
+                    Button("Refresh Prior Maps", variant="default", id="refresh_prior_btn"),
                     id="launch_buttons",
                 ),
                 Rule(),
@@ -1265,17 +1277,21 @@ def _launch_tui(network, topology_path, output_root):
     class MonitorScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
-            Binding("r", "refresh", "Refresh", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
             yield Vertical(
-                Label("[bold]Fleet Monitor[/] — press [R] to refresh, [Escape] to go back"),
+                Label("[bold]Fleet Monitor[/]"),
                 Rule(),
                 DataTable(id="monitor_table"),
+                Button("Refresh", variant="default", id="monitor_refresh_btn"),
                 RichLog(id="monitor_log", highlight=True, markup=True, max_lines=20),
                 Footer(),
             )
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "monitor_refresh_btn":
+                self.action_refresh()
 
         def on_mount(self):
             table = self.query_one("#monitor_table", DataTable)
