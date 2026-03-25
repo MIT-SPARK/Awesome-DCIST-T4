@@ -84,6 +84,40 @@ def resolve_machines(topology, network, roles=None, names=None):
     return machines
 
 
+def check_machine(machine, timeout=3):
+    """Check if a machine is both pingable and SSH-accessible.
+
+    Returns dict with keys: ping (bool), ssh (bool), online (bool).
+    """
+    p = ping_host(machine["ip"], timeout=timeout)
+    s = False
+    if p:
+        rc, _, _ = ssh_cmd(machine["user"], machine["ip"], "hostname", timeout=timeout)
+        s = rc == 0
+    return {"ping": p, "ssh": s, "online": p and s}
+
+
+def filter_reachable(machines, max_workers=8, quiet=False):
+    """Check reachability of machines and return (reachable, unreachable) lists.
+
+    Each machine dict gets 'ping', 'ssh', 'online' keys added.
+    """
+    def check(m):
+        result = check_machine(m)
+        m.update(result)
+        return m
+
+    results = run_parallel(check, machines, max_workers=max_workers)
+    reachable = []
+    unreachable = []
+    for m, _ in results:
+        if m.get("online"):
+            reachable.append(m)
+        else:
+            unreachable.append(m)
+    return reachable, unreachable
+
+
 def ping_host(ip, timeout=2):
     """Single-packet ping, returns True if reachable."""
     try:
@@ -141,18 +175,19 @@ def _run_rsync(cmd, stream=False, timeout=3600):
             line = line.rstrip()
             if not line:
                 continue
-            # rsync --info=progress2 outputs lines like: 1.23G  45%  12.34MB/s  0:01:23
             if "%" in line:
                 print(f"\r    {line}", end="", flush=True)
                 last_line = line
-            else:
-                pass  # skip file listing noise
-        proc.wait()
         if last_line:
             print()  # newline after progress
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            return -1, "", "rsync timeout"
         stderr = proc.stderr.read() if proc.stderr else ""
         return proc.returncode, "", stderr
-    except (subprocess.TimeoutExpired, OSError) as e:
+    except OSError as e:
         return -1, "", str(e)
 
 
@@ -302,7 +337,7 @@ def get_remote_status(user, ip):
         "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'"
     )
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
-    if rc != 0 and not stdout:
+    if rc != 0 or not stdout:
         return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "disk": "N/A"}
 
     sections = {}
