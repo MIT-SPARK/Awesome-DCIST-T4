@@ -987,6 +987,21 @@ def _launch_tui(network, topology_path, output_root):
 
         _launching = False
 
+        DEFAULT_CSS = """
+        LaunchScreen #robot_select {
+            max-height: 6;
+        }
+        LaunchScreen #session_select {
+            max-height: 12;
+        }
+        LaunchScreen #prior_select {
+            max-height: 10;
+        }
+        LaunchScreen #launch_log {
+            min-height: 6;
+        }
+        """
+
         def compose(self) -> ComposeResult:
             robots = [
                 (m["name"], m["name"], m.get("online", False))
@@ -998,7 +1013,7 @@ def _launch_tui(network, topology_path, output_root):
             ) if _TMUX_DIR.exists() else []
             session_items = [(s, s) for s in sessions]
 
-            yield Vertical(
+            yield VerticalScroll(
                 Label("[bold]Launch[/] — configure and launch run-adt4 on robots"),
                 Rule(),
                 Label("Select robots:"),
@@ -1022,8 +1037,8 @@ def _launch_tui(network, topology_path, output_root):
                 ),
                 Rule(),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
-                Footer(),
             )
+            yield Footer()
 
         def on_mount(self):
             self.action_browse_prior()
