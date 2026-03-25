@@ -4,6 +4,19 @@
 import os
 import pathlib
 import sys
+
+# Auto-detect and re-exec with spark_env Python if needed.
+# Uses ADT4_ENV env var (set in ~/.zshrc on each machine).
+_SPARK_PYTHON = None
+_adt4_env = os.environ.get("ADT4_ENV", "")
+if _adt4_env:
+    _candidate = pathlib.Path(_adt4_env) / "spark_env" / "bin" / "python3"
+    if _candidate.exists():
+        _SPARK_PYTHON = str(_candidate)
+
+if _SPARK_PYTHON and os.path.realpath(sys.executable) != os.path.realpath(_SPARK_PYTHON):
+    os.execv(_SPARK_PYTHON, [_SPARK_PYTHON] + sys.argv)
+
 import threading
 
 import click
