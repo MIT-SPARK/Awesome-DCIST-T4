@@ -7,14 +7,14 @@ import sys
 
 # Auto-detect and re-exec with spark_env Python if needed.
 # Uses ADT4_ENV env var (set in ~/.zshrc on each machine).
-_adt4_env = os.environ.get("ADT4_ENV", "")
-if _adt4_env:
-    _spark_env = pathlib.Path(_adt4_env) / "spark_env"
-    _spark_python = _spark_env / "bin" / "python3"
-    # Check if we're already running inside the spark_env venv
-    _in_venv = sys.prefix == str(_spark_env)
-    if _spark_python.exists() and not _in_venv:
-        os.execv(str(_spark_python), [str(_spark_python)] + sys.argv)
+if not os.environ.get("_FLEET_ADT4_REEXEC"):
+    _adt4_env = os.environ.get("ADT4_ENV", "")
+    if _adt4_env:
+        _spark_env = pathlib.Path(_adt4_env) / "spark_env"
+        _spark_python = _spark_env / "bin" / "python3"
+        if _spark_python.exists() and sys.prefix != str(_spark_env):
+            os.environ["_FLEET_ADT4_REEXEC"] = "1"
+            os.execv(str(_spark_python), [str(_spark_python)] + sys.argv)
 
 import threading
 
@@ -29,7 +29,9 @@ if str(_pkg_src) not in sys.path:
     sys.path.insert(0, str(_pkg_src))
 
 from dcist_launch_system.fleet_helpers import (
+    check_machine,
     detect_network,
+    filter_reachable,
     get_remote_status,
     hash_remote_experiment,
     list_remote_experiments,
@@ -90,11 +92,10 @@ def cli(ctx, network, topology, output_root):
 
 
 @cli.command()
-@click.option("--ssh", "check_ssh", is_flag=True, help="Also verify SSH access")
 @click.option("--role", type=click.Choice(["robot", "base_station"]), default=None)
 @click.pass_context
-def status(ctx, check_ssh, role):
-    """Check connectivity to all fleet machines."""
+def status(ctx, role):
+    """Check connectivity to all fleet machines (ping + SSH)."""
     fc = FleetContext(
         ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"]
     )
@@ -104,17 +105,11 @@ def status(ctx, check_ssh, role):
         click.secho("No machines found on this network.", fg="yellow")
         return
 
-    click.secho(f"Network: {fc.network}  ({len(machines)} machines)", fg="cyan")
+    click.secho(f"Network: {fc.network}  ({len(machines)} machines)\nChecking connectivity...", fg="cyan")
+    reachable, unreachable = filter_reachable(machines)
 
-    def check(m):
-        ping_ok = ping_host(m["ip"])
-        ssh_ok = None
-        if check_ssh and ping_ok:
-            rc, _, _ = ssh_cmd(m["user"], m["ip"], "hostname")
-            ssh_ok = rc == 0
-        return ping_ok, ssh_ok
-
-    results = run_parallel(check, machines)
+    all_checked = reachable + unreachable
+    all_checked.sort(key=lambda m: m["name"])
 
     table = Table(title="Fleet Status")
     table.add_column("Machine", style="bold")
@@ -122,24 +117,27 @@ def status(ctx, check_ssh, role):
     table.add_column("Platform")
     table.add_column("IP")
     table.add_column("Ping")
-    if check_ssh:
-        table.add_column("SSH")
+    table.add_column("SSH")
+    table.add_column("Status")
 
-    result_map = {id(item): res for item, res in results}
-    for m in machines:
-        ping_ok, ssh_ok = result_map[id(m)]
-        ping_str = "[green]OK[/]" if ping_ok else "[red]FAIL[/]"
-        row = [m["name"], m["role"], m["platform_id"] or "---", m["ip"], ping_str]
-        if check_ssh:
-            if ssh_ok is None:
-                row.append("[dim]---[/]")
-            elif ssh_ok:
-                row.append("[green]OK[/]")
-            else:
-                row.append("[red]FAIL[/]")
-        table.add_row(*row)
+    for m in all_checked:
+        ping_str = "[green]OK[/]" if m.get("ping") else "[red]FAIL[/]"
+        ssh_str = "[green]OK[/]" if m.get("ssh") else "[red]FAIL[/]"
+        if m.get("online"):
+            status_str = "[bold green]ONLINE[/]"
+        elif m.get("ping"):
+            status_str = "[yellow]NO SSH[/]"
+        else:
+            status_str = "[red]OFFLINE[/]"
+        table.add_row(
+            m["name"], m["role"], m["platform_id"] or "---",
+            m["ip"], ping_str, ssh_str, status_str,
+        )
 
     console.print(table)
+    n_online = len(reachable)
+    n_total = len(all_checked)
+    console.print(f"\n[bold]{n_online}/{n_total} machines online[/]")
 
 
 # --- maps ---
@@ -216,8 +214,9 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
         click.secho(f"Source machine '{src_machine}' not found on network.", fg="red")
         return
 
-    if not ping_host(src["ip"]):
-        click.secho(f"Source machine '{src_machine}' ({src['ip']}) is not reachable.", fg="red")
+    src_status = check_machine(src)
+    if not src_status["online"]:
+        click.secho(f"Source machine '{src_machine}' ({src['ip']}) is not reachable (ping={src_status['ping']}, ssh={src_status['ssh']}).", fg="red")
         return
 
     if dst_machines:
@@ -229,17 +228,11 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
         click.secho("No destination machines found.", fg="yellow")
         return
 
-    # Filter to online machines
-    click.echo("Checking destination reachability...")
-    reachable = []
-    skipped = []
-    for dst in dests:
-        if ping_host(dst["ip"]):
-            reachable.append(dst)
-        else:
-            skipped.append(dst)
-    for dst in skipped:
-        click.secho(f"  Skipping {dst['name']} ({dst['ip']}) — offline", fg="yellow")
+    click.echo("Checking destination reachability (ping + SSH)...")
+    reachable, unreachable = filter_reachable(dests)
+    for dst in unreachable:
+        reason = "offline" if not dst.get("ping") else "no SSH"
+        click.secho(f"  Skipping {dst['name']} ({dst['ip']}) — {reason}", fg="yellow")
     if not reachable:
         click.secho("No reachable destinations.", fg="red")
         return
@@ -549,7 +542,7 @@ def _launch_tui(network, topology_path, output_root):
             log.write("[dim]Fetching experiments from fleet...[/]")
 
             def do_fetch():
-                machines = list(runtime_config.values())
+                machines = [m for m in runtime_config.values() if m.get("online", False)]
 
                 def fetch(m):
                     return list_remote_experiments(m["user"], m["ip"], output_root)
@@ -623,7 +616,7 @@ def _launch_tui(network, topology_path, output_root):
             others = [
                 (m["name"], m["name"])
                 for m in runtime_config.values()
-                if m["name"] != self.src_machine and m["role"] == "robot"
+                if m["name"] != self.src_machine and m.get("online", False)
             ]
             yield Vertical(
                 Label(
@@ -651,17 +644,21 @@ def _launch_tui(network, topology_path, output_root):
             log = self.query_one("#transfer_log", RichLog)
             src = runtime_config[self.src_machine]
             src_path = f"{output_root}/{self.experiment}"
+            dest_name = f"prior_{self.experiment}"
+
+            log.write(f"[yellow]Excluding rosbags. Saving as {dest_name}[/]")
 
             def do_transfers():
                 for dname in selected_names:
                     dst = runtime_config[dname]
-                    dst_path = f"{output_root}/{self.experiment}"
+                    dst_path = f"{output_root}/{dest_name}"
                     self.app.call_from_thread(
                         log.write, f"Transferring to [bold]{dname}[/]..."
                     )
                     ok, method, msg = rsync_transfer(
                         src["user"], src["ip"], src_path,
                         dst["user"], dst["ip"], dst_path,
+                        exclude=["recorded_data/"],
                     )
                     if ok:
                         self.app.call_from_thread(
@@ -698,7 +695,7 @@ def _launch_tui(network, topology_path, output_root):
             log.write("[dim]Computing checksums across fleet...[/]")
 
             def do_verify():
-                machines = list(runtime_config.values())
+                machines = [m for m in runtime_config.values() if m.get("online", False)]
 
                 def fetch(m):
                     return hash_remote_experiment(m["user"], m["ip"], output_root, self.experiment)
@@ -754,41 +751,85 @@ def _launch_tui(network, topology_path, output_root):
     # ---- Config Screen ----
 
     class ConfigScreen(ModalScreen):
-        BINDINGS = [Binding("escape", "dismiss", "Back")]
+        BINDINGS = [
+            Binding("escape", "dismiss", "Back"),
+            Binding("r", "recheck", "Recheck All"),
+        ]
 
         def compose(self) -> ComposeResult:
             yield Vertical(
-                Label("[bold]Fleet Configuration[/] — edit platform IDs below"),
+                Label("[bold]Fleet Configuration[/] — edit platform IDs and IPs"),
                 Rule(),
                 VerticalScroll(id="config_form"),
                 Rule(),
-                Label("Changes apply to this session only. Press [bold]Escape[/] to go back."),
+                RichLog(id="config_log", highlight=True, markup=True, max_lines=20),
+                Label("[R] recheck connectivity  |  [Escape] back  |  Changes apply to this session."),
                 Footer(),
             )
 
         def on_mount(self):
             form = self.query_one("#config_form", VerticalScroll)
             for mname, mconf in sorted(runtime_config.items()):
-                if mconf["role"] != "robot":
-                    continue
+                online = mconf.get("online")
+                status = "[green]ONLINE[/]" if online else (
+                    "[yellow]NO SSH[/]" if mconf.get("ping") else (
+                        "[red]OFFLINE[/]" if online is not None else "[dim]?[/]"
+                    )
+                )
+                platform_input = Input(
+                    value=mconf.get("platform_id", ""),
+                    id=f"plat_{mname}",
+                    placeholder="platform_id",
+                ) if mconf["role"] == "robot" else Static("---")
+
                 form.mount(
                     Horizontal(
-                        Label(f"  {mname}: platform_id = ", id=f"label_{mname}"),
+                        Label(f"  {status} {mname} ({mconf['role']}):  "),
+                        Label(" platform="),
+                        platform_input,
+                        Label(" ip="),
                         Input(
-                            value=mconf.get("platform_id", ""),
-                            id=f"input_{mname}",
-                            placeholder="platform_id",
+                            value=mconf.get("ip", ""),
+                            id=f"ip_{mname}",
+                            placeholder="IP address",
                         ),
                     )
                 )
 
         def on_input_changed(self, event: Input.Changed):
-            # Extract machine name from input id
             input_id = event.input.id
-            if input_id and input_id.startswith("input_"):
-                mname = input_id[6:]
+            if not input_id:
+                return
+            if input_id.startswith("plat_"):
+                mname = input_id[5:]
                 if mname in runtime_config:
                     runtime_config[mname]["platform_id"] = event.value
+            elif input_id.startswith("ip_"):
+                mname = input_id[3:]
+                if mname in runtime_config:
+                    runtime_config[mname]["ip"] = event.value
+
+        def action_recheck(self):
+            log = self.query_one("#config_log", RichLog)
+            log.write("[dim]Rechecking connectivity...[/]")
+
+            def do_check():
+                machines = list(runtime_config.values())
+                reachable, unreachable = filter_reachable(machines)
+                return reachable + unreachable
+
+            def on_done(all_machines):
+                n_online = sum(1 for m in all_machines if m.get("online"))
+                log.write(f"[green]{n_online}/{len(all_machines)} machines online.[/]")
+                # Rebuild the form to show updated status
+                self.query_one("#config_form", VerticalScroll).remove_children()
+                self.on_mount()
+
+            def bg():
+                results = do_check()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
 
     # ---- Launch Screen ----
 
@@ -797,7 +838,7 @@ def _launch_tui(network, topology_path, output_root):
 
         def compose(self) -> ComposeResult:
             robots = [
-                (m["name"], m["name"], True)
+                (m["name"], m["name"], m.get("online", False))
                 for m in runtime_config.values()
                 if m["role"] == "robot"
             ]
@@ -929,7 +970,7 @@ def _launch_tui(network, topology_path, output_root):
             log.write("[dim]Refreshing...[/]")
 
             def do_fetch():
-                machines = list(runtime_config.values())
+                machines = [m for m in runtime_config.values() if m.get("online", False)]
 
                 def fetch(m):
                     return get_remote_status(m["user"], m["ip"])
@@ -979,7 +1020,7 @@ def _launch_tui(network, topology_path, output_root):
         """
 
         BINDINGS = [
-            Binding("s", "refresh_status", "Status"),
+            Binding("s", "refresh_status", "Recheck"),
             Binding("m", "show_maps", "Maps"),
             Binding("l", "show_launch", "Launch"),
             Binding("c", "show_config", "Config"),
@@ -1008,31 +1049,32 @@ def _launch_tui(network, topology_path, output_root):
             table.add_column("IP", key="ip")
             table.add_column("Ping", key="ping")
             table.add_column("SSH", key="ssh")
+            table.add_column("Status", key="status")
             self.action_refresh_status()
 
         def action_refresh_status(self):
             log = self.query_one("#log", RichLog)
-            log.write("[dim]Checking fleet connectivity...[/]")
+            log.write("[dim]Checking fleet connectivity (ping + SSH)...[/]")
 
             def do_check():
                 machines = list(runtime_config.values())
+                reachable, unreachable = filter_reachable(machines)
+                return reachable + unreachable
 
-                def check(m):
-                    p = ping_host(m["ip"])
-                    s = False
-                    if p:
-                        rc, _, _ = ssh_cmd(m["user"], m["ip"], "hostname")
-                        s = rc == 0
-                    return p, s
-
-                return run_parallel(check, machines)
-
-            def on_done(results):
+            def on_done(all_machines):
                 table = self.query_one("#status_table", DataTable)
                 table.clear()
-                for m, (p, s) in sorted(results, key=lambda x: x[0]["name"]):
-                    ping_str = "OK" if p else "FAIL"
-                    ssh_str = "OK" if s else ("FAIL" if p else "---")
+                n_online = 0
+                for m in sorted(all_machines, key=lambda x: x["name"]):
+                    ping_str = "OK" if m.get("ping") else "FAIL"
+                    ssh_str = "OK" if m.get("ssh") else "FAIL"
+                    if m.get("online"):
+                        status_str = "ONLINE"
+                        n_online += 1
+                    elif m.get("ping"):
+                        status_str = "NO SSH"
+                    else:
+                        status_str = "OFFLINE"
                     table.add_row(
                         m["name"],
                         m["role"],
@@ -1040,8 +1082,15 @@ def _launch_tui(network, topology_path, output_root):
                         m["ip"],
                         ping_str,
                         ssh_str,
+                        status_str,
                     )
-                log.write("[green]Status updated.[/]")
+                    # Update runtime_config with reachability
+                    runtime_config[m["name"]].update({
+                        "ping": m.get("ping", False),
+                        "ssh": m.get("ssh", False),
+                        "online": m.get("online", False),
+                    })
+                log.write(f"[green]{n_online}/{len(all_machines)} machines online.[/]")
 
             def bg():
                 results = do_check()
