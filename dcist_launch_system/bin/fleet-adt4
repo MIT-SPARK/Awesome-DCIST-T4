@@ -189,11 +189,12 @@ def maps(ctx, machine, detail):
 @click.option("--as", "dest_name", default=None, help="Rename experiment on destination")
 @click.option("--to", "dst_machines", multiple=True, help="Dest machines (default: all other robots)")
 @click.option("--subdir", default=None, help="Only transfer a specific subdir (e.g. hydra, roman)")
+@click.option("--include-bags", is_flag=True, help="Include recorded_data/ (rosbags). Excluded by default.")
 @click.option("--delete", is_flag=True, help="Delete extraneous files on destination")
 @click.option("--relay", is_flag=True, help="Force relay through operator machine")
 @click.pass_context
-def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, delete, relay):
-    """Transfer an experiment from one machine to others."""
+def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, include_bags, delete, relay):
+    """Transfer an experiment from one machine to others. Excludes rosbags by default."""
     fc = FleetContext(
         ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"]
     )
@@ -219,6 +220,9 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, dele
     label = f"{src_machine}:{src_path}"
     if dest_name != experiment:
         label += f" (as {dest_name})"
+    exclude = [] if include_bags else ["recorded_data/"]
+    if not include_bags:
+        click.secho("Excluding rosbags (recorded_data/). Use --include-bags to include.", fg="yellow")
     click.secho(f"Transferring {label} -> {len(dests)} machines", fg="cyan")
     for dst in dests:
         dst_path = f"{fc.output_root}/{dest_name}{path_suffix}"
@@ -226,7 +230,7 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, dele
         ok, method, msg = rsync_transfer(
             src["user"], src["ip"], src_path,
             dst["user"], dst["ip"], dst_path,
-            delete=delete, relay=relay, stream=True,
+            delete=delete, relay=relay, stream=True, exclude=exclude,
         )
         if ok:
             click.secho(f"OK ({method})", fg="green")
