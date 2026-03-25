@@ -69,6 +69,7 @@ The tool reads `topology.yaml` for machine definitions and auto-detects which ne
 1. **Direct robot-to-robot** rsync (default) — fastest, requires inter-robot SSH keys
 2. **Automatic fallback** to relay through the operator machine if direct transfer fails
 3. `--relay` flag to force relay mode
+4. **Auto-rename**: by default, experiments are transferred with a `prior_` prefix (e.g., `03192026_atak_test` becomes `prior_03192026_atak_test` on the destination). Use `--as NAME` to override.
 
 ### Remote Launch
 
@@ -88,7 +89,8 @@ fleet-adt4 --network silvus
 fleet-adt4 status --ssh
 fleet-adt4 maps --detail
 fleet-adt4 transfer --from euclid --experiment 03192026_atak_test --to hamilton
-fleet-adt4 verify --experiment 03192026_atak_test
+fleet-adt4 transfer --from euclid --experiment 03192026_atak_test --as my_prior --to hamilton
+fleet-adt4 verify --experiment prior_03192026_atak_test
 fleet-adt4 launch --session real_spot-real_spot --experiment new_mapping --dry-run
 fleet-adt4 launch --session real_spot-real_spot --experiment new_mapping --base-station
 fleet-adt4 monitor --watch
@@ -161,14 +163,19 @@ fleet-adt4 maps --detail
 # Create a small test directory on euclid first
 ssh swarm@euclid "mkdir -p ~/adt4_output/transfer_test/hydra && echo test > ~/adt4_output/transfer_test/hydra/test.json"
 
-# Transfer to hamilton
+# Transfer to hamilton (saved as prior_transfer_test by default)
 fleet-adt4 transfer --from euclid --experiment transfer_test --to hamilton
 
+# Transfer with custom name
+fleet-adt4 transfer --from euclid --experiment transfer_test --as my_map --to hamilton
+
 # Verify
-fleet-adt4 verify --experiment transfer_test
+fleet-adt4 verify --experiment prior_transfer_test
 ```
 
 - [ ] Transfer completes (direct or relay)
+- [ ] Default destination name is `prior_transfer_test`
+- [ ] `--as` overrides the destination name
 - [ ] Verify shows all files consistent
 - [ ] `--subdir hydra` transfers only the hydra subfolder
 - [ ] `--delete` removes extraneous files on destination

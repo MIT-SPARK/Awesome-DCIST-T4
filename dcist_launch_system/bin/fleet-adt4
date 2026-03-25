@@ -186,12 +186,13 @@ def maps(ctx, machine, detail):
 @cli.command()
 @click.option("--from", "src_machine", required=True, help="Source machine name")
 @click.option("--experiment", "-e", required=True, help="Experiment directory name")
+@click.option("--as", "dest_name", default=None, help="Rename experiment on destination")
 @click.option("--to", "dst_machines", multiple=True, help="Dest machines (default: all other robots)")
 @click.option("--subdir", default=None, help="Only transfer a specific subdir (e.g. hydra, roman)")
 @click.option("--delete", is_flag=True, help="Delete extraneous files on destination")
 @click.option("--relay", is_flag=True, help="Force relay through operator machine")
 @click.pass_context
-def transfer(ctx, src_machine, experiment, dst_machines, subdir, delete, relay):
+def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, delete, relay):
     """Transfer an experiment from one machine to others."""
     fc = FleetContext(
         ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"]
@@ -211,12 +212,16 @@ def transfer(ctx, src_machine, experiment, dst_machines, subdir, delete, relay):
         click.secho("No destination machines found.", fg="yellow")
         return
 
+    dest_name = dest_name if dest_name is not None else f"prior_{experiment}"
     path_suffix = f"/{subdir}" if subdir else ""
     src_path = f"{fc.output_root}/{experiment}{path_suffix}"
 
-    click.secho(f"Transferring {src_machine}:{src_path} -> {len(dests)} machines", fg="cyan")
+    label = f"{src_machine}:{src_path}"
+    if dest_name != experiment:
+        label += f" (as {dest_name})"
+    click.secho(f"Transferring {label} -> {len(dests)} machines", fg="cyan")
     for dst in dests:
-        dst_path = f"{fc.output_root}/{experiment}{path_suffix}"
+        dst_path = f"{fc.output_root}/{dest_name}{path_suffix}"
         click.echo(f"  -> {dst['name']} ({dst['ip']})... ", nl=False)
         ok, method, msg = rsync_transfer(
             src["user"], src["ip"], src_path,
