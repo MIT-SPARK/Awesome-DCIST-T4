@@ -480,6 +480,7 @@ def _launch_tui(network, topology_path, output_root):
         from textual.containers import Horizontal, Vertical, VerticalScroll
         from textual.screen import ModalScreen
         from textual.widgets import (
+            Button,
             DataTable,
             Footer,
             Header,
@@ -838,9 +839,9 @@ def _launch_tui(network, topology_path, output_root):
     class LaunchScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back"),
-            Binding("p", "browse_prior", "Browse Prior Maps"),
+            Binding("ctrl+p", "browse_prior", "Refresh Prior Maps"),
             Binding("ctrl+d", "dry_run", "Dry Run"),
-            Binding("ctrl+l", "do_launch", "Launch"),
+            Binding("ctrl+g", "do_launch", "Launch"),
         ]
 
         _launching = False
@@ -872,7 +873,13 @@ def _launch_tui(network, topology_path, output_root):
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
-                Label("[bold]Ctrl+D[/] dry-run  |  [bold]Ctrl+L[/] launch  |  [bold]P[/] refresh prior maps"),
+                Horizontal(
+                    Button("Dry Run (Ctrl+D)", variant="default", id="dry_run_btn"),
+                    Button("Launch (Ctrl+G)", variant="success", id="launch_btn"),
+                    Button("Refresh Prior Maps (Ctrl+P)", variant="default", id="refresh_prior_btn"),
+                    id="launch_buttons",
+                ),
+                Rule(),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
                 Footer(),
             )
@@ -953,6 +960,14 @@ def _launch_tui(network, topology_path, output_root):
                 )
                 cmds.append((m, remote_cmd))
             return cmds, None
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "dry_run_btn":
+                self.action_dry_run()
+            elif event.button.id == "launch_btn":
+                self.action_do_launch()
+            elif event.button.id == "refresh_prior_btn":
+                self.action_browse_prior()
 
         def action_dry_run(self):
             log = self.query_one("#launch_log", RichLog)
