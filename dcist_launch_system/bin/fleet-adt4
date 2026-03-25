@@ -206,7 +206,7 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, dele
     if dst_machines:
         dests = [m for m in all_machines if m["name"] in dst_machines]
     else:
-        dests = [m for m in all_machines if m["name"] != src_machine and m["role"] == "robot"]
+        dests = [m for m in all_machines if m["name"] != src_machine]
 
     if not dests:
         click.secho("No destination machines found.", fg="yellow")
@@ -222,11 +222,11 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, dele
     click.secho(f"Transferring {label} -> {len(dests)} machines", fg="cyan")
     for dst in dests:
         dst_path = f"{fc.output_root}/{dest_name}{path_suffix}"
-        click.echo(f"  -> {dst['name']} ({dst['ip']})... ", nl=False)
+        click.echo(f"  -> {dst['name']} ({dst['ip']})...")
         ok, method, msg = rsync_transfer(
             src["user"], src["ip"], src_path,
             dst["user"], dst["ip"], dst_path,
-            delete=delete, relay=relay,
+            delete=delete, relay=relay, stream=True,
         )
         if ok:
             click.secho(f"OK ({method})", fg="green")
