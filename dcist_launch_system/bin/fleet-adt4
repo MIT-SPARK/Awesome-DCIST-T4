@@ -204,6 +204,10 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
         click.secho(f"Source machine '{src_machine}' not found on network.", fg="red")
         return
 
+    if not ping_host(src["ip"]):
+        click.secho(f"Source machine '{src_machine}' ({src['ip']}) is not reachable.", fg="red")
+        return
+
     if dst_machines:
         dests = [m for m in all_machines if m["name"] in dst_machines]
     else:
@@ -211,6 +215,21 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
 
     if not dests:
         click.secho("No destination machines found.", fg="yellow")
+        return
+
+    # Filter to online machines
+    click.echo("Checking destination reachability...")
+    reachable = []
+    skipped = []
+    for dst in dests:
+        if ping_host(dst["ip"]):
+            reachable.append(dst)
+        else:
+            skipped.append(dst)
+    for dst in skipped:
+        click.secho(f"  Skipping {dst['name']} ({dst['ip']}) — offline", fg="yellow")
+    if not reachable:
+        click.secho("No reachable destinations.", fg="red")
         return
 
     dest_name = dest_name if dest_name is not None else f"prior_{experiment}"
@@ -223,8 +242,8 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
     exclude = [] if include_bags else ["recorded_data/"]
     if not include_bags:
         click.secho("Excluding rosbags (recorded_data/). Use --include-bags to include.", fg="yellow")
-    click.secho(f"Transferring {label} -> {len(dests)} machines", fg="cyan")
-    for dst in dests:
+    click.secho(f"Transferring {label} -> {len(reachable)} machines", fg="cyan")
+    for dst in reachable:
         dst_path = f"{fc.output_root}/{dest_name}{path_suffix}"
         click.echo(f"  -> {dst['name']} ({dst['ip']})...")
         ok, method, msg = rsync_transfer(
@@ -233,9 +252,9 @@ def transfer(ctx, src_machine, experiment, dest_name, dst_machines, subdir, incl
             delete=delete, relay=relay, stream=True, exclude=exclude,
         )
         if ok:
-            click.secho(f"OK ({method})", fg="green")
+            click.secho(f"  {dst['name']}: OK ({method})", fg="green")
         else:
-            click.secho(f"FAIL ({method}): {msg}", fg="red")
+            click.secho(f"  {dst['name']}: FAIL ({method}): {msg}", fg="red")
 
 
 # --- verify ---
