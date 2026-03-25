@@ -167,16 +167,20 @@ def rsync_transfer(
     relay=False,
     relay_tmp="/tmp/adt4_transfer",
     stream=False,
+    exclude=None,
 ):
     """Rsync files between machines.
 
     Tries direct transfer first; falls back to relay through operator machine.
     If stream=True, print rsync progress to stdout in real time.
+    exclude: list of rsync --exclude patterns.
     Returns (success: bool, method: str, message: str).
     """
     rsync_flags = ["-az", "--info=progress2"]
     if delete:
         rsync_flags.append("--delete")
+    for pat in (exclude or []):
+        rsync_flags += ["--exclude", pat]
 
     src_remote = f"{src_user}@{src_ip}:{src_path}"
     dst_remote = f"{dst_user}@{dst_ip}:{dst_path}"
