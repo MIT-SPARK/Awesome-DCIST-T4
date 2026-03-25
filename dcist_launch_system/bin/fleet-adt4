@@ -515,9 +515,9 @@ def _launch_tui(network, topology_path, output_root):
 
     class MapsScreen(ModalScreen):
         BINDINGS = [
-            Binding("escape", "dismiss", "Back"),
-            Binding("t", "transfer_selected", "Transfer"),
-            Binding("v", "verify_selected", "Verify"),
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("t", "transfer_selected", "Transfer", priority=True),
+            Binding("v", "verify_selected", "Verify", priority=True),
         ]
 
         def __init__(self):
@@ -607,7 +607,7 @@ def _launch_tui(network, topology_path, output_root):
 
     class TransferScreen(ModalScreen):
         BINDINGS = [
-            Binding("escape", "dismiss", "Back"),
+            Binding("escape", "dismiss", "Back", priority=True),
         ]
 
         def __init__(self, src_machine, experiment):
@@ -678,7 +678,7 @@ def _launch_tui(network, topology_path, output_root):
     # ---- Verify Screen ----
 
     class VerifyScreen(ModalScreen):
-        BINDINGS = [Binding("escape", "dismiss", "Back")]
+        BINDINGS = [Binding("escape", "dismiss", "Back", priority=True)]
 
         def __init__(self, experiment):
             super().__init__()
@@ -755,7 +755,7 @@ def _launch_tui(network, topology_path, output_root):
 
     class ConfigScreen(ModalScreen):
         BINDINGS = [
-            Binding("escape", "dismiss", "Back"),
+            Binding("escape", "dismiss", "Back", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
@@ -921,10 +921,10 @@ def _launch_tui(network, topology_path, output_root):
 
     class LaunchScreen(ModalScreen):
         BINDINGS = [
-            Binding("escape", "dismiss", "Back"),
-            Binding("f3", "browse_prior", "Refresh Prior Maps"),
-            Binding("f4", "dry_run", "Dry Run"),
-            Binding("f5", "do_launch", "Launch"),
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("f3", "browse_prior", "Refresh Prior Maps", priority=True),
+            Binding("f4", "dry_run", "Dry Run", priority=True),
+            Binding("f5", "do_launch", "Launch", priority=True),
         ]
 
         _launching = False
@@ -1218,8 +1218,8 @@ def _launch_tui(network, topology_path, output_root):
 
     class MonitorScreen(ModalScreen):
         BINDINGS = [
-            Binding("escape", "dismiss", "Back"),
-            Binding("r", "refresh", "Refresh"),
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("r", "refresh", "Refresh", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
