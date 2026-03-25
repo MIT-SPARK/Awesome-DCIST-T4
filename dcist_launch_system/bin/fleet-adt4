@@ -983,6 +983,9 @@ def _launch_tui(network, topology_path, output_root):
     class LaunchScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
+            Binding("d", "dry_run", "Dry Run", priority=True),
+            Binding("g", "do_launch", "Launch (g)", priority=True),
+            Binding("r", "browse_prior", "Refresh Priors", priority=True),
         ]
 
         _launching = False
@@ -1028,13 +1031,6 @@ def _launch_tui(network, topology_path, output_root):
                 Label("Prior map folder (must have hydra + roman; auto-transferred to targets):"),
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
-                Rule(),
-                Horizontal(
-                    Button("Dry Run", variant="default", id="dry_run_btn"),
-                    Button("Launch", variant="success", id="launch_btn"),
-                    Button("Refresh Prior Maps", variant="default", id="refresh_prior_btn"),
-                    id="launch_buttons",
-                ),
                 Rule(),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
             )
@@ -1140,13 +1136,6 @@ def _launch_tui(network, topology_path, output_root):
             prior_info = (prior_path, prior_source) if prior_path else None
             return cmds, prior_info, None
 
-        def on_button_pressed(self, event: Button.Pressed) -> None:
-            if event.button.id == "dry_run_btn":
-                self.action_dry_run()
-            elif event.button.id == "launch_btn":
-                self.action_do_launch()
-            elif event.button.id == "refresh_prior_btn":
-                self.action_browse_prior()
 
         def action_dry_run(self):
             log = self.query_one("#launch_log", RichLog)
