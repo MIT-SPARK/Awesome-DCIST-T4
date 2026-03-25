@@ -121,6 +121,41 @@ def ssh_cmd(user, ip, cmd, timeout=5):
         return -1, "", str(e)
 
 
+def _run_rsync(cmd, stream=False, timeout=3600):
+    """Run an rsync command. If stream=True, print output live."""
+    if not stream:
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            return result.returncode, result.stdout, result.stderr
+        except subprocess.TimeoutExpired:
+            return -1, "", "rsync timeout"
+        except OSError as e:
+            return -1, "", str(e)
+
+    try:
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        last_line = ""
+        for line in proc.stdout:
+            line = line.rstrip()
+            if not line:
+                continue
+            # rsync --info=progress2 outputs lines like: 1.23G  45%  12.34MB/s  0:01:23
+            if "%" in line:
+                print(f"\r    {line}", end="", flush=True)
+                last_line = line
+            else:
+                pass  # skip file listing noise
+        proc.wait()
+        if last_line:
+            print()  # newline after progress
+        stderr = proc.stderr.read() if proc.stderr else ""
+        return proc.returncode, "", stderr
+    except (subprocess.TimeoutExpired, OSError) as e:
+        return -1, "", str(e)
+
+
 def rsync_transfer(
     src_user,
     src_ip,
@@ -131,13 +166,15 @@ def rsync_transfer(
     delete=False,
     relay=False,
     relay_tmp="/tmp/adt4_transfer",
+    stream=False,
 ):
     """Rsync files between machines.
 
     Tries direct transfer first; falls back to relay through operator machine.
+    If stream=True, print rsync progress to stdout in real time.
     Returns (success: bool, method: str, message: str).
     """
-    rsync_flags = ["-avz", "--progress"]
+    rsync_flags = ["-az", "--info=progress2"]
     if delete:
         rsync_flags.append("--delete")
 
@@ -147,34 +184,29 @@ def rsync_transfer(
     if not relay:
         # Try direct robot-to-robot
         cmd = ["rsync"] + rsync_flags + ["-e", "ssh -A", src_remote, dst_remote]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-            if result.returncode == 0:
-                return True, "direct", result.stdout
-        except (subprocess.TimeoutExpired, OSError):
-            pass
+        rc, out, err = _run_rsync(cmd, stream=stream)
+        if rc == 0:
+            return True, "direct", out
 
     # Fallback: relay through operator
     local_tmp = pathlib.Path(relay_tmp) / pathlib.Path(src_path).name
     local_tmp.mkdir(parents=True, exist_ok=True)
 
     # Step 1: source -> operator
+    if stream:
+        print("    Fetching to local relay...")
     cmd1 = ["rsync"] + rsync_flags + [src_remote + "/", str(local_tmp) + "/"]
-    try:
-        r1 = subprocess.run(cmd1, capture_output=True, text=True, timeout=600)
-        if r1.returncode != 0:
-            return False, "relay", f"Fetch failed: {r1.stderr}"
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return False, "relay", f"Fetch error: {e}"
+    rc1, _, err1 = _run_rsync(cmd1, stream=stream)
+    if rc1 != 0:
+        return False, "relay", f"Fetch failed: {err1}"
 
     # Step 2: operator -> destination
+    if stream:
+        print("    Pushing from local relay...")
     cmd2 = ["rsync"] + rsync_flags + [str(local_tmp) + "/", dst_remote + "/"]
-    try:
-        r2 = subprocess.run(cmd2, capture_output=True, text=True, timeout=600)
-        if r2.returncode != 0:
-            return False, "relay", f"Push failed: {r2.stderr}"
-    except (subprocess.TimeoutExpired, OSError) as e:
-        return False, "relay", f"Push error: {e}"
+    rc2, _, err2 = _run_rsync(cmd2, stream=stream)
+    if rc2 != 0:
+        return False, "relay", f"Push failed: {err2}"
 
     return True, "relay", "Transfer complete via relay"
 
