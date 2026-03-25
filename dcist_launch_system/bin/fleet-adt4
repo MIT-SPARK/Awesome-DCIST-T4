@@ -1304,17 +1304,21 @@ def _launch_tui(network, topology_path, output_root):
             table.add_column("ROS2 Procs", key="ros2")
             table.add_column("Load", key="load")
             table.add_column("Disk Free", key="disk")
+            table.add_column("Radio (Bat/Mesh)", key="radio")
             self.action_refresh()
 
         def action_refresh(self):
             log = self.query_one("#monitor_log", RichLog)
             log.write("[dim]Refreshing...[/]")
 
+
             def do_fetch():
                 machines = [m for m in runtime_config.values() if m.get("online", False)]
+                sys_radios = topo.get("silvus_radios", {}).get("radios", {})
+                silvus_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
 
                 def fetch(m):
-                    return get_remote_status(m["user"], m["ip"])
+                    return get_remote_status(m["user"], m["ip"], silvus_ips=silvus_ips)
 
                 return run_parallel(fetch, machines)
 
@@ -1323,7 +1327,7 @@ def _launch_tui(network, topology_path, output_root):
                 table.clear()
                 for m, st in sorted(results, key=lambda x: x[0]["name"]):
                     if isinstance(st, Exception):
-                        table.add_row(m["name"], str(st), "", "", "")
+                        table.add_row(m["name"], str(st), "", "", "", "")
                         continue
                     table.add_row(
                         m["name"],
@@ -1331,6 +1335,7 @@ def _launch_tui(network, topology_path, output_root):
                         st["ros2_procs"],
                         st["load"],
                         st["disk"],
+                        st.get("radio", "N/A"),
                     )
                 log.write("[green]Updated.[/]")
 
