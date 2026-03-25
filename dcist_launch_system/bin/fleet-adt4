@@ -29,6 +29,7 @@ if str(_pkg_src) not in sys.path:
     sys.path.insert(0, str(_pkg_src))
 
 from dcist_launch_system.fleet_helpers import (
+    _DEFAULT_TOPOLOGY,
     check_machine,
     detect_network,
     filter_reachable,
@@ -780,6 +781,7 @@ def _launch_tui(network, topology_path, output_root):
                 Horizontal(
                     Button("Add Machine", variant="success", id="add_btn"),
                     Button("Recheck All", variant="default", id="recheck_btn"),
+                    Button("Save to topology.yaml", variant="warning", id="save_btn"),
                     id="config_buttons",
                 ),
                 Rule(),
@@ -858,6 +860,8 @@ def _launch_tui(network, topology_path, output_root):
                 self._add_machine(log)
             elif bid == "recheck_btn":
                 self._recheck(log)
+            elif bid == "save_btn":
+                self._save_topology(log)
             elif bid and bid.startswith("rm_"):
                 mname = bid[3:]
                 if mname in runtime_config:
@@ -916,6 +920,48 @@ def _launch_tui(network, topology_path, output_root):
                 self.app.call_from_thread(on_done, results)
 
             threading.Thread(target=bg, daemon=True).start()
+
+        def _save_topology(self, log):
+            """Write current runtime_config back to topology.yaml."""
+            topo_machines = topo.get("machines", {})
+
+            # Apply runtime_config changes into topo
+            # Track which machines are in runtime_config
+            seen = set()
+            for mname, mconf in runtime_config.items():
+                seen.add(mname)
+                if mname not in topo_machines:
+                    # New machine — create entry
+                    topo_machines[mname] = {
+                        "role": mconf["role"],
+                        "addresses": {active_network: mconf["ip"]},
+                    }
+                    if mconf.get("desc"):
+                        topo_machines[mname]["desc"] = mconf["desc"]
+                else:
+                    # Existing machine — update IP and platform_id
+                    entry = topo_machines[mname]
+                    addrs = entry.setdefault("addresses", {})
+                    addrs[active_network] = mconf["ip"]
+
+                # Update platform_id for robots
+                if mconf["role"] == "robot" and mconf.get("platform_id"):
+                    topo_machines[mname]["platform_id"] = mconf["platform_id"]
+
+            # Remove machines that were deleted from runtime_config
+            for mname in list(topo_machines):
+                if mname not in seen:
+                    del topo_machines[mname]
+
+            topo["machines"] = topo_machines
+
+            topo_path = pathlib.Path(topology_path) if topology_path else _DEFAULT_TOPOLOGY
+            try:
+                with open(topo_path, "w") as f:
+                    yaml.dump(topo, f, default_flow_style=False, sort_keys=False)
+                log.write(f"[green]Saved to {topo_path}[/]")
+            except OSError as e:
+                log.write(f"[red]Failed to save: {e}[/]")
 
     # ---- Launch Screen ----
 
