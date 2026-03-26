@@ -93,7 +93,7 @@ launch:
         - {from: ~/dsg, to: hydra/backend/dsg}
       args: >
         --config-utilities-var robot_name=$(var robot_name)
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer_config.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer.yaml
         --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
         --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
@@ -129,7 +129,7 @@ launch:
         - {from: ~/dsg, to: hydra_multi/backend/dsg}
       args: >
         --config-utilities-var robot_name=$(var robot_name)
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer_config.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_multi_visualizer.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
   # ROMAN
