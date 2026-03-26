@@ -105,6 +105,7 @@ backend:
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
+    traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0

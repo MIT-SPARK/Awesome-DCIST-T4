@@ -146,9 +146,8 @@ def _write_session_to_file(
         "window_name": "play_rosbag",
     }
     if trajectory:
-        cmd = ["ros2", "run", "hydra_ros", "csv_to_tf", f"{trajectory}"]
+        cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{trajectory}"]
         cmd += ["--parent", f"{robot_name}/odom", "--child", f"{robot_name}/body"]
-        cmd += ["--order", """'["x", "y", "z", "qx", "qy", "qz", "qw"]'"""]
         cmd += [trajectory_args]
         cmd += ["--ros-args", "-p", "use_sim_time:=true"]
         window_config["panes"].append(" ".join(cmd))
