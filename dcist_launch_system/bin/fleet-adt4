@@ -3,6 +3,7 @@
 
 import os
 import pathlib
+import shlex
 import sys
 
 # Auto-detect and re-exec with spark_env Python if needed.
@@ -371,11 +372,13 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, force, ye
     force_flag = " -f" if force else ""
     for m, sess in targets:
         output_dir = f"{fc.output_root}/{experiment}"
-        prior_flag = f" -p {prior_map}" if prior_map else ""
+        prior_flag = f" -p {shlex.quote(prior_map)}" if prior_map else ""
         remote_cmd = (
             f"cd ~/dcist_ws && source install/setup.zsh && "
-            f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 {sess} -n {m['name']} -c {m['platform_id']} "
-            f"-o {output_dir} -y{force_flag}{prior_flag}"
+            f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+            f"{shlex.quote(sess)} -n {shlex.quote(m['name'])} "
+            f"-c {shlex.quote(m['platform_id'])} "
+            f"-o {shlex.quote(output_dir)} -y{force_flag}{prior_flag}"
         )
         table.add_row(
             m["name"], sess, m["platform_id"] or "---",
@@ -512,6 +515,7 @@ def _launch_tui(network, topology_path, output_root):
 
     # Runtime config overrides (editable in TUI)
     runtime_config = {m["name"]: dict(m) for m in all_machines}
+    _deleted_machines = set()  # track explicit removals for save
 
     def _fuzzy_match(query, text):
         """Subsequence fuzzy match — all chars of query appear in order in text."""
@@ -651,12 +655,11 @@ def _launch_tui(network, topology_path, output_root):
             Binding("t", "start_transfer", "Start Transfer", priority=True),
         ]
 
-        _transferring = False
-
         def __init__(self, src_machine, experiment):
             super().__init__()
             self.src_machine = src_machine
             self.experiment = experiment
+            self._transferring = False
 
         def compose(self) -> ComposeResult:
             others = [
@@ -870,7 +873,7 @@ def _launch_tui(network, topology_path, output_root):
             self._rebuild_form()
 
         def _rebuild_form(self):
-            form = self.query_one("#config_form", VerticalScroll)
+            form = self.query_one("#config_form", Vertical)
             form.remove_children()
             ssh_conf = topo.get("ssh", {})
             robot_user = ssh_conf.get("robot_user", "swarm")
@@ -938,6 +941,7 @@ def _launch_tui(network, topology_path, output_root):
                 mname = bid[3:]
                 if mname in runtime_config:
                     del runtime_config[mname]
+                    _deleted_machines.add(mname)
                     log.write(f"Removed [bold]{mname}[/] from session.")
                     self._rebuild_form()
 
@@ -958,6 +962,12 @@ def _launch_tui(network, topology_path, output_root):
 
             if not name or not ip:
                 log.write("[yellow]Name and IP are required.[/]")
+                return
+            try:
+                import ipaddress as _ipa
+                _ipa.ip_address(ip)
+            except ValueError:
+                log.write(f"[yellow]Invalid IP address: {ip}[/]")
                 return
             if name in runtime_config:
                 log.write(f"[yellow]{name} already exists. Edit it above or remove first.[/]")
@@ -1029,10 +1039,13 @@ def _launch_tui(network, topology_path, output_root):
                 if mconf["role"] == "robot" and mconf.get("platform_id"):
                     topo_machines[mname]["platform_id"] = mconf["platform_id"]
 
-            # Remove machines that were deleted from runtime_config
-            for mname in list(topo_machines):
-                if mname not in seen:
+            # Only remove machines that were explicitly deleted by the user
+            # (not all machines absent from runtime_config, since that only
+            # contains machines for the active network)
+            for mname in list(_deleted_machines):
+                if mname in topo_machines:
                     del topo_machines[mname]
+            _deleted_machines.clear()
 
             topo["machines"] = topo_machines
 
@@ -1054,8 +1067,6 @@ def _launch_tui(network, topology_path, output_root):
             Binding("r", "browse_prior", "Refresh Priors", priority=True),
         ]
 
-        _launching = False
-
         DEFAULT_CSS = """
         LaunchScreen #robot_select {
             max-height: 6;
@@ -1070,6 +1081,10 @@ def _launch_tui(network, topology_path, output_root):
             min-height: 6;
         }
         """
+
+        def __init__(self):
+            super().__init__()
+            self._launching = False
 
         def compose(self) -> ComposeResult:
             robots = [
@@ -1215,11 +1230,13 @@ def _launch_tui(network, topology_path, output_root):
                 m = runtime_config[rname]
                 out_dir = f"{output_root}/{experiment}"
                 rprior = prior_paths.get(rname, "")
-                prior_flag = f" -p {rprior}" if rprior else ""
+                prior_flag = f" -p {shlex.quote(rprior)}" if rprior else ""
                 remote_cmd = (
                     f"cd ~/dcist_ws && source install/setup.zsh && "
-                    f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 {session} -n {m['name']} -c {m['platform_id']} "
-                    f"-o {out_dir} -y{prior_flag}"
+                    f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+                    f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
+                    f"-c {shlex.quote(m['platform_id'])} "
+                    f"-o {shlex.quote(out_dir)} -y{prior_flag}"
                 )
                 cmds.append((m, remote_cmd))
 
@@ -1258,7 +1275,7 @@ def _launch_tui(network, topology_path, output_root):
             # Check if prior already exists on target
             rc, out, _ = ssh_cmd(
                 target_machine["user"], target_machine["ip"],
-                f"test -d {dest_path}/hydra && test -d {dest_path}/roman && echo OK",
+                f"test -d {shlex.quote(dest_path + '/hydra')} && test -d {shlex.quote(dest_path + '/roman')} && echo OK",
                 timeout=10,
             )
             if "OK" in out:
@@ -1378,7 +1395,7 @@ def _launch_tui(network, topology_path, output_root):
                     )
                     for m, cmd in cmds:
                         out_dir = f"{output_root}/{experiment}"
-                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {out_dir} && echo EXISTS", timeout=5)
+                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {shlex.quote(out_dir)} && echo EXISTS", timeout=5)
                         if "EXISTS" in out:
                             self.app.call_from_thread(
                                 log.write,

@@ -3,6 +3,8 @@
 import base64
 import ipaddress
 import pathlib
+import re
+import shlex
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -223,7 +225,6 @@ def _run_rsync(cmd, stream=False, timeout=3600, progress_callback=None):
                     print(f"\r    {line}", end="", flush=True)
                 last_line = line
                 if progress_callback:
-                    import re
                     m = re.search(r"(\d+)%", line)
                     if m:
                         progress_callback(int(m.group(1)))
@@ -331,9 +332,10 @@ def list_remote_experiments(user, ip, output_root=_DEFAULT_OUTPUT_ROOT):
     Returns list of {name, subdirs: [str], size: str} or empty list on failure.
     """
     # Get experiment dirs and their immediate subdirs + sizes
+    q_root = shlex.quote(output_root)
     cmd = (
-        f"if [ -d {output_root} ]; then "
-        f"  cd {output_root} && "
+        f"if [ -d {q_root} ]; then "
+        f"  cd {q_root} && "
         f"  for d in */; do "
         f'    [ -d "$d" ] || continue; '
         f'    name="${{d%/}}"; '
@@ -365,9 +367,10 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     Returns dict of {relative_path: md5hash} or empty dict on failure.
     """
     exp_path = f"{output_root}/{experiment}"
+    q_path = shlex.quote(exp_path)
     cmd = (
-        f"if [ -d {exp_path} ]; then "
-        f"  cd {exp_path} && "
+        f"if [ -d {q_path} ]; then "
+        f"  cd {q_path} && "
         f"  find . -type f \\( -name '*.json' -o -name '*.pkl' -o -name '*.sparkdsg' "
         f"    -o -name '*.ply' -o -name '*.csv' -o -name '*.bson' \\) "
         f"    -exec md5sum {{}} + 2>/dev/null | sort; "
