@@ -129,7 +129,7 @@ experiments:
 
     real_spot_record:
         launch_config: real_spot_record
-        config: [real_spot]
+        config: [real_spot, real_spot_devel]
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
