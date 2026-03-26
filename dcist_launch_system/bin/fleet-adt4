@@ -31,6 +31,7 @@ if str(_pkg_src) not in sys.path:
 
 from dcist_launch_system.fleet_helpers import (
     _DEFAULT_TOPOLOGY,
+    _quote_path,
     check_machine,
     detect_network,
     filter_reachable,
@@ -372,13 +373,13 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, force, ye
     force_flag = " -f" if force else ""
     for m, sess in targets:
         output_dir = f"{fc.output_root}/{experiment}"
-        prior_flag = f" -p {shlex.quote(prior_map)}" if prior_map else ""
+        prior_flag = f" -p {_quote_path(prior_map)}" if prior_map else ""
         remote_cmd = (
             f"cd ~/dcist_ws && source install/setup.zsh && "
             f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
             f"{shlex.quote(sess)} -n {shlex.quote(m['name'])} "
             f"-c {shlex.quote(m['platform_id'])} "
-            f"-o {shlex.quote(output_dir)} -y{force_flag}{prior_flag}"
+            f"-o {_quote_path(output_dir)} -y{force_flag}{prior_flag}"
         )
         table.add_row(
             m["name"], sess, m["platform_id"] or "---",
@@ -1230,13 +1231,13 @@ def _launch_tui(network, topology_path, output_root):
                 m = runtime_config[rname]
                 out_dir = f"{output_root}/{experiment}"
                 rprior = prior_paths.get(rname, "")
-                prior_flag = f" -p {shlex.quote(rprior)}" if rprior else ""
+                prior_flag = f" -p {_quote_path(rprior)}" if rprior else ""
                 remote_cmd = (
                     f"cd ~/dcist_ws && source install/setup.zsh && "
                     f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                     f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
                     f"-c {shlex.quote(m['platform_id'])} "
-                    f"-o {shlex.quote(out_dir)} -y{prior_flag}"
+                    f"-o {_quote_path(out_dir)} -y{prior_flag}"
                 )
                 cmds.append((m, remote_cmd))
 
@@ -1275,7 +1276,7 @@ def _launch_tui(network, topology_path, output_root):
             # Check if prior already exists on target
             rc, out, _ = ssh_cmd(
                 target_machine["user"], target_machine["ip"],
-                f"test -d {shlex.quote(dest_path + '/hydra')} && test -d {shlex.quote(dest_path + '/roman')} && echo OK",
+                f"test -d {_quote_path(dest_path + '/hydra')} && test -d {_quote_path(dest_path + '/roman')} && echo OK",
                 timeout=10,
             )
             if "OK" in out:
@@ -1395,7 +1396,7 @@ def _launch_tui(network, topology_path, output_root):
                     )
                     for m, cmd in cmds:
                         out_dir = f"{output_root}/{experiment}"
-                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {shlex.quote(out_dir)} && echo EXISTS", timeout=5)
+                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
                         if "EXISTS" in out:
                             self.app.call_from_thread(
                                 log.write,
