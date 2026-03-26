@@ -19,6 +19,20 @@ _DEFAULT_TOPOLOGY = (
 
 _DEFAULT_OUTPUT_ROOT = "~/adt4_output"
 
+
+def _quote_path(path):
+    """Quote a path for safe shell interpolation, preserving ~ expansion.
+
+    shlex.quote wraps in single quotes, which prevents ~ and $HOME expansion.
+    For paths starting with ~, we emit ~/ unquoted followed by the quoted rest.
+    """
+    if path.startswith("~/"):
+        return "~/" + shlex.quote(path[2:])
+    if path == "~":
+        return "~"
+    return shlex.quote(path)
+
+
 _local_ips_cache = None
 
 def get_local_ips():
@@ -332,7 +346,8 @@ def list_remote_experiments(user, ip, output_root=_DEFAULT_OUTPUT_ROOT):
     Returns list of {name, subdirs: [str], size: str} or empty list on failure.
     """
     # Get experiment dirs and their immediate subdirs + sizes
-    q_root = shlex.quote(output_root)
+    # Use _quote_path to handle ~ expansion on the remote side
+    q_root = _quote_path(output_root)
     cmd = (
         f"if [ -d {q_root} ]; then "
         f"  cd {q_root} && "
@@ -367,7 +382,7 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     Returns dict of {relative_path: md5hash} or empty dict on failure.
     """
     exp_path = f"{output_root}/{experiment}"
-    q_path = shlex.quote(exp_path)
+    q_path = _quote_path(exp_path)
     cmd = (
         f"if [ -d {q_path} ]; then "
         f"  cd {q_path} && "
