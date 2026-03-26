@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Optional
-import time
 
 import ros_system_monitor as rsm
-from spark_config.config import Config, register_config
 from sensor_msgs.msg import NavSatFix
+from spark_config.config import Config, register_config
 
 
 class GpsMonitor:

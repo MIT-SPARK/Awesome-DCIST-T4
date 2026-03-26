@@ -1,15 +1,21 @@
 from __future__ import annotations
+
+import time
 from dataclasses import dataclass
 from typing import Optional
-import time
 
 import ros_system_monitor as rsm
-from spark_config.config import Config, register_config
 from rtcm_msgs.msg import Message as RTCMMessage
+from spark_config.config import Config, register_config
 
 
 class NtripMonitor:
-    def __init__(self, config: NtripMonitorConfig, nickname: str, monitor_name: Optional[str] = None):
+    def __init__(
+        self,
+        config: NtripMonitorConfig,
+        nickname: str,
+        monitor_name: Optional[str] = None,
+    ):
         self.nickname = nickname
         self.timeout = config.timeout
         self.last_recv_time = None
@@ -40,9 +46,13 @@ class NtripMonitor:
             return
         dt = time.monotonic() - self.last_recv_time
         if dt > self.timeout:
-            self._report(rsm.Status.ERROR, f"No NTRIP message [Δt={dt:.1f}s since last msg]")
+            self._report(
+                rsm.Status.ERROR, f"No NTRIP message [Δt={dt:.1f}s since last msg]"
+            )
         else:
-            self._report(self.status, f"NTRIP message received [Δt={dt:.1f}s since last msg]")
+            self._report(
+                self.status, f"NTRIP message received [Δt={dt:.1f}s since last msg]"
+            )
 
 
 @register_config("external_monitor", name="NtripMonitor", constructor=NtripMonitor)
