@@ -33,8 +33,10 @@ from dcist_launch_system.fleet_helpers import (
     _DEFAULT_TOPOLOGY,
     _quote_path,
     check_machine,
+    deploy_zenoh_config,
     detect_network,
     filter_reachable,
+    generate_zenoh_endpoints,
     get_remote_status,
     hash_remote_experiment,
     list_remote_experiments,
@@ -470,6 +472,53 @@ def monitor(ctx, machine, watch):
             time.sleep(10)
     except KeyboardInterrupt:
         pass
+
+
+@cli.command()
+@click.option("--machine", "-m", multiple=True, help="Filter to specific machines")
+@click.option("--dry-run", is_flag=True, help="Preview configs without deploying")
+@click.pass_context
+def zenoh(ctx, machine, dry_run):
+    """Generate and deploy Zenoh router configs based on topology.
+
+    Base stations get connect endpoints to robots (star topology).
+    Robots listen only — no outbound connections.
+    """
+    fc = FleetContext(
+        ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"]
+    )
+    names = list(machine) if machine else None
+    machines = fc.machines(names=names)
+
+    table = Table(title=f"Zenoh Configs — network: {fc.network}")
+    table.add_column("Machine", style="bold")
+    table.add_column("Role")
+    table.add_column("Connect Endpoints")
+    table.add_column("Status")
+
+    for m in sorted(machines, key=lambda x: x["name"]):
+        mname = m["name"]
+        try:
+            endpoints = generate_zenoh_endpoints(fc.topology, fc.network, mname)
+        except KeyError:
+            table.add_row(mname, m["role"], "?", "[red]No address[/]")
+            continue
+
+        n = len(endpoints)
+        connect_str = f"{n} robot(s)" if n else "[dim]none (listen only)[/]"
+
+        if dry_run:
+            table.add_row(mname, m["role"], connect_str, "[yellow]dry-run[/]")
+            for ep in endpoints:
+                console.print(f"  [dim]{mname} → {ep}[/]")
+        else:
+            ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
+            status = f"[green]{msg}[/]" if ok else f"[red]{msg}[/]"
+            table.add_row(mname, m["role"], connect_str, status)
+
+    console.print(table)
+    if dry_run:
+        console.print("[yellow]Dry run — no configs deployed. Remove --dry-run to deploy.[/]")
 
 
 # ---------------------------------------------------------------------------
@@ -1487,6 +1536,131 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
+    # ---- Zenoh Screen ----
+
+    class ZenohScreen(ModalScreen):
+        BINDINGS = [
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("d", "deploy_all", "Deploy All", priority=True),
+            Binding("p", "preview", "Preview", priority=True),
+        ]
+
+        def compose(self) -> ComposeResult:
+            yield Vertical(
+                Label("[bold]Zenoh Config Manager[/]"),
+                Label(f"[dim]Network: {active_network} — Base stations connect to robots (star topology)[/]"),
+                Rule(),
+                DataTable(id="zenoh_table"),
+                Rule(),
+                RichLog(id="zenoh_log", highlight=True, markup=True, max_lines=30),
+            )
+            yield Footer()
+
+        def on_mount(self):
+            self._endpoints = {}  # machine_name -> list of endpoint strings
+            table = self.query_one("#zenoh_table", DataTable)
+            table.add_column("Machine", key="machine")
+            table.add_column("Role", key="role")
+            table.add_column("Connect Endpoints", key="connect")
+            table.add_column("Status", key="status")
+            table.cursor_type = "row"
+            self._build_table()
+
+        def _build_table(self):
+            table = self.query_one("#zenoh_table", DataTable)
+            table.clear()
+            log = self.query_one("#zenoh_log", RichLog)
+            self._endpoints = {}
+
+            for mname in sorted(runtime_config):
+                mconf = runtime_config[mname]
+                try:
+                    endpoints = generate_zenoh_endpoints(topo, active_network, mname)
+                    self._endpoints[mname] = endpoints
+                except KeyError:
+                    table.add_row(mname, mconf["role"], "?", "No address", key=mname)
+                    continue
+
+                n = len(endpoints)
+                connect_str = f"{n} robot(s)" if n else "none (listen only)"
+                table.add_row(mname, mconf["role"], connect_str, "Ready", key=mname)
+
+            log.write(f"[dim]Computed endpoints for {len(self._endpoints)} machine(s). Press [bold]d[/] to deploy, [bold]p[/] to preview.[/]")
+
+        def action_preview(self):
+            table = self.query_one("#zenoh_table", DataTable)
+            log = self.query_one("#zenoh_log", RichLog)
+            try:
+                from textual.coordinate import Coordinate
+                row_idx = table.cursor_coordinate.row
+                mname = str(table.get_cell_at(Coordinate(row_idx, 0)))
+            except Exception:
+                log.write("[red]No machine selected.[/]")
+                return
+
+            endpoints = self._endpoints.get(mname)
+            if endpoints is None:
+                log.write(f"[red]No config for {mname}.[/]")
+                return
+
+            log.write(f"\n[bold]Connect endpoints for {mname}:[/]")
+            if endpoints:
+                for ep in endpoints:
+                    log.write(f"  {ep}")
+            else:
+                log.write("  (none — listen only)")
+
+        def action_deploy_all(self):
+            log = self.query_one("#zenoh_log", RichLog)
+            if not self._endpoints:
+                log.write("[red]No machines to deploy to.[/]")
+                return
+
+            log.write("[dim]Deploying configs (updating connect.endpoints in existing JSON5)...[/]")
+
+            def do_deploy():
+                results = []
+                machines_to_deploy = []
+                for mname, endpoints in self._endpoints.items():
+                    mconf = runtime_config.get(mname)
+                    if not mconf or not mconf.get("online"):
+                        results.append((mname, False, "Offline"))
+                        continue
+                    machines_to_deploy.append((mname, mconf, endpoints))
+
+                def deploy_one(item):
+                    mname, mconf, endpoints = item
+                    ok, msg = deploy_zenoh_config(mconf["user"], mconf["ip"], endpoints)
+                    return mname, ok, msg
+
+                parallel_results = run_parallel(deploy_one, machines_to_deploy)
+                for item, result in parallel_results:
+                    if isinstance(result, Exception):
+                        results.append((item[0], False, str(result)))
+                    else:
+                        results.append(result)
+
+                return results
+
+            def on_done(results):
+                table = self.query_one("#zenoh_table", DataTable)
+                for mname, ok, msg in sorted(results):
+                    status = f"[green]{msg}[/]" if ok else f"[red]{msg}[/]"
+                    log.write(f"  {mname}: {status}")
+                    # Update table status column
+                    try:
+                        table.update_cell(mname, "status", msg)
+                    except Exception:
+                        pass
+                deployed = sum(1 for _, ok, _ in results if ok)
+                log.write(f"[bold]Deployed {deployed}/{len(results)} configs.[/]")
+
+            def bg():
+                results = do_deploy()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
     # ---- Main App ----
 
     class FleetApp(App):
@@ -1513,6 +1687,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("l", "show_launch", "Launch"),
             Binding("c", "show_config", "Config"),
             Binding("o", "show_monitor", "Monitor"),
+            Binding("z", "show_zenoh", "Zenoh"),
             Binding("q", "quit", "Quit"),
         ]
 
@@ -1598,6 +1773,9 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_show_monitor(self):
             self.push_screen(MonitorScreen())
+
+        def action_show_zenoh(self):
+            self.push_screen(ZenohScreen())
 
     app = FleetApp()
     app.run()
