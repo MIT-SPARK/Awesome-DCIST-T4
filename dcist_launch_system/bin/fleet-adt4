@@ -1100,6 +1100,7 @@ def _launch_tui(network, topology_path, output_root):
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
+                Vertical(id="launch_progress_area"),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
             )
             yield Footer()
@@ -1248,7 +1249,7 @@ def _launch_tui(network, topology_path, output_root):
             for m, cmd in cmds:
                 log.write(f"  ssh {m['user']}@{m['ip']} \"{cmd}\"")
 
-        def _transfer_prior_to_robot(self, prior_path, prior_source, target_machine, log):
+        def _transfer_prior_to_robot(self, prior_path, prior_source, target_machine, log, progress_callback=None):
             """Transfer prior map from source machine to target if it doesn't exist."""
             exp_name = pathlib.Path(prior_path).name
             dest_name = f"prior_{exp_name}"
@@ -1265,6 +1266,8 @@ def _launch_tui(network, topology_path, output_root):
                     log.write,
                     f"  [dim]{target_machine['name']}: prior map already present ({dest_name})[/]"
                 )
+                if progress_callback:
+                    progress_callback(100)
                 return True, dest_path
 
             # Need to transfer
@@ -1284,8 +1287,11 @@ def _launch_tui(network, topology_path, output_root):
                 src["user"], src["ip"], prior_path,
                 target_machine["user"], target_machine["ip"], dest_path,
                 relay=False, exclude=["recorded_data/"],
+                progress_callback=progress_callback,
             )
             if ok:
+                if progress_callback:
+                    progress_callback(100)
                 self.app.call_from_thread(
                     log.write,
                     f"  [green]{target_machine['name']}: prior map transferred ({method})[/]"
@@ -1297,6 +1303,13 @@ def _launch_tui(network, topology_path, output_root):
                     f"  [red]{target_machine['name']}: prior map transfer FAILED: {msg}[/]"
                 )
                 return False, ""
+
+        def _update_launch_progress(self, name, pct):
+            try:
+                bar = self.query_one(f"#lpb_{name}", ProgressBar)
+                bar.update(progress=pct)
+            except Exception:
+                pass
 
         def action_do_launch(self):
             if self._launching:
@@ -1310,6 +1323,23 @@ def _launch_tui(network, topology_path, output_root):
             self._launching = True
             experiment = self.query_one("#experiment_input", Input).value.strip()
 
+            # Set up progress bars for transfers if needed
+            area = self.query_one("#launch_progress_area", Vertical)
+            area.remove_children()
+            if prior_info:
+                prior_path, prior_source = prior_info
+                if prior_source:
+                    targets = [m for m, _ in cmds if m["name"] != prior_source]
+                    if targets:
+                        area.mount(Label("[bold]Prior map transfer progress:[/]"))
+                        for m in targets:
+                            area.mount(
+                                Vertical(
+                                    Label(f"  {m['name']}:"),
+                                    ProgressBar(total=100, show_eta=False, id=f"lpb_{m['name']}"),
+                                )
+                            )
+
             def do_launch():
                 try:
                     # Phase 1: Transfer prior maps if needed
@@ -1322,8 +1352,17 @@ def _launch_tui(network, topology_path, output_root):
                             for m, cmd in cmds:
                                 if m["name"] == prior_source:
                                     continue  # source already has it
+
+                                def make_cb(mname):
+                                    def cb(pct):
+                                        self.app.call_from_thread(
+                                            self._update_launch_progress, mname, pct
+                                        )
+                                    return cb
+
                                 ok, dest_path = self._transfer_prior_to_robot(
-                                    prior_path, prior_source, m, log
+                                    prior_path, prior_source, m, log,
+                                    progress_callback=make_cb(m["name"]),
                                 )
                                 if not ok:
                                     self.app.call_from_thread(
