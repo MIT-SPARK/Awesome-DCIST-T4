@@ -512,6 +512,20 @@ def _launch_tui(network, topology_path, output_root):
     # Runtime config overrides (editable in TUI)
     runtime_config = {m["name"]: dict(m) for m in all_machines}
 
+    def _fuzzy_match(query, text):
+        """Subsequence fuzzy match — all chars of query appear in order in text."""
+        if not query:
+            return True
+        query = query.lower()
+        text = text.lower()
+        qi = 0
+        for ch in text:
+            if ch == query[qi]:
+                qi += 1
+                if qi == len(query):
+                    return True
+        return False
+
     # ---- Maps Screen ----
 
     class MapsScreen(ModalScreen):
@@ -526,10 +540,12 @@ def _launch_tui(network, topology_path, output_root):
             super().__init__()
             self.selected_machine = None
             self.selected_experiment = None
+            self._all_results = []  # cached fetch results
 
         def compose(self) -> ComposeResult:
             yield Vertical(
                 Label("[bold]Map Browser[/] — select an experiment"),
+                Input(placeholder="Search experiments...", id="map_search"),
                 Rule(),
                 Tree("Fleet Maps", id="map_tree"),
                 Rule(),
@@ -558,22 +574,9 @@ def _launch_tui(network, topology_path, output_root):
                 return run_parallel(fetch, machines)
 
             def on_done(results):
-                tree.clear()
-                for m, exps in sorted(results, key=lambda x: x[0]["name"]):
-                    node = tree.root.add(m["name"], expand=True)
-                    node.data = {"machine": m["name"]}
-                    if isinstance(exps, Exception):
-                        node.add_leaf(f"[red]Error: {exps}[/]")
-                        continue
-                    if not exps:
-                        node.add_leaf("[dim]no experiments[/]")
-                        continue
-                    for exp in sorted(exps, key=lambda e: e["name"]):
-                        subdirs_str = ", ".join(exp["subdirs"]) if exp["subdirs"] else ""
-                        label = f"{exp['name']}  [{subdirs_str}]  ({exp['size']})"
-                        leaf = node.add_leaf(label)
-                        leaf.data = {"machine": m["name"], "experiment": exp["name"]}
-                tree.root.expand_all()
+                self._all_results = results
+                query = self.query_one("#map_search", Input).value.strip()
+                self._populate_tree(query)
                 log.write("[green]Maps loaded.[/]")
 
             def bg():
@@ -581,6 +584,37 @@ def _launch_tui(network, topology_path, output_root):
                 self.app.call_from_thread(on_done, results)
 
             threading.Thread(target=bg, daemon=True).start()
+
+        def _populate_tree(self, query=""):
+            tree = self.query_one("#map_tree", Tree)
+            tree.clear()
+            for m, exps in sorted(self._all_results, key=lambda x: x[0]["name"]):
+                if isinstance(exps, Exception):
+                    node = tree.root.add(m["name"], expand=True)
+                    node.data = {"machine": m["name"]}
+                    node.add_leaf(f"[red]Error: {exps}[/]")
+                    continue
+                filtered = [
+                    e for e in sorted(exps, key=lambda e: e["name"])
+                    if _fuzzy_match(query, e["name"])
+                ] if query else sorted(exps, key=lambda e: e["name"])
+                if not filtered and query:
+                    continue  # hide machines with no matches
+                node = tree.root.add(m["name"], expand=True)
+                node.data = {"machine": m["name"]}
+                if not filtered:
+                    node.add_leaf("[dim]no experiments[/]")
+                    continue
+                for exp in filtered:
+                    subdirs_str = ", ".join(exp["subdirs"]) if exp["subdirs"] else ""
+                    label = f"{exp['name']}  [{subdirs_str}]  ({exp['size']})"
+                    leaf = node.add_leaf(label)
+                    leaf.data = {"machine": m["name"], "experiment": exp["name"]}
+            tree.root.expand_all()
+
+        def on_input_changed(self, event: Input.Changed):
+            if event.input.id == "map_search" and self._all_results:
+                self._populate_tree(event.value.strip())
 
         def on_tree_node_selected(self, event):
             node = event.node
@@ -1001,10 +1035,10 @@ def _launch_tui(network, topology_path, output_root):
                 for m in runtime_config.values()
                 if m["role"] == "robot"
             ]
-            sessions = sorted(
+            self._all_sessions = sorted(
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
-            session_items = [(s, s) for s in sessions]
+            self._all_priors = []  # populated async
 
             yield VerticalScroll(
                 Label("[bold]Launch[/] — configure and launch run-adt4 on robots"),
@@ -1013,12 +1047,14 @@ def _launch_tui(network, topology_path, output_root):
                 SelectionList(*robots, id="robot_select"),
                 Rule(),
                 Label("Session:"),
-                SelectionList(*session_items, id="session_select"),
+                Input(placeholder="Filter sessions...", id="session_search"),
+                SelectionList(*[(s, s) for s in self._all_sessions], id="session_select"),
                 Rule(),
                 Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
                 Input(placeholder="date_description", id="experiment_input"),
                 Rule(),
                 Label("Prior map folder (must have hydra + roman; auto-transferred to targets):"),
+                Input(placeholder="Filter prior maps...", id="prior_search"),
                 SelectionList(*[("(none)", "(none)")], id="prior_select"),
                 Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
                 Rule(),
@@ -1028,6 +1064,23 @@ def _launch_tui(network, topology_path, output_root):
 
         def on_mount(self):
             self.action_browse_prior()
+
+        def on_input_changed(self, event: Input.Changed):
+            if event.input.id == "session_search":
+                query = event.value.strip()
+                sel = self.query_one("#session_select", SelectionList)
+                sel.clear_options()
+                for s in self._all_sessions:
+                    if _fuzzy_match(query, s):
+                        sel.add_option((s, s))
+            elif event.input.id == "prior_search":
+                query = event.value.strip()
+                sel = self.query_one("#prior_select", SelectionList)
+                sel.clear_options()
+                sel.add_option(("(none)", "(none)"))
+                for label, val in self._all_priors:
+                    if _fuzzy_match(query, label):
+                        sel.add_option((label, val))
 
         def _get_selected_session(self):
             sel = self.query_one("#session_select", SelectionList)
@@ -1069,13 +1122,17 @@ def _launch_tui(network, topology_path, output_root):
 
             def on_done(prior_maps):
                 self._prior_map_info = {}  # value -> (path, source_machine)
+                self._all_priors = []  # (label, val) for filtering
                 sel = self.query_one("#prior_select", SelectionList)
                 sel.clear_options()
                 sel.add_option(("(none)", "(none)"))
                 for label, path, source in prior_maps:
                     val = f"{source}:{path}"
                     self._prior_map_info[val] = (path, source)
+                    self._all_priors.append((label, val))
                     sel.add_option((label, val))
+                # Clear any active search filter
+                self.query_one("#prior_search", Input).value = ""
                 log.write(f"[green]Found {len(prior_maps)} prior maps (with both hydra + roman).[/]")
 
             def bg():
