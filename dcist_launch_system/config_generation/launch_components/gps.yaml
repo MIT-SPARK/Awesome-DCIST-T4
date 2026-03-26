@@ -1,6 +1,7 @@
 ---
 nodes_to_monitor:
-  gps_monitor: {}
+  gps_monitor: {external_monitor: {type: GpsMonitor}}
+  ntrip_monitor: {external_monitor: {type: NtripMonitor}}
 windows:
   - window_name: gps
     shell_command_before: source ${ADT4_WS}/install/setup.zsh

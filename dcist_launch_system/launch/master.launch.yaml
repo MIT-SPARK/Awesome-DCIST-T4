@@ -381,19 +381,12 @@ launch:
   - arg: { name: launch_gps, default: 'false' }
   - arg: { name: launch_ntrip, default: 'false' }
   - group:
-    - set_remap: {from: gps/status, to: ros_system_monitor/node_diagnostic_collector}
     - set_remap: {from: ublox_gps_node/fix, to: fix}
     - set_remap: {from: /rtcm, to: rtcm}
     - include:
         if: $(var launch_gps)
         file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
-    - node:
-        if: $(var launch_gps)
-        pkg: gps_dcist
-        exec: gps_monitor_node
-        name: gps_monitor_node
   - group:
-    - set_remap: {from: ntrip/status, to: ros_system_monitor/node_diagnostic_collector}
     - set_remap: {from: ublox_gps_node/fix, to: fix}
     - set_remap: {from: /rtcm, to: rtcm}
     - node:
@@ -403,11 +396,6 @@ launch:
         name: ntrip_client
         param:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ntrip.yaml, allow_substs: true}
-    - node:
-        if: $(var launch_ntrip)
-        pkg: gps_dcist
-        exec: ntrip_monitor_node
-        name: ntrip_monitor_node
 
   # tx_rx
   - arg: { name: launch_tx_rx, default: 'false' }
