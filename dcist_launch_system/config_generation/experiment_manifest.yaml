@@ -72,6 +72,9 @@ configs:
     relocalize: []
     spot_prior_dsg: []
 
+    real_spot_devel: [real_spot, devel]
+    real_spot_relocalize_devel: [real_spot_relocalize, devel]
+
     real_spot_relocalize: [real_spot, relocalize]
     real_phoenix_relocalize: [real_phoenix, relocalize]
     apollo_relocalize: [real_spot_relocalize]
@@ -122,7 +125,7 @@ experiments:
 
     real_spot:
         launch_config: real_spot
-        config: [real_spot]
+        config: [real_spot, real_spot_devel]
 
     real_spot_record:
         launch_config: real_spot_record
@@ -130,7 +133,7 @@ experiments:
 
     real_spot_relocalize:
         launch_config: real_spot_relocalize
-        config: [real_spot_relocalize, apollo_relocalize]
+        config: [real_spot_relocalize, apollo_relocalize, real_spot_relocalize_devel]
 
     real_spot_relocalize_record:
         launch_config: real_spot_relocalize_record
