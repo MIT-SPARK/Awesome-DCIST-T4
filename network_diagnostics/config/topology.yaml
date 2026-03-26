@@ -6,7 +6,7 @@ networks:
 machines:
   euclid:   { role: robot, platform_id: smaug,   desc: "Smaug Jockey",   addresses: { mit_wifi: "10.29.141.193", penn_wifi: "192.168.129.234", silvus: "192.168.100.3" } }
   hamilton:  { role: robot, platform_id: topaz,   desc: "Topaz Jockey",   addresses: { mit_wifi: "10.29.132.168", penn_wifi: "192.168.129.210", silvus: "192.168.100.2" } }
-  gauss:     { role: robot, platform_id: samoyed, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.146.126" } }
+  gauss:     { role: robot, platform_id: samoyed, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.170.181" } }
   lewis:     { role: robot, platform_id: samoyed, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.202.81",  penn_wifi: "192.168.129.218", silvus: "192.168.100.105" } }
   apollo:    { role: robot, platform_id: apollo,  desc: "ARL Spot",       addresses: { silvus: "192.168.100.13" } }
   samoyed:   { role: robot, platform_id: samoyed, desc: "ARL Husky",      addresses: { silvus: "192.168.100.62" } }

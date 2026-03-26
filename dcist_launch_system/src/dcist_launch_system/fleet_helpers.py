@@ -486,3 +486,144 @@ else:
         "disk": (sections.get("DISK", ["N/A"])[0] or "N/A"),
         "radio": (sections.get("SILVUS", ["N/A"])[0] or "N/A"),
     }
+
+
+_ZENOH_CONFIG_FILE = "DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5"
+
+
+def generate_zenoh_endpoints(topology, network, machine_name):
+    """Compute the connect endpoints for a machine based on its role.
+
+    Base stations get connect endpoints to all robots on the network (star topology).
+    Robots get no connect endpoints — base stations connect to them.
+    Returns list of endpoint strings, e.g. ["tcp/192.168.100.3:7447"].
+    """
+    machines = topology.get("machines", {})
+    zenoh_conf = topology.get("zenoh", {})
+    port = zenoh_conf.get("port", 7447)
+
+    info = machines[machine_name]
+    is_base = info.get("role") == "base_station"
+
+    connect_endpoints = []
+    if is_base:
+        # Base stations connect to all robots (star topology)
+        for name, m in sorted(machines.items()):
+            if name == machine_name:
+                continue
+            if m.get("role") != "robot":
+                continue
+            addrs = m.get("addresses", {})
+            if network in addrs:
+                connect_endpoints.append(f"tcp/{addrs[network]}:{port}")
+
+    return connect_endpoints
+
+
+def deploy_zenoh_config(user, ip, endpoints):
+    """Update connect.endpoints in the remote zenoh JSON5 config.
+
+    Backs up existing config to .bak, then uses a Python snippet on the remote
+    machine to surgically replace only the connect.endpoints array in the JSON5
+    file, preserving all other settings (ROS transport, scouting, etc.).
+
+    Returns (success: bool, message: str).
+    """
+    config_file = f"~/{_ZENOH_CONFIG_FILE}"
+    q_file = _quote_path(config_file)
+
+    # Back up existing config
+    backup_cmd = f"[ -f {q_file} ] && cp {q_file} {q_file}.bak || true"
+    ssh_cmd(user, ip, backup_cmd, timeout=5)
+
+    # Check if config file exists
+    rc, _, _ = ssh_cmd(user, ip, f"[ -f {q_file} ] && echo exists", timeout=5)
+    if rc != 0:
+        return False, f"No {_ZENOH_CONFIG_FILE} found"
+
+    # Build the new endpoints array string for JSON5
+    if endpoints:
+        ep_lines = ",\n".join(f'      "{ep}"' for ep in endpoints)
+        new_array = f"[\n{ep_lines}\n    ]"
+    else:
+        new_array = "[]"
+
+    # Use a Python script on the remote to do the surgical replacement.
+    # This finds the endpoints array inside the connect section and replaces it.
+    # Must skip comment lines (/// ...) that also contain 'endpoints:'.
+    py_script = r"""
+import re, sys, os
+
+config_path = os.path.expanduser(sys.argv[1])
+new_endpoints = sys.argv[2]
+
+with open(config_path) as f:
+    content = f.read()
+
+# Find the top-level connect section (not inside a comment)
+connect_match = re.search(r'^\s*connect\s*:\s*\{', content, re.MULTILINE)
+if not connect_match:
+    print("ERROR: Could not find connect section", file=sys.stderr)
+    sys.exit(1)
+
+# Find the matching closing } for the connect section by counting braces
+search_start = connect_match.start()
+depth = 0
+connect_end = len(content)
+for i in range(connect_match.end() - 1, len(content)):
+    if content[i] == '{':
+        depth += 1
+    elif content[i] == '}':
+        depth -= 1
+        if depth == 0:
+            connect_end = i + 1
+            break
+
+connect_section = content[search_start:connect_end]
+
+# Find the actual endpoints: [...] — skip lines that are comments (start with //)
+# Look for 'endpoints:' on a line that does NOT start with // or ///
+ep_pattern = re.compile(r'^(\s*endpoints\s*:\s*)\[(.*?)\]', re.MULTILINE | re.DOTALL)
+ep_match = None
+for m in ep_pattern.finditer(connect_section):
+    # Check if this line is a comment
+    line_start = connect_section.rfind('\n', 0, m.start()) + 1
+    line_prefix = connect_section[line_start:m.start()].strip()
+    if line_prefix.startswith('//'):
+        continue
+    ep_match = m
+    break
+
+if not ep_match:
+    print("ERROR: Could not find endpoints in connect section", file=sys.stderr)
+    sys.exit(1)
+
+# Build replacement
+new_full = ep_match.group(1) + new_endpoints
+
+# Replace in original content (using absolute position)
+abs_start = search_start + ep_match.start()
+abs_end = search_start + ep_match.end()
+new_content = content[:abs_start] + new_full + content[abs_end:]
+
+with open(config_path, 'w') as f:
+    f.write(new_content)
+
+print("OK")
+"""
+    import base64
+    encoded_script = base64.b64encode(py_script.encode()).decode()
+    # Escape the new_array for shell (base64 encode it too)
+    encoded_array = base64.b64encode(new_array.encode()).decode()
+
+    remote_cmd = (
+        f"echo '{encoded_script}' | base64 -d > /tmp/_zenoh_update.py && "
+        f"python3 /tmp/_zenoh_update.py {q_file} "
+        f"\"$(echo '{encoded_array}' | base64 -d)\" && "
+        f"rm -f /tmp/_zenoh_update.py"
+    )
+    rc, stdout, err = ssh_cmd(user, ip, remote_cmd, timeout=15)
+    if rc == 0 and "OK" in stdout:
+        n = len(endpoints)
+        return True, f"Updated ({n} endpoint{'s' if n != 1 else ''})"
+    return False, f"Failed: {err or stdout}"
