@@ -195,9 +195,12 @@ def ssh_cmd(user, ip, cmd, timeout=5):
         return -1, "", str(e)
 
 
-def _run_rsync(cmd, stream=False, timeout=3600):
-    """Run an rsync command. If stream=True, print output live."""
-    if not stream:
+def _run_rsync(cmd, stream=False, timeout=3600, progress_callback=None):
+    """Run an rsync command. If stream=True, print output live.
+
+    progress_callback: optional callable(percent: int) called on each progress update.
+    """
+    if not stream and not progress_callback:
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             return result.returncode, result.stdout, result.stderr
@@ -216,9 +219,15 @@ def _run_rsync(cmd, stream=False, timeout=3600):
             if not line:
                 continue
             if "%" in line:
-                print(f"\r    {line}", end="", flush=True)
+                if stream:
+                    print(f"\r    {line}", end="", flush=True)
                 last_line = line
-        if last_line:
+                if progress_callback:
+                    import re
+                    m = re.search(r"(\d+)%", line)
+                    if m:
+                        progress_callback(int(m.group(1)))
+        if last_line and stream:
             print()  # newline after progress
         try:
             proc.wait(timeout=timeout)
@@ -243,11 +252,13 @@ def rsync_transfer(
     relay_tmp="/tmp/adt4_transfer",
     stream=False,
     exclude=None,
+    progress_callback=None,
 ):
     """Rsync files between machines.
 
     Tries direct transfer first; falls back to relay through operator machine.
     If stream=True, print rsync progress to stdout in real time.
+    progress_callback: optional callable(percent: int) for progress updates.
     exclude: list of rsync --exclude patterns.
     Returns (success: bool, method: str, message: str).
     """
@@ -263,7 +274,7 @@ def rsync_transfer(
     if not relay:
         # Try direct robot-to-robot
         cmd = ["rsync"] + rsync_flags + ["-e", "ssh -A", src_remote, dst_remote]
-        rc, out, err = _run_rsync(cmd, stream=stream)
+        rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
         if rc == 0:
             return True, "direct", out
 
@@ -271,11 +282,20 @@ def rsync_transfer(
     local_tmp = pathlib.Path(relay_tmp) / pathlib.Path(src_path).name
     local_tmp.mkdir(parents=True, exist_ok=True)
 
+    # For relay, split progress: 0-50% for fetch, 50-100% for push
+    def relay_fetch_cb(pct):
+        if progress_callback:
+            progress_callback(pct // 2)
+
+    def relay_push_cb(pct):
+        if progress_callback:
+            progress_callback(50 + pct // 2)
+
     # Step 1: source -> operator
     if stream:
         print("    Fetching to local relay...")
     cmd1 = ["rsync"] + rsync_flags + [src_remote + "/", str(local_tmp) + "/"]
-    rc1, _, err1 = _run_rsync(cmd1, stream=stream)
+    rc1, _, err1 = _run_rsync(cmd1, stream=stream, progress_callback=relay_fetch_cb)
     if rc1 != 0:
         return False, "relay", f"Fetch failed: {err1}"
 
@@ -283,7 +303,7 @@ def rsync_transfer(
     if stream:
         print("    Pushing from local relay...")
     cmd2 = ["rsync"] + rsync_flags + [str(local_tmp) + "/", dst_remote + "/"]
-    rc2, _, err2 = _run_rsync(cmd2, stream=stream)
+    rc2, _, err2 = _run_rsync(cmd2, stream=stream, progress_callback=relay_push_cb)
     if rc2 != 0:
         return False, "relay", f"Push failed: {err2}"
 
