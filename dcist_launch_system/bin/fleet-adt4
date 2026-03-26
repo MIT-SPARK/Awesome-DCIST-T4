@@ -519,6 +519,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("escape", "dismiss", "Back", priority=True),
             Binding("t", "transfer_selected", "Transfer", priority=True),
             Binding("v", "verify_selected", "Verify", priority=True),
+            Binding("r", "refresh_maps", "Refresh", priority=True),
         ]
 
         def __init__(self):
@@ -528,19 +529,16 @@ def _launch_tui(network, topology_path, output_root):
 
         def compose(self) -> ComposeResult:
             yield Vertical(
-                Label("[bold]Map Browser[/] — click an experiment, then use buttons below"),
+                Label("[bold]Map Browser[/] — select an experiment"),
                 Rule(),
                 Tree("Fleet Maps", id="map_tree"),
                 Rule(),
-                Horizontal(
-                    Button("Transfer", variant="primary", id="maps_transfer_btn"),
-                    Button("Verify", variant="default", id="maps_verify_btn"),
-                    Button("Refresh", variant="default", id="maps_refresh_btn"),
-                ),
-                Rule(),
                 RichLog(id="map_log", highlight=True, markup=True, max_lines=50),
-                Footer(),
             )
+            yield Footer()
+
+        def action_refresh_maps(self):
+            self._refresh_maps()
 
         def on_mount(self):
             self._refresh_maps()
@@ -584,14 +582,6 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
-        def on_button_pressed(self, event: Button.Pressed) -> None:
-            if event.button.id == "maps_transfer_btn":
-                self.action_transfer_selected()
-            elif event.button.id == "maps_verify_btn":
-                self.action_verify_selected()
-            elif event.button.id == "maps_refresh_btn":
-                self._refresh_maps()
-
         def on_tree_node_selected(self, event):
             node = event.node
             if hasattr(node, "data") and node.data and "experiment" in node.data:
@@ -623,6 +613,7 @@ def _launch_tui(network, topology_path, output_root):
     class TransferScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
+            Binding("t", "start_transfer", "Start Transfer", priority=True),
         ]
 
         def __init__(self, src_machine, experiment):
@@ -643,14 +634,12 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 SelectionList(*others, id="dest_select"),
                 Rule(),
-                Button("Start Transfer", variant="success", id="start_transfer_btn"),
                 RichLog(id="transfer_log", highlight=True, markup=True, max_lines=100),
-                Footer(),
             )
+            yield Footer()
 
-        def on_button_pressed(self, event: Button.Pressed) -> None:
-            if event.button.id == "start_transfer_btn":
-                self._do_transfer()
+        def action_start_transfer(self):
+            self._do_transfer()
 
         def _do_transfer(self):
             sel = self.query_one("#dest_select", SelectionList)
@@ -772,16 +761,19 @@ def _launch_tui(network, topology_path, output_root):
     class ConfigScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
+            Binding("f2", "add_machine_action", "Add Machine", priority=True),
+            Binding("f3", "recheck_action", "Recheck All", priority=True),
+            Binding("f5", "save_action", "Save to YAML", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
-            yield Vertical(
+            yield VerticalScroll(
                 Label("[bold]Fleet Configuration[/] — edit machines for this session"),
-                Label("[dim]Changes apply to this session only (topology.yaml is not modified).[/]"),
+                Label("[dim]Changes are session-only until you save (F5).[/]"),
                 Rule(),
-                VerticalScroll(id="config_form"),
+                Vertical(id="config_form"),
                 Rule(),
-                Label("[bold]Add Machine[/]"),
+                Label("[bold]Add Machine[/] (fill in fields, then press F2)"),
                 Horizontal(
                     Label(" Name: "),
                     Input(placeholder="e.g. newton", id="add_name"),
@@ -793,16 +785,10 @@ def _launch_tui(network, topology_path, output_root):
                     Input(placeholder="e.g. smaug", id="add_platform"),
                     id="add_row",
                 ),
-                Horizontal(
-                    Button("Add Machine", variant="success", id="add_btn"),
-                    Button("Recheck All", variant="default", id="recheck_btn"),
-                    Button("Save to topology.yaml", variant="warning", id="save_btn"),
-                    id="config_buttons",
-                ),
                 Rule(),
                 RichLog(id="config_log", highlight=True, markup=True, max_lines=20),
-                Footer(),
             )
+            yield Footer()
 
         def on_mount(self):
             self._rebuild_form()
@@ -869,20 +855,24 @@ def _launch_tui(network, topology_path, output_root):
                     runtime_config[mname]["ip"] = event.value
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
-            log = self.query_one("#config_log", RichLog)
+            """Handle per-machine Remove buttons."""
             bid = event.button.id
-            if bid == "add_btn":
-                self._add_machine(log)
-            elif bid == "recheck_btn":
-                self._recheck(log)
-            elif bid == "save_btn":
-                self._save_topology(log)
-            elif bid and bid.startswith("rm_"):
+            if bid and bid.startswith("rm_"):
+                log = self.query_one("#config_log", RichLog)
                 mname = bid[3:]
                 if mname in runtime_config:
                     del runtime_config[mname]
                     log.write(f"Removed [bold]{mname}[/] from session.")
                     self._rebuild_form()
+
+        def action_add_machine_action(self):
+            self._add_machine(self.query_one("#config_log", RichLog))
+
+        def action_recheck_action(self):
+            self._recheck(self.query_one("#config_log", RichLog))
+
+        def action_save_action(self):
+            self._save_topology(self.query_one("#config_log", RichLog))
 
         def _add_machine(self, log):
             name = self.query_one("#add_name", Input).value.strip()
@@ -1281,6 +1271,7 @@ def _launch_tui(network, topology_path, output_root):
     class MonitorScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
+            Binding("r", "refresh", "Refresh", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
@@ -1288,14 +1279,9 @@ def _launch_tui(network, topology_path, output_root):
                 Label("[bold]Fleet Monitor[/]"),
                 Rule(),
                 DataTable(id="monitor_table"),
-                Button("Refresh", variant="default", id="monitor_refresh_btn"),
                 RichLog(id="monitor_log", highlight=True, markup=True, max_lines=20),
-                Footer(),
             )
-
-        def on_button_pressed(self, event: Button.Pressed) -> None:
-            if event.button.id == "monitor_refresh_btn":
-                self.action_refresh()
+            yield Footer()
 
         def on_mount(self):
             table = self.query_one("#monitor_table", DataTable)
