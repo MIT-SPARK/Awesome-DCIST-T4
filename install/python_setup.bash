@@ -64,6 +64,8 @@ if [ "$install_roman" = true ]; then
     # Pip installs
     pip install -e . --no-deps
     pip install -r $ADT4_WS/src/awesome_dcist_t4/install/roman_requirements.txt
+    # FastSAM needs no-build-isolation to prevent setuptools errors
+    pip install --no-build-isolation git+https://github.com/CASIA-IVA-Lab/FastSAM.git@4d153e9
 
     # Download FastSAM weights
     mkdir -p $ADT4_WS/weights
