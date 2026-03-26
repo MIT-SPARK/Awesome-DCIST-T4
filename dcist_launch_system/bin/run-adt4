@@ -111,6 +111,7 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
 def _write_session_to_file(
     session_path,
     robot_name,
+    platform_id,
     sim_time,
     bag,
     bag_delay,
@@ -123,6 +124,9 @@ def _write_session_to_file(
         contents = yaml.safe_load(fin.read())
 
     to_drop = [".*leg.*", ".*foot.*", ".*rail.*"]
+    if trajectory:
+        to_drop.append(".*odom.*")
+
     to_drop = [f"-f '{x}'" for x in to_drop]
     bag_args = [
         "--delay",
@@ -131,12 +135,8 @@ def _write_session_to_file(
         "-k",
         f"'.*{robot_name}.*'",
     ] + to_drop
-
     if sim_time:
         bag_args.append("--clock")
-
-    if trajectory:
-        bag_args.append("-f '.*odom.*'")
 
     bag_args = " ".join(bag_args)
     window_config = {
@@ -146,8 +146,10 @@ def _write_session_to_file(
         "window_name": "play_rosbag",
     }
     if trajectory:
+        is_spot = platform_id in ["topaz", "smaug", "apollo"]
+        child_frame = f"{robot_name}/body" if is_spot else f"{robot_name}/base_link"
         cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{trajectory}"]
-        cmd += ["--parent", f"{robot_name}/odom", "--child", f"{robot_name}/body"]
+        cmd += ["--parent", f"{robot_name}/odom", "--child", child_frame]
         cmd += [trajectory_args]
         cmd += ["--ros-args", "-p", "use_sim_time:=true"]
         window_config["panes"].append(" ".join(cmd))
@@ -198,7 +200,7 @@ def _write_session_to_file(
     "--trajectory",
     "-t",
     default=None,
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, dir_okay=False),
     help="trajectory to use when replaying bag",
 )
 @click.option(
@@ -249,6 +251,7 @@ def main(
         _write_session_to_file(
             session_path,
             robot_name,
+            platform_id,
             sim_time,
             bag,
             bag_delay,
