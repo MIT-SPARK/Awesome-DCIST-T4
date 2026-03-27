@@ -82,6 +82,10 @@ bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
 sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
 ```
 
+> **NOTE** for Blackwell architecture GPU eg. RTX 5090:
+>
+> In ROMAN environment, we should replace the torch installation with `pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128` or other torch+cuda version that support Blackwell.
+
 You probably want to use Zenoh (see bottom of README for details):
 ```bash
 echo export RMW_IMPLEMENTATION=rmw_zenoh_cpp >> ~/.zshrc
