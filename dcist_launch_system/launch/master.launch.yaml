@@ -5,10 +5,11 @@ launch:
   - arg: {name: robot_name}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - arg: {name: labelspace_name, default: ade20k_mit}
+
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
-  - arg: {name: semantic_inference_labelspace_name, default: ade20k_mit}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
 
   # Zed camera driver (has to be above push_ros_namespace)
@@ -52,7 +53,7 @@ launch:
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
+        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
         --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
         --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
@@ -94,7 +95,7 @@ launch:
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
-        --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/label_spaces/$(var labelspace_name)_label_space.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
