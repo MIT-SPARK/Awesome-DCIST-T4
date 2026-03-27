@@ -130,8 +130,6 @@ Visualization Manager:
           Value: false
         pascal_zed_right_camera_optical_frame:
           Value: false
-        prior_map_frame:
-          Value: true
       Marker Scale: 10
       Name: TF
       Show Arrows: true
@@ -160,8 +158,6 @@ Visualization Manager:
                   pascal_zed_right_camera_frame:
                     pascal_zed_right_camera_optical_frame:
                       {}
-            prior_map_frame:
-              {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -252,9 +248,7 @@ Visualization Manager:
       Enabled: true
       Name: AWCDPriorGraph
       Namespaces:
-        layer_2_bounding_boxes: true
-        layer_2_nodes: true
-        layer_2_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -276,16 +270,12 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /pascal/change_detector_visualizer/prior_mesh
       Value: true
-      Visible:
-        Value: true
-        robot0:
-          Value: true
-          dsg_mesh: true
+      Visible: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: ChangedObjectBbox
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -332,11 +322,7 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /pascal/hydra_visualizer/mesh
       Value: true
-      Visible:
-        Value: true
-        robot0:
-          Value: true
-          dsg_mesh: true
+      Visible: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -383,7 +369,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 79.24539947509766
+      Distance: 99.40542602539062
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -398,10 +384,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.530398428440094
+      Pitch: 0.44039851427078247
       Target Frame: pascal/base_link
       Value: Orbit (rviz_default_plugins)
-      Yaw: 0.6253974437713623
+      Yaw: 2.4153995513916016
     Saved: ~
 Window Geometry:
   Displays:

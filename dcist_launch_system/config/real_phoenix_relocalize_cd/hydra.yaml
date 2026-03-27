@@ -60,7 +60,7 @@ active_window:
     - type: ActiveWindowChangeDetector
       verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
-      enable_icp_refinement: true
+      enable_icp_refinement: false
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
