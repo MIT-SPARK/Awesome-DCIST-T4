@@ -6,7 +6,7 @@
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
-    mid_level_planner_type: identity
+    mid_level_planner_type: astar
     occupancy_inflation_radius: 0.2
     use_cost_map: true
     cost_map_safe_distance: 1.0
