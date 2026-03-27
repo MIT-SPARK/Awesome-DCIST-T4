@@ -56,17 +56,16 @@ launch_configs:
 # Configs build the set of rosparams that will be loaded
 configs:
 
-    default_params: []
-    bag: []
+    default: []
 
     devel: []
-    real_phoenix: []
+    phoenix: []
     real_spot: []
     relocalize: []
-    spot_prior_dsg: []
+    prior_dsg: []
 
     real_spot_relocalize: [real_spot, relocalize]
-    real_phoenix_relocalize: [real_phoenix, relocalize]
+    phoenix_relocalize: [phoenix, relocalize]
     apollo_relocalize: [real_spot_relocalize]
 
 # Experiments define which sets of parameters will be used with which sets of
@@ -79,27 +78,27 @@ experiments:
 
     phoenix_data_collection:
         launch_config: phoenix_data_collection
-        config: [real_phoenix]
+        config: [phoenix]
 
     spot_prior_dsg:
         launch_config: spot_prior_dsg
-        config: [spot_prior_dsg]
+        config: [prior_dsg]
 
     spot_prior_dsg_heracles:
         launch_config: spot_prior_dsg_heracles
-        config: [spot_prior_dsg]
+        config: [prior_dsg]
 
     base_station:
         launch_config: base_station
-        config: [default_params]
+        config: [default]
 
     base_station_heracles:
         launch_config: base_station_heracles
-        config: [default_params]
+        config: [default]
 
     spot_bag:
         launch_config: spot_bag
-        config: [bag]
+        config: [default]
 
     spot_bag_relocalize:
         launch_config: spot_bag_relocalize
@@ -119,23 +118,23 @@ experiments:
 
     real_phoenix:
         launch_config: real_phoenix
-        config: [real_phoenix]
+        config: [phoenix]
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
-        config: [real_phoenix_relocalize]
+        config: [phoenix_relocalize]
 
     real_phoenix_no_relocalize:
         launch_config: no_relocalize
-        config: [real_phoenix_relocalize]
+        config: [phoenix_relocalize]
 
     bag_phoenix:
         launch_config: bag_map
-        config: [real_phoenix]
+        config: [phoenix]
 
     bag_phoenix_relocalize:
         launch_config: bag_relocalize
-        config: [real_phoenix_relocalize]
+        config: [phoenix_relocalize]
 
     hydra_devel:
         launch_config: hydra_devel
