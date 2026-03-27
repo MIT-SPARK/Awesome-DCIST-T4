@@ -8,6 +8,7 @@ model:
       - chair
       - cone
       - bag
+      - table
       - tree
       - car
       - van
@@ -28,6 +29,5 @@ model:
       - trash
       - clothes
       - ball
-      - table
-    confidence_threshold: 0.1
+    confidence_threshold: 0.3
     min_segmentation_size: 0

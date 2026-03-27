@@ -30,4 +30,3 @@ label_names:
   - {label: 22, name: trash}
   - {label: 23, name: clothes}
   - {label: 24, name: ball}
-  - {label: 25, name: table}
