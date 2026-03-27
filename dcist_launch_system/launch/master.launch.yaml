@@ -379,13 +379,15 @@ launch:
 
   # gps
   - arg: { name: launch_gps, default: 'false' }
-  - arg: { name: launch_ntrip, default: 'false' }
   - group:
     - set_remap: {from: ublox_gps_node/fix, to: fix}
     - set_remap: {from: /rtcm, to: rtcm}
     - include:
         if: $(var launch_gps)
         file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
+
+  # ntrip
+  - arg: { name: launch_ntrip, default: 'false' }
   - group:
     - set_remap: {from: ublox_gps_node/fix, to: fix}
     - set_remap: {from: /rtcm, to: rtcm}
