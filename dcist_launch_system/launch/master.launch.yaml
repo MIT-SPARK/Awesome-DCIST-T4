@@ -5,7 +5,6 @@ launch:
   - arg: {name: robot_name}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
-  - arg: {name: instance_seg_env, default: $(env HOME)/environments/gdsam2}  # TODO(multy): need to merge this to adt4 envs
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
@@ -67,7 +66,7 @@ launch:
       exec: instance_segmentation_node
       namespace: $(var camera)
       name: semantic_inference
-      pyenv: $(var instance_seg_env)
+      pyenv: $(var spark_env)
       on_exit: shutdown
       param:
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/instance_seg.yaml, type: str}
