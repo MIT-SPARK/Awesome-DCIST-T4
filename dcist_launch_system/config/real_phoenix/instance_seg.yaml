@@ -2,6 +2,31 @@ model:
   instance_model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
-    text_prompt: [ignore, chair, cone, bag]
+    text_prompt:
+      - ignore
+      - chair
+      - cone
+      - bag
+      - tree
+      - car
+      - van
+      - truck
+      - bus
+      - bicycle
+      - door
+      - pole
+      - fence
+      - sign
+      - window
+      - bed
+      - box
+      - basket
+      - seating
+      - flag
+      - light
+      - trash
+      - clothes
+      - ball
+      - table
     confidence_threshold: 0.1
     min_segmentation_size: 0

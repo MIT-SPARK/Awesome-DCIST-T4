@@ -3,6 +3,7 @@ nodes_to_monitor:
     external_monitor: {type: JsonMonitor}
   semantic_inference:
     external_monitor: {type: JsonMonitor}
+  nlu_rviz_instruction_panel: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -13,7 +14,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {hydra: {external_monitor: {type: JsonMonitor}}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: devel
   logging_key: hydra_devel-devel
@@ -41,3 +42,7 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true labelspace_name:=instance_seg
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true
+  - window_name: rviz
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true]
