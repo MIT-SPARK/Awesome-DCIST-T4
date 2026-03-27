@@ -10,7 +10,7 @@ Panels:
         - /TF1/Frames1
         - /Omniplanner Viz1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 381
+    Tree Height: 1234
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -81,79 +81,79 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        euclid/base_link:
+        hamilton/base_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        euclid/body:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        euclid/front_left_hip:
+        hamilton/body:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/front_left_lower_leg:
+        hamilton/front_left_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/front_left_upper_leg:
+        hamilton/front_left_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/front_rail:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        euclid/front_right_hip:
+        hamilton/front_left_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/front_right_lower_leg:
+        hamilton/front_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hamilton/front_right_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/front_right_upper_leg:
+        hamilton/front_right_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_left_hip:
+        hamilton/front_right_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_left_lower_leg:
+        hamilton/rear_left_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_left_upper_leg:
+        hamilton/rear_left_lower_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_rail:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        euclid/rear_right_hip:
+        hamilton/rear_left_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_right_lower_leg:
+        hamilton/rear_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hamilton/rear_right_hip:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        euclid/rear_right_upper_leg:
+        hamilton/rear_right_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_right_upper_leg:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -173,75 +173,45 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        euclid/arm0.link_wr1:
+        hamilton/base_link:
           Value: true
-        euclid/base_link:
+        hamilton/body:
           Value: true
-        euclid/body:
+        hamilton/front_left_hip:
           Value: true
-        euclid/feet_center:
+        hamilton/front_left_lower_leg:
           Value: true
-        euclid/flat_body:
+        hamilton/front_left_upper_leg:
           Value: true
-        euclid/front_left_hip:
+        hamilton/front_rail:
           Value: true
-        euclid/front_left_lower_leg:
+        hamilton/front_right_hip:
           Value: true
-        euclid/front_left_upper_leg:
+        hamilton/front_right_lower_leg:
           Value: true
-        euclid/front_rail:
+        hamilton/front_right_upper_leg:
           Value: true
-        euclid/front_right_hip:
+        hamilton/frontleft:
           Value: true
-        euclid/front_right_lower_leg:
+        hamilton/map:
           Value: true
-        euclid/front_right_upper_leg:
+        hamilton/odom:
           Value: true
-        euclid/frontleft:
+        hamilton/rear_left_hip:
           Value: true
-        euclid/frontleft_fisheye:
+        hamilton/rear_left_lower_leg:
           Value: true
-        euclid/frontright:
+        hamilton/rear_left_upper_leg:
           Value: true
-        euclid/frontright_fisheye:
+        hamilton/rear_rail:
           Value: true
-        euclid/gpe:
+        hamilton/rear_right_hip:
           Value: true
-        euclid/hand:
+        hamilton/rear_right_lower_leg:
           Value: true
-        euclid/head:
+        hamilton/rear_right_upper_leg:
           Value: true
-        euclid/kinematic:
-          Value: true
-        euclid/link_wr1:
-          Value: true
-        euclid/odom:
-          Value: true
-        euclid/rear_left_hip:
-          Value: true
-        euclid/rear_left_lower_leg:
-          Value: true
-        euclid/rear_left_upper_leg:
-          Value: true
-        euclid/rear_rail:
-          Value: true
-        euclid/rear_right_hip:
-          Value: true
-        euclid/rear_right_lower_leg:
-          Value: true
-        euclid/rear_right_upper_leg:
-          Value: true
-        euclid_zed_camera_center:
-          Value: true
-        euclid_zed_camera_link:
-          Value: true
-        euclid_zed_left_camera_frame:
-          Value: true
-        euclid_zed_left_camera_optical_frame:
-          Value: true
-        euclid_zed_right_camera_frame:
-          Value: true
-        euclid_zed_right_camera_optical_frame:
+        hamilton_zed_camera_link:
           Value: true
         map:
           Value: true
@@ -252,58 +222,31 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          euclid/odom:
-            euclid/body:
-              euclid/arm0.link_wr1:
-                {}
-              euclid/base_link:
-                {}
-              euclid/feet_center:
-                {}
-              euclid/flat_body:
-                {}
-              euclid/front_left_hip:
-                euclid/front_left_upper_leg:
-                  euclid/front_left_lower_leg:
-                    {}
-              euclid/front_rail:
-                {}
-              euclid/front_right_hip:
-                euclid/front_right_upper_leg:
-                  euclid/front_right_lower_leg:
-                    {}
-              euclid/hand:
-                {}
-              euclid/head:
-                euclid/frontleft:
-                  euclid/frontleft_fisheye:
-                    {}
-                  euclid_zed_camera_link:
-                    euclid_zed_camera_center:
-                      euclid_zed_left_camera_frame:
-                        euclid_zed_left_camera_optical_frame:
-                          {}
-                      euclid_zed_right_camera_frame:
-                        euclid_zed_right_camera_optical_frame:
-                          {}
-                euclid/frontright:
-                  euclid/frontright_fisheye:
-                    {}
-              euclid/kinematic:
-                euclid/gpe:
+          hamilton/map:
+            hamilton/odom:
+              hamilton/body:
+                hamilton/base_link:
                   {}
-              euclid/link_wr1:
-                {}
-              euclid/rear_left_hip:
-                euclid/rear_left_upper_leg:
-                  euclid/rear_left_lower_leg:
-                    {}
-              euclid/rear_rail:
-                {}
-              euclid/rear_right_hip:
-                euclid/rear_right_upper_leg:
-                  euclid/rear_right_lower_leg:
-                    {}
+                hamilton/front_left_hip:
+                  hamilton/front_left_upper_leg:
+                    hamilton/front_left_lower_leg:
+                      {}
+                hamilton/front_rail:
+                  {}
+                hamilton/front_right_hip:
+                  hamilton/front_right_upper_leg:
+                    hamilton/front_right_lower_leg:
+                      {}
+                hamilton/rear_left_hip:
+                  hamilton/rear_left_upper_leg:
+                    hamilton/rear_left_lower_leg:
+                      {}
+                hamilton/rear_rail:
+                  {}
+                hamilton/rear_right_hip:
+                  hamilton/rear_right_upper_leg:
+                    hamilton/rear_right_lower_leg:
+                      {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -332,9 +275,7 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
       Value: true
-      Visible:
-        0: true
-        Value: true
+      Visible: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -365,12 +306,7 @@ Visualization Manager:
       Enabled: true
       Name: Multi-Robot Scene Graph
       Namespaces:
-        layer2p97_edges: true
-        layer2p97_nodes: true
-        layer2p97_text: true
-        layer2p98_edges: true
-        layer2p98_nodes: true
-        layer2p98_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -378,6 +314,92 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: hydra_multi_visualizer/graph
       Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: MLP Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/spot_executor_node/mlp_path_publisher
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MLP target
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/spot_executor_node/mlp_target_publisher
+      Value: true
+    - Alpha: 0.699999988079071
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: false
+      Name: OccupancyMap
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/hydra/tsdf/occupancy
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/hydra/tsdf/occupancy_updates
+      Use Timestamp: false
+      Value: false
+    - Alpha: 0.699999988079071
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: false
+      Name: Inflated OccupancyMap
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/spot_executor_node/inflated_occupancy_map
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/spot_executor_node/inflated_occupancy_map_updates
+      Use Timestamp: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -424,41 +446,41 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 106.79825592041016
+      Distance: 51.50704574584961
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -2.566805601119995
+        Y: 9.69049072265625
+        Z: -8.79027271270752
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7053982615470886
+      Pitch: 0.8203981518745422
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.2103978395462036
+      Yaw: 1.2903977632522583
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
   DsgStatsPanel:
-    collapsed: false
-  Height: 1401
+    collapsed: true
+  Height: 3382
   Hide Left Dock: false
-  Hide Right Dock: false
+  Hide Right Dock: true
   Image:
     collapsed: false
   InstructionPanel:
     collapsed: false
   ManipulationApprovalPanel:
-    collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f4000004bffc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b00000242000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c0100000283000001dc000000e200fffffffb0000000a0049006d0061006700650100000465000000950000001600ffffff0000000100000198000004bffc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003b000003c3000000a000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c01000004040000007f0000007100fffffffb0000001a0044007300670053007400610074007300500061006e0065006c0100000489000000710000007100fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000008ec0000005efc0100000002fb0000000800540069006d00650100000000000008ec0000025300fffffffb0000000800540069006d0065010000000000000450000000000000000000000554000004bf00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+    collapsed: true
+  QMainWindow State: 000000ff00000000fd0000000400000000000004a500000c2cfc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c0061007900730100000070000005ce0000018600fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c010000064a000004c6000001b600fffffffb0000000a0049006d0061006700650100000b1c000001800000002800ffffff0000000100000a770000046ffc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000070000001dc0000013800fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c0000000258000000e6000000e600fffffffb0000001a0044007300670053007400610074007300500061006e0065006c000000034a00000195000000e600fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000177c0000005efc0100000002fb0000000800540069006d006501000000000000177c0000047a00fffffffb0000000800540069006d00650100000000000004500000000000000000000012cb00000c2c00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -466,7 +488,7 @@ Window Geometry:
   Tool Properties:
     collapsed: false
   Views:
-    collapsed: false
-  Width: 2284
-  X: 43
-  Y: 45
+    collapsed: true
+  Width: 6012
+  X: 132
+  Y: 0
