@@ -1,0 +1,11 @@
+total_semantic_labels: 5
+dynamic_labels: []
+invalid_labels: []
+object_labels: [1, 2, 3, 4]
+surface_places_labels: [0]
+label_names:
+  - {label: 0, name: ignore}
+  - {label: 1, name: chair}
+  - {label: 2, name: cone}
+  - {label: 3, name: bag}
+  - {label: 4, name: table}
