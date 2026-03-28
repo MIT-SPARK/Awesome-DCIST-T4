@@ -12,7 +12,7 @@ environment:
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: phoenix_relocalize
-  logging_key: real_phoenix_no_relocalize-phoenix_relocalize
+  logging_key: phoenix_no_relocalize-phoenix_relocalize
 options:
   default-command: /bin/zsh
 windows:
