@@ -7,6 +7,7 @@ import pathlib
 import pprint
 import shutil
 import subprocess
+import sys
 import traceback
 
 import yaml
@@ -84,8 +85,8 @@ def compute_list_counts(lst):
     return counts
 
 
-def resolve_unique_dirs(manifest, key):
-    dirs = resolve_override_dirs(manifest, key)
+def resolve_unique_dirs(manifest, key, leaves=None):
+    dirs = resolve_override_dirs(manifest, key, leaves=leaves)
 
     # A given override directory might be (transitively) specified multiple
     # times. This isn't great (since it means that the included override groups
@@ -100,21 +101,25 @@ def resolve_unique_dirs(manifest, key):
     return list(override_counts.keys())
 
 
-def resolve_override_dirs(manifest, key):
+def resolve_override_dirs(manifest, key, leaves=None):
     override_dirs = []
-    try:
-        children = manifest[key]
-    except KeyError:
+    children = manifest.get(key)
+    if children is None and leaves:
+        children = [] if key in leaves else None
+
+    if children is None:
+        valid_keys = list(manifest.keys()) + (leaves or [])
         log_error(
-            f"Requested key {key} is not a defined config in your manifest! Valid keys are {list(manifest.keys())}"
+            f"Requested key {key} is defined in the manifest! Valid keys: {valid_keys}"
         )
-        raise
+        sys.exit(f"invalid manifest key {key}")
 
     if len(children) == 0:
         override_dirs = [key]
         return override_dirs
+
     for c in children:
-        transitive_children = resolve_override_dirs(manifest, c)
+        transitive_children = resolve_override_dirs(manifest, c, leaves=leaves)
         override_dirs += transitive_children
 
     return override_dirs
@@ -229,11 +234,14 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
     base_launch_file = root_path / "base_launch" / "base_launch.yaml"
 
     # Generate the tmux launch files
+    components = [x.stem for x in (root_path / "launch_components").glob("*.yaml")]
     for exp_key, exp in experiment_manifest["experiments"].items():
         log_info(f"Generating launch files for experiment {exp_key}")
 
         launch_configs = resolve_unique_dirs(
-            experiment_manifest["launch_configs"], exp["launch_config"]
+            experiment_manifest["launch_configs"],
+            exp["launch_config"],
+            leaves=components,
         )
         log_debug(f"Building launch config with windows: {launch_configs}")
 

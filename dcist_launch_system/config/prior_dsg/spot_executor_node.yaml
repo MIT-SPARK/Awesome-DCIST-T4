@@ -13,7 +13,7 @@
     cost_map_nearest_obstacle_cost: 5.0
     lookahead_distance: 50
     use_fake_path_plan: false
-    use_fake_spot_interface: false
+    use_fake_spot_interface: true
     use_fake_spot_pose: true
     fake_spot_external_pose: false
     fake_spot_static_pose: false
