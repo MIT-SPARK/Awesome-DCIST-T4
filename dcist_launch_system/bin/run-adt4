@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import atexit
+import enum
 import os
 import pathlib
 import pprint
@@ -10,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass, field
+from typing import Optional
 
 import click
 import rich
@@ -26,6 +29,40 @@ ADT4_VARS = [
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
 ]
+
+
+class PlatformType(enum.Enum):
+    """Enum for platform type."""
+
+    SPOT = "spot"
+    PHOENIX = "phoenix"
+    BASE_STATION = "base_station"
+
+
+@dataclass
+class SessionInfo:
+    """Struct for session config."""
+
+    robot_name: str
+    output_path: pathlib.Path
+    platform_id: str = ""
+    sim_time: bool = False
+    bag: Optional[pathlib.Path] = None
+    bag_delay: float = 5.0
+    trajectory: Optional[pathlib.Path] = None
+    trajectory_args: list[str] = field(default_factory=list)
+    record: Optional[str] = None
+
+    @property
+    def platform_type(self) -> PlatformType:
+        """The platform type inferred from the platform ID."""
+        if self.platform_id in ["smaug", "topaz", "apollo"]:
+            return PlatformType.SPOT
+
+        if self.platform_id == "base_station":
+            return PlatformType.BASE_STATION
+
+        return PlatformType.PHOENIX
 
 
 def _ws_path():
@@ -108,57 +145,71 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
     return subprocess.run(cmd, env=env).returncode
 
 
-def _write_session_to_file(
-    session_path,
-    robot_name,
-    platform_id,
-    sim_time,
-    bag,
-    bag_delay,
-    trajectory,
-    trajectory_args,
-    fout,
-    verbose=False,
-):
-    with session_path.open("r") as fin:
-        contents = yaml.safe_load(fin.read())
+def _make_record_window(info: SessionInfo):
+    record_name = info.platform_type.value if info.record == "???" else info.record
+    topic_dir = _ws_path() / "recording"
+    topic_path = topic_dir / f"{record_name}_topics.txt"
+    if not topic_path.exists():
+        click.secho(f"Invalid topic file '{topic_path}'!", fg="red")
+        avail = [x.stem for x in topic_dir.glob("*_topics.txt")]
+        click.echo(f"Available: {pprint.pformat(avail)}")
+        sys.exit("invalid record topic file")
 
-    to_drop = [".*leg.*", ".*foot.*", ".*rail.*"]
-    if trajectory:
-        to_drop.append(".*odom.*")
-
-    to_drop = [f"-f '{x}'" for x in to_drop]
-    bag_args = [
-        "--delay",
-        str(bag_delay),
-        "--filter-tf",
-        "-k",
-        f"'.*{robot_name}.*'",
-    ] + to_drop
-    if sim_time:
-        bag_args.append("--clock")
-
-    bag_args = " ".join(bag_args)
+    click.secho(f"Recording topics from '{topic_path}'", fg="green")
+    output_path = info.output_path / "recorded_data"
+    cmd = f"ros2 run dcist_launch_system record_topics {output_path} {topic_path}"
     window_config = {
         "layout": "tiled",
-        "panes": [f"ros2 run ianvs play_rosbag {bag} {bag_args}"],
+        "panes": [cmd],
+        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "window_name": "recording",
+    }
+    return window_config
+
+
+def _make_bag_window(info: SessionInfo):
+    to_drop = [".*leg.*", ".*foot.*", ".*rail.*"]
+    if info.trajectory:
+        to_drop.append(".*odom.*")
+
+    bag_args = ["--filter-tf", "-k", f"'.*{info.robot_name}.*'"]
+    bag_args += ["--delay", str(info.bag_delay)]
+    bag_args += [f"-f '{x}'" for x in to_drop]
+    if info.sim_time:
+        bag_args.append("--clock")
+
+    window_config = {
+        "layout": "tiled",
+        "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
         "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
         "window_name": "play_rosbag",
     }
-    if trajectory:
-        is_spot = platform_id in ["topaz", "smaug", "apollo"]
-        child_frame = f"{robot_name}/body" if is_spot else f"{robot_name}/base_link"
-        cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{trajectory}"]
-        cmd += ["--parent", f"{robot_name}/odom", "--child", child_frame]
-        cmd += [trajectory_args]
+    if info.trajectory:
+        is_spot = info.platform_id in ["topaz", "smaug", "apollo"]
+        child_frame = f"{info.robot_name}/" + ("body" if is_spot else "base_link")
+        cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{info.trajectory}"]
+        cmd += ["--parent", f"{info.robot_name}/odom", "--child", child_frame]
+        cmd += info.trajectory_args
         cmd += ["--ros-args", "-p", "use_sim_time:=true"]
         window_config["panes"].append(" ".join(cmd))
 
-    contents["windows"].append(window_config)
+    return window_config
 
-    contents = yaml.dump(contents)
+
+def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False):
+    with session_path.open("r") as fin:
+        contents = yaml.safe_load(fin.read())
+
+    if info.bag:
+        contents["windows"].append(_make_bag_window(info))
+
+    if info.record:
+        contents["windows"].append(_make_record_window(info))
+
+    contents = yaml.dump(contents, width=300)
     fout.write(contents)
     fout.flush()
+
     if verbose:
         console = rich.console.Console()
         console.print(Panel(Syntax(contents, "yaml")))
@@ -194,6 +245,7 @@ def _write_session_to_file(
 @click.option("--yes", "-y", is_flag=True, help="skip env variable check")
 @click.option("--force", "-f", is_flag=True, help="clear output if it exists")
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
+@click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
 @click.option(
@@ -206,6 +258,7 @@ def _write_session_to_file(
 @click.option(
     "--trajectory-args", default=None, help="args to forward to csv publisher"
 )
+@click.option("--record", "-r", is_flag=False, flag_value="???")
 def main(
     session_path,
     tmuxp_args,
@@ -217,10 +270,12 @@ def main(
     yes,
     force,
     dry_run,
+    show_tmux,
     bag,
     bag_delay,
     trajectory,
     trajectory_args,
+    record,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -229,7 +284,9 @@ def main(
     prior_map = _resolve_prior_map(prior_map)
     session_path = _resolve_session_path(session_path)
     output_dir = _resolve_output_dir(output_dir, force)
-    bag = pathlib.Path(bag).expanduser().absolute() if bag else None
+
+    def _normalize_optional(opt_path: Optional[str]):
+        return pathlib.Path(opt_path).expanduser().absolute() if opt_path else None
 
     env = os.environ.copy()
     env["ADT4_ROBOT_NAME"] = robot_name
@@ -244,22 +301,21 @@ def main(
     if not yes:
         click.confirm("Are the settings correct?", abort=True)
 
-    if not bag:
-        return _run_session(session_path, env, tmuxp_args, dry_run)
+    info = SessionInfo(
+        robot_name,
+        output_dir,
+        platform_id=platform_id,
+        sim_time=sim_time,
+        bag=_normalize_optional(bag),
+        bag_delay=bag_delay,
+        trajectory=_normalize_optional(trajectory),
+        record=record,
+    )
+    if trajectory_args:
+        info.trajectory_args = trajectory_args.split(" ")
 
     with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
-        _write_session_to_file(
-            session_path,
-            robot_name,
-            platform_id,
-            sim_time,
-            bag,
-            bag_delay,
-            trajectory,
-            trajectory_args,
-            fout,
-            verbose=dry_run,
-        )
+        _write_session_to_file(session_path, info, fout, verbose=dry_run or show_tmux)
         return _run_session(fout.name, env, tmuxp_args, dry_run)
 
 
