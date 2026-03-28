@@ -34,6 +34,7 @@ data_files = (
     ]
     + launch_files
     + config_files
+    + labelspaces
     + config_files_csv
     + platform_files
     + rviz_files
