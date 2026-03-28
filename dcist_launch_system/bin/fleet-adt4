@@ -17,6 +17,8 @@ if not os.environ.get("_FLEET_ADT4_REEXEC"):
             os.environ["_FLEET_ADT4_REEXEC"] = "1"
             os.execv(str(_spark_python), [str(_spark_python)] + sys.argv)
 
+import shutil
+import subprocess
 import threading
 
 import click
@@ -31,20 +33,29 @@ if str(_pkg_src) not in sys.path:
 
 from dcist_launch_system.fleet_helpers import (
     _DEFAULT_TOPOLOGY,
+    _STATUS_COLORS,
+    _STATUS_NAMES,
+    _STATUS_NOMINAL,
     _quote_path,
     check_machine,
+    check_zenoh_config,
+    compute_robot_readiness,
     deploy_zenoh_config,
+    generate_namespaced_rviz,
     detect_network,
     filter_reachable,
     generate_zenoh_endpoints,
     get_remote_status,
+    get_ros_node_status,
     hash_remote_experiment,
+    patch_zenoh_config_local,
     list_remote_experiments,
     load_topology,
     ping_host,
     resolve_machines,
     rsync_transfer,
     run_parallel,
+    send_tmux_keys,
     ssh_cmd,
 )
 
@@ -1409,6 +1420,32 @@ def _launch_tui(network, topology_path, output_root):
 
             def do_launch():
                 try:
+                    # Pre-launch checklist: verify zenoh configs
+                    self.app.call_from_thread(
+                        log.write, "[bold]Pre-launch checks...[/]"
+                    )
+                    all_ok = True
+                    for m, cmd in cmds:
+                        has_zenoh = check_zenoh_config(m["user"], m["ip"])
+                        if has_zenoh:
+                            self.app.call_from_thread(
+                                log.write, f"  [green]{m['name']}: zenoh config OK[/]"
+                            )
+                        else:
+                            self.app.call_from_thread(
+                                log.write,
+                                f"  [red]{m['name']}: zenoh config MISSING — "
+                                f"deploy with Zenoh screen (z) first[/]"
+                            )
+                            all_ok = False
+                    if not all_ok:
+                        self.app.call_from_thread(
+                            log.write,
+                            "[bold red]ABORT: zenoh config missing on some robots. "
+                            "Deploy configs first.[/]"
+                        )
+                        return
+
                     # Phase 1: Transfer prior maps if needed
                     if prior_info:
                         prior_path, prior_source = prior_info
@@ -1477,31 +1514,76 @@ def _launch_tui(network, topology_path, output_root):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
             Binding("r", "refresh", "Refresh", priority=True),
+            Binding("n", "refresh_nodes", "Node Status", priority=True),
+            Binding("k", "stop_save", "Stop & Save", priority=True),
+            Binding("enter", "drill_down", "Details", priority=True),
+            Binding("v", "gen_rviz", "RViz Config", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
-            yield Vertical(
+            yield VerticalScroll(
                 Label("[bold]Fleet Monitor[/]"),
                 Rule(),
-                DataTable(id="monitor_table"),
-                RichLog(id="monitor_log", highlight=True, markup=True, max_lines=20),
+                Label("[bold]System Status[/] (r=refresh)"),
+                Static(id="monitor_table"),
+                Rule(),
+                Label("[bold]Node Readiness[/] (n=refresh, Enter=details, k=stop & save)"),
+                DataTable(id="node_summary_table"),
+                Rule(),
+                RichLog(id="monitor_log", highlight=True, markup=True, max_lines=30),
             )
             yield Footer()
 
+        def _build_status_table(self, results=None):
+            """Build a Rich Table from system status results."""
+            t = Table(box=None, expand=True, pad_edge=False)
+            t.add_column("Machine", no_wrap=True, min_width=8)
+            t.add_column("Tmux", no_wrap=False, max_width=20)
+            t.add_column("ROS2", no_wrap=True, max_width=5)
+            t.add_column("Load 1/5/15m", no_wrap=False, max_width=16)
+            t.add_column("Mem", no_wrap=True, max_width=12)
+            t.add_column("GPU", no_wrap=False, max_width=18)
+            t.add_column("Disk", no_wrap=False, max_width=20)
+            t.add_column("Bat", no_wrap=True, max_width=18)
+            t.add_column("Radio", no_wrap=True, max_width=14)
+            if results:
+                for m, st in sorted(results, key=lambda x: x[0]["name"]):
+                    if isinstance(st, Exception):
+                        t.add_row(m["name"], str(st), "", "", "", "", "", "", "")
+                    else:
+                        t.add_row(
+                            m["name"],
+                            st["tmux_sessions"],
+                            st["ros2_procs"],
+                            st["load"],
+                            st.get("mem", "N/A"),
+                            st.get("gpu", "N/A"),
+                            st["disk"],
+                            st.get("battery", "N/A"),
+                            st.get("radio", "N/A"),
+                        )
+            return t
+
         def on_mount(self):
-            table = self.query_one("#monitor_table", DataTable)
-            table.add_column("Machine", key="machine")
-            table.add_column("Tmux Sessions", key="tmux")
-            table.add_column("ROS2 Procs", key="ros2")
-            table.add_column("Load", key="load")
-            table.add_column("Disk Free", key="disk")
-            table.add_column("Radio (Bat/Mesh)", key="radio")
+            self._node_status = {}  # robot_name -> [node dicts]
+
+            # Render empty table initially
+            widget = self.query_one("#monitor_table", Static)
+            widget.update(self._build_status_table())
+
+            node_table = self.query_one("#node_summary_table", DataTable)
+            node_table.add_column("Robot", key="robot")
+            node_table.add_column("Readiness", key="readiness")
+            node_table.add_column("Nodes", key="nodes")
+            node_table.add_column("Issues", key="issues")
+            node_table.cursor_type = "row"
+
             self.action_refresh()
+            self.action_refresh_nodes()
 
         def action_refresh(self):
             log = self.query_one("#monitor_log", RichLog)
-            log.write("[dim]Refreshing...[/]")
-
+            log.write("[dim]Refreshing system status...[/]")
 
             def do_fetch():
                 machines = [m for m in runtime_config.values() if m.get("online", False)]
@@ -1514,27 +1596,163 @@ def _launch_tui(network, topology_path, output_root):
                 return run_parallel(fetch, machines)
 
             def on_done(results):
-                table = self.query_one("#monitor_table", DataTable)
-                table.clear()
-                for m, st in sorted(results, key=lambda x: x[0]["name"]):
-                    if isinstance(st, Exception):
-                        table.add_row(m["name"], str(st), "", "", "", "")
-                        continue
-                    table.add_row(
-                        m["name"],
-                        st["tmux_sessions"],
-                        st["ros2_procs"],
-                        st["load"],
-                        st["disk"],
-                        st.get("radio", "N/A"),
-                    )
-                log.write("[green]Updated.[/]")
+                widget = self.query_one("#monitor_table", Static)
+                widget.update(self._build_status_table(results))
+                log.write("[green]System status updated.[/]")
 
             def bg():
                 results = do_fetch()
                 self.app.call_from_thread(on_done, results)
 
             threading.Thread(target=bg, daemon=True).start()
+
+        def action_refresh_nodes(self):
+            log = self.query_one("#monitor_log", RichLog)
+            if not shutil.which("ros2"):
+                log.write("[yellow]ROS 2 not found — node status unavailable. System status and SSH features still work.[/]")
+                return
+            log.write("[dim]Fetching ROS node status via topic...[/]")
+
+            def do_fetch():
+                return get_ros_node_status(timeout=8)
+
+            def on_done(status):
+                self._node_status = status
+                node_table = self.query_one("#node_summary_table", DataTable)
+                node_table.clear()
+
+                if not status:
+                    zenohd_running = (
+                        (_fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None)
+                        or subprocess.run(
+                            ["pgrep", "-f", "rmw_zenohd"],
+                            capture_output=True,
+                        ).returncode == 0
+                    )
+                    if not zenohd_running:
+                        log.write("[red]No node status — zenohd is not running. Launch a base station session or restart fleet-adt4 with ROS sourced.[/]")
+                    else:
+                        online = [m["name"] for m in runtime_config.values() if m.get("online") and m.get("role") == "robot"]
+                        if online:
+                            log.write(f"[yellow]No node status received — zenohd is running but no data from robots. Check that ros_system_monitor is publishing on: {', '.join(online)}[/]")
+                        else:
+                            log.write("[yellow]No node status — zenohd is running but no robots are online.[/]")
+                    return
+
+                for robot_name in sorted(status):
+                    nodes = status[robot_name]
+                    color, label = compute_robot_readiness(nodes)
+                    n_total = len(nodes)
+                    n_nominal = sum(1 for n in nodes if n["status"] == _STATUS_NOMINAL)
+
+                    # Collect issue summaries
+                    issues = []
+                    for n in nodes:
+                        if n["status"] != _STATUS_NOMINAL:
+                            sname = _STATUS_NAMES.get(n["status"], "?")
+                            issues.append(f"{n['nickname']}={sname}")
+                    issue_str = ", ".join(issues) if issues else "none"
+
+                    readiness_str = f"[{color}]{label}[/{color}]"
+                    node_table.add_row(
+                        robot_name,
+                        readiness_str,
+                        f"{n_nominal}/{n_total}",
+                        issue_str,
+                        key=robot_name,
+                    )
+
+                # Check for loop closures in hydra_multi
+                for robot_name, nodes in status.items():
+                    for n in nodes:
+                        if "hydra_multi" in n["nickname"] and n["notes"]:
+                            log.write(f"[cyan]{robot_name}/{n['nickname']}:[/] {n['notes']}")
+
+                log.write("[green]Node status updated.[/]")
+
+            def bg():
+                result = do_fetch()
+                self.app.call_from_thread(on_done, result)
+
+            threading.Thread(target=bg, daemon=True).start()
+
+        def action_drill_down(self):
+            """Show detailed per-node status for the selected robot."""
+            node_table = self.query_one("#node_summary_table", DataTable)
+            log = self.query_one("#monitor_log", RichLog)
+
+            try:
+                from textual.coordinate import Coordinate
+                row_idx = node_table.cursor_coordinate.row
+                robot_name = str(node_table.get_cell_at(Coordinate(row_idx, 0)))
+            except Exception:
+                log.write("[red]No robot selected in node summary table.[/]")
+                return
+
+            nodes = self._node_status.get(robot_name)
+            if not nodes:
+                log.write(f"[red]No node data for {robot_name}.[/]")
+                return
+
+            log.write(f"\n[bold]Node details for {robot_name}:[/]")
+            for n in sorted(nodes, key=lambda x: x["nickname"]):
+                status = n["status"]
+                color = _STATUS_COLORS.get(status, "white")
+                sname = _STATUS_NAMES.get(status, "?")
+                notes = f" — {n['notes']}" if n["notes"] else ""
+                log.write(f"  [{color}]{sname:8s}[/{color}]  {n['nickname']}{notes}")
+
+        def action_stop_save(self):
+            """Send shutdown signal to all online robots via tmux."""
+            log = self.query_one("#monitor_log", RichLog)
+            online_machines = [m for m in runtime_config.values() if m.get("online", False)]
+            if not online_machines:
+                log.write("[red]No online machines to stop.[/]")
+                return
+
+            names = ", ".join(m["name"] for m in sorted(online_machines, key=lambda x: x["name"]))
+            log.write(f"[yellow]Sending Stop & Save to: {names}[/]")
+
+            def do_stop():
+                def stop_one(m):
+                    ok, msg = send_tmux_keys(m["user"], m["ip"])
+                    return m["name"], ok, msg
+                return run_parallel(stop_one, online_machines)
+
+            def on_done(results):
+                for item, result in sorted(results, key=lambda x: x[0]["name"]):
+                    if isinstance(result, Exception):
+                        log.write(f"  [red]{item['name']}: {result}[/]")
+                    else:
+                        mname, ok, msg = result
+                        color = "green" if ok else "red"
+                        log.write(f"  [{color}]{mname}: {msg}[/{color}]")
+                log.write("[bold]Stop & Save complete.[/]")
+
+            def bg():
+                results = do_stop()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
+        def action_gen_rviz(self):
+            """Generate a namespaced rviz config for a robot."""
+            log = self.query_one("#monitor_log", RichLog)
+            # Use the first robot in runtime_config as default
+            robots = [m for m in sorted(runtime_config) if runtime_config[m].get("role") == "robot"]
+            if not robots:
+                log.write("[red]No robots in config.[/]")
+                return
+
+            # Generate for each robot
+            for robot_name in robots:
+                mconf = runtime_config[robot_name]
+                platform_id = mconf.get("platform_id", robot_name)
+                out_path = generate_namespaced_rviz(robot_name)
+                log.write(f"  Generated [cyan]{out_path}[/] for {robot_name}")
+
+            log.write(f"[bold]RViz configs generated.[/] Launch with:")
+            log.write(f"  [dim]rviz2 -d /tmp/dcist_<robot>.rviz[/]")
 
     # ---- Zenoh Screen ----
 
@@ -1661,6 +1879,679 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
+    # ---- Mission Screen ----
+
+    class MissionScreen(ModalScreen):
+        """Guided workflow for Mapping or Relocalize missions."""
+
+        BINDINGS = [
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("f5", "go", "Run Step [F5]", priority=True),
+            Binding("f6", "auto_run", "Auto-Run [F6]", priority=True),
+        ]
+
+        # Step status indicators
+        _STEP_PENDING = "[dim]\u25cb[/]"   # ○
+        _STEP_RUNNING = "[yellow]\u25cf[/]" # ●
+        _STEP_DONE = "[green]\u2714[/]"     # ✔
+        _STEP_FAIL = "[red]\u2718[/]"       # ✘
+        _STEP_MANUAL = "[cyan]\u270b[/]"    # ✋
+
+        def __init__(self, mode="mapping"):
+            super().__init__()
+            self._mode = mode
+            self._current_step = 0
+            self._auto = False
+            self._running = False
+
+            if mode == "mapping":
+                self._steps = [
+                    {"name": "Deploy zenoh configs", "auto": True},
+                    {"name": "Launch robots", "auto": True},
+                    {"name": "Wait for all nodes green", "auto": True},
+                    {"name": "Generate rviz config", "auto": True},
+                    {"name": "Launch base station", "auto": True},
+                    {"name": "Monitor mapping (manual)", "auto": False},
+                    {"name": "Stop & Save maps (manual)", "auto": False},
+                ]
+            else:  # relocalize
+                self._steps = [
+                    {"name": "Deploy zenoh configs", "auto": True},
+                    {"name": "Transfer prior maps", "auto": True},
+                    {"name": "Launch robots (relocalize)", "auto": True},
+                    {"name": "Wait for all nodes green", "auto": True},
+                    {"name": "Generate rviz config", "auto": True},
+                    {"name": "Launch base station", "auto": True},
+                    {"name": "Move robots for loop closures (manual)", "auto": False},
+                    {"name": "Ready for commands", "auto": True},
+                ]
+            self._rviz_config_path = None  # set by _step_gen_rviz
+            self._confirmed = False
+
+            for step in self._steps:
+                step["status"] = "pending"
+
+        def compose(self) -> ComposeResult:
+            mode_label = "Mapping" if self._mode == "mapping" else "Relocalize"
+            yield VerticalScroll(
+                Label(f"[bold]Mission: {mode_label}[/]"),
+                Label("[dim]F5=run next step, F6=auto-run, escape=back[/]"),
+                Rule(),
+                Label("Select robots:"),
+                SelectionList(
+                    *[
+                        (m["name"], m["name"], m.get("online", False))
+                        for m in runtime_config.values()
+                        if m["role"] == "robot"
+                    ],
+                    id="mission_robots",
+                ),
+                Rule(),
+                Label("Robot session:"),
+                Input(placeholder="Filter sessions...", id="mission_session_search"),
+                SelectionList(
+                    *(
+                        [(s, s) for s in sorted(f.stem for f in _TMUX_DIR.glob("*.yaml"))]
+                        if _TMUX_DIR.exists() else []
+                    ),
+                    id="mission_session_select",
+                ),
+                Rule(),
+                Label("Base station:"),
+                SelectionList(
+                    *[
+                        (m["name"], m["name"], m.get("online", False))
+                        for m in runtime_config.values()
+                        if m["role"] == "base_station"
+                    ],
+                    id="mission_base_station",
+                ),
+                Label("Base station session:"),
+                SelectionList(
+                    *(
+                        [(s, s) for s in sorted(
+                            f.stem for f in _TMUX_DIR.glob("base_station*.yaml")
+                        )]
+                        if _TMUX_DIR.exists() else []
+                    ),
+                    id="mission_bs_session",
+                ),
+                Rule(),
+                Label("Experiment name:"),
+                Input(placeholder="date_description", id="mission_experiment"),
+                Rule(),
+                *(
+                    [
+                        Label("Prior map (for relocalize):"),
+                        Input(placeholder="Prior map path on robot", id="mission_prior"),
+                        Rule(),
+                    ] if self._mode == "relocalize" else []
+                ),
+                Vertical(id="mission_steps"),
+                Rule(),
+                RichLog(id="mission_log", highlight=True, markup=True, max_lines=50),
+            )
+            yield Footer()
+
+        def on_mount(self):
+            self._rebuild_steps()
+            # Populate session list
+            if _TMUX_DIR.exists():
+                sessions = sorted([f.stem for f in _TMUX_DIR.glob("*.yaml")])
+                sel = self.query_one("#mission_session_select", SelectionList)
+                sel.clear_options()
+                for s in sessions:
+                    sel.add_option((s, s))
+
+        def on_input_changed(self, event: Input.Changed):
+            if event.input.id == "mission_session_search":
+                query = event.value.strip()
+                sessions = sorted(
+                    [f.stem for f in _TMUX_DIR.glob("*.yaml")]
+                ) if _TMUX_DIR.exists() else []
+                sel = self.query_one("#mission_session_select", SelectionList)
+                sel.clear_options()
+                for s in sessions:
+                    if _fuzzy_match(query, s):
+                        sel.add_option((s, s))
+
+        def _rebuild_steps(self):
+            area = self.query_one("#mission_steps", Vertical)
+            area.remove_children()
+            for i, step in enumerate(self._steps):
+                status = step["status"]
+                if status == "pending":
+                    icon = self._STEP_PENDING
+                elif status == "running":
+                    icon = self._STEP_RUNNING
+                elif status == "done":
+                    icon = self._STEP_DONE
+                elif status == "failed":
+                    icon = self._STEP_FAIL
+                elif status == "manual":
+                    icon = self._STEP_MANUAL
+                else:
+                    icon = self._STEP_PENDING
+
+                auto_tag = "[AUTO]" if step["auto"] else "[MANUAL]"
+                current = " [bold]<<[/]" if i == self._current_step else ""
+                area.mount(Label(f"  {icon} {i+1}. {step['name']} {auto_tag}{current}"))
+
+        def _get_robots(self):
+            sel = self.query_one("#mission_robots", SelectionList)
+            return [
+                runtime_config[name]
+                for name in sel.selected
+                if name in runtime_config
+            ]
+
+        def _get_session(self):
+            sel = self.query_one("#mission_session_select", SelectionList)
+            selected = list(sel.selected)
+            return selected[0] if selected else ""
+
+        def _set_step_status(self, idx, status):
+            self._steps[idx]["status"] = status
+            self.app.call_from_thread(self._rebuild_steps)
+
+        def _show_confirmation(self, then_auto=False):
+            """Validate selections and show a confirmation summary."""
+            log = self.query_one("#mission_log", RichLog)
+            robots = self._get_robots()
+            robot_names = [m["name"] for m in robots]
+            session = self._get_session()
+            bs = self._get_base_station()
+            bs_session = self._get_bs_session()
+            try:
+                experiment = self.query_one("#mission_experiment", Input).value.strip()
+            except Exception:
+                experiment = ""
+
+            # Validate required fields
+            problems = []
+            if not robot_names:
+                problems.append("No robots selected")
+            if not session:
+                problems.append("No robot session selected")
+            if not bs:
+                problems.append("No base station selected")
+            if not bs_session:
+                problems.append("No base station session selected")
+            if not experiment:
+                problems.append("No experiment name")
+            if self._mode == "relocalize":
+                try:
+                    prior = self.query_one("#mission_prior", Input).value.strip()
+                except Exception:
+                    prior = ""
+                if not prior:
+                    problems.append("No prior map specified")
+
+            if problems:
+                for p in problems:
+                    log.write(f"[red]  \u2718 {p}[/]")
+                return
+
+            mode_label = "Mapping" if self._mode == "mapping" else "Relocalize"
+            bs_name = bs["name"] if bs else "—"
+            offline = [n for n in robot_names if not runtime_config.get(n, {}).get("online")]
+            log.write(f"[bold]── Mission Summary ──[/]")
+            log.write(f"  Mode:              [cyan]{mode_label}[/]")
+            log.write(f"  Robots:            [cyan]{', '.join(robot_names)}[/]")
+            if offline:
+                log.write(f"  [yellow]  Warning: {', '.join(offline)} not confirmed online[/]")
+            log.write(f"  Robot session:     [cyan]{session}[/]")
+            log.write(f"  Base station:      [cyan]{bs_name}[/]")
+            log.write(f"  BS session:        [cyan]{bs_session}[/]")
+            log.write(f"  Experiment:        [cyan]{experiment}[/]")
+            if self._mode == "relocalize":
+                try:
+                    prior = self.query_one("#mission_prior", Input).value.strip()
+                except Exception:
+                    prior = ""
+                log.write(f"  Prior map:         [cyan]{prior}[/]")
+            log.write(f"[bold]Press {'F6' if then_auto else 'F5'} again to confirm and start.[/]")
+            self._confirmed = True
+            self._pending_auto = then_auto
+
+        def action_go(self):
+            """Run the next step."""
+            if self._running:
+                return
+            if self._current_step >= len(self._steps):
+                log = self.query_one("#mission_log", RichLog)
+                log.write("[green]All steps complete![/]")
+                return
+            if not self._confirmed:
+                self._show_confirmation(then_auto=False)
+                return
+            self._auto = False
+            self._run_current_step()
+
+        def action_auto_run(self):
+            """Auto-run all automated steps, pausing at manual ones."""
+            if self._running:
+                return
+            if not self._confirmed:
+                self._show_confirmation(then_auto=True)
+                return
+            self._auto = True
+            self._run_current_step()
+
+        def _run_current_step(self):
+            if self._current_step >= len(self._steps):
+                return
+
+            step = self._steps[self._current_step]
+            log = self.query_one("#mission_log", RichLog)
+
+            # If it's a manual step, mark it and stop auto-run
+            if not step["auto"]:
+                step["status"] = "manual"
+                self._rebuild_steps()
+                log.write(f"[cyan]Step {self._current_step + 1}: {step['name']} — waiting for operator[/]")
+                log.write("[dim]Press F5 when done to advance to the next step.[/]")
+                self._current_step += 1
+                return
+
+            self._running = True
+            step["status"] = "running"
+            self._rebuild_steps()
+
+            def run_step():
+                try:
+                    success = self._execute_step(self._current_step)
+                    if success:
+                        self._set_step_status(self._current_step, "done")
+                        self._current_step += 1
+                        # Auto-advance if in auto mode
+                        if self._auto and self._current_step < len(self._steps):
+                            self.app.call_from_thread(self._run_current_step)
+                        elif self._current_step >= len(self._steps):
+                            self.app.call_from_thread(
+                                log.write, "[bold green]Mission complete![/]"
+                            )
+                    else:
+                        self._set_step_status(self._current_step, "failed")
+                        self.app.call_from_thread(
+                            log.write,
+                            f"[bold red]Step {self._current_step + 1} failed. Fix and press 'g' to retry.[/]"
+                        )
+                finally:
+                    self._running = False
+
+            threading.Thread(target=run_step, daemon=True).start()
+
+        def _execute_step(self, step_idx):
+            """Execute a single step. Returns True on success."""
+            log = self.query_one("#mission_log", RichLog)
+            robots = self._get_robots()
+
+            step_name = self._steps[step_idx]["name"]
+            self.app.call_from_thread(
+                log.write, f"[bold]Step {step_idx + 1}: {step_name}[/]"
+            )
+
+            # Steps that require robots selected
+            needs_robots = (
+                "Deploy zenoh configs",
+                "Transfer prior maps",
+                "Launch robots",
+                "Wait for all nodes green",
+                "Generate rviz config",
+            )
+            if any(step_name.startswith(n) for n in needs_robots) and not robots:
+                self.app.call_from_thread(log.write, "[red]No robots selected.[/]")
+                return False
+
+            if step_name == "Deploy zenoh configs":
+                return self._step_deploy_zenoh(robots, log)
+            elif step_name == "Transfer prior maps":
+                return self._step_transfer_priors(robots, log)
+            elif step_name.startswith("Launch robots"):
+                return self._step_launch(robots, log)
+            elif step_name == "Wait for all nodes green":
+                return self._step_wait_nodes(robots, log)
+            elif step_name == "Generate rviz config":
+                return self._step_gen_rviz(robots, log)
+            elif step_name == "Launch base station":
+                return self._step_launch_base_station(robots, log)
+            elif step_name == "Ready for commands":
+                self.app.call_from_thread(
+                    log.write,
+                    "[bold green]System ready for language commands![/]\n"
+                    "  Use the NLU panel in rviz or heracles_agents chatdsg."
+                )
+                return True
+            else:
+                self.app.call_from_thread(log.write, f"[yellow]Unknown step: {step_name}[/]")
+                return True  # skip unknown
+
+        def _step_deploy_zenoh(self, robots, log):
+            """Deploy zenoh configs to all robots and base stations."""
+            all_machines = list(runtime_config.values())
+            online = [m for m in all_machines if m.get("online")]
+            if not online:
+                self.app.call_from_thread(log.write, "[red]No online machines.[/]")
+                return False
+
+            success = True
+            for m in online:
+                try:
+                    endpoints = generate_zenoh_endpoints(topo, active_network, m["name"])
+                    ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
+                    color = "green" if ok else "red"
+                    self.app.call_from_thread(
+                        log.write, f"  [{color}]{m['name']}: {msg}[/{color}]"
+                    )
+                    if not ok:
+                        success = False
+                except KeyError:
+                    self.app.call_from_thread(
+                        log.write, f"  [dim]{m['name']}: no address on {active_network}[/]"
+                    )
+            return success
+
+        def _step_transfer_priors(self, robots, log):
+            """Transfer prior maps to all robots."""
+            try:
+                prior_input = self.query_one("#mission_prior", Input).value.strip()
+            except Exception:
+                self.app.call_from_thread(log.write, "[red]No prior map input found.[/]")
+                return False
+
+            if not prior_input:
+                self.app.call_from_thread(log.write, "[red]No prior map specified.[/]")
+                return False
+
+            # The prior_input should be in format "machine:path" or just "path"
+            # For simplicity, we transfer from the first robot that has it
+            self.app.call_from_thread(
+                log.write, f"  [dim]Prior map: {prior_input}[/]"
+            )
+
+            # Find which machine has the prior map
+            source = None
+            prior_path = prior_input
+            if ":" in prior_input:
+                parts = prior_input.split(":", 1)
+                source = parts[0]
+                prior_path = parts[1]
+            else:
+                # Check each online machine for the prior
+                for m in runtime_config.values():
+                    if not m.get("online"):
+                        continue
+                    q_path = _quote_path(prior_path)
+                    rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {q_path} && echo OK", timeout=5)
+                    if "OK" in out:
+                        source = m["name"]
+                        self.app.call_from_thread(
+                            log.write, f"  [dim]Found prior on {source}[/]"
+                        )
+                        break
+
+            if not source:
+                self.app.call_from_thread(log.write, "[red]Prior map not found on any machine.[/]")
+                return False
+
+            src_conf = runtime_config.get(source)
+            if not src_conf:
+                self.app.call_from_thread(log.write, f"[red]Source {source} not in config.[/]")
+                return False
+
+            exp_name = pathlib.Path(prior_path).name
+            dest_name = f"prior_{exp_name}"
+            dest_path = f"{output_root}/{dest_name}"
+
+            success = True
+            for m in robots:
+                if m["name"] == source:
+                    continue
+                self.app.call_from_thread(
+                    log.write, f"  Transferring to {m['name']}..."
+                )
+                ok, method, msg = rsync_transfer(
+                    src_conf["user"], src_conf["ip"], prior_path,
+                    m["user"], m["ip"], dest_path,
+                    relay=False, exclude=["recorded_data/"],
+                )
+                if ok:
+                    self.app.call_from_thread(
+                        log.write, f"  [green]{m['name']}: transferred ({method})[/]"
+                    )
+                else:
+                    self.app.call_from_thread(
+                        log.write, f"  [red]{m['name']}: FAILED: {msg}[/]"
+                    )
+                    success = False
+            return success
+
+        def _step_launch(self, robots, log):
+            """Launch run-adt4 on all selected robots."""
+            session = self._get_session()
+            if not session:
+                self.app.call_from_thread(log.write, "[red]No session selected.[/]")
+                return False
+
+            try:
+                experiment = self.query_one("#mission_experiment", Input).value.strip()
+            except Exception:
+                experiment = ""
+            if not experiment:
+                self.app.call_from_thread(log.write, "[red]No experiment name.[/]")
+                return False
+
+            # Build prior map flag
+            prior_flag = ""
+            if self._mode == "relocalize":
+                try:
+                    prior_input = self.query_one("#mission_prior", Input).value.strip()
+                except Exception:
+                    prior_input = ""
+                if prior_input:
+                    exp_name = pathlib.Path(prior_input).name
+                    dest_name = f"prior_{exp_name}"
+                    prior_flag = f" -p {_quote_path(output_root + '/' + dest_name)}"
+
+            success = True
+            for m in robots:
+                out_dir = f"{output_root}/{experiment}"
+                rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
+                if "EXISTS" in out:
+                    self.app.call_from_thread(
+                        log.write,
+                        f"  [yellow]{m['name']}: {out_dir} already exists, skipping[/]"
+                    )
+                    continue
+
+                platform = m.get("platform_id", m["name"])
+                q_output = _quote_path(out_dir)
+                cmd = (
+                    f"cd ~/dcist_ws && source install/setup.zsh && "
+                    f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+                    f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
+                    f"-c {shlex.quote(platform)} -o {q_output} -y{prior_flag}"
+                )
+                self.app.call_from_thread(log.write, f"  Launching on {m['name']}...")
+                rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
+                if rc == 0:
+                    self.app.call_from_thread(
+                        log.write, f"  [green]{m['name']}: launched[/]"
+                    )
+                else:
+                    self.app.call_from_thread(
+                        log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {err}[/]"
+                    )
+                    success = False
+            return success
+
+        def _step_wait_nodes(self, robots, log):
+            """Poll node status until all robots are green/yellow."""
+            if not shutil.which("ros2"):
+                self.app.call_from_thread(
+                    log.write,
+                    "[yellow]ROS 2 not found — skipping node wait. "
+                    "Check nodes manually once base station is running.[/]"
+                )
+                return True
+
+            import time
+            robot_names = {m["name"] for m in robots}
+            max_wait = 120  # seconds
+            start = time.time()
+
+            self.app.call_from_thread(
+                log.write, f"  [dim]Waiting up to {max_wait}s for nodes to come online...[/]"
+            )
+
+            while time.time() - start < max_wait:
+                status = get_ros_node_status(timeout=8)
+                if not status:
+                    time.sleep(5)
+                    continue
+
+                all_ready = True
+                for rname in robot_names:
+                    nodes = status.get(rname, [])
+                    if not nodes:
+                        all_ready = False
+                        continue
+                    color, label = compute_robot_readiness(nodes)
+                    if color == "red":
+                        all_ready = False
+
+                if all_ready and any(status.get(r) for r in robot_names):
+                    # Report final status
+                    for rname in sorted(robot_names):
+                        nodes = status.get(rname, [])
+                        if nodes:
+                            color, label = compute_robot_readiness(nodes)
+                            self.app.call_from_thread(
+                                log.write, f"  [{color}]{rname}: {label}[/{color}]"
+                            )
+                    self.app.call_from_thread(
+                        log.write, "[green]All robots ready![/]"
+                    )
+                    return True
+
+                elapsed = int(time.time() - start)
+                self.app.call_from_thread(
+                    log.write, f"  [dim]Waiting... ({elapsed}s)[/]"
+                )
+                time.sleep(5)
+
+            # Timeout — show what we have and let operator decide
+            self.app.call_from_thread(
+                log.write,
+                f"[yellow]Timeout after {max_wait}s. Some nodes may not be ready.[/]"
+            )
+            status = get_ros_node_status(timeout=8)
+            for rname in sorted(robot_names):
+                nodes = status.get(rname, [])
+                if nodes:
+                    color, label = compute_robot_readiness(nodes)
+                    self.app.call_from_thread(
+                        log.write, f"  [{color}]{rname}: {label}[/{color}]"
+                    )
+                    for n in nodes:
+                        if n["status"] != _STATUS_NOMINAL:
+                            sname = _STATUS_NAMES.get(n["status"], "?")
+                            scolor = _STATUS_COLORS.get(n["status"], "white")
+                            self.app.call_from_thread(
+                                log.write,
+                                f"    [{scolor}]{n['nickname']}: {sname}[/{scolor}]"
+                            )
+                else:
+                    self.app.call_from_thread(
+                        log.write, f"  [red]{rname}: no status data[/]"
+                    )
+            # Return True anyway — operator can re-check from Monitor
+            return True
+
+        def _step_gen_rviz(self, robots, log):
+            """Generate namespaced rviz configs."""
+            paths = []
+            for m in robots:
+                out_path = generate_namespaced_rviz(m["name"])
+                paths.append(out_path)
+                self.app.call_from_thread(
+                    log.write, f"  Generated [cyan]{out_path}[/]"
+                )
+            # Store the first robot's config for the base station launch
+            if paths:
+                self._rviz_config_path = paths[0]
+            return True
+
+        def _get_base_station(self):
+            sel = self.query_one("#mission_base_station", SelectionList)
+            selected = list(sel.selected)
+            if not selected:
+                return None
+            name = selected[0]
+            return runtime_config.get(name)
+
+        def _get_bs_session(self):
+            sel = self.query_one("#mission_bs_session", SelectionList)
+            selected = list(sel.selected)
+            return selected[0] if selected else ""
+
+        def _step_launch_base_station(self, robots, log):
+            """Launch run-adt4 on the base station with the generated rviz config."""
+            # Terminate fleet-managed zenohd so the base station session's zenohd
+            # can bind the same port without conflict
+            if _fleet_zenoh["proc"]:
+                self.app.call_from_thread(
+                    log.write, "  [dim]Stopping fleet zenohd (base station will take over)...[/]"
+                )
+                _stop_fleet_zenohd()
+
+            bs = self._get_base_station()
+            if not bs:
+                self.app.call_from_thread(log.write, "[red]No base station selected.[/]")
+                return False
+
+            bs_session = self._get_bs_session()
+            if not bs_session:
+                self.app.call_from_thread(log.write, "[red]No base station session selected.[/]")
+                return False
+
+            try:
+                experiment = self.query_one("#mission_experiment", Input).value.strip()
+            except Exception:
+                experiment = ""
+            if not experiment:
+                self.app.call_from_thread(log.write, "[red]No experiment name.[/]")
+                return False
+
+            out_dir = f"{output_root}/{experiment}"
+            q_output = _quote_path(out_dir)
+            platform = bs.get("platform_id", bs["name"])
+
+            rviz_flag = ""
+            if self._rviz_config_path:
+                rviz_flag = f" --rviz-config {shlex.quote(self._rviz_config_path)}"
+
+            cmd = (
+                f"cd ~/dcist_ws && source install/setup.zsh && "
+                f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+                f"{shlex.quote(bs_session)} -n {shlex.quote(bs['name'])} "
+                f"-c {shlex.quote(platform)} -o {q_output} -y{rviz_flag}"
+            )
+
+            self.app.call_from_thread(log.write, f"  Launching base station on {bs['name']}...")
+            rc, out, err = ssh_cmd(bs["user"], bs["ip"], cmd, timeout=30)
+            if rc == 0:
+                self.app.call_from_thread(
+                    log.write, f"  [green]{bs['name']}: base station launched[/]"
+                )
+                return True
+            else:
+                self.app.call_from_thread(
+                    log.write, f"  [red]{bs['name']}: FAILED (rc={rc}) {err}[/]"
+                )
+                return False
+
     # ---- Main App ----
 
     class FleetApp(App):
@@ -1688,6 +2579,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("c", "show_config", "Config"),
             Binding("o", "show_monitor", "Monitor"),
             Binding("z", "show_zenoh", "Zenoh"),
+            Binding("w", "show_mission", "Mission"),
             Binding("q", "quit", "Quit"),
         ]
 
@@ -1777,8 +2669,115 @@ def _launch_tui(network, topology_path, output_root):
         def action_show_zenoh(self):
             self.push_screen(ZenohScreen())
 
-    app = FleetApp()
-    app.run()
+        def action_show_mission(self):
+            """Prompt for mission mode, then launch the MissionScreen."""
+
+            class ModeSelectScreen(ModalScreen):
+                BINDINGS = [
+                    Binding("escape", "dismiss", "Back", priority=True),
+                    Binding("m", "select_mapping", "Mapping", priority=True),
+                    Binding("r", "select_relocalize", "Relocalize", priority=True),
+                ]
+
+                def compose(self) -> ComposeResult:
+                    yield VerticalScroll(
+                        Label("[bold]Select Mission Mode[/]"),
+                        Rule(),
+                        Label("[dim]m=Mapping  r=Relocalize  escape=Back[/]"),
+                    )
+                    yield Footer()
+
+                def action_select_mapping(self):
+                    self.dismiss("mapping")
+
+                def action_select_relocalize(self):
+                    self.dismiss("relocalize")
+
+            def on_mode_selected(mode):
+                if mode:
+                    self.push_screen(MissionScreen(mode=mode))
+
+            self.push_screen(ModeSelectScreen(), callback=on_mode_selected)
+
+    # Auto-start zenohd if ROS 2 + rmw_zenoh_cpp are available and not already running.
+    # Uses the bundled zenoh_router_template.json5 (copied from a fleet machine) as the
+    # base config — preserves all ROS transport/timeout/routing settings. Patches only
+    # connect.endpoints and listen port from the topology.
+    _fleet_zenoh = {"proc": None, "config": None}  # mutable so closures can modify
+
+    def _stop_fleet_zenohd():
+        """Terminate the fleet-managed zenohd so the base station session can take over."""
+        proc = _fleet_zenoh["proc"]
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=2)
+            import time
+            time.sleep(1)  # allow port to be released (TIME_WAIT)
+            _fleet_zenoh["proc"] = None
+    try:
+        already_running = subprocess.run(
+            ["pgrep", "-f", "rmw_zenohd"],
+            capture_output=True,
+        ).returncode == 0
+
+        if not already_running and shutil.which("ros2"):
+            from dcist_launch_system.fleet_helpers import get_local_ips
+
+            local_ips = get_local_ips()
+            zenoh_conf = topo.get("zenoh", {})
+            port = zenoh_conf.get("port", 7447)
+
+            # Determine this machine's role from topology
+            local_machine = None
+            for m in runtime_config.values():
+                if m["ip"] in local_ips:
+                    local_machine = m
+                    break
+
+            # Build endpoints from topology
+            if local_machine:
+                endpoints = generate_zenoh_endpoints(
+                    topo, active_network, local_machine["name"]
+                )
+                listen_port = port
+            else:
+                endpoints = [
+                    f"tcp/{m['ip']}:{port}"
+                    for m in runtime_config.values()
+                    if m.get("role") == "base_station" and m.get("ip")
+                ]
+                listen_port = port + 1
+
+            config_path = patch_zenoh_config_local(
+                endpoints, listen_port=listen_port,
+            )
+            if config_path:
+                _fleet_zenoh["config"] = config_path
+                env = os.environ.copy()
+                env["ZENOH_ROUTER_CONFIG_URI"] = config_path
+                _fleet_zenoh["proc"] = subprocess.Popen(
+                    ["ros2", "run", "rmw_zenoh_cpp", "rmw_zenohd"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env=env,
+                )
+    except Exception:
+        pass  # non-critical — monitor will just lack ROS topic data
+
+    try:
+        app = FleetApp()
+        app.run()
+    finally:
+        _stop_fleet_zenohd()
+        if _fleet_zenoh["config"]:
+            try:
+                os.unlink(_fleet_zenoh["config"])
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------

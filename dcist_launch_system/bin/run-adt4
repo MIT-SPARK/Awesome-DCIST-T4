@@ -25,6 +25,7 @@ ADT4_VARS = [
     "ADT4_OUTPUT_DIR",
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
+    "ADT4_RVIZ_CONFIG",
 ]
 
 
@@ -176,6 +177,13 @@ def _write_session_to_file(
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
+@click.option(
+    "--rviz-config",
+    envvar="ADT4_RVIZ_CONFIG",
+    type=click.Path(),
+    default=None,
+    help="custom rviz config file (overrides default dcist.rviz)",
+)
 def main(
     session_path,
     tmuxp_args,
@@ -189,6 +197,7 @@ def main(
     dry_run,
     bag,
     bag_delay,
+    rviz_config,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -206,6 +215,15 @@ def main(
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
     if prior_map:
         env["ADT4_PRIOR_MAP"] = str(prior_map)
+    if rviz_config:
+        rviz_config = pathlib.Path(rviz_config).expanduser().absolute()
+        if rviz_config.exists():
+            env["ADT4_RVIZ_CONFIG"] = str(rviz_config)
+        else:
+            click.secho(
+                f"Warning: rviz config not found: {rviz_config} — using default",
+                fg="yellow",
+            )
 
     click.secho(f"Loading {session_path}...")
     _show_vars(env)

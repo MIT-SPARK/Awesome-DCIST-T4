@@ -185,20 +185,25 @@ Loading /home/nathan/dcist_ws/src/awesome_dcist_t4/dcist_launch_system/tmux/auto
 Are the settings correct? [y/N]:
 ```
 
-`run-adt4` will use environment variables `ADT4_ROBOT_NAME`, `ADT4_OUTPUT_DIR` and `ADT4_PRIOR_MAP` if they are specified instead of prompting you for inputs (you can also specify both by command line arg).
+`run-adt4` will use environment variables `ADT4_ROBOT_NAME`, `ADT4_OUTPUT_DIR`, `ADT4_PRIOR_MAP`, and `ADT4_RVIZ_CONFIG` if they are specified instead of prompting you for inputs (you can also specify both by command line arg).
 See `run-adt4 --help` for a list of options:
 ```
 Usage: run-adt4 [OPTIONS] [SESSION_PATH]
 
 Options:
-  --tmuxp-args TEXT      args to forward to tmuxp
-  -n, --robot-name TEXT  robot name to use
-  -o, --output-dir PATH  output for adt4
-  -p, --prior-map        prior map
-  -s, --sim-time         use sim time
-  -y, --yes              skip env variable check
-  -f, --force            clear output if it exists
-  --help                 Show this message and exit.
+  --tmuxp-args TEXT        args to forward to tmuxp
+  -n, --robot-name TEXT    robot name to use
+  -c, --platform-id TEXT   robot platform adt4 is running on
+  -o, --output-dir PATH    output for adt4
+  -p, --prior-map PATH     prior map
+  -s, --sim-time           use sim time
+  -y, --yes                skip env variable check
+  -f, --force              clear output if it exists
+  -d, --dry-run            only show command
+  --bag PATH               bag to run
+  --bag-delay FLOAT        bag playback delay
+  --rviz-config PATH       custom rviz config file (overrides default dcist.rviz)
+  --help                   Show this message and exit.
 ```
 
 > :warning: **Warning** </br>

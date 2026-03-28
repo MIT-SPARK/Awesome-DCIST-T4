@@ -262,12 +262,13 @@ launch:
 
   # Rviz
   - arg: {name: launch_rviz, default: 'false'}
+  - arg: {name: rviz_config, default: '$(find-pkg-share dcist_launch_system)/rviz/dcist.rviz'}
   - node:
       if: $(var launch_rviz)
       pkg: rviz2
       exec: rviz2
       name: rviz2_node
-      args: -d $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz
+      args: -d $(var rviz_config)
       remap:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
       param:

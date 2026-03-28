@@ -412,7 +412,10 @@ def get_remote_status(user, ip, silvus_ips=None):
         "echo '---TMUX---'; tmux list-sessions 2>/dev/null || echo 'none'; "
         "echo '---ROS2---'; pgrep -c -f 'ros2|zenoh' 2>/dev/null || echo '0'; "
         "echo '---LOAD---'; uptime | sed 's/.*load average: //'; "
-        "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'"
+        "echo '---MEM---'; free -h 2>/dev/null | awk '/^Mem:/{print $3 \"/\" $2}' || echo 'N/A'; "
+        "echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 || echo 'N/A'; "
+        "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'; "
+        "echo '---BAT---'; cat /sys/class/power_supply/BAT*/capacity 2>/dev/null && cat /sys/class/power_supply/BAT*/status 2>/dev/null || echo 'N/A'"
     )
 
     if silvus_ips:
@@ -465,7 +468,7 @@ else:
 
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
     if rc != 0 or not stdout:
-        return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "disk": "N/A", "radio": "N/A"}
+        return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "mem": "N/A", "gpu": "N/A", "disk": "N/A", "battery": "N/A", "radio": "N/A"}
 
     sections = {}
     current = None
@@ -477,13 +480,44 @@ else:
             sections[current].append(line)
 
     tmux_lines = sections.get("TMUX", ["none"])
-    tmux_sessions = "; ".join(tmux_lines) if tmux_lines[0] != "none" else "none"
+    if tmux_lines[0] == "none":
+        tmux_sessions = "none"
+    else:
+        # Extract just session names (before the colon)
+        names = [l.split(":")[0] for l in tmux_lines if l.strip()]
+        tmux_sessions = ", ".join(names) if names else "none"
+
+    # Format load averages (column header has the labels)
+    raw_load = (sections.get("LOAD", ["N/A"])[0] or "N/A").strip()
+    if raw_load != "N/A":
+        parts = [p.strip() for p in raw_load.split(",")]
+        if len(parts) == 3:
+            raw_load = f"{parts[0]}/{parts[1]}/{parts[2]}"
+
+    # Format GPU info
+    raw_gpu = (sections.get("GPU", ["N/A"])[0] or "N/A").strip()
+    if raw_gpu != "N/A":
+        gpu_parts = [p.strip() for p in raw_gpu.split(",")]
+        if len(gpu_parts) == 3:
+            raw_gpu = f"{gpu_parts[0]}% {gpu_parts[1]}/{gpu_parts[2]}M"
+
+    # Format battery: lines are [capacity, status] e.g. ["85", "Discharging"]
+    bat_lines = sections.get("BAT", ["N/A"])
+    if bat_lines and bat_lines[0] != "N/A" and len(bat_lines) >= 2:
+        bat_pct = bat_lines[0].strip()
+        bat_state = bat_lines[1].strip()
+        raw_bat = f"{bat_pct}% ({bat_state})"
+    else:
+        raw_bat = "N/A"
 
     return {
         "tmux_sessions": tmux_sessions,
         "ros2_procs": (sections.get("ROS2", ["0"])[0] or "0"),
-        "load": (sections.get("LOAD", ["N/A"])[0] or "N/A"),
+        "load": raw_load,
+        "mem": (sections.get("MEM", ["N/A"])[0] or "N/A").strip(),
+        "gpu": raw_gpu,
         "disk": (sections.get("DISK", ["N/A"])[0] or "N/A"),
+        "battery": raw_bat,
         "radio": (sections.get("SILVUS", ["N/A"])[0] or "N/A"),
     }
 
@@ -627,3 +661,321 @@ print("OK")
         n = len(endpoints)
         return True, f"Updated ({n} endpoint{'s' if n != 1 else ''})"
     return False, f"Failed: {err or stdout}"
+
+
+_ZENOH_TEMPLATE = pathlib.Path(__file__).resolve().parent.parent.parent / "config" / "zenoh_router_template.json5"
+
+
+def patch_zenoh_config_local(endpoints, listen_port=7447, template_path=None):
+    """Create a patched zenoh config from the bundled template.
+
+    Surgically replaces connect.endpoints and listen port, preserving all
+    ROS transport/timeout/routing settings from the template.
+
+    Returns the path to the temporary config file, or None on failure.
+    """
+    template_path = pathlib.Path(template_path) if template_path else _ZENOH_TEMPLATE
+    if not template_path.exists():
+        return None
+
+    content = template_path.read_text()
+
+    # Build the new endpoints array string
+    if endpoints:
+        ep_lines = ",\n".join(f'      "{ep}"' for ep in endpoints)
+        new_array = f"[\n{ep_lines}\n    ]"
+    else:
+        new_array = "[]"
+
+    # Patch connect.endpoints using the same regex approach as deploy_zenoh_config
+    connect_match = re.search(r'^\s*connect\s*:\s*\{', content, re.MULTILINE)
+    if not connect_match:
+        return None
+
+    # Find the matching closing } for the connect section
+    depth = 0
+    connect_end = len(content)
+    for i in range(connect_match.end() - 1, len(content)):
+        if content[i] == '{':
+            depth += 1
+        elif content[i] == '}':
+            depth -= 1
+            if depth == 0:
+                connect_end = i + 1
+                break
+
+    connect_section = content[connect_match.start():connect_end]
+
+    # Find the actual endpoints: [...] — skip comment lines
+    ep_pattern = re.compile(r'^(\s*endpoints\s*:\s*)\[(.*?)\]', re.MULTILINE | re.DOTALL)
+    ep_match = None
+    for m in ep_pattern.finditer(connect_section):
+        line_start = connect_section.rfind('\n', 0, m.start()) + 1
+        line_prefix = connect_section[line_start:m.start()].strip()
+        if line_prefix.startswith('//'):
+            continue
+        ep_match = m
+        break
+
+    if not ep_match:
+        return None
+
+    abs_start = connect_match.start() + ep_match.start()
+    abs_end = connect_match.start() + ep_match.end()
+    content = content[:abs_start] + ep_match.group(1) + new_array + content[abs_end:]
+
+    # Patch listen port: replace the listen endpoints array
+    listen_match = re.search(r'^\s*listen\s*:\s*\{', content, re.MULTILINE)
+    if listen_match:
+        depth = 0
+        listen_end = len(content)
+        for i in range(listen_match.end() - 1, len(content)):
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    listen_end = i + 1
+                    break
+
+        listen_section = content[listen_match.start():listen_end]
+        lep_match = None
+        for m in ep_pattern.finditer(listen_section):
+            line_start = listen_section.rfind('\n', 0, m.start()) + 1
+            line_prefix = listen_section[line_start:m.start()].strip()
+            if line_prefix.startswith('//'):
+                continue
+            lep_match = m
+            break
+
+        if lep_match:
+            new_listen = f'[\n      "tcp/[::]:{listen_port}"\n    ]'
+            labs_start = listen_match.start() + lep_match.start()
+            labs_end = listen_match.start() + lep_match.end()
+            content = content[:labs_start] + lep_match.group(1) + new_listen + content[labs_end:]
+
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json5", prefix="fleet_zenoh_", delete=False,
+    )
+    tmp.write(content)
+    tmp.flush()
+    tmp.close()
+    return tmp.name
+
+
+def send_tmux_keys(user, ip, session="adt4_system", target="core.2", keys="Enter"):
+    """Send keys to a tmux pane on a remote machine via SSH.
+
+    Returns (success: bool, message: str).
+    """
+    safe_session = shlex.quote(session)
+    safe_target = shlex.quote(f"{session}:{target}")
+    cmd = f"tmux send-keys -t {safe_target} {keys}"
+    rc, stdout, err = ssh_cmd(user, ip, cmd, timeout=5)
+    if rc == 0:
+        return True, "Keys sent"
+    return False, f"Failed: {err or stdout}"
+
+
+def check_zenoh_config(user, ip):
+    """Check if zenoh config file exists on remote machine."""
+    cmd = f"[ -f ~/{_ZENOH_CONFIG_FILE} ] && echo OK"
+    rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
+    return "OK" in out
+
+
+def get_ros_node_status(timeout=5):
+    """Echo the global StatusTable topic and parse node statuses.
+
+    Runs `ros2 topic echo` locally (base station must have ROS + zenoh).
+    Collects messages for `timeout` seconds to gather status from all robots.
+    Returns dict: {robot_name: [{nickname, status, notes, required}, ...]}
+
+    Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
+    """
+    cmd = [
+        "ros2", "topic", "echo",
+        "/global/ros_system_monitor/table_in",
+        "ros_system_monitor_msgs/msg/StatusTable",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        # Expected: we collect messages until timeout
+        stdout = e.stdout if e.stdout else ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if not stdout.strip():
+            return {}
+    except OSError:
+        return {}
+    else:
+        stdout = result.stdout
+        if not stdout.strip():
+            return {}
+
+    # ros2 topic echo outputs multiple YAML documents separated by ---
+    robots = {}
+    for doc in stdout.split("---"):
+        doc = doc.strip()
+        if not doc:
+            continue
+        try:
+            data = yaml.safe_load(doc)
+        except Exception:
+            continue
+        if not data or "status" not in data:
+            continue
+
+        monitor_name = data.get("monitor_name", "unknown")
+
+        for node_info in data.get("status", []):
+            nickname = node_info.get("nickname", "")
+            parts = nickname.split("/", 1)
+            if len(parts) == 2:
+                robot_name, node_name = parts
+            else:
+                robot_name = monitor_name
+                node_name = nickname
+
+            if robot_name not in robots:
+                robots[robot_name] = []
+
+            # Update existing node or append new one
+            existing = next(
+                (n for n in robots[robot_name] if n["nickname"] == node_name),
+                None,
+            )
+            if existing:
+                existing["status"] = node_info.get("status", 5)
+                existing["notes"] = node_info.get("notes", "")
+            else:
+                robots[robot_name].append({
+                    "nickname": node_name,
+                    "status": node_info.get("status", 5),
+                    "notes": node_info.get("notes", ""),
+                    "required": node_info.get("required", True),
+                })
+
+    return robots
+
+
+# Nodes that are acceptable to be non-NOMINAL for indoor tests
+_INDOOR_OPTIONAL_NODES = {"gps_monitor", "ntrip_monitor"}
+
+# Status constants matching NodeInfoMsg
+_STATUS_NOMINAL = 1
+_STATUS_WARNING = 2
+_STATUS_ERROR = 3
+_STATUS_NO_HB = 4
+_STATUS_STARTUP = 5
+
+_STATUS_NAMES = {
+    _STATUS_NOMINAL: "NOMINAL",
+    _STATUS_WARNING: "WARNING",
+    _STATUS_ERROR: "ERROR",
+    _STATUS_NO_HB: "NO_HB",
+    _STATUS_STARTUP: "STARTUP",
+}
+
+_STATUS_COLORS = {
+    _STATUS_NOMINAL: "green",
+    _STATUS_WARNING: "yellow",
+    _STATUS_ERROR: "red",
+    _STATUS_NO_HB: "yellow",
+    _STATUS_STARTUP: "yellow",
+}
+
+
+def compute_robot_readiness(nodes):
+    """Compute overall readiness for a robot from its node statuses.
+
+    Returns (color: str, label: str) where color is green/yellow/red.
+    - Green: all nodes NOMINAL
+    - Yellow: all NOMINAL except GPS/NTRIP (indoor test acceptable)
+    - Red: any non-GPS/NTRIP node is ERROR or NO_HB
+    """
+    if not nodes:
+        return "red", "No data"
+
+    all_nominal = True
+    non_optional_ok = True
+
+    for node in nodes:
+        status = node["status"]
+        is_optional = node["nickname"] in _INDOOR_OPTIONAL_NODES
+        if status != _STATUS_NOMINAL:
+            all_nominal = False
+            if not is_optional:
+                non_optional_ok = False
+
+    if all_nominal:
+        return "green", "Ready"
+    elif non_optional_ok:
+        return "yellow", "Ready (indoor)"
+    else:
+        return "red", "Not ready"
+
+
+# Topics in dcist.rviz that need robot namespace prefixing.
+# These are relative topics (no leading /) that appear in the rviz config.
+_RVIZ_TOPICS_TO_NAMESPACE = [
+    "hydra_visualizer/graph",
+    "hydra_multi_visualizer/graph",
+    "frontright/semantic_overlay/image_raw",
+    "robot_description",
+]
+
+_DEFAULT_RVIZ_TEMPLATE = (
+    pathlib.Path(__file__).resolve().parents[3]
+    / "dcist_launch_system"
+    / "rviz"
+    / "dcist.rviz"
+)
+
+
+def generate_namespaced_rviz(robot_name, template_path=None, output_path=None):
+    """Generate an rviz config with topics prefixed by robot namespace.
+
+    Reads the template .rviz file, replaces known relative topic values
+    with namespaced versions (e.g., hydra_visualizer/graph -> robot/hydra_visualizer/graph).
+    Also replaces hardcoded TF frame prefixes like 'euclid/' with the target robot name.
+
+    Returns the output path.
+    """
+    template_path = pathlib.Path(template_path) if template_path else _DEFAULT_RVIZ_TEMPLATE
+    if output_path is None:
+        output_path = pathlib.Path(f"/tmp/dcist_{robot_name}.rviz")
+
+    with open(template_path) as f:
+        content = f.read()
+
+    # Replace known relative topic values with namespaced versions.
+    # In RVIZ YAML, topics appear as: "Value: hydra_visualizer/graph"
+    for topic in _RVIZ_TOPICS_TO_NAMESPACE:
+        # Match "Value: topic" in the YAML (handles leading whitespace)
+        content = content.replace(
+            f"Value: {topic}",
+            f"Value: {robot_name}/{topic}",
+        )
+
+    # Replace hardcoded robot namespace in TF frames (e.g., euclid/ -> hamilton/)
+    # Find the existing robot name by looking for known patterns like "XXX/base_link"
+    existing_robot = None
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.endswith("/base_link:") or stripped.endswith("/body:"):
+            candidate = stripped.split("/")[0]
+            if candidate and candidate != robot_name:
+                existing_robot = candidate
+                break
+
+    if existing_robot and existing_robot != robot_name:
+        content = content.replace(f"{existing_robot}/", f"{robot_name}/")
+        content = content.replace(f"{existing_robot}_", f"{robot_name}_")
+
+    with open(output_path, "w") as f:
+        f.write(content)
+
+    return str(output_path)
