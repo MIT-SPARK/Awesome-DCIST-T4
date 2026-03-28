@@ -87,6 +87,7 @@ fi
 ##################################
 # Install Spark
 ##################################
+
 if [ "$install_spark" = true ]; then
     # make new environment
     python3 -m venv $ADT4_ENV/spark_env --system-site-packages
@@ -117,15 +118,12 @@ if [ "$install_spark" = true ]; then
     fi
 
     # download weights
-    mkdir -p $ADT4_WS/weights
-    pushd $ADT4_WS/weights
-    MODEL_FILE="yolov8s-world.pt"
-    if [[ ! -f "$MODEL_FILE" && "$ci_running" = false ]]; then
-    	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODEL_FILE
-    else
-    	echo "$MODEL_FILE already exists, skipping download."
+    if [[ "$ci_running" = false ]]; then
+        $ADT4_ENV/spark_env/bin/python $ADT4_WS/src/awesome_dcist_t4/install/download_weights.py -d $ADT4_WS/weights \
+            yolov8s-world.pt \
+            yoloe-26m-seg.pt \
+            mobileclip2_b.ts
     fi
-    popd
 
     # clean up environment after install
     deactivate
