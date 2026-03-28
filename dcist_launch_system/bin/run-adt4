@@ -245,6 +245,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 @click.option("--yes", "-y", is_flag=True, help="skip env variable check")
 @click.option("--force", "-f", is_flag=True, help="clear output if it exists")
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
+@click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
 @click.option(
@@ -269,6 +270,7 @@ def main(
     yes,
     force,
     dry_run,
+    show_tmux,
     bag,
     bag_delay,
     trajectory,
@@ -313,7 +315,7 @@ def main(
         info.trajectory_args = trajectory_args.split(" ")
 
     with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
-        _write_session_to_file(session_path, info, fout, verbose=dry_run)
+        _write_session_to_file(session_path, info, fout, verbose=dry_run or show_tmux)
         return _run_session(fout.name, env, tmuxp_args, dry_run)
 
 
