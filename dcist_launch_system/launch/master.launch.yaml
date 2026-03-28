@@ -68,10 +68,10 @@ launch:
       name: semantic_inference
       pyenv: $(var spark_env)
       on_exit: shutdown
+      env:
+        - {name: SEMANTIC_INFERENCE_MODEL_DIR, value: $(env ADT4_WS)/weights}
       param:
         - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/instance_seg.yaml, type: str}
-      # args: >-
-      #   --ros-args --log-level $(var log-level)  # TODO(multy): add log level arg
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
