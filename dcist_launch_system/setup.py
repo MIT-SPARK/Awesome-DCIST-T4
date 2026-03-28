@@ -22,6 +22,7 @@ def get_share_info(top_level, pattern="*", dest=None):
 
 launch_files = get_share_info("launch", "*.launch.yaml")
 config_files = get_share_info("config", "*.yaml")
+labelspaces = get_share_info("labelspaces", "*.yaml")
 config_files_csv = get_share_info("config", "*.csv")
 platform_files = get_share_info("platforms")
 rviz_files = get_share_info("rviz", "*.rviz")

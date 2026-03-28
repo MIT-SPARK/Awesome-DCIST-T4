@@ -6,7 +6,6 @@ launch:
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - arg: {name: labelspace_name, default: ade20k_mit}
-
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
@@ -95,7 +94,7 @@ launch:
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/$(var labelspace_name)_label_space.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/labelspaces/$(var labelspace_name).yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
@@ -367,6 +366,8 @@ launch:
       pkg: tf2_ros
       exec: static_transform_publisher
       args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
+
+  # Heracles scene graph publisher
   - arg: {name: launch_heracles_publisher, default: 'false'}
   - pyenv_node:
       if: $(var launch_heracles_publisher)
@@ -380,6 +381,8 @@ launch:
       remap:
         - from: ~/dsg_out
           to: hydra/backend/dsg
+
+  # State updater for heracles
   - arg: {name: launch_heracles_state_updater, default: 'false'}
   - pyenv_node:
       if: $(var launch_heracles_state_updater)
