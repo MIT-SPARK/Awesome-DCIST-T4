@@ -134,6 +134,11 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_NEO4J\_USERNAME             | Username for the scene graph database (default: neo4j)            |
 | ADT4\_NEO4J\_PASSWORD             | Password for the scene graph database (default: neo4j_pw)         |
 | ADT4\_PHX\_ROOT                   | Root directory of phoenix for phoenix-using robots                |
+| ADT4\_NTRIP\_HOST                 | Hostname or IP address of NTRIP Caster                            |
+| ADT4\_NTRIP\_PORT                 | Port of NTRIP Caster (typically 2101)                             |
+| ADT4\_NTRIP\_MOUNTPOINT           | Named datastream of corrections you want from the NTRIP Caster    |
+| ADT4\_NTRIP\_USERNAME             | Username to access the NTRIP mountpoint datastream                |
+| ADT4\_NTRIP\_PASSWORD             | Password to access the NTRIP mountpoint datastream                |
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 Note that while some of these environment variables can be set to dummy values
