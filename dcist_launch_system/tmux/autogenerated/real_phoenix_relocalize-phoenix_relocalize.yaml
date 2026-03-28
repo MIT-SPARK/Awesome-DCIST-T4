@@ -24,8 +24,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: real_phoenix_relocalize
-  logging_key: real_phoenix_relocalize-real_phoenix_relocalize
+  config: phoenix_relocalize
+  logging_key: real_phoenix_relocalize-phoenix_relocalize
 options:
   default-command: /bin/zsh
 windows:

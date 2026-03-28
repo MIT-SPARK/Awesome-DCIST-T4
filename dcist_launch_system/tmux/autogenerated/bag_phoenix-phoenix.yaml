@@ -7,12 +7,8 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
-  phoenix_executor: {}
-  ntrip_monitor:
-    external_monitor: {type: NtripMonitor}
-  tx_rx_monitor: {}
-  gps_monitor:
-    external_monitor: {type: GpsMonitor}
+  nlu_rviz_instruction_panel: {}
+  nlu_rviz_manipulation_panel: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -23,10 +19,10 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, phoenix_executor: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, tx_rx_monitor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, nlu_rviz_manipulation_panel: {}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: real_phoenix
-  logging_key: real_phoenix-real_phoenix
+  config: phoenix
+  logging_key: bag_phoenix-phoenix
 options:
   default-command: /bin/zsh
 windows:
@@ -59,16 +55,7 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_fastsam:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_map:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
-  - window_name: real_phoenix
-    layout: tiled
-    panes:
-      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
-      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true"
-      - sleep 5; tmux send-keys -t real_phoenix.4 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
-      - "cd ${ADT4_PHX_ROOT} && phx run"
-  - window_name: gps
+  - window_name: rviz
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_gps:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_ntrip:=true
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true]

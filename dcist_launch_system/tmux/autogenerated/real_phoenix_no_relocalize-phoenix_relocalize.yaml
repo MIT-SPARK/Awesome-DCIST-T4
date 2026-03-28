@@ -11,8 +11,8 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: real_phoenix_relocalize
-  logging_key: real_phoenix_no_relocalize-real_phoenix_relocalize
+  config: phoenix_relocalize
+  logging_key: real_phoenix_no_relocalize-phoenix_relocalize
 options:
   default-command: /bin/zsh
 windows:
