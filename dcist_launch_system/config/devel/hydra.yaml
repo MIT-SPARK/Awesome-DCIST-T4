@@ -24,20 +24,21 @@ active_window:
     semantic_integrator: {type: SingleLabelIntegrator}
   min_output_separation: 0.5
   object_detector:
-    type: ConnectedSemantics
-    min_cluster_size: 20
-    use_full_connectivity: true
-    use_3d: true
+    type: InstanceForwarding
+    min_cluster_size: 30
+    min_object_volume: 0.1
     max_range: 10.0
-    grid_size: 0.2
+    min_range: 0.05
+    instance_id: true
+    verbosity: 1
   tracker:
     type: MaxIouTracker
-    track_by: voxels
+    track_by: pixels
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
-    voxel_size: 0.2
     temporal_window: 3.0
     min_num_observations: 10
+    verbosity: 0
   object_extractor:
     type: MeshObjectExtractor
     verbosity: 0

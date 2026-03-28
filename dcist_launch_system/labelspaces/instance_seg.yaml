@@ -1,0 +1,27 @@
+---
+label_names:
+  - {label: 0, name: ignore}
+  - {label: 1, name: chair}
+  - {label: 2, name: cone}
+  - {label: 3, name: bag}
+  - {label: 4, name: table}
+  - {label: 5, name: tree}
+  - {label: 6, name: car}
+  - {label: 7, name: van}
+  - {label: 8, name: truck}
+  - {label: 9, name: bus}
+  - {label: 10, name: bicycle}
+  - {label: 11, name: door}
+  - {label: 12, name: pole}
+  - {label: 13, name: fence}
+  - {label: 14, name: sign}
+  - {label: 15, name: window}
+  - {label: 16, name: bed}
+  - {label: 17, name: box}
+  - {label: 18, name: basket}
+  - {label: 19, name: seating}
+  - {label: 20, name: flag}
+  - {label: 21, name: light}
+  - {label: 22, name: trash}
+  - {label: 23, name: clothes}
+  - {label: 24, name: ball}

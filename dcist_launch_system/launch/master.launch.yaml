@@ -5,10 +5,10 @@ launch:
   - arg: {name: robot_name}
   - arg: {name: roman_env, default: $(env ADT4_ENV)/roman}
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
+  - arg: {name: labelspace_name, default: ade20k_mit}
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
-  - let: {name: semantic_inference_labelspace_name, value: ade20k_mit}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
 
   # Zed camera driver (has to be above push_ros_namespace)
@@ -45,18 +45,36 @@ launch:
       pkg: semantic_inference_ros
       exec: closed_set_node
       namespace: $(var camera)
-      name: segmentation
+      name: semantic_inference
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
         # hard-coded top level namespace because of extra camera node namespace
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var semantic_inference_labelspace_name).yaml@output/recolor
+        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
         --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
         --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
         --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
+
+  # Instance Segmentation
+  - arg: {name: launch_instance_segmentation, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_instance_segmentation)
+      pkg: semantic_inference_ros
+      exec: instance_segmentation_node
+      namespace: $(var camera)
+      name: semantic_inference
+      pyenv: $(var spark_env)
+      on_exit: shutdown
+      env:
+        - {name: SEMANTIC_INFERENCE_MODEL_DIR, value: $(env ADT4_WS)/weights}
+      param:
+        - {name: config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/instance_seg.yaml, type: str}
+      remap:
+        - {from: color/image_raw, to: rgb/image_rect_color}
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
@@ -76,7 +94,7 @@ launch:
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
-        --config-utilities-file $(find-pkg-share hydra)/config/label_spaces/$(var semantic_inference_labelspace_name)_label_space.yaml
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/labelspaces/$(var labelspace_name).yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
@@ -349,6 +367,7 @@ launch:
       exec: static_transform_publisher
       args: --frame-id $(var robot_name)/map --child-frame-id $(var robot_name)/odom --x 5 --y 10 --yaw 1.57
 
+  # Heracles scene graph publisher
   - arg: {name: launch_heracles_publisher, default: 'false'}
   - pyenv_node:
       if: $(var launch_heracles_publisher)
@@ -363,6 +382,7 @@ launch:
         - from: ~/dsg_out
           to: hydra/backend/dsg
 
+  # State updater for heracles
   - arg: {name: launch_heracles_state_updater, default: 'false'}
   - pyenv_node:
       if: $(var launch_heracles_state_updater)
@@ -378,33 +398,33 @@ launch:
           to: /$(var robot_name)/update_holding_state
 
   # gps
-  - arg: { name: launch_gps, default: 'false' }
+  - arg: {name: launch_gps, default: 'false'}
   - group:
-    - set_remap: {from: ublox_gps_node/fix, to: fix}
-    - set_remap: {from: /rtcm, to: rtcm}
-    - include:
-        if: $(var launch_gps)
-        file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
+      - set_remap: {from: ublox_gps_node/fix, to: fix}
+      - set_remap: {from: /rtcm, to: rtcm}
+      - include:
+          if: $(var launch_gps)
+          file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
 
   # ntrip
-  - arg: { name: launch_ntrip, default: 'false' }
+  - arg: {name: launch_ntrip, default: 'false'}
   - group:
-    - set_remap: {from: ublox_gps_node/fix, to: fix}
-    - set_remap: {from: /rtcm, to: rtcm}
-    - node:
-        if: $(var launch_ntrip)
-        pkg: ntrip_client
-        exec: ntrip_ros.py
-        name: ntrip_client
-        param:
-        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ntrip.yaml, allow_substs: true}
+      - set_remap: {from: ublox_gps_node/fix, to: fix}
+      - set_remap: {from: /rtcm, to: rtcm}
+      - node:
+          if: $(var launch_ntrip)
+          pkg: ntrip_client
+          exec: ntrip_ros.py
+          name: ntrip_client
+          param:
+            - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ntrip.yaml, allow_substs: true}
 
   # tx_rx
-  - arg: { name: launch_tx_rx, default: 'false' }
+  - arg: {name: launch_tx_rx, default: 'false'}
   - group:
-    - set_remap: {from: tx_rx/status, to: ros_system_monitor/node_diagnostic_collector}
-    - node:
-        if: $(var launch_tx_rx)
-        pkg: tx_rx_monitor_dcist
-        exec: tx_rx_monitor_node
-        name: tx_rx_monitor_node
+      - set_remap: {from: tx_rx/status, to: ros_system_monitor/node_diagnostic_collector}
+      - node:
+          if: $(var launch_tx_rx)
+          pkg: tx_rx_monitor_dcist
+          exec: tx_rx_monitor_node
+          name: tx_rx_monitor_node

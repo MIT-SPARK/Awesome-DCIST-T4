@@ -59,7 +59,7 @@ launch_configs:
     base_station_record: [plan_prior, multi_status, base_station_recording]
     base_station_heracles_record: [plan_prior_heracles, multi_status, base_station_recording]
 
-    hydra_devel: [core, status, hydra_experimental]
+    hydra_devel: [core, status, hydra_experimental, rviz]
 
 # Configs build the set of rosparams that will be loaded
 configs:

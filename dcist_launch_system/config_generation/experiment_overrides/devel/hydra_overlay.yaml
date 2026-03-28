@@ -5,6 +5,22 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   type: ActiveWindow
   min_output_separation: 0.5
+  object_detector: !reset
+    type: InstanceForwarding
+    min_cluster_size: 30
+    min_object_volume: 0.1
+    max_range: 10.0
+    min_range: 0.05
+    instance_id: true
+    verbosity: 1
+  tracker: !reset
+    type: MaxIouTracker
+    track_by: pixels
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
+    temporal_window: 3.0
+    min_num_observations: 10
+    verbosity: 0
   sinks: !reset
     - type: TsdfOccupancyPublisher
       min_distance: 0.25
