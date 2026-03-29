@@ -1,105 +1,81 @@
+---
 # Launch configs build the structure of the tmux launch files
 launch_configs:
-    main: [core, status]
-    map: [main, hydra, roman]
-    relocalize: [main, hydra_multi, roman]
-
-    bag_map: [map, rviz]
-    bag_relocalize: [relocalize, rviz, relocalize_viz]
-    spot_bag: [bag_map, bag_spot]
-    spot_bag_relocalize: [bag_relocalize, bag_spot]
-
-    no_relocalize: [main, transform_publishers]
-    plan_prior: [main, prior_dsg, planning]
-    plan_prior_heracles: [main, heracles_prior_dsg, planning]
-
-    spot_data_collection: [main, spot_real, gps]
-    phoenix_data_collection: [main, phoenix_real, gps]
-
-    real_spot: [map, spot_real, gps]
-    real_spot_relocalize: [relocalize, spot_real, gps]
-    real_spot_no_relocalize: [no_relocalize, spot_real, gps]
-
-    real_phoenix: [map, phoenix_real, gps]
-    real_phoenix_relocalize: [relocalize, phoenix_real, gps]
-    real_phoenix_no_relocalize: [no_relocalize, gps]
-
-    base_station: [plan_prior, multi_status]
-    base_station_heracles: [plan_prior_heracles, multi_status]
-
-    spot_prior_dsg: [plan_prior, sim_spot]
-    spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
-    hydra_devel: [core, status, hydra_experimental, rviz]
-
+  # core groupings
+  main: [core, status]
+  map: [main, hydra, roman]
+  relocalize: [main, hydra_multi, roman]
+  # development groupings
+  no_relocalize: [main, transform_publishers]
+  bag_map: [map, rviz]
+  bag_relocalize: [relocalize, rviz, relocalize_viz]
+  # planning and base station
+  plan_prior: [main, prior_dsg, planning]
+  plan_prior_heracles: [main, heracles_prior_dsg, planning]
 # Configs build the set of rosparams that will be loaded
 configs:
-    default: []
-
-    devel: []
-    phoenix: []
-    prior_dsg: []
-    relocalize: []
-
-    phoenix_relocalize: [phoenix, relocalize]
-    apollo_relocalize: [relocalize]
-
+  default: []
+  devel: []
+  prior_dsg: []
+  relocalize: []
+  apollo_relocalize: [relocalize]
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
-    # base station
-    base_station:
-        launch_config: base_station
-        config: [default]
-    base_station_heracles:
-        launch_config: base_station_heracles
-        config: [default]
+  # base station
+  base_station:
+    launch_config: [plan_prior, multi_status]
+    config: [default]
+  base_station_heracles:
+    launch_config: [plan_prior_heracles, multi_status]
+    config: [default]
 
-    # spot configs
-    spot:
-        launch_config: real_spot
-        config: [default]
-    spot_relocalize:
-        launch_config: real_spot_relocalize
-        config: [relocalize, apollo_relocalize]
-    spot_data_collection:
-        launch_config: spot_data_collection
-        config: [default]
-    spot_bag:
-        launch_config: spot_bag
-        config: [default]
-    spot_bag_relocalize:
-        launch_config: spot_bag_relocalize
-        config: [relocalize]
-    spot_no_relocalize:
-        launch_config: real_spot_no_relocalize
-        config: [relocalize]
+  # spot configs
+  spot:
+    launch_config: [map, spot_real, gps]
+    config: [default]
+  spot_relocalize:
+    launch_config: [relocalize, spot_real, gps]
+    config: [relocalize, apollo_relocalize]
+  spot_data_collection:
+    launch_config: [main, spot_real, gps]
+    config: [default]
+  spot_bag:
+    launch_config: [bag_map, spot_bag]
+    config: [default]
+  spot_bag_relocalize:
+    launch_config: [bag_relocalize, spot_bag]
+    config: [relocalize]
+  spot_no_relocalize:
+    launch_config: [no_relocalize, spot_real, gps]
+    config: [relocalize]
 
-    # phoenix
-    phoenix:
-        launch_config: real_phoenix
-        config: [phoenix]
-    phoenix_relocalize:
-        launch_config: real_phoenix_relocalize
-        config: [phoenix_relocalize]
-    phoenix_data_collection:
-        launch_config: phoenix_data_collection
-        config: [phoenix]
-    phoenix_bag:
-        launch_config: bag_map
-        config: [phoenix]
-    phoenix_bag_relocalize:
-        launch_config: bag_relocalize
-        config: [phoenix_relocalize]
-    phoenix_no_relocalize:
-        launch_config: no_relocalize
-        config: [phoenix_relocalize]
+  # phoenix
+  phoenix:
+    launch_config: [map, phoenix_real, gps]
+    config: [default]
+  phoenix_relocalize:
+    launch_config: [relocalize, phoenix_real, gps]
+    config: [relocalize]
+  phoenix_data_collection:
+    launch_config: [main, phoenix_real, gps]
+    config: [default]
+  phoenix_bag:
+    launch_config: [bag_map, phoenix_bag]
+    config: [default]
+  phoenix_bag_relocalize:
+    launch_config: [bag_relocalize, phoenix_bag]
+    config: [relocalize]
+  phoenix_no_relocalize:
+    launch_config: [no_relocalize, gps]
+    config: [relocalize]
 
-    # development
-    hydra_devel:
-        launch_config: hydra_devel
-        config: [devel]
-    spot_prior_dsg:
-        launch_config: spot_prior_dsg
-        config: [prior_dsg]
-    spot_prior_dsg_heracles:
-        launch_config: spot_prior_dsg_heracles
-        config: [prior_dsg]
+  # development
+  hydra_devel:
+    launch_config: [core, status, hydra_experimental, rviz]
+    config: [devel]
+  spot_prior_dsg:
+    launch_config: [plan_prior, spot_sim]
+    config: [prior_dsg]
+  spot_prior_dsg_heracles:
+    launch_config: [plan_prior_heracles, spot_sim]
+    config: [prior_dsg]
