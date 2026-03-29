@@ -1,2 +1,0 @@
----
-robot_frame: $<env ADT4_ROBOT_NAME>/base_link
