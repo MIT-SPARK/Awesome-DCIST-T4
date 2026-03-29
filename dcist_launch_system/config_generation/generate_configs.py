@@ -85,8 +85,8 @@ def compute_list_counts(lst):
     return counts
 
 
-def resolve_unique_dirs(manifest, key, leaves=None):
-    dirs = resolve_override_dirs(manifest, key, leaves=leaves)
+def resolve_unique_dirs(manifest, keys, leaves=None):
+    dirs = resolve_override_dirs(manifest, keys, leaves=leaves)
 
     # A given override directory might be (transitively) specified multiple
     # times. This isn't great (since it means that the included override groups
@@ -101,26 +101,27 @@ def resolve_unique_dirs(manifest, key, leaves=None):
     return list(override_counts.keys())
 
 
-def resolve_override_dirs(manifest, key, leaves=None):
+def resolve_override_dirs(manifest, keys, leaves=None):
     override_dirs = []
-    children = manifest.get(key)
-    if children is None and leaves:
-        children = [] if key in leaves else None
+    for key in keys:
+        children = manifest.get(key)
+        if children is None and leaves:
+            children = [] if key in leaves else None
 
-    if children is None:
-        valid_keys = list(manifest.keys()) + (leaves or [])
-        log_error(
-            f"Requested key {key} is defined in the manifest! Valid keys: {valid_keys}"
-        )
-        sys.exit(f"invalid manifest key {key}")
+        if children is None:
+            valid_keys = list(manifest.keys()) + (leaves or [])
+            log_error(
+                f"Requested key {key} is not defined in the manifest! Valid keys: {valid_keys}"
+            )
+            sys.exit(f"invalid manifest key {key}")
 
-    if len(children) == 0:
-        override_dirs = [key]
-        return override_dirs
+        if len(children) == 0:
+            override_dirs = [key]
+            return override_dirs
 
-    for c in children:
-        transitive_children = resolve_override_dirs(manifest, c, leaves=leaves)
-        override_dirs += transitive_children
+        for c in children:
+            transitive_children = resolve_override_dirs(manifest, [c], leaves=leaves)
+            override_dirs += transitive_children
 
     return override_dirs
 
@@ -158,21 +159,17 @@ def find_concrete_configs(experiment_manifest):
     return concrete_configs
 
 
-def render_config(
-    root_path, experiment_manifest, base_yamls, concrete_configs, output_dir
-):
+def render_config(root_path, manifest, base_yamls, concrete_configs, output_dir):
     root_path = pathlib.Path(root_path).expanduser().resolve()
     output_dir = pathlib.Path(output_dir).expanduser().resolve()
-    for experiment_key in experiment_manifest["configs"].keys():
+    for experiment_key in manifest["configs"].keys():
         log_debug(f"Generating config for {experiment_key}")
         base_param_dir = root_path / "base_params"
         rendered_config_dir = output_dir / experiment_key
         shutil.copytree(base_param_dir, rendered_config_dir, dirs_exist_ok=True)
 
         try:
-            override_dirs = resolve_unique_dirs(
-                experiment_manifest["configs"], experiment_key
-            )
+            override_dirs = resolve_unique_dirs(manifest["configs"], [experiment_key])
             if experiment_key not in override_dirs:
                 if (root_path / "experiment_overrides" / experiment_key).exists():
                     override_dirs.append(experiment_key)
@@ -226,7 +223,7 @@ def render_config(
                     subprocess.run(cmd, stdout=fout)
 
 
-def render_tmux(root_path, experiment_manifest, tmux_output_dir):
+def render_tmux(root_path, manifest, tmux_output_dir):
     root_path = pathlib.Path(root_path)
     tmux_output_dir = pathlib.Path(tmux_output_dir)
     tmux_output_dir.mkdir(exist_ok=True, parents=True)
@@ -234,18 +231,16 @@ def render_tmux(root_path, experiment_manifest, tmux_output_dir):
     base_launch_file = root_path / "base_launch" / "base_launch.yaml"
 
     # Generate the tmux launch files
+    all_configs = manifest["launch_configs"]
     components = [x.stem for x in (root_path / "launch_components").glob("*.yaml")]
-    for exp_key, exp in experiment_manifest["experiments"].items():
+    for exp_key, exp in manifest["experiments"].items():
         log_info(f"Generating launch files for experiment {exp_key}")
 
-        launch_configs = resolve_unique_dirs(
-            experiment_manifest["launch_configs"],
-            exp["launch_config"],
-            leaves=components,
-        )
+        keys = exp["launch_config"]
+        keys = keys if isinstance(keys, list) else [keys]
+        launch_configs = resolve_unique_dirs(all_configs, keys, components)
         log_debug(f"Building launch config with windows: {launch_configs}")
 
-        # TODO(nathan) add --force-block-style when I update config_utilities
         cmd = ["composite-configs", "-d", "-f", base_launch_file]
         for lc in launch_configs:
             cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
