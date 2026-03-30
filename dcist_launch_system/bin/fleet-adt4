@@ -2007,6 +2007,24 @@ def _launch_tui(network, topology_path, output_root):
             Binding("r", "refresh_priors", "Refresh Priors", priority=True),
         ]
 
+        DEFAULT_CSS = """
+        MissionScreen #mission_robots {
+            max-height: 5;
+        }
+        MissionScreen #mission_session_select {
+            max-height: 5;
+        }
+        MissionScreen #mission_base_station {
+            max-height: 4;
+        }
+        MissionScreen #mission_bs_session {
+            max-height: 4;
+        }
+        MissionScreen #mission_log {
+            min-height: 6;
+        }
+        """
+
         # Step status indicators
         _STEP_PENDING = "[dim]\u25cb[/]"   # ○
         _STEP_RUNNING = "[yellow]\u25cf[/]" # ●
@@ -2197,7 +2215,7 @@ def _launch_tui(network, topology_path, output_root):
                 problems.append("No experiment name")
             if self._mode == "relocalize":
                 try:
-                    prior = self.query_one("#mission_prior", Input).value.strip()
+                    prior, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
                 except Exception:
                     prior = ""
                 if not prior:
@@ -2222,7 +2240,7 @@ def _launch_tui(network, topology_path, output_root):
             log.write(f"  Experiment:        [cyan]{experiment}[/]")
             if self._mode == "relocalize":
                 try:
-                    prior = self.query_one("#mission_prior", Input).value.strip()
+                    prior, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
                 except Exception:
                     prior = ""
                 log.write(f"  Prior map:         [cyan]{prior}[/]")
