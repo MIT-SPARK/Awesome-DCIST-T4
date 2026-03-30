@@ -2250,17 +2250,22 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_go(self):
             """Run the next step."""
-            if self._running:
-                return
-            if self._current_step >= len(self._steps):
+            try:
+                if self._running:
+                    return
+                if self._current_step >= len(self._steps):
+                    log = self.query_one("#mission_log", RichLog)
+                    log.write("[green]All steps complete![/]")
+                    return
+                if not self._confirmed:
+                    self._show_confirmation(then_auto=False)
+                    return
+                self._auto = False
+                self._run_current_step()
+            except Exception as e:
+                import traceback
                 log = self.query_one("#mission_log", RichLog)
-                log.write("[green]All steps complete![/]")
-                return
-            if not self._confirmed:
-                self._show_confirmation(then_auto=False)
-                return
-            self._auto = False
-            self._run_current_step()
+                log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
 
         def action_auto_run(self):
             """Auto-run all automated steps, pausing at manual ones."""
