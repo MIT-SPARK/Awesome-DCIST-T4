@@ -2238,28 +2238,25 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_go(self):
             """Run the next step."""
+            log = self.query_one("#mission_log", RichLog)
+            log.write("[magenta]DEBUG: F5 pressed. Checking state...[/]")
             try:
-                with open("/tmp/fleet_debug.log", "a") as f:
-                    f.write(f"action_go called! _running={self._running}, _confirmed={self._confirmed}\n")
                 if self._running:
+                    log.write("[magenta]DEBUG: Aborting due to _running=True[/]")
                     return
                 if self._current_step >= len(self._steps):
-                    log = self.query_one("#mission_log", RichLog)
                     log.write("[green]All steps complete![/]")
                     return
                 if not self._confirmed:
-                    with open("/tmp/fleet_debug.log", "a") as f:
-                        f.write("calling _show_confirmation!\n")
+                    log.write("[magenta]DEBUG: Entering _show_confirmation()...[/]")
                     self._show_confirmation(then_auto=False)
-                    with open("/tmp/fleet_debug.log", "a") as f:
-                        f.write(f"_show_confirmation returned! _confirmed={self._confirmed}\n")
+                    log.write("[magenta]DEBUG: Exited _show_confirmation().[/]")
                     return
                 self._auto = False
+                log.write("[magenta]DEBUG: Entering _run_current_step()...[/]")
                 self._run_current_step()
             except Exception as e:
                 import traceback
-                with open("/tmp/fleet_debug.log", "a") as f:
-                    f.write(f"EXCEPTION: {e}\n{traceback.format_exc()}\n")
                 log = self.query_one("#mission_log", RichLog)
                 log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
                 import traceback
