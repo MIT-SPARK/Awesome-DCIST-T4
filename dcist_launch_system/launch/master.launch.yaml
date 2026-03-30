@@ -351,12 +351,12 @@ launch:
 
   # Static TF to replace Hydra multi map->robot/map TF.
   # Non-identity transform for verification.
-  - arg: {name: launch_phoenix_body_link, default: 'false'}
+  - arg: {name: launch_spot_base_link, default: 'false'}
   - node:
-      if: $(var launch_phoenix_body_link)
+      if: $(var launch_spot_base_link)
       pkg: tf2_ros
       exec: static_transform_publisher
-      args: --frame-id $(var robot_name)/base_link --child-frame-id $(var robot_name)/body
+      args: --frame-id $(var robot_name)/body --child-frame-id $(var robot_name)/base_link
 
   # Static TF to replace Hydra multi map->robot/map TF.
   # Non-identity transform for verification.

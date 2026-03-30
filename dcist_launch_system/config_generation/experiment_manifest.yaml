@@ -60,10 +60,10 @@ experiments:
     launch_config: [main, phoenix_real, gps]
     config: [default]
   phoenix_bag:
-    launch_config: [bag_map, phoenix_bag]
+    launch_config: bag_map
     config: [default]
   phoenix_bag_relocalize:
-    launch_config: [bag_relocalize, phoenix_bag]
+    launch_config: bag_relocalize
     config: [relocalize]
   phoenix_no_relocalize:
     launch_config: [no_relocalize, gps]
