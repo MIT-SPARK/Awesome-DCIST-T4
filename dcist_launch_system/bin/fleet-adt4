@@ -399,21 +399,43 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, force, ye
             m["name"], sess, m["platform_id"] or "---",
             output_dir, prior_map or "---",
         )
-        cmds.append((m, remote_cmd))
+        cmds.append((m, remote_cmd, sess))
 
     console.print(table)
 
     if dry_run:
         click.secho("\nDry run — commands that would be executed:", fg="cyan")
-        for m, cmd in cmds:
+        for m, cmd, _ in cmds:
             click.echo(f"  ssh {m['user']}@{m['ip']} \"{cmd}\"")
         return
+
+    # Pre-launch check for existing sessions
+    click.echo("Checking for running sessions...")
+    def check_session(item):
+        m, _, sess = item
+        rc, _, _ = ssh_cmd(m["user"], m["ip"], f"tmux has-session -t {shlex.quote(sess)} 2>/dev/null", timeout=5)
+        return m['name'], rc == 0, sess
+
+    session_checks = run_parallel(check_session, cmds)
+    conflicts = [r for _, r in session_checks if r[1]]
+    if conflicts:
+        for mname, _, sess in conflicts:
+            click.secho(f"  Warning: Session '{sess}' is already running on {mname}.", fg="yellow")
+        if click.confirm("Terminate existing sessions and proceed?"):
+            for mname, _, sess in conflicts:
+                # Find the machine dict
+                m = next(m for m, _, _ in cmds if m["name"] == mname)
+                click.echo(f"  Terminating session on {mname}...")
+                ssh_cmd(m["user"], m["ip"], f"tmux kill-session -t {shlex.quote(sess)}", timeout=5)
+        else:
+            click.secho("Aborted by user.", fg="red")
+            return
 
     if not yes:
         click.confirm("Proceed with launch?", abort=True)
 
     def do_launch(item):
-        m, cmd = item
+        m, cmd, _ = item
         rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
         return rc, out, err
 
@@ -594,6 +616,147 @@ def _launch_tui(network, topology_path, output_root):
         return False
 
     # ---- Maps Screen ----
+
+    class ConfirmSessionKillScreen(ModalScreen[bool]):
+        def __init__(self, message: str):
+            super().__init__()
+            self.message = message
+
+        def compose(self) -> ComposeResult:
+            yield Vertical(
+                Label(self.message),
+                Rule(),
+                Horizontal(
+                    Button("Yes, Terminate", variant="error", id="btn_yes"),
+                    Button("No, Abort", variant="primary", id="btn_no"),
+                ),
+                id="confirm_kill_dialog"
+            )
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            self.dismiss(event.button.id == "btn_yes")
+
+    def _check_sessions_and_prompt(app, targets, session_name, log):
+        """Check for running tmux sessions and prompt user in TUI threads to kill them."""
+        def check(m):
+            rc, _, _ = ssh_cmd(m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session_name)} 2>/dev/null", timeout=5)
+            if rc == 0:
+                return m["name"]
+            return None
+
+        app.call_from_thread(log.write, f"  [dim]Checking for existing '{session_name}' sessions...[/]")
+        results = run_parallel(check, targets)
+        conflicts = [r for _, r in results if isinstance(r, str)]
+
+        if not conflicts:
+            return True
+
+        app.call_from_thread(
+            log.write,
+            f"  [yellow]Session '{session_name}' already running on: {', '.join(conflicts)}[/]"
+        )
+
+        user_decision = [None]
+        ev = threading.Event()
+
+        def ask():
+            def on_dismiss(result):
+                user_decision[0] = result
+                ev.set()
+            msg = f"Session '{session_name}' is already running on {len(conflicts)} machine(s):\n{', '.join(conflicts)}\n\nTerminate existing sessions and proceed?"
+            app.push_screen(ConfirmSessionKillScreen(msg), on_dismiss)
+
+        app.call_from_thread(ask)
+        ev.wait()
+
+        if user_decision[0]:
+            for m in targets:
+                if m["name"] in conflicts:
+                    app.call_from_thread(log.write, f"  [dim]Terminating session {session_name} on {m['name']}...[/]")
+                    ssh_cmd(m["user"], m["ip"], f"tmux kill-session -t {shlex.quote(session_name)}", timeout=5)
+            return True
+        else:
+            app.call_from_thread(log.write, "[red]Launch aborted by user.[/]")
+            return False
+
+    class PriorMapSelector(Vertical):
+        """Reusable widget for selecting prior maps across online fleet nodes."""
+        def compose(self) -> ComposeResult:
+            yield Label("Prior map folder (must have hydra + roman; auto-transferred to targets):")
+            yield Input(placeholder="Filter prior maps...", id="prior_search")
+            yield SelectionList(*[("(none)", "(none)")], id="prior_select")
+            yield Input(placeholder="(optional) custom absolute path overrides selection", id="prior_input")
+
+        def on_mount(self):
+            self._prior_map_info = {}
+            self._all_priors = []
+            # Wait a tick then fetch automatically
+            self.set_timer(0.5, self.refresh_priors)
+
+        def refresh_priors(self, log_widget=None):
+            if log_widget:
+                self.app.call_from_thread(log_widget.write, "[dim]Fetching prior maps from online machines...[/]")
+
+            def do_fetch():
+                prior_maps = []
+                for m in runtime_config.values():
+                    if not m.get("online", False):
+                        continue
+                    exps = list_remote_experiments(m["user"], m["ip"], output_root)
+                    for exp in exps:
+                        subdirs = exp.get("subdirs", [])
+                        if "hydra" in subdirs and "roman" in subdirs:
+                            path = f"{output_root}/{exp['name']}"
+                            label = f"{m['name']}:{exp['name']} ({exp.get('size', '?')})"
+                            prior_maps.append((label, path, m["name"]))
+                return prior_maps
+
+            def on_done(prior_maps):
+                self._prior_map_info = {}
+                self._all_priors = []
+                try:
+                    sel = self.query_one("#prior_select", SelectionList)
+                    sel.clear_options()
+                    sel.add_option(("(none)", "(none)"))
+                    for label, path, source in prior_maps:
+                        val = f"{source}:{path}"
+                        self._prior_map_info[val] = (path, source)
+                        self._all_priors.append((label, val))
+                        sel.add_option((label, val))
+                    self.query_one("#prior_search", Input).value = ""
+                    if log_widget:
+                        self.app.call_from_thread(log_widget.write, f"[green]Found {len(prior_maps)} prior maps (with both hydra + roman).[/]")
+                except Exception:
+                    pass
+
+            self.app.run_worker(do_fetch, thread=True).then(on_done)
+
+        def on_input_changed(self, event: Input.Changed):
+            if event.input.id == "prior_search":
+                query = event.value.strip()
+                sel = self.query_one("#prior_select", SelectionList)
+                sel.clear_options()
+                sel.add_option(("(none)", "(none)"))
+                for label, val in getattr(self, "_all_priors", []):
+                    if _fuzzy_match(query, label):
+                        sel.add_option((label, val))
+
+        def get_prior_map(self):
+            """Return (prior_path, source_machine_name) or ("", None)."""
+            custom = self.query_one("#prior_input", Input).value.strip()
+            if custom:
+                if ":" in custom:
+                    parts = custom.split(":", 1)
+                    return parts[1], parts[0]
+                return custom, None
+            sel = self.query_one("#prior_select", SelectionList)
+            selected = list(sel.selected) if hasattr(sel, 'selected') else []
+            if selected and selected[0] != "(none)":
+                val = selected[0]
+                if val in getattr(self, "_prior_map_info", {}):
+                    return self._prior_map_info[val]
+                return val.split(":", 1)[1] if ":" in val else val, None
+            return "", None
 
     class MapsScreen(ModalScreen):
         BINDINGS = [
@@ -1157,7 +1320,6 @@ def _launch_tui(network, topology_path, output_root):
             self._all_sessions = sorted(
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
-            self._all_priors = []  # populated async
 
             yield VerticalScroll(
                 Label("[bold]Launch[/] — configure and launch run-adt4 on robots"),
@@ -1172,18 +1334,12 @@ def _launch_tui(network, topology_path, output_root):
                 Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
                 Input(placeholder="date_description", id="experiment_input"),
                 Rule(),
-                Label("Prior map folder (must have hydra + roman; auto-transferred to targets):"),
-                Input(placeholder="Filter prior maps...", id="prior_search"),
-                SelectionList(*[("(none)", "(none)")], id="prior_select"),
-                Input(placeholder="(optional) custom path overrides selection", id="prior_input"),
+                PriorMapSelector(id="launch_prior_selector"),
                 Rule(),
                 Vertical(id="launch_progress_area"),
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
             )
             yield Footer()
-
-        def on_mount(self):
-            self.action_browse_prior()
 
         def on_input_changed(self, event: Input.Changed):
             if event.input.id == "session_search":
@@ -1193,85 +1349,32 @@ def _launch_tui(network, topology_path, output_root):
                 for s in self._all_sessions:
                     if _fuzzy_match(query, s):
                         sel.add_option((s, s))
-            elif event.input.id == "prior_search":
-                query = event.value.strip()
-                sel = self.query_one("#prior_select", SelectionList)
-                sel.clear_options()
-                sel.add_option(("(none)", "(none)"))
-                for label, val in self._all_priors:
-                    if _fuzzy_match(query, label):
-                        sel.add_option((label, val))
 
         def _get_selected_session(self):
             sel = self.query_one("#session_select", SelectionList)
             selected = list(sel.selected)
             return selected[0] if selected else ""
 
-        def _get_prior_map(self):
-            """Return (prior_path, source_machine_name) or ("", None)."""
-            custom = self.query_one("#prior_input", Input).value.strip()
-            if custom:
-                return custom, None
-            sel = self.query_one("#prior_select", SelectionList)
-            selected = list(sel.selected)
-            if selected and selected[0] != "(none)":
-                val = selected[0]
-                info = getattr(self, "_prior_map_info", {})
-                if val in info:
-                    return info[val]  # (path, source_machine)
-                return val, None
-            return "", None
-
         def action_browse_prior(self):
             log = self.query_one("#launch_log", RichLog)
-            log.write("[dim]Fetching prior maps from online machines...[/]")
-
-            def do_fetch():
-                prior_maps = []
-                for m in runtime_config.values():
-                    if not m.get("online", False):
-                        continue
-                    exps = list_remote_experiments(m["user"], m["ip"], output_root)
-                    for exp in exps:
-                        subdirs = exp.get("subdirs", [])
-                        if "hydra" in subdirs and "roman" in subdirs:
-                            path = f"{output_root}/{exp['name']}"
-                            label = f"{m['name']}:{exp['name']} ({exp.get('size', '?')})"
-                            prior_maps.append((label, path, m["name"]))
-                return prior_maps
-
-            def on_done(prior_maps):
-                self._prior_map_info = {}  # value -> (path, source_machine)
-                self._all_priors = []  # (label, val) for filtering
-                sel = self.query_one("#prior_select", SelectionList)
-                sel.clear_options()
-                sel.add_option(("(none)", "(none)"))
-                for label, path, source in prior_maps:
-                    val = f"{source}:{path}"
-                    self._prior_map_info[val] = (path, source)
-                    self._all_priors.append((label, val))
-                    sel.add_option((label, val))
-                # Clear any active search filter
-                self.query_one("#prior_search", Input).value = ""
-                log.write(f"[green]Found {len(prior_maps)} prior maps (with both hydra + roman).[/]")
-
-            def bg():
-                results = do_fetch()
-                self.app.call_from_thread(on_done, results)
-
-            threading.Thread(target=bg, daemon=True).start()
+            self.query_one("#launch_prior_selector", PriorMapSelector).refresh_priors(log)
 
         def _build_commands(self):
-            sel = self.query_one("#robot_select", SelectionList)
-            selected = list(sel.selected)
-            session = self._get_selected_session()
-            experiment = self.query_one("#experiment_input", Input).value.strip()
-            prior_path, prior_source = self._get_prior_map()
-
-            if not session or not experiment:
-                return None, None, "Session and experiment are required."
+            log = self.query_one("#launch_log", RichLog)
+            robot_sel = self.query_one("#robot_select", SelectionList)
+            selected = list(robot_sel.selected)
             if not selected:
-                return None, None, "Select at least one robot."
+                return [], None, "No robots selected."
+
+            session = self._get_selected_session()
+            if not session:
+                return [], None, "No session selected."
+
+            experiment = self.query_one("#experiment_input", Input).value.strip()
+            if not experiment:
+                return [], None, "No experiment name provided."
+
+            prior_path, prior_source = self.query_one("#launch_prior_selector", PriorMapSelector).get_prior_map()
 
             # If prior map comes from a source machine, targets get it as prior_<name>
             if prior_path and prior_source:
@@ -1476,6 +1579,17 @@ def _launch_tui(network, topology_path, output_root):
                                         f"  [bold red]ABORT: could not transfer prior to {m['name']}[/]"
                                     )
                                     return
+
+                    # Phase 1.5: Verify no conflicting tmux sessions
+                    all_targets = [m for m, _ in cmds]
+                    # We assume session name is the same for all (or we check the first one)
+                    # For LaunchScreen, the session is obtained from `self.query_one("#launch_session_select", SelectionList)`
+                    # Let's get the selected session name cleanly
+                    sel = self.query_one("#launch_session_select", SelectionList)
+                    selected_sessions = list(sel.selected)
+                    if selected_sessions:
+                        if not _check_sessions_and_prompt(self.app, all_targets, selected_sessions[0], log):
+                            return
 
                     # Phase 2: Launch on each robot
                     self.app.call_from_thread(
@@ -1890,6 +2004,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("escape", "dismiss", "Back", priority=True),
             Binding("f5", "go", "Run Step [F5]", priority=True),
             Binding("f6", "auto_run", "Auto-Run [F6]", priority=True),
+            Binding("r", "refresh_priors", "Refresh Priors", priority=True),
         ]
 
         # Step status indicators
@@ -1984,8 +2099,7 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 *(
                     [
-                        Label("Prior map (for relocalize):"),
-                        Input(placeholder="Prior map path on robot", id="mission_prior"),
+                        PriorMapSelector(id="mission_prior_selector"),
                         Rule(),
                     ] if self._mode == "relocalize" else []
                 ),
@@ -2254,33 +2368,29 @@ def _launch_tui(network, topology_path, output_root):
                     )
             return success
 
+        def action_refresh_priors(self):
+            if self._mode == "relocalize":
+                log = self.query_one("#mission_log", RichLog)
+                self.query_one("#mission_prior_selector", PriorMapSelector).refresh_priors(log)
+
         def _step_transfer_priors(self, robots, log):
             """Transfer prior maps to all robots."""
             try:
-                prior_input = self.query_one("#mission_prior", Input).value.strip()
+                prior_path, source = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
             except Exception:
-                self.app.call_from_thread(log.write, "[red]No prior map input found.[/]")
+                self.app.call_from_thread(log.write, "[red]No prior map selector found.[/]")
                 return False
 
-            if not prior_input:
+            if not prior_path:
                 self.app.call_from_thread(log.write, "[red]No prior map specified.[/]")
                 return False
 
-            # The prior_input should be in format "machine:path" or just "path"
-            # For simplicity, we transfer from the first robot that has it
             self.app.call_from_thread(
-                log.write, f"  [dim]Prior map: {prior_input}[/]"
+                log.write, f"  [dim]Prior map: {prior_path}[/]"
             )
 
-            # Find which machine has the prior map
-            source = None
-            prior_path = prior_input
-            if ":" in prior_input:
-                parts = prior_input.split(":", 1)
-                source = parts[0]
-                prior_path = parts[1]
-            else:
-                # Check each online machine for the prior
+            if not source:
+                # Check each online machine for the prior since no origin was resolved securely
                 for m in runtime_config.values():
                     if not m.get("online"):
                         continue
@@ -2348,13 +2458,16 @@ def _launch_tui(network, topology_path, output_root):
             prior_flag = ""
             if self._mode == "relocalize":
                 try:
-                    prior_input = self.query_one("#mission_prior", Input).value.strip()
+                    prior_path, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
                 except Exception:
-                    prior_input = ""
-                if prior_input:
-                    exp_name = pathlib.Path(prior_input).name
+                    prior_path = ""
+                if prior_path:
+                    exp_name = pathlib.Path(prior_path).name
                     dest_name = f"prior_{exp_name}"
                     prior_flag = f" -p {_quote_path(output_root + '/' + dest_name)}"
+
+            if not _check_sessions_and_prompt(self.app, robots, session, log):
+                return False
 
             success = True
             for m in robots:
@@ -2539,6 +2652,9 @@ def _launch_tui(network, topology_path, output_root):
             out_dir = f"{output_root}/{experiment}"
             q_output = _quote_path(out_dir)
             platform = bs.get("platform_id", bs["name"])
+
+            if not _check_sessions_and_prompt(self.app, [bs], bs_session, log):
+                return False
 
             rviz_flag = ""
             if self._rviz_config_path:
