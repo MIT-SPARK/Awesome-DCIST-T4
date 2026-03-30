@@ -71,7 +71,10 @@ experiments:
 
   # development
   hydra_devel:
-    launch_config: [core, status, hydra_instance, rviz]
+    launch_config: [main, hydra_instance, rviz]
+    config: [devel]
+  hydra_spot_devel:
+    launch_config: [main, hydra_instance, spot_bag, rviz]
     config: [devel]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
