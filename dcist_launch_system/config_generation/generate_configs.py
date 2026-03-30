@@ -116,8 +116,8 @@ def resolve_override_dirs(manifest, keys, leaves=None):
             sys.exit(f"invalid manifest key {key}")
 
         if len(children) == 0:
-            override_dirs = [key]
-            return override_dirs
+            override_dirs += [key]
+            continue
 
         for c in children:
             transitive_children = resolve_override_dirs(manifest, [c], leaves=leaves)
