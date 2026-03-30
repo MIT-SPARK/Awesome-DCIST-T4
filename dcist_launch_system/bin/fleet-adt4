@@ -2007,6 +2007,12 @@ def _launch_tui(network, topology_path, output_root):
             Binding("r", "refresh_priors", "Refresh Priors", priority=True),
         ]
 
+        DEFAULT_CSS = """
+        MissionScreen #mission_log {
+            min-height: 10;
+        }
+        """
+
         # Step status indicators
         _STEP_PENDING = "[dim]\u25cb[/]"   # ○
         _STEP_RUNNING = "[yellow]\u25cf[/]" # ●
@@ -2233,6 +2239,8 @@ def _launch_tui(network, topology_path, output_root):
         def action_go(self):
             """Run the next step."""
             try:
+                with open("/tmp/fleet_debug.log", "a") as f:
+                    f.write(f"action_go called! _running={self._running}, _confirmed={self._confirmed}\n")
                 if self._running:
                     return
                 if self._current_step >= len(self._steps):
@@ -2240,11 +2248,20 @@ def _launch_tui(network, topology_path, output_root):
                     log.write("[green]All steps complete![/]")
                     return
                 if not self._confirmed:
+                    with open("/tmp/fleet_debug.log", "a") as f:
+                        f.write("calling _show_confirmation!\n")
                     self._show_confirmation(then_auto=False)
+                    with open("/tmp/fleet_debug.log", "a") as f:
+                        f.write(f"_show_confirmation returned! _confirmed={self._confirmed}\n")
                     return
                 self._auto = False
                 self._run_current_step()
             except Exception as e:
+                import traceback
+                with open("/tmp/fleet_debug.log", "a") as f:
+                    f.write(f"EXCEPTION: {e}\n{traceback.format_exc()}\n")
+                log = self.query_one("#mission_log", RichLog)
+                log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
                 import traceback
                 log = self.query_one("#mission_log", RichLog)
                 log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
