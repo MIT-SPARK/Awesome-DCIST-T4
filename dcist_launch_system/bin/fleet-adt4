@@ -2176,14 +2176,22 @@ def _launch_tui(network, topology_path, output_root):
         def _tlog(self, log, msg):
             """Thread-safe, NON-BLOCKING log write. Never deadlocks."""
             try:
-                self.app.call_later(log.write, msg)
+                loop = self.app._loop
+                if loop and loop.is_running():
+                    loop.call_soon_threadsafe(log.write, msg)
+                else:
+                    log.write(msg)  # fallback for main thread
             except Exception:
                 pass  # screen may have been dismissed
 
         def _thread_update(self, fn, *args):
             """Thread-safe, NON-BLOCKING call to a UI function. Never deadlocks."""
             try:
-                self.app.call_later(fn, *args)
+                loop = self.app._loop
+                if loop and loop.is_running():
+                    loop.call_soon_threadsafe(fn, *args)
+                else:
+                    fn(*args)
             except Exception:
                 pass
 
