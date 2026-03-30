@@ -2201,13 +2201,18 @@ def _launch_tui(network, topology_path, output_root):
                 problems.append("No base station session selected")
             if not experiment:
                 problems.append("No experiment name")
+            
             if self._mode == "relocalize":
                 try:
-                    prior, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
+                    prior, prior_source = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
                 except Exception:
                     prior = ""
+                    prior_source = None
                 if not prior:
                     problems.append("No prior map specified")
+            else:
+                prior = ""
+                prior_source = None
 
             if problems:
                 for p in problems:
@@ -2227,11 +2232,18 @@ def _launch_tui(network, topology_path, output_root):
             log.write(f"  BS session:        [cyan]{bs_session}[/]")
             log.write(f"  Experiment:        [cyan]{experiment}[/]")
             if self._mode == "relocalize":
-                try:
-                    prior, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
-                except Exception:
-                    prior = ""
                 log.write(f"  Prior map:         [cyan]{prior}[/]")
+
+            self._mission_params = {
+                "robots": robots,
+                "session": session,
+                "bs": bs,
+                "bs_session": bs_session,
+                "experiment": experiment,
+                "prior": prior,
+                "prior_source": prior_source
+            }
+
             log.write(f"[bold]Press {'F6' if then_auto else 'F5'} again to confirm and start.[/]")
             self._confirmed = True
             self._pending_auto = then_auto
@@ -2292,10 +2304,13 @@ def _launch_tui(network, topology_path, output_root):
             self._running = True
             step["status"] = "running"
             self._rebuild_steps()
+            
+            # SNAPSHOT DOM VALUES BEFORE THREAD STARTS
+            robots = self._mission_params.get("robots", [])
 
             def run_step():
                 try:
-                    success = self._execute_step(self._current_step)
+                    success = self._execute_step(self._current_step, log, robots)
                     if success:
                         self._set_step_status(self._current_step, "done")
                         self._current_step += 1
@@ -2317,11 +2332,8 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=run_step, daemon=True).start()
 
-        def _execute_step(self, step_idx):
+        def _execute_step(self, step_idx, log, robots):
             """Execute a single step. Returns True on success."""
-            log = self.query_one("#mission_log", RichLog)
-            robots = self._get_robots()
-
             step_name = self._steps[step_idx]["name"]
             self.app.call_from_thread(
                 log.write, f"[bold]Step {step_idx + 1}: {step_name}[/]"
@@ -2394,12 +2406,8 @@ def _launch_tui(network, topology_path, output_root):
 
         def _step_transfer_priors(self, robots, log):
             """Transfer prior maps to all robots."""
-            try:
-                prior_path, source = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
-            except Exception:
-                self.app.call_from_thread(log.write, "[red]No prior map selector found.[/]")
-                return False
-
+            prior_path = self._mission_params.get("prior", "")
+            source = self._mission_params.get("prior_source")
             if not prior_path:
                 self.app.call_from_thread(log.write, "[red]No prior map specified.[/]")
                 return False
@@ -2460,15 +2468,11 @@ def _launch_tui(network, topology_path, output_root):
 
         def _step_launch(self, robots, log):
             """Launch run-adt4 on all selected robots."""
-            session = self._get_session()
+            session = self._mission_params.get("session", "")
+            experiment = self._mission_params.get("experiment", "")
             if not session:
                 self.app.call_from_thread(log.write, "[red]No session selected.[/]")
                 return False
-
-            try:
-                experiment = self.query_one("#mission_experiment", Input).value.strip()
-            except Exception:
-                experiment = ""
             if not experiment:
                 self.app.call_from_thread(log.write, "[red]No experiment name.[/]")
                 return False
