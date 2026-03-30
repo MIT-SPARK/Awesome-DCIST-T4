@@ -2026,6 +2026,7 @@ def _launch_tui(network, topology_path, output_root):
             self._current_step = 0
             self._auto = False
             self._running = False
+            self._running_since = 0  # monotonic timestamp
 
             if mode == "mapping":
                 self._steps = [
@@ -2172,9 +2173,23 @@ def _launch_tui(network, topology_path, output_root):
             selected = list(sel.selected)
             return selected[0] if selected else ""
 
+        def _tlog(self, log, msg):
+            """Thread-safe, NON-BLOCKING log write. Never deadlocks."""
+            try:
+                self.app.call_later(log.write, msg)
+            except Exception:
+                pass  # screen may have been dismissed
+
+        def _thread_update(self, fn, *args):
+            """Thread-safe, NON-BLOCKING call to a UI function. Never deadlocks."""
+            try:
+                self.app.call_later(fn, *args)
+            except Exception:
+                pass
+
         def _set_step_status(self, idx, status):
             self._steps[idx]["status"] = status
-            self.app.call_from_thread(self._rebuild_steps)
+            self._thread_update(self._rebuild_steps)
 
         def _show_confirmation(self, then_auto=False):
             """Validate selections and show a confirmation summary."""
@@ -2251,29 +2266,27 @@ def _launch_tui(network, topology_path, output_root):
         def action_go(self):
             """Run the next step."""
             log = self.query_one("#mission_log", RichLog)
-            log.write("[magenta]DEBUG: F5 pressed. Checking state...[/]")
             try:
                 if self._running:
-                    log.write("[magenta]DEBUG: Aborting due to _running=True[/]")
-                    return
+                    # Auto-reset if stuck for >5 minutes
+                    import time as _time
+                    if self._running_since and (_time.monotonic() - self._running_since) > 300:
+                        log.write("[yellow]Previous step timed out (>5min). Resetting...[/]")
+                        self._running = False
+                    else:
+                        log.write("[yellow]A step is still running. Please wait...[/]")
+                        return
                 if self._current_step >= len(self._steps):
                     log.write("[green]All steps complete![/]")
                     return
                 if not self._confirmed:
-                    log.write("[magenta]DEBUG: Entering _show_confirmation()...[/]")
                     self._show_confirmation(then_auto=False)
-                    log.write("[magenta]DEBUG: Exited _show_confirmation().[/]")
                     return
                 self._auto = False
-                log.write("[magenta]DEBUG: Entering _run_current_step()...[/]")
                 self._run_current_step()
             except Exception as e:
                 import traceback
-                log = self.query_one("#mission_log", RichLog)
-                log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
-                import traceback
-                log = self.query_one("#mission_log", RichLog)
-                log.write(f"[red]CRASH IN GO ACTION: {e}\n{traceback.format_exc()}[/red]")
+                log.write(f"[red]Error: {e}\n{traceback.format_exc()}[/red]")
 
         def action_auto_run(self):
             """Auto-run all automated steps, pausing at manual ones."""
@@ -2301,13 +2314,15 @@ def _launch_tui(network, topology_path, output_root):
                 self._current_step += 1
                 return
 
+            import time as _time
             self._running = True
+            self._running_since = _time.monotonic()
             step["status"] = "running"
             self._rebuild_steps()
             
             # SNAPSHOT DOM VALUES BEFORE THREAD STARTS
             robots = self._mission_params.get("robots", [])
-            log.write(f"[magenta]DEBUG: Prepared {len(robots)} robots for background execution.[/]")
+            log.write(f"[dim]Starting step with {len(robots)} robot(s)...[/]")
 
             def run_step():
                 try:
@@ -2317,28 +2332,29 @@ def _launch_tui(network, topology_path, output_root):
                         self._current_step += 1
                         # Auto-advance if in auto mode
                         if self._auto and self._current_step < len(self._steps):
-                            self.app.call_from_thread(self._run_current_step)
+                            self._thread_update(self._run_current_step)
                         elif self._current_step >= len(self._steps):
-                            self.app.call_from_thread(
-                                log.write, "[bold green]Mission complete![/]"
-                            )
+                            self._tlog(log, "[bold green]Mission complete![/]")
                     else:
                         self._set_step_status(self._current_step, "failed")
-                        self.app.call_from_thread(
-                            log.write,
-                            f"[bold red]Step {self._current_step + 1} failed. Fix and press 'g' to retry.[/]"
+                        self._tlog(
+                            log,
+                            f"[bold red]Step {self._current_step + 1} failed. Fix and press F5 to retry.[/]"
                         )
+                except Exception as exc:
+                    import traceback
+                    self._tlog(log, f"[red]Step crashed: {exc}\n{traceback.format_exc()}[/red]")
+                    self._set_step_status(self._current_step, "failed")
                 finally:
                     self._running = False
+                    self._running_since = 0
 
             threading.Thread(target=run_step, daemon=True).start()
 
         def _execute_step(self, step_idx, log, robots):
             """Execute a single step. Returns True on success."""
             step_name = self._steps[step_idx]["name"]
-            self.app.call_from_thread(
-                log.write, f"[bold]Step {step_idx + 1}: {step_name}[/]"
-            )
+            self._tlog(log, f"[bold]Step {step_idx + 1}: {step_name}[/]")
 
             # Steps that require robots selected
             needs_robots = (
@@ -2349,7 +2365,7 @@ def _launch_tui(network, topology_path, output_root):
                 "Generate rviz config",
             )
             if any(step_name.startswith(n) for n in needs_robots) and not robots:
-                self.app.call_from_thread(log.write, "[red]No robots selected.[/]")
+                self._tlog(log, "[red]No robots selected.[/]")
                 return False
 
             if step_name == "Deploy zenoh configs":
@@ -2365,14 +2381,14 @@ def _launch_tui(network, topology_path, output_root):
             elif step_name == "Launch base station":
                 return self._step_launch_base_station(robots, log)
             elif step_name == "Ready for commands":
-                self.app.call_from_thread(
-                    log.write,
+                self._tlog(
+                    log,
                     "[bold green]System ready for language commands![/]\n"
                     "  Use the NLU panel in rviz or heracles_agents chatdsg."
                 )
                 return True
             else:
-                self.app.call_from_thread(log.write, f"[yellow]Unknown step: {step_name}[/]")
+                self._tlog(log, f"[yellow]Unknown step: {step_name}[/]")
                 return True  # skip unknown
 
         def _step_deploy_zenoh(self, robots, log):
@@ -2380,7 +2396,7 @@ def _launch_tui(network, topology_path, output_root):
             all_machines = list(runtime_config.values())
             online = [m for m in all_machines if m.get("online")]
             if not online:
-                self.app.call_from_thread(log.write, "[red]No online machines.[/]")
+                self._tlog(log, "[red]No online machines.[/]")
                 return False
 
             success = True
@@ -2389,15 +2405,11 @@ def _launch_tui(network, topology_path, output_root):
                     endpoints = generate_zenoh_endpoints(topo, active_network, m["name"])
                     ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
                     color = "green" if ok else "red"
-                    self.app.call_from_thread(
-                        log.write, f"  [{color}]{m['name']}: {msg}[/{color}]"
-                    )
+                    self._tlog(log, f"  [{color}]{m['name']}: {msg}[/{color}]")
                     if not ok:
                         success = False
                 except KeyError:
-                    self.app.call_from_thread(
-                        log.write, f"  [dim]{m['name']}: no address on {active_network}[/]"
-                    )
+                    self._tlog(log, f"  [dim]{m['name']}: no address on {active_network}[/]")
             return success
 
         def action_refresh_priors(self):
@@ -2410,15 +2422,12 @@ def _launch_tui(network, topology_path, output_root):
             prior_path = self._mission_params.get("prior", "")
             source = self._mission_params.get("prior_source")
             if not prior_path:
-                self.app.call_from_thread(log.write, "[red]No prior map specified.[/]")
+                self._tlog(log, "[red]No prior map specified.[/]")
                 return False
 
-            self.app.call_from_thread(
-                log.write, f"  [dim]Prior map: {prior_path}[/]"
-            )
+            self._tlog(log, f"  [dim]Prior map: {prior_path}[/]")
 
             if not source:
-                # Check each online machine for the prior since no origin was resolved securely
                 for m in runtime_config.values():
                     if not m.get("online"):
                         continue
@@ -2426,18 +2435,16 @@ def _launch_tui(network, topology_path, output_root):
                     rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {q_path} && echo OK", timeout=5)
                     if "OK" in out:
                         source = m["name"]
-                        self.app.call_from_thread(
-                            log.write, f"  [dim]Found prior on {source}[/]"
-                        )
+                        self._tlog(log, f"  [dim]Found prior on {source}[/]")
                         break
 
             if not source:
-                self.app.call_from_thread(log.write, "[red]Prior map not found on any machine.[/]")
+                self._tlog(log, "[red]Prior map not found on any machine.[/]")
                 return False
 
             src_conf = runtime_config.get(source)
             if not src_conf:
-                self.app.call_from_thread(log.write, f"[red]Source {source} not in config.[/]")
+                self._tlog(log, f"[red]Source {source} not in config.[/]")
                 return False
 
             exp_name = pathlib.Path(prior_path).name
@@ -2448,22 +2455,16 @@ def _launch_tui(network, topology_path, output_root):
             for m in robots:
                 if m["name"] == source:
                     continue
-                self.app.call_from_thread(
-                    log.write, f"  Transferring to {m['name']}..."
-                )
+                self._tlog(log, f"  Transferring to {m['name']}...")
                 ok, method, msg = rsync_transfer(
                     src_conf["user"], src_conf["ip"], prior_path,
                     m["user"], m["ip"], dest_path,
                     relay=False, exclude=["recorded_data/"],
                 )
                 if ok:
-                    self.app.call_from_thread(
-                        log.write, f"  [green]{m['name']}: transferred ({method})[/]"
-                    )
+                    self._tlog(log, f"  [green]{m['name']}: transferred ({method})[/]")
                 else:
-                    self.app.call_from_thread(
-                        log.write, f"  [red]{m['name']}: FAILED: {msg}[/]"
-                    )
+                    self._tlog(log, f"  [red]{m['name']}: FAILED: {msg}[/]")
                     success = False
             return success
 
@@ -2472,36 +2473,30 @@ def _launch_tui(network, topology_path, output_root):
             session = self._mission_params.get("session", "")
             experiment = self._mission_params.get("experiment", "")
             if not session:
-                self.app.call_from_thread(log.write, "[red]No session selected.[/]")
+                self._tlog(log, "[red]No session selected.[/]")
                 return False
             if not experiment:
-                self.app.call_from_thread(log.write, "[red]No experiment name.[/]")
+                self._tlog(log, "[red]No experiment name.[/]")
                 return False
 
-            # Build prior map flag
+            # Build prior map flag from snapshot
             prior_flag = ""
             if self._mode == "relocalize":
-                try:
-                    prior_path, _ = self.query_one("#mission_prior_selector", PriorMapSelector).get_prior_map()
-                except Exception:
-                    prior_path = ""
+                prior_path = self._mission_params.get("prior", "")
                 if prior_path:
                     exp_name = pathlib.Path(prior_path).name
                     dest_name = f"prior_{exp_name}"
                     prior_flag = f" -p {_quote_path(output_root + '/' + dest_name)}"
 
-            if not _check_sessions_and_prompt(self.app, robots, session, log):
-                return False
+            # Skip session conflict check from background thread (it uses call_from_thread)
+            # Sessions were already validated during confirmation
 
             success = True
             for m in robots:
                 out_dir = f"{output_root}/{experiment}"
                 rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
                 if "EXISTS" in out:
-                    self.app.call_from_thread(
-                        log.write,
-                        f"  [yellow]{m['name']}: {out_dir} already exists, skipping[/]"
-                    )
+                    self._tlog(log, f"  [yellow]{m['name']}: {out_dir} already exists, skipping[/]")
                     continue
 
                 platform = m.get("platform_id", m["name"])
@@ -2513,27 +2508,19 @@ def _launch_tui(network, topology_path, output_root):
                     f"-c {shlex.quote(platform)} -o {q_output} -y{prior_flag} "
                     f"--tmuxp-args \"-d\""
                 )
-                self.app.call_from_thread(log.write, f"  Launching on {m['name']}...")
+                self._tlog(log, f"  Launching on {m['name']}...")
                 rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
                 if rc == 0:
-                    self.app.call_from_thread(
-                        log.write, f"  [green]{m['name']}: launched[/]"
-                    )
+                    self._tlog(log, f"  [green]{m['name']}: launched[/]")
                 else:
-                    self.app.call_from_thread(
-                        log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {err}[/]"
-                    )
+                    self._tlog(log, f"  [red]{m['name']}: FAILED (rc={rc}) {err}[/]")
                     success = False
             return success
 
         def _step_wait_nodes(self, robots, log):
             """Poll node status until all robots are green/yellow."""
             if not shutil.which("ros2"):
-                self.app.call_from_thread(
-                    log.write,
-                    "[yellow]ROS 2 not found — skipping node wait. "
-                    "Check nodes manually once base station is running.[/]"
-                )
+                self._tlog(log, "[yellow]ROS 2 not found — skipping node wait. Check nodes manually once base station is running.[/]")
                 return True
 
             import time
@@ -2541,9 +2528,7 @@ def _launch_tui(network, topology_path, output_root):
             max_wait = 120  # seconds
             start = time.time()
 
-            self.app.call_from_thread(
-                log.write, f"  [dim]Waiting up to {max_wait}s for nodes to come online...[/]"
-            )
+            self._tlog(log, f"  [dim]Waiting up to {max_wait}s for nodes to come online...[/]")
 
             while time.time() - start < max_wait:
                 status = get_ros_node_status(timeout=8)
@@ -2562,51 +2547,33 @@ def _launch_tui(network, topology_path, output_root):
                         all_ready = False
 
                 if all_ready and any(status.get(r) for r in robot_names):
-                    # Report final status
                     for rname in sorted(robot_names):
                         nodes = status.get(rname, [])
                         if nodes:
                             color, label = compute_robot_readiness(nodes)
-                            self.app.call_from_thread(
-                                log.write, f"  [{color}]{rname}: {label}[/{color}]"
-                            )
-                    self.app.call_from_thread(
-                        log.write, "[green]All robots ready![/]"
-                    )
+                            self._tlog(log, f"  [{color}]{rname}: {label}[/{color}]")
+                    self._tlog(log, "[green]All robots ready![/]")
                     return True
 
                 elapsed = int(time.time() - start)
-                self.app.call_from_thread(
-                    log.write, f"  [dim]Waiting... ({elapsed}s)[/]"
-                )
+                self._tlog(log, f"  [dim]Waiting... ({elapsed}s)[/]")
                 time.sleep(5)
 
-            # Timeout — show what we have and let operator decide
-            self.app.call_from_thread(
-                log.write,
-                f"[yellow]Timeout after {max_wait}s. Some nodes may not be ready.[/]"
-            )
+            # Timeout
+            self._tlog(log, f"[yellow]Timeout after {max_wait}s. Some nodes may not be ready.[/]")
             status = get_ros_node_status(timeout=8)
             for rname in sorted(robot_names):
                 nodes = status.get(rname, [])
                 if nodes:
                     color, label = compute_robot_readiness(nodes)
-                    self.app.call_from_thread(
-                        log.write, f"  [{color}]{rname}: {label}[/{color}]"
-                    )
+                    self._tlog(log, f"  [{color}]{rname}: {label}[/{color}]")
                     for n in nodes:
                         if n["status"] != _STATUS_NOMINAL:
                             sname = _STATUS_NAMES.get(n["status"], "?")
                             scolor = _STATUS_COLORS.get(n["status"], "white")
-                            self.app.call_from_thread(
-                                log.write,
-                                f"    [{scolor}]{n['nickname']}: {sname}[/{scolor}]"
-                            )
+                            self._tlog(log, f"    [{scolor}]{n['nickname']}: {sname}[/{scolor}]")
                 else:
-                    self.app.call_from_thread(
-                        log.write, f"  [red]{rname}: no status data[/]"
-                    )
-            # Return True anyway — operator can re-check from Monitor
+                    self._tlog(log, f"  [red]{rname}: no status data[/]")
             return True
 
         def _step_gen_rviz(self, robots, log):
@@ -2615,10 +2582,7 @@ def _launch_tui(network, topology_path, output_root):
             for m in robots:
                 out_path = generate_namespaced_rviz(m["name"])
                 paths.append(out_path)
-                self.app.call_from_thread(
-                    log.write, f"  Generated [cyan]{out_path}[/]"
-                )
-            # Store the first robot's config for the base station launch
+                self._tlog(log, f"  Generated [cyan]{out_path}[/]")
             if paths:
                 self._rviz_config_path = paths[0]
             return True
@@ -2650,35 +2614,30 @@ def _launch_tui(network, topology_path, output_root):
             # Terminate fleet-managed zenohd so the base station session's zenohd
             # can bind the same port without conflict
             if _fleet_zenoh["proc"]:
-                self.app.call_from_thread(
-                    log.write, "  [dim]Stopping fleet zenohd (base station will take over)...[/]"
-                )
+                self._tlog(log, "  [dim]Stopping fleet zenohd (base station will take over)...[/]")
                 _stop_fleet_zenohd()
 
-            bs = self._get_base_station()
+            # Use snapshotted params instead of DOM queries
+            bs = self._mission_params.get("bs")
             if not bs:
-                self.app.call_from_thread(log.write, "[red]No base station selected.[/]")
+                self._tlog(log, "[red]No base station selected.[/]")
                 return False
 
-            bs_session = self._get_bs_session()
+            bs_session = self._mission_params.get("bs_session", "")
             if not bs_session:
-                self.app.call_from_thread(log.write, "[red]No base station session selected.[/]")
+                self._tlog(log, "[red]No base station session selected.[/]")
                 return False
 
-            try:
-                experiment = self.query_one("#mission_experiment", Input).value.strip()
-            except Exception:
-                experiment = ""
+            experiment = self._mission_params.get("experiment", "")
             if not experiment:
-                self.app.call_from_thread(log.write, "[red]No experiment name.[/]")
+                self._tlog(log, "[red]No experiment name.[/]")
                 return False
 
             out_dir = f"{output_root}/{experiment}"
             q_output = _quote_path(out_dir)
             platform = bs.get("platform_id", bs["name"])
 
-            if not _check_sessions_and_prompt(self.app, [bs], bs_session, log):
-                return False
+            # Skip session conflict check from background thread (deadlock risk)
 
             rviz_flag = ""
             if self._rviz_config_path:
@@ -2692,17 +2651,13 @@ def _launch_tui(network, topology_path, output_root):
                 f"--tmuxp-args \"-d\""
             )
 
-            self.app.call_from_thread(log.write, f"  Launching base station on {bs['name']}...")
+            self._tlog(log, f"  Launching base station on {bs['name']}...")
             rc, out, err = ssh_cmd(bs["user"], bs["ip"], cmd, timeout=30)
             if rc == 0:
-                self.app.call_from_thread(
-                    log.write, f"  [green]{bs['name']}: base station launched[/]"
-                )
+                self._tlog(log, f"  [green]{bs['name']}: base station launched[/]")
                 return True
             else:
-                self.app.call_from_thread(
-                    log.write, f"  [red]{bs['name']}: FAILED (rc={rc}) {err}[/]"
-                )
+                self._tlog(log, f"  [red]{bs['name']}: FAILED (rc={rc}) {err}[/]")
                 return False
 
     # ---- Main App ----
