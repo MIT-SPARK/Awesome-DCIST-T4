@@ -1,7 +1,4 @@
-nodes_to_monitor:
-  phoenix_executor: {}
-  ntrip_monitor: {}
-  tx_rx_monitor: {}
+nodes_to_monitor: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -12,7 +9,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {ntrip_monitor: {}, phoenix_executor: {}, tx_rx_monitor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: phoenix_data_collection-default
@@ -22,7 +19,5 @@ windows:
   - window_name: real_phoenix
     layout: tiled
     panes:
-      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true"
-      - "source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true"
-      - sleep 5; tmux send-keys -t real_phoenix.4 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
+      - sleep 5; tmux send-keys -t real_phoenix.2 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m
       - "cd ${ADT4_PHX_ROOT} && phx run"

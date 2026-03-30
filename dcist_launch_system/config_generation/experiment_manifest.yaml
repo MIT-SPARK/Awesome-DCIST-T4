@@ -31,13 +31,13 @@ experiments:
 
   # spot configs
   spot:
-    launch_config: [map, spot_real, gps]
+    launch_config: [map, spot_real, sensors]
     config: [default]
   spot_relocalize:
-    launch_config: [relocalize, spot_real, gps]
+    launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, apollo_relocalize]
   spot_data_collection:
-    launch_config: [main, spot_real, gps]
+    launch_config: [main, spot_real, sensors]
     config: [default]
   spot_bag:
     launch_config: [bag_map, spot_bag]
@@ -46,18 +46,18 @@ experiments:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize]
   spot_no_relocalize:
-    launch_config: [no_relocalize, spot_real, gps]
+    launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]
 
   # phoenix
   phoenix:
-    launch_config: [map, phoenix_real, gps]
+    launch_config: [map, phoenix_real, sensors]
     config: [default]
   phoenix_relocalize:
-    launch_config: [relocalize, phoenix_real, gps]
+    launch_config: [relocalize, phoenix_real, sensors]
     config: [relocalize]
   phoenix_data_collection:
-    launch_config: [main, phoenix_real, gps]
+    launch_config: [main, phoenix_real, sensors]
     config: [default]
   phoenix_bag:
     launch_config: bag_map
@@ -66,12 +66,12 @@ experiments:
     launch_config: bag_relocalize
     config: [relocalize]
   phoenix_no_relocalize:
-    launch_config: [no_relocalize, gps]
+    launch_config: [no_relocalize, sensors]
     config: [relocalize]
 
   # development
   hydra_devel:
-    launch_config: [core, status, hydra_experimental, rviz]
+    launch_config: [core, status, hydra_instance, rviz]
     config: [devel]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
