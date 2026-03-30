@@ -392,7 +392,8 @@ def launch(ctx, machine, session, experiment, prior_map, base_station, force, ye
             f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
             f"{shlex.quote(sess)} -n {shlex.quote(m['name'])} "
             f"-c {shlex.quote(m['platform_id'])} "
-            f"-o {_quote_path(output_dir)} -y{force_flag}{prior_flag}"
+            f"-o {_quote_path(output_dir)} -y{force_flag}{prior_flag} "
+            f"--tmuxp-args \"-d\""
         )
         table.add_row(
             m["name"], sess, m["platform_id"] or "---",
@@ -1297,7 +1298,8 @@ def _launch_tui(network, topology_path, output_root):
                     f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                     f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
                     f"-c {shlex.quote(m['platform_id'])} "
-                    f"-o {_quote_path(out_dir)} -y{prior_flag}"
+                    f"-o {_quote_path(out_dir)} -y{prior_flag} "
+                    f"--tmuxp-args \"-d\""
                 )
                 cmds.append((m, remote_cmd))
 
@@ -1959,11 +1961,11 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 Label("Base station:"),
                 SelectionList(
-                    *[
+                    *([("local_computer", "This Computer (local)", True)] + [
                         (m["name"], m["name"], m.get("online", False))
                         for m in runtime_config.values()
                         if m["role"] == "base_station"
-                    ],
+                    ]),
                     id="mission_base_station",
                 ),
                 Label("Base station session:"),
@@ -2371,7 +2373,8 @@ def _launch_tui(network, topology_path, output_root):
                     f"cd ~/dcist_ws && source install/setup.zsh && "
                     f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                     f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
-                    f"-c {shlex.quote(platform)} -o {q_output} -y{prior_flag}"
+                    f"-c {shlex.quote(platform)} -o {q_output} -y{prior_flag} "
+                    f"--tmuxp-args \"-d\""
                 )
                 self.app.call_from_thread(log.write, f"  Launching on {m['name']}...")
                 rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
@@ -2489,6 +2492,15 @@ def _launch_tui(network, topology_path, output_root):
             if not selected:
                 return None
             name = selected[0]
+            if name == "local_computer":
+                import socket
+                return {
+                    "name": socket.gethostname(),
+                    "role": "base_station",
+                    "ip": "127.0.0.1",
+                    "user": os.environ.get("USER"),
+                    "platform_id": getattr(os, 'getenv', lambda k, d: d)('ADT4_PLATFORM_ID', "localhost")
+                }
             return runtime_config.get(name)
 
         def _get_bs_session(self):
@@ -2536,7 +2548,8 @@ def _launch_tui(network, topology_path, output_root):
                 f"cd ~/dcist_ws && source install/setup.zsh && "
                 f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                 f"{shlex.quote(bs_session)} -n {shlex.quote(bs['name'])} "
-                f"-c {shlex.quote(platform)} -o {q_output} -y{rviz_flag}"
+                f"-c {shlex.quote(platform)} -o {q_output} -y{rviz_flag} "
+                f"--tmuxp-args \"-d\""
             )
 
             self.app.call_from_thread(log.write, f"  Launching base station on {bs['name']}...")
