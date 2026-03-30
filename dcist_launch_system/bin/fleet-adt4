@@ -2307,6 +2307,7 @@ def _launch_tui(network, topology_path, output_root):
             
             # SNAPSHOT DOM VALUES BEFORE THREAD STARTS
             robots = self._mission_params.get("robots", [])
+            log.write(f"[magenta]DEBUG: Prepared {len(robots)} robots for background execution.[/]")
 
             def run_step():
                 try:
