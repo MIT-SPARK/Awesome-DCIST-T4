@@ -2039,8 +2039,8 @@ def _launch_tui(network, topology_path, output_root):
             self._node_poller = NodeStatusPoller()
             self._node_poller.start()
             self.action_refresh()
-            # Read cached poller data every 3s (instant — no subprocess)
-            self.set_interval(3, self._update_node_table)
+            # Read cached poller data every 1s (instant — just reads memory)
+            self.set_interval(1, self._update_node_table)
 
         def action_refresh(self):
             log = self.query_one("#monitor_log", RichLog)
