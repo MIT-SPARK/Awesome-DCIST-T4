@@ -37,6 +37,7 @@ class PlatformType(enum.Enum):
     SPOT = "spot"
     PHOENIX = "phoenix"
     BASE_STATION = "base_station"
+    UNKNOWN = "unknown"
 
 
 @dataclass
@@ -62,7 +63,11 @@ class SessionInfo:
         if self.platform_id == "base_station":
             return PlatformType.BASE_STATION
 
-        return PlatformType.PHOENIX
+        if self.platform_id == "phoenix":
+            return PlatformType.PHOENIX
+
+        click.secho("Platform ID '{self.platform_id}' is unknown!", fg="red")
+        sys.exit("invalid platform")
 
 
 def _ws_path():

@@ -239,9 +239,10 @@ run-adt4 -n hamilton -c topaz spot_bag-bag --sim-time -o ~/hamilton_test --bag /
 ```
 will use the trajectory in `hamilton.csv` for playback. You may want to add
 ```
+# convenient UTM origin coordinates for pennovation
 --trajectory-args "--origin 482937.0 4421340.0 -28.0"
 ```
-when working with UTM coordinates to make the origin easier to use.
+when working with UTM coordinates to make the origin easier to use (with the appropriate UTM origin).
 
 ## Example System Configurations
 
