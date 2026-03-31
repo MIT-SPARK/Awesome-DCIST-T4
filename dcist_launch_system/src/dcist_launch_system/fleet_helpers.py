@@ -792,24 +792,143 @@ def check_zenoh_config(user, ip):
     return "OK" in out
 
 
-def get_ros_node_status(timeout=5):
-    """Echo the global StatusTable topic and parse node statuses.
+def _parse_status_yaml(yaml_text, robots):
+    """Parse a single YAML document from ros2 topic echo into the robots dict."""
+    try:
+        data = yaml.safe_load(yaml_text)
+    except Exception:
+        return
+    if not data or "status" not in data:
+        return
 
-    Runs `ros2 topic echo` locally (base station must have ROS + zenoh).
-    Collects messages for `timeout` seconds to gather status from all robots.
-    Returns dict: {robot_name: [{nickname, status, notes, required}, ...]}
+    monitor_name = data.get("monitor_name", "unknown")
 
-    Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
+    for node_info in data.get("status", []):
+        nickname = node_info.get("nickname", "")
+        parts = nickname.split("/", 1)
+        if len(parts) == 2:
+            robot_name, node_name = parts
+        else:
+            robot_name = monitor_name
+            node_name = nickname
+
+        if robot_name not in robots:
+            robots[robot_name] = []
+
+        existing = next(
+            (n for n in robots[robot_name] if n["nickname"] == node_name),
+            None,
+        )
+        if existing:
+            existing["status"] = node_info.get("status", 5)
+            existing["notes"] = node_info.get("notes", "")
+        else:
+            robots[robot_name].append({
+                "nickname": node_name,
+                "status": node_info.get("status", 5),
+                "notes": node_info.get("notes", ""),
+                "required": node_info.get("required", True),
+            })
+
+
+class NodeStatusPoller:
+    """Persistent background poller for ROS node status.
+
+    Starts a single `ros2 topic echo` process that runs continuously.
+    Parses YAML documents as they arrive and updates a shared status dict.
+    Call `get_status()` to get the latest snapshot.
     """
-    # Source the full workspace (not just ROS base) so custom message types
-    # like ros_system_monitor_msgs are available.
+
+    def __init__(self):
+        self._proc = None
+        self._status = {}  # {robot_name: [node dicts]}
+        self._lock = __import__("threading").Lock()
+        self._thread = None
+        self._error = None
+
+    def start(self):
+        """Start the background poller. Safe to call multiple times."""
+        if self._thread and self._thread.is_alive():
+            return True, "already running"
+        if self._proc and self._proc.poll() is None:
+            self._proc.kill()
+            self._proc = None
+
+        shell = "zsh" if shutil.which("zsh") else "bash"
+        ros_cmd = (
+            "source ~/dcist_ws/install/setup.zsh 2>/dev/null || "
+            "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
+            "ros2 topic echo /global/ros_system_monitor/table_in"
+        )
+        try:
+            self._proc = subprocess.Popen(
+                [shell, "-c", ros_cmd],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except OSError as e:
+            self._error = str(e)
+            return False, str(e)
+
+        self._thread = __import__("threading").Thread(
+            target=self._read_loop, daemon=True
+        )
+        self._thread.start()
+        return True, "started"
+
+    def stop(self):
+        if self._proc and self._proc.poll() is None:
+            self._proc.kill()
+            self._proc = None
+
+    def get_status(self):
+        """Return a snapshot of the latest status dict."""
+        with self._lock:
+            import copy
+            return copy.deepcopy(self._status)
+
+    def get_error(self):
+        return self._error
+
+    def is_running(self):
+        return self._proc is not None and self._proc.poll() is None
+
+    def _read_loop(self):
+        """Read stdout line-by-line, accumulate YAML docs, parse on '---'."""
+        buf = []
+        try:
+            for line in self._proc.stdout:
+                stripped = line.rstrip("\n")
+                if stripped == "---":
+                    if buf:
+                        doc = "\n".join(buf)
+                        with self._lock:
+                            _parse_status_yaml(doc, self._status)
+                        buf = []
+                else:
+                    buf.append(stripped)
+        except Exception:
+            pass
+        # Process died — check stderr
+        if self._proc:
+            _, stderr = self._proc.communicate(timeout=2)
+            if stderr and stderr.strip():
+                self._error = stderr.strip()[:500]
+
+
+def get_ros_node_status(timeout=5):
+    """One-shot fetch of ROS node status (legacy interface).
+
+    For continuous monitoring, use NodeStatusPoller instead.
+    """
     shell = "zsh" if shutil.which("zsh") else "bash"
     ros_cmd = (
         "source ~/dcist_ws/install/setup.zsh 2>/dev/null || "
         "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
         "ros2 topic echo /global/ros_system_monitor/table_in"
     )
-    effective_timeout = timeout + 5  # extra time for shell/workspace init
+    effective_timeout = timeout + 5
     try:
         proc = subprocess.Popen(
             [shell, "-c", ros_cmd],
@@ -820,7 +939,6 @@ def get_ros_node_status(timeout=5):
         try:
             stdout, stderr = proc.communicate(timeout=effective_timeout)
         except subprocess.TimeoutExpired:
-            # Expected: we collect whatever was produced before timeout
             proc.kill()
             stdout, stderr = proc.communicate(timeout=5)
         if not stdout or not stdout.strip():
@@ -830,48 +948,12 @@ def get_ros_node_status(timeout=5):
     except OSError as e:
         return {"_debug_error": str(e)}
 
-    # ros2 topic echo outputs multiple YAML documents separated by ---
     robots = {}
     for doc in stdout.split("---"):
         doc = doc.strip()
         if not doc:
             continue
-        try:
-            data = yaml.safe_load(doc)
-        except Exception:
-            continue
-        if not data or "status" not in data:
-            continue
-
-        monitor_name = data.get("monitor_name", "unknown")
-
-        for node_info in data.get("status", []):
-            nickname = node_info.get("nickname", "")
-            parts = nickname.split("/", 1)
-            if len(parts) == 2:
-                robot_name, node_name = parts
-            else:
-                robot_name = monitor_name
-                node_name = nickname
-
-            if robot_name not in robots:
-                robots[robot_name] = []
-
-            # Update existing node or append new one
-            existing = next(
-                (n for n in robots[robot_name] if n["nickname"] == node_name),
-                None,
-            )
-            if existing:
-                existing["status"] = node_info.get("status", 5)
-                existing["notes"] = node_info.get("notes", "")
-            else:
-                robots[robot_name].append({
-                    "nickname": node_name,
-                    "status": node_info.get("status", 5),
-                    "notes": node_info.get("notes", ""),
-                    "required": node_info.get("required", True),
-                })
+        _parse_status_yaml(doc, robots)
 
     return robots
 

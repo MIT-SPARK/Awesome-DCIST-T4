@@ -51,6 +51,7 @@ from dcist_launch_system.fleet_helpers import (
     get_remote_status,
     get_ros_node_status,
     get_silvus_link_quality,
+    NodeStatusPoller,
     hash_remote_experiment,
     patch_zenoh_config_local,
     list_remote_experiments,
@@ -2034,9 +2035,11 @@ def _launch_tui(network, topology_path, output_root):
             node_table.add_column("Issues", key="issues")
             node_table.cursor_type = "row"
 
-            self._node_poll_timer = None
+            self._node_poller = NodeStatusPoller()
+            self._node_poller.start()
             self.action_refresh()
-            self._start_node_polling()
+            # Read cached poller data every 3s (instant — no subprocess)
+            self.set_interval(3, self._update_node_table)
 
         def action_refresh(self):
             log = self.query_one("#monitor_log", RichLog)
@@ -2063,74 +2066,53 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
-        def _start_node_polling(self):
-            """Start background polling of ROS node status every 15s."""
-            def _poll():
-                self.action_refresh_nodes(quiet=True)
-            self._node_poll_timer = self.set_interval(15, _poll)
-
-        def action_refresh_nodes(self, quiet=False):
+        def action_refresh_nodes(self):
+            """Manual refresh — restart poller if dead, show status."""
             log = self.query_one("#monitor_log", RichLog)
-            if not quiet:
-                log.write("[dim]Fetching ROS node status...[/]")
+            if not self._node_poller.is_running():
+                ok, msg = self._node_poller.start()
+                log.write(f"[dim]Node poller: {msg}[/]")
+            err = self._node_poller.get_error()
+            if err:
+                log.write(f"[dim]ros2 stderr: {err}[/]")
+            self._update_node_table()
+            status = self._node_status
+            if status:
+                log.write(f"[green]Node status: {len(status)} machine(s)[/]")
+            else:
+                log.write("[yellow]No node status yet — poller may still be starting.[/]")
 
-            def do_fetch():
-                return get_ros_node_status(timeout=8)
+        def _update_node_table(self):
+            """Read latest from persistent poller and refresh the table."""
+            status = self._node_poller.get_status()
+            self._node_status = status
+            node_table = self.query_one("#node_summary_table", DataTable)
+            node_table.clear()
 
-            def on_done(status):
-                # Show debug info if present
-                debug_stderr = status.pop("_debug_stderr", None)
-                debug_error = status.pop("_debug_error", None)
-                if debug_stderr and not quiet:
-                    log.write(f"[dim]ros2 stderr: {debug_stderr}[/]")
-                if debug_error and not quiet:
-                    log.write(f"[dim]ros2 error: {debug_error}[/]")
+            if not status:
+                return
 
-                self._node_status = status
-                node_table = self.query_one("#node_summary_table", DataTable)
-                node_table.clear()
+            for robot_name in sorted(status):
+                nodes = status[robot_name]
+                color, label = compute_robot_readiness(nodes)
+                n_total = len(nodes)
+                n_nominal = sum(1 for n in nodes if n["status"] == _STATUS_NOMINAL)
 
-                if not status:
-                    if not quiet:
-                        log.write("[yellow]No node status received. Check that dcist_ws is built and ros_system_monitor is running.[/]")
-                    return
+                issues = []
+                for n in nodes:
+                    if n["status"] != _STATUS_NOMINAL:
+                        sname = _STATUS_NAMES.get(n["status"], "?")
+                        issues.append(f"{n['nickname']}={sname}")
+                issue_str = ", ".join(issues) if issues else "none"
 
-                for robot_name in sorted(status):
-                    nodes = status[robot_name]
-                    color, label = compute_robot_readiness(nodes)
-                    n_total = len(nodes)
-                    n_nominal = sum(1 for n in nodes if n["status"] == _STATUS_NOMINAL)
-
-                    # Collect issue summaries
-                    issues = []
-                    for n in nodes:
-                        if n["status"] != _STATUS_NOMINAL:
-                            sname = _STATUS_NAMES.get(n["status"], "?")
-                            issues.append(f"{n['nickname']}={sname}")
-                    issue_str = ", ".join(issues) if issues else "none"
-
-                    readiness_str = f"[{color}]{label}[/{color}]"
-                    node_table.add_row(
-                        robot_name,
-                        readiness_str,
-                        f"{n_nominal}/{n_total}",
-                        issue_str,
-                        key=robot_name,
-                    )
-
-                # Check for loop closures in hydra_multi
-                for robot_name, nodes in status.items():
-                    for n in nodes:
-                        if "hydra_multi" in n["nickname"] and n["notes"]:
-                            log.write(f"[cyan]{robot_name}/{n['nickname']}:[/] {n['notes']}")
-
-                log.write("[green]Node status updated.[/]")
-
-            def bg():
-                result = do_fetch()
-                self.app.call_from_thread(on_done, result)
-
-            threading.Thread(target=bg, daemon=True).start()
+                readiness_str = f"[{color}]{label}[/{color}]"
+                node_table.add_row(
+                    robot_name,
+                    readiness_str,
+                    f"{n_nominal}/{n_total}",
+                    issue_str,
+                    key=robot_name,
+                )
 
         def action_drill_down(self):
             """Show detailed per-node status for the selected robot."""
