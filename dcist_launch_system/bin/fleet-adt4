@@ -1323,6 +1323,12 @@ def _launch_tui(network, topology_path, output_root):
         LaunchScreen #session_select {
             max-height: 12;
         }
+        LaunchScreen #bs_select {
+            max-height: 4;
+        }
+        LaunchScreen #bs_session_select {
+            max-height: 6;
+        }
         LaunchScreen #prior_tree {
             min-height: 8;
             max-height: 16;
@@ -1342,19 +1348,32 @@ def _launch_tui(network, topology_path, output_root):
                 for m in runtime_config.values()
                 if m["role"] == "robot"
             ]
+            base_stations = [
+                (m["name"], f"{m['name']} (local)" if m["ip"] in _local_ips else m["name"], m.get("online", False) or m["ip"] in _local_ips)
+                for m in runtime_config.values()
+                if m["role"] == "base_station"
+            ]
             self._all_sessions = sorted(
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
 
             yield VerticalScroll(
-                Label("[bold]Launch[/] — configure and launch run-adt4 on robots"),
+                Label("[bold]Launch[/] — configure and launch run-adt4 on robots and base station"),
                 Rule(),
                 Label("Select robots:"),
                 SelectionList(*robots, id="robot_select"),
                 Rule(),
-                Label("Session:"),
+                Label("Robot session:"),
                 Input(placeholder="Filter sessions...", id="session_search"),
                 SelectionList(*[(s, s) for s in self._all_sessions], id="session_select"),
+                Rule(),
+                Label("Base station (optional):"),
+                SelectionList(*base_stations, id="bs_select"),
+                Label("Base station session:"),
+                SelectionList(
+                    *[(s, s) for s in self._all_sessions if "base_station" in s],
+                    id="bs_session_select",
+                ),
                 Rule(),
                 Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
                 Input(placeholder="date_description", id="experiment_input"),
@@ -1533,6 +1552,14 @@ def _launch_tui(network, topology_path, output_root):
             # Snapshot session name before thread starts (DOM queries from threads are unsafe)
             _launch_session_name = self._get_selected_session()
 
+            # Snapshot base station selection
+            bs_sel = self.query_one("#bs_select", SelectionList)
+            bs_names = list(bs_sel.selected)
+            _bs_machine = runtime_config.get(bs_names[0]) if bs_names else None
+            bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
+            bs_sess_list = list(bs_sess_sel.selected)
+            _bs_session = bs_sess_list[0] if bs_sess_list else None
+
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
             area.remove_children()
@@ -1644,6 +1671,47 @@ def _launch_tui(network, topology_path, output_root):
                             self.app.call_from_thread(
                                 log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {launch_err}[/]"
                             )
+                    # Phase 3: Launch base station if selected
+                    if _bs_machine and _bs_session:
+                        self.app.call_from_thread(
+                            log.write, "[bold]Launching base station...[/]"
+                        )
+                        # Stop fleet zenohd so BS can bind port 7447
+                        if _fleet_zenoh["proc"]:
+                            self.app.call_from_thread(
+                                log.write, "  [dim]Stopping fleet zenohd (base station will take over)...[/]"
+                            )
+                            _stop_fleet_zenohd()
+
+                        out_dir = f"{output_root}/{experiment}"
+                        q_output = _quote_path(out_dir)
+                        platform = _bs_machine.get("platform_id", _bs_machine["name"])
+                        bs_cmd = (
+                            f"cd ~/dcist_ws && source install/setup.zsh && "
+                            f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+                            f"{shlex.quote(_bs_session)} -n {shlex.quote(_bs_machine['name'])} "
+                            f"-c {shlex.quote(platform)} -o {q_output} -y "
+                            f"--tmuxp-args \"-d\""
+                        )
+                        self.app.call_from_thread(
+                            log.write, f"  [dim][{_bs_machine['user']}@{_bs_machine['ip']}] {bs_cmd}[/]"
+                        )
+                        rc, out, err = ssh_cmd(_bs_machine["user"], _bs_machine["ip"], bs_cmd, timeout=30)
+                        if rc == 0:
+                            self.app.call_from_thread(
+                                log.write, f"  [green]{_bs_machine['name']}: base station launched[/]"
+                            )
+                            # Restart fleet zenohd on port+1
+                            zenoh_port = topo.get("zenoh", {}).get("port", 7447)
+                            if _start_fleet_zenohd(force_port=zenoh_port + 1):
+                                self.app.call_from_thread(
+                                    log.write, f"  [dim]Fleet zenohd restarted on port {zenoh_port + 1}[/]"
+                                )
+                        else:
+                            self.app.call_from_thread(
+                                log.write, f"  [red]{_bs_machine['name']}: FAILED (rc={rc}) {err}[/]"
+                            )
+
                     self.app.call_from_thread(log.write, "[bold]Launch sequence complete.[/]")
                 finally:
                     self._launching = False
@@ -1756,12 +1824,26 @@ def _launch_tui(network, topology_path, output_root):
             if not shutil.which("ros2"):
                 log.write("[yellow]ROS 2 not found — node status unavailable. System status and SSH features still work.[/]")
                 return
-            log.write("[dim]Fetching ROS node status via topic...[/]")
+            log.write("[dim]Fetching ROS node status via topic (8s timeout)...[/]")
 
             def do_fetch():
-                return get_ros_node_status(timeout=8)
+                # Quick check: is the topic advertised?
+                try:
+                    topic_check = subprocess.run(
+                        ["ros2", "topic", "list"],
+                        capture_output=True, text=True, timeout=5,
+                    )
+                    topics = topic_check.stdout.strip().split("\n") if topic_check.returncode == 0 else []
+                    has_topic = any("/global/ros_system_monitor/table_in" in t for t in topics)
+                except Exception:
+                    has_topic = False
+                    topics = []
 
-            def on_done(status):
+                status = get_ros_node_status(timeout=8)
+                return status, has_topic, len(topics)
+
+            def on_done(result):
+                status, has_topic, n_topics = result
                 self._node_status = status
                 node_table = self.query_one("#node_summary_table", DataTable)
                 node_table.clear()
@@ -1776,10 +1858,12 @@ def _launch_tui(network, topology_path, output_root):
                     )
                     if not zenohd_running:
                         log.write("[red]No node status — zenohd is not running. Launch a base station session or restart fleet-adt4 with ROS sourced.[/]")
+                    elif not has_topic:
+                        log.write(f"[yellow]No node status — topic /global/ros_system_monitor/table_in not found ({n_topics} topics visible). Is ros_system_monitor running on robots?[/]")
                     else:
                         online = [m["name"] for m in runtime_config.values() if m.get("online") and m.get("role") == "robot"]
                         if online:
-                            log.write(f"[yellow]No node status received — zenohd is running but no data from robots. Check that ros_system_monitor is publishing on: {', '.join(online)}[/]")
+                            log.write(f"[yellow]No node status received — topic exists but no data within 8s. Robots: {', '.join(online)}[/]")
                         else:
                             log.write("[yellow]No node status — zenohd is running but no robots are online.[/]")
                     return
