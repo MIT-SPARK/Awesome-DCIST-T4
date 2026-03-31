@@ -46,7 +46,6 @@ class PlatformType(enum.Enum):
     SPOT = "spot"
     PHOENIX = "phoenix"
     BASE_STATION = "base_station"
-    UNKNOWN = "unknown"
 
 
 @dataclass

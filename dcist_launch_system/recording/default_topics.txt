@@ -1,3 +1,0 @@
-/global/ros_system_monitor/table_in
-/tf
-/tf_static
