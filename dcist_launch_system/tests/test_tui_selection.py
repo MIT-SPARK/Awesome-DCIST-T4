@@ -9,18 +9,11 @@ Run: pytest dcist_launch_system/tests/test_tui_selection.py -v
 
 import pytest
 
-try:
-    from textual.app import App, ComposeResult
-    from textual.widgets import SelectionList, Label, Footer
-    from textual.binding import Binding
-    from textual.screen import ModalScreen
-    from textual.containers import VerticalScroll
-
-    HAS_TEXTUAL = True
-except ImportError:
-    HAS_TEXTUAL = False
-
-pytestmark = pytest.mark.skipif(not HAS_TEXTUAL, reason="textual not installed")
+from textual.app import App, ComposeResult
+from textual.widgets import SelectionList, Label, Footer
+from textual.binding import Binding
+from textual.screen import ModalScreen
+from textual.containers import VerticalScroll
 
 
 # ---------------------------------------------------------------------------
