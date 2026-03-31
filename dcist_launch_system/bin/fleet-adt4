@@ -1311,6 +1311,8 @@ def _launch_tui(network, topology_path, output_root):
     class LaunchScreen(ModalScreen):
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
+            Binding("m", "preset_mapping", "Mapping (m)", priority=True),
+            Binding("r", "preset_relocalize", "Relocalize (r)", priority=True),
             Binding("d", "dry_run", "Dry Run", priority=True),
             Binding("g", "do_launch", "Launch (g)", priority=True),
             Binding("p", "browse_prior", "Refresh Priors (p)", priority=True),
@@ -1358,9 +1360,8 @@ def _launch_tui(network, topology_path, output_root):
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
 
-            mode_label = {"mapping": " (Mapping)", "relocalize": " (Relocalize)"}.get(self._mode, "")
             yield VerticalScroll(
-                Label(f"[bold]Launch{mode_label}[/] — g=launch, d=dry run, p=refresh priors"),
+                Label("[bold]Launch[/] — m=mapping, r=relocalize, g=launch, d=dry run, p=refresh priors"),
                 Rule(),
                 Label("Select robots:"),
                 SelectionList(*robots, id="robot_select"),
@@ -1388,27 +1389,38 @@ def _launch_tui(network, topology_path, output_root):
             yield Footer()
 
         def on_mount(self):
-            if not self._mode:
-                return
-            # Auto-populate from fleet_defaults in topology
+            if self._mode:
+                self._apply_preset(self._mode)
+
+        def action_preset_mapping(self):
+            self._mode = "mapping"
+            self._apply_preset("mapping")
+
+        def action_preset_relocalize(self):
+            self._mode = "relocalize"
+            self._apply_preset("relocalize")
+
+        def _apply_preset(self, mode):
+            """Auto-populate selections from fleet_defaults in topology."""
             defaults = topo.get("fleet_defaults", {})
             spot_platforms = set(defaults.get("spot_platforms", ["smaug", "topaz"]))
             sessions_cfg = defaults.get("sessions", {})
-            mode_sessions = sessions_cfg.get(self._mode, {})
+            mode_sessions = sessions_cfg.get(mode, {})
             spot_session = mode_sessions.get("spot", "")
             phoenix_session = mode_sessions.get("phoenix", "")
             bs_session = defaults.get("base_station_session", "")
 
             log = self.query_one("#launch_log", RichLog)
-            log.write(f"[bold cyan]Auto-populating for {self._mode} mode...[/]")
+            log.write(f"[bold cyan]Auto-populating for {mode} mode...[/]")
 
             # Select all online robots
             robot_sel = self.query_one("#robot_select", SelectionList)
+            robot_sel.deselect_all()
             for m in runtime_config.values():
                 if m["role"] == "robot" and m.get("online"):
                     robot_sel.select(m["name"])
 
-            # Pick session based on first selected robot's platform
+            # Pick session based on first online robot's platform
             first_robot = next(
                 (m for m in runtime_config.values()
                  if m["role"] == "robot" and m.get("online")),
@@ -1418,11 +1430,13 @@ def _launch_tui(network, topology_path, output_root):
                 session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
                 if session:
                     sess_sel = self.query_one("#session_select", SelectionList)
+                    sess_sel.deselect_all()
                     sess_sel.select(session)
                     log.write(f"  Robot session: [cyan]{session}[/]")
 
             # Select local base station
             bs_sel = self.query_one("#bs_select", SelectionList)
+            bs_sel.deselect_all()
             for m in runtime_config.values():
                 if m["role"] == "base_station" and m["ip"] in _local_ips:
                     bs_sel.select(m["name"])
@@ -1432,10 +1446,13 @@ def _launch_tui(network, topology_path, output_root):
             # Select BS session
             if bs_session:
                 bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
+                bs_sess_sel.deselect_all()
                 bs_sess_sel.select(bs_session)
                 log.write(f"  BS session: [cyan]{bs_session}[/]")
 
-            log.write("[dim]Review selections above, then press g to launch or d for dry run.[/]")
+            if mode == "relocalize":
+                log.write("[yellow]Relocalize mode: prior map is required. Select one below or press p to refresh.[/]")
+            log.write("[dim]Review selections, then g=launch, d=dry run.[/]")
 
         def on_input_changed(self, event: Input.Changed):
             if event.input.id == "session_search":
@@ -1471,6 +1488,9 @@ def _launch_tui(network, topology_path, output_root):
                 return [], None, "No experiment name provided."
 
             prior_path, prior_source = self.query_one("#launch_prior_selector", PriorMapSelector).get_prior_map()
+
+            if self._mode == "relocalize" and not prior_path:
+                return [], None, "Relocalize mode requires a prior map. Select one or press p to refresh."
 
             # If prior map comes from a source machine, targets get it as prior_<name>
             if prior_path and prior_source:
@@ -3092,8 +3112,6 @@ def _launch_tui(network, topology_path, output_root):
         BINDINGS = [
             Binding("s", "refresh_status", "Recheck"),
             Binding("l", "show_launch", "Launch"),
-            Binding("m", "show_mapping", "Mapping"),
-            Binding("r", "show_relocalize", "Relocalize"),
             Binding("b", "show_maps", "Browse Maps"),
             Binding("c", "show_config", "Config"),
             Binding("o", "show_monitor", "Monitor"),
@@ -3177,12 +3195,6 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_show_launch(self):
             self.push_screen(LaunchScreen())
-
-        def action_show_mapping(self):
-            self.push_screen(LaunchScreen(mode="mapping"))
-
-        def action_show_relocalize(self):
-            self.push_screen(LaunchScreen(mode="relocalize"))
 
         def action_show_config(self):
             self.push_screen(ConfigScreen())
