@@ -1517,6 +1517,9 @@ def _launch_tui(network, topology_path, output_root):
 
             self._launching = True
             experiment = self.query_one("#experiment_input", Input).value.strip()
+            # Snapshot session name before thread starts (DOM queries from threads are unsafe)
+            _sel = self.query_one("#launch_session_select", SelectionList)
+            _launch_session_name = list(_sel.selected)[0] if list(_sel.selected) else None
 
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
@@ -1563,6 +1566,10 @@ def _launch_tui(network, topology_path, output_root):
                         )
                         return
 
+                    self.app.call_from_thread(
+                        log.write, "[dim]Pre-launch checks passed.[/]"
+                    )
+
                     # Phase 1: Transfer prior maps if needed
                     if prior_info:
                         prior_path, prior_source = prior_info
@@ -1594,13 +1601,8 @@ def _launch_tui(network, topology_path, output_root):
 
                     # Phase 1.5: Verify no conflicting tmux sessions
                     all_targets = [m for m, _ in cmds]
-                    # We assume session name is the same for all (or we check the first one)
-                    # For LaunchScreen, the session is obtained from `self.query_one("#launch_session_select", SelectionList)`
-                    # Let's get the selected session name cleanly
-                    sel = self.query_one("#launch_session_select", SelectionList)
-                    selected_sessions = list(sel.selected)
-                    if selected_sessions:
-                        if not _check_sessions_and_prompt(self.app, all_targets, selected_sessions[0], log):
+                    if _launch_session_name:
+                        if not _check_sessions_and_prompt(self.app, all_targets, _launch_session_name, log):
                             return
 
                     # Phase 2: Launch on each robot
