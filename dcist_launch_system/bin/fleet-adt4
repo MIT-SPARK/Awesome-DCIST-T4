@@ -1120,148 +1120,213 @@ def _launch_tui(network, topology_path, output_root):
     # ---- Config Screen ----
 
     class ConfigScreen(ModalScreen):
+        """Topology editor — manages machines in topology.yaml."""
         BINDINGS = [
             Binding("escape", "dismiss", "Back", priority=True),
-            Binding("f2", "add_machine_action", "Add Machine [F2]", priority=True),
-            Binding("f3", "recheck_action", "Recheck All [F3]", priority=True),
-            Binding("f4", "remove_selected", "Remove Selected [F4]", priority=True),
-            Binding("f5", "save_action", "Save to YAML [F5]", priority=True),
+            Binding("e", "edit_selected", "Edit [e]", priority=True),
+            Binding("f2", "add_machine_action", "Add [F2]", priority=True),
+            Binding("f3", "recheck_action", "Recheck [F3]", priority=True),
+            Binding("f4", "remove_selected", "Remove [F4]", priority=True),
+            Binding("f5", "save_action", "Save [F5]", priority=True),
         ]
 
         DEFAULT_CSS = """
-        ConfigScreen DataTable {
-            height: auto;
-            max-height: 20;
-        }
+        ConfigScreen #config_table { height: auto; max-height: 16; }
+        ConfigScreen #edit_form { height: auto; }
+        ConfigScreen #edit_form Input { max-height: 1; }
         """
 
         def compose(self) -> ComposeResult:
             yield VerticalScroll(
-                Label("[bold]Fleet Configuration[/] — view/edit machines"),
-                Label("[dim]F5=save to YAML, F2=add machine, F3=recheck connectivity[/]"),
+                Label("[bold]Topology Editor[/]"),
+                Label("[dim]e=edit, F2=add, F4=remove, F3=recheck, F5=save to YAML[/]"),
                 Rule(),
                 DataTable(id="config_table"),
                 Rule(),
-                Label("[bold]Add Machine[/]"),
-                Horizontal(
-                    Label(" Name: "),
-                    Input(placeholder="e.g. newton", id="add_name"),
-                    Label(" Role: "),
-                    Input(placeholder="robot or base_station", id="add_role", value="robot"),
-                    Label(" IP: "),
-                    Input(placeholder="e.g. 10.29.1.50", id="add_ip"),
-                    Label(" Platform: "),
-                    Input(placeholder="e.g. smaug", id="add_platform"),
-                    id="add_row",
-                ),
-                Rule(),
+                Vertical(id="edit_form"),
                 RichLog(id="config_log", highlight=True, markup=True, max_lines=20),
             )
             yield Footer()
 
         def on_mount(self):
+            self._editing = None  # machine name being edited, or "__new__"
             table = self.query_one("#config_table", DataTable)
             table.add_column("", key="status")
             table.add_column("Name", key="name")
             table.add_column("Role", key="role")
-            table.add_column("IP", key="ip")
             table.add_column("Platform", key="platform")
+            table.add_column("MIT WiFi", key="mit_wifi")
+            table.add_column("Silvus", key="silvus")
             table.add_column("User", key="user")
             table.add_column("Desc", key="desc")
             table.cursor_type = "row"
             self._refresh_config_table()
 
+        def _get_topo_machine(self, name):
+            """Get the full topology entry for a machine."""
+            return topo.get("machines", {}).get(name, {})
+
         def _refresh_config_table(self):
             table = self.query_one("#config_table", DataTable)
             table.clear()
-            for mname in sorted(runtime_config):
-                mconf = runtime_config[mname]
-                online = mconf.get("online")
+            topo_machines = topo.get("machines", {})
+            for mname in sorted(topo_machines):
+                minfo = topo_machines[mname]
+                addrs = minfo.get("addresses", {})
+                # Online status from runtime_config if available
+                rconf = runtime_config.get(mname, {})
+                online = rconf.get("online")
                 if online:
                     dot = "[green]\u25cf[/]"
-                elif mconf.get("ping"):
+                elif rconf.get("ping"):
                     dot = "[yellow]\u25cf[/]"
-                else:
+                elif online is False:
                     dot = "[red]\u25cf[/]"
+                else:
+                    dot = "[dim]\u25cb[/]"
+                ssh_conf = topo.get("ssh", {})
+                user = ssh_conf.get("base_station_user", "rrg") if minfo.get("role") == "base_station" else ssh_conf.get("robot_user", "swarm")
                 table.add_row(
                     dot,
                     mname,
-                    mconf.get("role", "?"),
-                    mconf.get("ip", "?"),
-                    mconf.get("platform_id", "") or "—",
-                    mconf.get("user", "?"),
-                    mconf.get("desc", ""),
+                    minfo.get("role", "?"),
+                    minfo.get("platform_id", "") or "—",
+                    addrs.get("mit_wifi", "—"),
+                    addrs.get("silvus", "—"),
+                    user,
+                    minfo.get("desc", ""),
                     key=mname,
                 )
 
-        def on_input_changed(self, event: Input.Changed):
-            pass  # Config table is read-only; edits via topology.yaml + F5
-
-        def action_remove_selected(self):
-            log = self.query_one("#config_log", RichLog)
+        def _get_selected_name(self):
             table = self.query_one("#config_table", DataTable)
             try:
                 from textual.coordinate import Coordinate
                 row_idx = table.cursor_coordinate.row
-                mname = str(table.get_cell_at(Coordinate(row_idx, 1)))
+                return str(table.get_cell_at(Coordinate(row_idx, 1)))
             except Exception:
-                log.write("[yellow]No machine selected.[/]")
-                return
-            if mname in runtime_config:
-                del runtime_config[mname]
-                _deleted_machines.add(mname)
-                log.write(f"Removed [bold]{mname}[/]. Press F5 to save permanently.")
-                self._refresh_config_table()
+                return None
 
-        def action_add_machine_action(self):
-            self._add_machine(self.query_one("#config_log", RichLog))
+        def _show_edit_form(self, name=None):
+            """Show edit form for a machine. name=None means add new."""
+            form = self.query_one("#edit_form", Vertical)
+            form.remove_children()
+            self._editing = name or "__new__"
 
-        def action_recheck_action(self):
-            self._recheck(self.query_one("#config_log", RichLog))
+            if name and name in topo.get("machines", {}):
+                minfo = topo["machines"][name]
+                addrs = minfo.get("addresses", {})
+                form.mount(Label(f"[bold]Editing: {name}[/]"))
+                form.mount(Horizontal(
+                    Label("  Role: "), Input(value=minfo.get("role", "robot"), id="ed_role"),
+                    Label("  Platform: "), Input(value=minfo.get("platform_id", ""), id="ed_platform"),
+                    Label("  Desc: "), Input(value=minfo.get("desc", ""), id="ed_desc"),
+                ))
+                form.mount(Horizontal(
+                    Label("  MIT WiFi: "), Input(value=addrs.get("mit_wifi", ""), id="ed_mit_wifi"),
+                    Label("  Silvus: "), Input(value=addrs.get("silvus", ""), id="ed_silvus"),
+                ))
+                form.mount(Label("[dim]Press F5 to save, escape to cancel edit[/]"))
+            else:
+                form.mount(Label("[bold]Add New Machine[/]"))
+                form.mount(Horizontal(
+                    Label("  Name: "), Input(placeholder="e.g. newton", id="ed_name"),
+                    Label("  Role: "), Input(value="robot", id="ed_role"),
+                    Label("  Platform: "), Input(placeholder="e.g. smaug", id="ed_platform"),
+                ))
+                form.mount(Horizontal(
+                    Label("  MIT WiFi: "), Input(placeholder="e.g. 10.29.1.50", id="ed_mit_wifi"),
+                    Label("  Silvus: "), Input(placeholder="e.g. 192.168.100.50", id="ed_silvus"),
+                    Label("  Desc: "), Input(placeholder="description", id="ed_desc"),
+                ))
+                form.mount(Label("[dim]Press F5 to save, escape to cancel[/]"))
 
-        def action_save_action(self):
-            self._save_topology(self.query_one("#config_log", RichLog))
+        def _apply_edit(self, log):
+            """Apply the edit form values to the topology."""
+            topo_machines = topo.setdefault("machines", {})
+            if self._editing == "__new__":
+                try:
+                    name = self.query_one("#ed_name", Input).value.strip()
+                except Exception:
+                    log.write("[yellow]No name provided.[/]")
+                    return False
+                if not name:
+                    log.write("[yellow]Name is required.[/]")
+                    return False
+                if name in topo_machines:
+                    log.write(f"[yellow]{name} already exists.[/]")
+                    return False
+            else:
+                name = self._editing
 
-        def _add_machine(self, log):
-            name = self.query_one("#add_name", Input).value.strip()
-            role = self.query_one("#add_role", Input).value.strip()
-            ip = self.query_one("#add_ip", Input).value.strip()
-            platform = self.query_one("#add_platform", Input).value.strip()
+            role = self.query_one("#ed_role", Input).value.strip() or "robot"
+            platform = self.query_one("#ed_platform", Input).value.strip()
+            desc = self.query_one("#ed_desc", Input).value.strip()
+            mit_wifi = self.query_one("#ed_mit_wifi", Input).value.strip()
+            silvus = self.query_one("#ed_silvus", Input).value.strip()
 
-            if not name or not ip:
-                log.write("[yellow]Name and IP are required.[/]")
-                return
-            try:
-                import ipaddress as _ipa
-                _ipa.ip_address(ip)
-            except ValueError:
-                log.write(f"[yellow]Invalid IP address: {ip}[/]")
-                return
-            if name in runtime_config:
-                log.write(f"[yellow]{name} already exists. Edit it above or remove first.[/]")
-                return
             if role not in ("robot", "base_station"):
                 log.write("[yellow]Role must be 'robot' or 'base_station'.[/]")
+                return False
+
+            # Build addresses
+            addrs = {}
+            if mit_wifi:
+                addrs["mit_wifi"] = mit_wifi
+            if silvus:
+                addrs["silvus"] = silvus
+            # Preserve existing addresses not shown (e.g. penn_wifi)
+            if name in topo_machines:
+                old_addrs = topo_machines[name].get("addresses", {})
+                for net, ip in old_addrs.items():
+                    if net not in ("mit_wifi", "silvus"):
+                        addrs[net] = ip
+
+            entry = {"role": role, "addresses": addrs}
+            if platform:
+                entry["platform_id"] = platform
+            if desc:
+                entry["desc"] = desc
+
+            topo_machines[name] = entry
+
+            # Update runtime_config if this machine is on the active network
+            if active_network in addrs:
+                ssh_conf = topo.get("ssh", {})
+                user = ssh_conf.get("base_station_user", "rrg") if role == "base_station" else ssh_conf.get("robot_user", "swarm")
+                runtime_config[name] = {
+                    "name": name, "role": role, "ip": addrs[active_network],
+                    "user": user, "desc": desc, "platform_id": platform or "",
+                }
+
+            log.write(f"[green]Updated {name}[/]")
+            return True
+
+        def action_edit_selected(self):
+            name = self._get_selected_name()
+            if name:
+                self._show_edit_form(name)
+
+        def action_add_machine_action(self):
+            self._show_edit_form(None)
+
+        def action_remove_selected(self):
+            log = self.query_one("#config_log", RichLog)
+            name = self._get_selected_name()
+            if not name:
+                log.write("[yellow]No machine selected.[/]")
                 return
-
-            ssh_conf = topo.get("ssh", {})
-            user = ssh_conf.get("base_station_user", "rrg") if role == "base_station" else ssh_conf.get("robot_user", "swarm")
-            runtime_config[name] = {
-                "name": name,
-                "role": role,
-                "ip": ip,
-                "user": user,
-                "desc": "",
-                "platform_id": platform if role == "robot" else "",
-            }
-            log.write(f"Added [bold]{name}[/] ({role}) at {ip}")
-            self.query_one("#add_name", Input).value = ""
-            self.query_one("#add_ip", Input).value = ""
-            self.query_one("#add_platform", Input).value = ""
+            topo_machines = topo.get("machines", {})
+            if name in topo_machines:
+                del topo_machines[name]
+            if name in runtime_config:
+                del runtime_config[name]
+            _deleted_machines.add(name)
+            log.write(f"Removed [bold]{name}[/]. Press F5 to save permanently.")
             self._refresh_config_table()
-            self._rebuild_form()
 
-        def _recheck(self, log):
+        def action_recheck_action(self):
+            log = self.query_one("#config_log", RichLog)
             log.write("[dim]Rechecking connectivity...[/]")
 
             def do_check():
@@ -1280,36 +1345,19 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
-        def _save_topology(self, log):
-            """Write current runtime_config back to topology.yaml."""
+        def action_save_action(self):
+            log = self.query_one("#config_log", RichLog)
+            # Apply edit form if active
+            if self._editing:
+                if not self._apply_edit(log):
+                    return
+                self._editing = None
+                form = self.query_one("#edit_form", Vertical)
+                form.remove_children()
+                self._refresh_config_table()
+
+            # Remove deleted machines
             topo_machines = topo.get("machines", {})
-
-            # Apply runtime_config changes into topo
-            # Track which machines are in runtime_config
-            seen = set()
-            for mname, mconf in runtime_config.items():
-                seen.add(mname)
-                if mname not in topo_machines:
-                    # New machine — create entry
-                    topo_machines[mname] = {
-                        "role": mconf["role"],
-                        "addresses": {active_network: mconf["ip"]},
-                    }
-                    if mconf.get("desc"):
-                        topo_machines[mname]["desc"] = mconf["desc"]
-                else:
-                    # Existing machine — update IP and platform_id
-                    entry = topo_machines[mname]
-                    addrs = entry.setdefault("addresses", {})
-                    addrs[active_network] = mconf["ip"]
-
-                # Update platform_id for robots
-                if mconf["role"] == "robot" and mconf.get("platform_id"):
-                    topo_machines[mname]["platform_id"] = mconf["platform_id"]
-
-            # Only remove machines that were explicitly deleted by the user
-            # (not all machines absent from runtime_config, since that only
-            # contains machines for the active network)
             for mname in list(_deleted_machines):
                 if mname in topo_machines:
                     del topo_machines[mname]
