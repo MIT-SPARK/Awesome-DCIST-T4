@@ -1859,12 +1859,13 @@ def _launch_tui(network, topology_path, output_root):
 
                         out_dir = f"{output_root}/{experiment}"
                         q_output = _quote_path(out_dir)
-                        platform = _bs_machine.get("platform_id", _bs_machine["name"])
+                        platform = _bs_machine.get("platform_id") or _bs_machine["name"]
+                        config_flag = f" -c {shlex.quote(platform)}" if _bs_machine.get("platform_id") else ""
                         bs_cmd = (
                             f"cd ~/dcist_ws && source install/setup.zsh && "
                             f"nohup src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
-                            f"{shlex.quote(_bs_session)} -n {shlex.quote(_bs_machine['name'])} "
-                            f"-c {shlex.quote(platform)} -o {q_output} -y "
+                            f"{shlex.quote(_bs_session)} -n {shlex.quote(_bs_machine['name'])}"
+                            f"{config_flag} -o {q_output} -y "
                             f"--tmuxp-args \"-d\" "
                             f">/dev/null 2>&1 &"
                         )
