@@ -3264,17 +3264,23 @@ def _launch_tui(network, topology_path, output_root):
                 return False, "failed to patch zenoh config (template missing?)"
 
             _fleet_zenoh["config"] = config_path
-            env = os.environ.copy()
-            env["ZENOH_ROUTER_CONFIG_URI"] = config_path
             import tempfile
             stderr_log = tempfile.NamedTemporaryFile(
                 mode="w", prefix="fleet_zenohd_", suffix=".log", delete=False
             )
+            # Source the ROS workspace before running zenohd — fleet-adt4 may
+            # have been started without full ROS env (e.g. ros2 on PATH via
+            # .zshrc but workspace not sourced).
+            shell_cmd = (
+                f"source ~/dcist_ws/install/setup.zsh 2>/dev/null || "
+                f"source ~/dcist_ws/install/setup.bash 2>/dev/null; "
+                f"ZENOH_ROUTER_CONFIG_URI={shlex.quote(config_path)} "
+                f"ros2 run rmw_zenoh_cpp rmw_zenohd"
+            )
             _fleet_zenoh["proc"] = subprocess.Popen(
-                ["ros2", "run", "rmw_zenoh_cpp", "rmw_zenohd"],
+                ["bash", "-c", shell_cmd],
                 stdout=subprocess.DEVNULL,
                 stderr=stderr_log,
-                env=env,
             )
             # Check it didn't die immediately
             import time
