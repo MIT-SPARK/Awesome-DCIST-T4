@@ -2587,24 +2587,27 @@ def _launch_tui(network, topology_path, output_root):
             all_machines = list(runtime_config.values())
             online = [m for m in all_machines if m.get("online")]
             if not online:
-                self._tlog(log, "[red]No online machines.[/]")
+                self._tlog(log, "[red]No online machines. Run connectivity check (s) first.[/]")
                 return False
 
             # Scope: base stations only connect to selected robots
             robot_names = [m["name"] for m in robots]
+            names = ", ".join(m["name"] for m in online)
+            self._tlog(log, f"  Deploying to {len(online)} machine(s): {names}")
             self._tlog(log, f"  [dim]Scoping zenoh to robots: {', '.join(robot_names)}[/]")
 
             success = True
-            for m in online:
+            for i, m in enumerate(online):
                 try:
+                    self._tlog(log, f"  [{i+1}/{len(online)}] {m['name']}...")
                     endpoints = generate_zenoh_endpoints(
                         topo, active_network, m["name"],
                         robot_filter=robot_names,
                     )
-                    self._tlog(log, f"  [dim]{m['name']}: {len(endpoints)} endpoint(s)[/]")
+                    self._tlog(log, f"    [dim]{len(endpoints)} endpoint(s)[/]")
                     ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
                     color = "green" if ok else "red"
-                    self._tlog(log, f"  [{color}]{m['name']}: {msg}[/{color}]")
+                    self._tlog(log, f"    [{color}]{msg}[/{color}]")
                     if not ok:
                         success = False
                 except KeyError:
