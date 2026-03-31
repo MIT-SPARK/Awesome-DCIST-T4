@@ -1336,7 +1336,7 @@ def _launch_tui(network, topology_path, output_root):
             max-height: 16;
         }
         LaunchScreen #launch_log {
-            min-height: 6;
+            min-height: 12;
         }
         """
 
@@ -1413,12 +1413,13 @@ def _launch_tui(network, topology_path, output_root):
             log = self.query_one("#launch_log", RichLog)
             log.write(f"[bold cyan]Auto-populating for {mode} mode...[/]")
 
-            # Select all online robots
+            # Rebuild robot list with online robots pre-selected
             robot_sel = self.query_one("#robot_select", SelectionList)
-            robot_sel.deselect_all()
+            robot_sel.clear_options()
             for m in runtime_config.values():
-                if m["role"] == "robot" and m.get("online"):
-                    robot_sel.select(m["name"])
+                if m["role"] == "robot":
+                    selected = m.get("online", False)
+                    robot_sel.add_option((m["name"], m["name"], selected))
 
             # Pick session based on first online robot's platform
             first_robot = next(
@@ -1426,28 +1427,38 @@ def _launch_tui(network, topology_path, output_root):
                  if m["role"] == "robot" and m.get("online")),
                 None,
             )
+            target_session = ""
             if first_robot:
-                session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
-                if session:
-                    sess_sel = self.query_one("#session_select", SelectionList)
-                    sess_sel.deselect_all()
-                    sess_sel.select(session)
-                    log.write(f"  Robot session: [cyan]{session}[/]")
+                target_session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
 
-            # Select local base station
+            # Rebuild session list with target pre-selected
+            if target_session:
+                sess_sel = self.query_one("#session_select", SelectionList)
+                sess_sel.clear_options()
+                for s in self._all_sessions:
+                    sess_sel.add_option((s, s, s == target_session))
+                log.write(f"  Robot session: [cyan]{target_session}[/]")
+
+            # Rebuild BS list with local pre-selected
+            local_bs = None
             bs_sel = self.query_one("#bs_select", SelectionList)
-            bs_sel.deselect_all()
+            bs_sel.clear_options()
             for m in runtime_config.values():
-                if m["role"] == "base_station" and m["ip"] in _local_ips:
-                    bs_sel.select(m["name"])
-                    log.write(f"  Base station: [cyan]{m['name']} (local)[/]")
-                    break
+                if m["role"] == "base_station":
+                    is_local = m["ip"] in _local_ips
+                    bs_sel.add_option((m["name"], f"{m['name']} (local)" if is_local else m["name"], is_local))
+                    if is_local:
+                        local_bs = m["name"]
+            if local_bs:
+                log.write(f"  Base station: [cyan]{local_bs} (local)[/]")
 
-            # Select BS session
+            # Rebuild BS session list with default pre-selected
+            bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
+            bs_sess_sel.clear_options()
+            for s in self._all_sessions:
+                if "base_station" in s:
+                    bs_sess_sel.add_option((s, s, s == bs_session))
             if bs_session:
-                bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
-                bs_sess_sel.deselect_all()
-                bs_sess_sel.select(bs_session)
                 log.write(f"  BS session: [cyan]{bs_session}[/]")
 
             if mode == "relocalize":
