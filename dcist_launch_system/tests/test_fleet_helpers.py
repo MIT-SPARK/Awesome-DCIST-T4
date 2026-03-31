@@ -6,11 +6,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from dcist_launch_system.fleet_helpers import (
+    _quote_path,
+    check_zenoh_config,
+    check_zenoh_port,
+    compute_robot_readiness,
+    deploy_zenoh_config,
     detect_network,
+    generate_namespaced_rviz,
     get_remote_status,
+    get_ros_node_status,
     hash_remote_experiment,
     list_remote_experiments,
     load_topology,
+    patch_zenoh_config_local,
     ping_host,
     resolve_machines,
     run_parallel,
@@ -372,3 +380,294 @@ class TestIntegrationPing:
 
     def test_unreachable_ip(self):
         assert ping_host("192.0.2.1", timeout=1) is False  # TEST-NET, not routable
+
+
+# ---------------------------------------------------------------------------
+# compute_robot_readiness
+# ---------------------------------------------------------------------------
+
+
+class TestComputeRobotReadiness:
+    def test_all_nominal_returns_green(self):
+        nodes = [
+            {"nickname": "lidar_monitor", "status": 1},
+            {"nickname": "imu_monitor", "status": 1},
+            {"nickname": "gps_monitor", "status": 1},
+        ]
+        color, label = compute_robot_readiness(nodes)
+        assert color == "green"
+        assert label == "Ready"
+
+    def test_only_gps_failure_returns_yellow(self):
+        nodes = [
+            {"nickname": "lidar_monitor", "status": 1},
+            {"nickname": "gps_monitor", "status": 4},  # NO_HB
+        ]
+        color, label = compute_robot_readiness(nodes)
+        assert color == "yellow"
+        assert label == "Ready (indoor)"
+
+    def test_non_gps_failure_returns_red(self):
+        nodes = [
+            {"nickname": "lidar_monitor", "status": 3},  # ERROR
+            {"nickname": "gps_monitor", "status": 1},
+        ]
+        color, label = compute_robot_readiness(nodes)
+        assert color == "red"
+        assert label == "Not ready"
+
+    def test_empty_nodes_returns_red(self):
+        color, label = compute_robot_readiness([])
+        assert color == "red"
+        assert label == "No data"
+
+    def test_mixed_gps_and_real_failure_returns_red(self):
+        nodes = [
+            {"nickname": "lidar_monitor", "status": 3},  # ERROR
+            {"nickname": "gps_monitor", "status": 4},  # NO_HB
+            {"nickname": "ntrip_monitor", "status": 4},  # NO_HB
+        ]
+        color, label = compute_robot_readiness(nodes)
+        assert color == "red"
+        assert label == "Not ready"
+
+
+# ---------------------------------------------------------------------------
+# _quote_path
+# ---------------------------------------------------------------------------
+
+
+class TestQuotePath:
+    def test_tilde_preserved(self):
+        result = _quote_path("~/foo")
+        assert result.startswith("~/")
+        assert "foo" in result
+
+    def test_path_with_spaces_quoted(self):
+        result = _quote_path("/some path/with spaces")
+        # shlex.quote wraps in single quotes for paths with spaces
+        assert "'" in result or '"' in result or "\\" in result
+
+    def test_absolute_path_quoted(self):
+        result = _quote_path("/abs/path")
+        # shlex.quote for a simple path returns it as-is (no special chars)
+        assert "/abs/path" in result
+
+
+# ---------------------------------------------------------------------------
+# check_zenoh_port
+# ---------------------------------------------------------------------------
+
+
+class TestCheckZenohPort:
+    @patch("socket.create_connection")
+    def test_port_open(self, mock_conn):
+        mock_conn.return_value.__enter__ = MagicMock()
+        mock_conn.return_value.__exit__ = MagicMock(return_value=False)
+        assert check_zenoh_port("10.29.1.1", 7447) is True
+
+    @patch("socket.create_connection")
+    def test_port_closed(self, mock_conn):
+        mock_conn.side_effect = ConnectionRefusedError("refused")
+        assert check_zenoh_port("10.29.1.1", 7447) is False
+
+
+# ---------------------------------------------------------------------------
+# get_ros_node_status
+# ---------------------------------------------------------------------------
+
+
+class TestGetRosNodeStatus:
+    @patch("dcist_launch_system.fleet_helpers.subprocess.run")
+    def test_parses_multi_robot_yaml(self, mock_run):
+        yaml_output = (
+            "monitor_name: euclid\n"
+            "status:\n"
+            "- nickname: euclid/lidar_monitor\n"
+            "  status: 1\n"
+            "  notes: ''\n"
+            "  required: true\n"
+            "- nickname: euclid/gps_monitor\n"
+            "  status: 4\n"
+            "  notes: no fix\n"
+            "  required: true\n"
+            "---\n"
+            "monitor_name: hamilton\n"
+            "status:\n"
+            "- nickname: hamilton/imu_monitor\n"
+            "  status: 1\n"
+            "  notes: ''\n"
+            "  required: true\n"
+        )
+        mock_run.return_value = MagicMock(stdout=yaml_output, returncode=0)
+        result = get_ros_node_status(timeout=5)
+        assert "euclid" in result
+        assert "hamilton" in result
+        assert len(result["euclid"]) == 2
+        assert result["euclid"][0]["nickname"] == "lidar_monitor"
+        assert result["euclid"][0]["status"] == 1
+        assert result["euclid"][1]["nickname"] == "gps_monitor"
+        assert result["euclid"][1]["status"] == 4
+        assert result["hamilton"][0]["nickname"] == "imu_monitor"
+
+    @patch("dcist_launch_system.fleet_helpers.subprocess.run")
+    def test_empty_output_returns_empty(self, mock_run):
+        mock_run.return_value = MagicMock(stdout="", returncode=0)
+        result = get_ros_node_status(timeout=5)
+        assert result == {}
+
+    @patch("dcist_launch_system.fleet_helpers.subprocess.run")
+    def test_timeout_collects_stdout(self, mock_run):
+        yaml_output = (
+            "monitor_name: euclid\n"
+            "status:\n"
+            "- nickname: euclid/lidar_monitor\n"
+            "  status: 1\n"
+            "  notes: ''\n"
+            "  required: true\n"
+        )
+        exc = subprocess.TimeoutExpired(cmd="ros2", timeout=5)
+        exc.stdout = yaml_output
+        mock_run.side_effect = exc
+        result = get_ros_node_status(timeout=5)
+        assert "euclid" in result
+        assert result["euclid"][0]["nickname"] == "lidar_monitor"
+
+    @patch("dcist_launch_system.fleet_helpers.subprocess.run")
+    def test_os_error_returns_empty(self, mock_run):
+        mock_run.side_effect = OSError("ros2 not found")
+        result = get_ros_node_status(timeout=5)
+        assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# check_zenoh_config
+# ---------------------------------------------------------------------------
+
+
+class TestCheckZenohConfig:
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_config_exists(self, mock_ssh):
+        mock_ssh.return_value = (0, "OK", "")
+        assert check_zenoh_config("swarm", "10.29.1.1") is True
+
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_config_missing(self, mock_ssh):
+        mock_ssh.return_value = (1, "", "")
+        assert check_zenoh_config("swarm", "10.29.1.1") is False
+
+
+# ---------------------------------------------------------------------------
+# generate_namespaced_rviz
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateNamespacedRviz:
+    def test_namespaces_topics(self, tmp_path, rviz_template):
+        output = tmp_path / "output.rviz"
+        generate_namespaced_rviz("robot", template_path=rviz_template, output_path=output)
+        content = output.read_text()
+        assert "Value: robot/hydra_visualizer/graph" in content
+        # Original un-namespaced version should not appear
+        lines = [l.strip() for l in content.splitlines()]
+        for line in lines:
+            if "hydra_visualizer/graph" in line:
+                assert line.startswith("Value: robot/") or "robot/hydra_visualizer/graph" in line
+
+    def test_replaces_robot_prefix(self, tmp_path, rviz_template):
+        output = tmp_path / "output.rviz"
+        generate_namespaced_rviz("hamilton", template_path=rviz_template, output_path=output)
+        content = output.read_text()
+        assert "hamilton/base_link:" in content
+        assert "euclid/base_link:" not in content
+
+    def test_writes_output_to_correct_path(self, tmp_path, rviz_template):
+        output = tmp_path / "my_output.rviz"
+        result = generate_namespaced_rviz("robot", template_path=rviz_template, output_path=output)
+        assert result == str(output)
+        assert output.exists()
+
+
+# ---------------------------------------------------------------------------
+# deploy_zenoh_config
+# ---------------------------------------------------------------------------
+
+
+class TestDeployZenohConfig:
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_success(self, mock_ssh):
+        # Three calls: backup, check exists, run script
+        mock_ssh.side_effect = [
+            (0, "", ""),             # backup
+            (0, "exists", ""),       # check exists
+            (0, "OK", ""),           # run update script
+        ]
+        ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
+        assert ok is True
+        assert "Updated" in msg
+
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_config_missing(self, mock_ssh):
+        mock_ssh.side_effect = [
+            (0, "", ""),     # backup
+            (1, "", ""),     # check exists fails
+        ]
+        ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
+        assert ok is False
+        assert "No" in msg or "not" in msg.lower() or "found" in msg.lower()
+
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_endpoints_in_command(self, mock_ssh):
+        mock_ssh.side_effect = [
+            (0, "", ""),         # backup
+            (0, "exists", ""),   # check exists
+            (0, "OK", ""),       # run update script
+        ]
+        deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447", "tcp/10.0.0.2:7447"])
+        # The third ssh_cmd call contains the remote command with base64-encoded endpoints
+        third_call_cmd = mock_ssh.call_args_list[2][0][2]
+        import base64
+        # The endpoints are base64-encoded in the command; verify both are present
+        # by checking the base64-decoded content
+        b64_parts = [p for p in third_call_cmd.split("'") if len(p) > 20]
+        decoded_parts = []
+        for part in b64_parts:
+            try:
+                decoded_parts.append(base64.b64decode(part).decode())
+            except Exception:
+                pass
+        all_decoded = " ".join(decoded_parts)
+        assert "10.0.0.1:7447" in all_decoded
+        assert "10.0.0.2:7447" in all_decoded
+
+
+# ---------------------------------------------------------------------------
+# patch_zenoh_config_local
+# ---------------------------------------------------------------------------
+
+
+class TestPatchZenohConfigLocal:
+    def test_patches_connect_endpoints(self, tmp_path, zenoh_template):
+        result = patch_zenoh_config_local(
+            ["tcp/10.0.0.1:7447"], listen_port=7447, template_path=zenoh_template
+        )
+        assert result is not None
+        import pathlib
+        content = pathlib.Path(result).read_text()
+        assert "10.0.0.1:7447" in content
+
+    def test_patches_listen_port(self, tmp_path, zenoh_template):
+        result = patch_zenoh_config_local(
+            [], listen_port=9999, template_path=zenoh_template
+        )
+        assert result is not None
+        import pathlib
+        content = pathlib.Path(result).read_text()
+        assert "9999" in content
+
+    def test_missing_template_returns_none(self, tmp_path):
+        result = patch_zenoh_config_local(
+            ["tcp/10.0.0.1:7447"],
+            template_path=tmp_path / "nonexistent.json5",
+        )
+        assert result is None
