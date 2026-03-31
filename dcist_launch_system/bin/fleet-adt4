@@ -2317,9 +2317,6 @@ def _launch_tui(network, topology_path, output_root):
             self._auto = False
             self._running = False
             self._running_since = 0  # monotonic timestamp
-            import queue as _queue_mod
-            self._log_queue = _queue_mod.Queue()     # (log_widget, message) tuples
-            self._ui_queue = _queue_mod.Queue()       # (fn, args) tuples
 
             if mode == "mapping":
                 self._steps = [
@@ -2412,8 +2409,6 @@ def _launch_tui(network, topology_path, output_root):
 
         def on_mount(self):
             self._rebuild_steps()
-            # Start a timer to drain the background-thread log queue
-            self.set_interval(0.2, self._drain_queues)
             # Populate session list
             if _TMUX_DIR.exists():
                 sessions = sorted([f.stem for f in _TMUX_DIR.glob("*.yaml")])
@@ -2469,34 +2464,13 @@ def _launch_tui(network, topology_path, output_root):
             selected = list(sel.selected)
             return selected[0] if selected else ""
 
-        def _drain_queues(self):
-            """Called by timer on the main Textual thread. Drains both queues."""
-            # Drain log messages
-            while not self._log_queue.empty():
-                try:
-                    log, msg = self._log_queue.get_nowait()
-                    log.write(msg)
-                except Exception:
-                    break
-            # Drain UI updates
-            while not self._ui_queue.empty():
-                try:
-                    fn, args = self._ui_queue.get_nowait()
-                    fn(*args)
-                except Exception:
-                    break
-
         def _tlog(self, log, msg):
-            """Thread-safe, NON-BLOCKING log write via queue."""
-            self._log_queue.put((log, msg))
-
-        def _thread_update(self, fn, *args):
-            """Thread-safe, NON-BLOCKING UI update via queue."""
-            self._ui_queue.put((fn, args))
+            """Thread-safe log write via call_from_thread."""
+            self.app.call_from_thread(log.write, msg)
 
         def _set_step_status(self, idx, status):
             self._steps[idx]["status"] = status
-            self._thread_update(self._rebuild_steps)
+            self.app.call_from_thread(self._rebuild_steps)
 
         def _show_confirmation(self, then_auto=False):
             """Validate selections and show a confirmation summary."""
@@ -2653,7 +2627,7 @@ def _launch_tui(network, topology_path, output_root):
                         self._current_step += 1
                         # Auto-advance if in auto mode
                         if self._auto and self._current_step < len(self._steps):
-                            self._thread_update(self._run_current_step)
+                            self.app.call_from_thread(self._run_current_step)
                         elif self._current_step >= len(self._steps):
                             self._tlog(log, "[bold green]Mission complete![/]")
                     else:
