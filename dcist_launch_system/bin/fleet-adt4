@@ -1703,6 +1703,10 @@ def _launch_tui(network, topology_path, output_root):
             bs_sess_list = list(bs_sess_sel.selected)
             _bs_session = bs_sess_list[0] if bs_sess_list else None
 
+            # Snapshot robot names for zenoh scoping
+            robot_sel = self.query_one("#robot_select", SelectionList)
+            _robot_names = list(robot_sel.selected)
+
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
             area.remove_children()
@@ -1722,35 +1726,37 @@ def _launch_tui(network, topology_path, output_root):
 
             def do_launch():
                 try:
-                    # Pre-launch checklist: verify zenoh configs
-                    self.app.call_from_thread(
-                        log.write, "[bold]Pre-launch checks...[/]"
-                    )
-                    all_ok = True
-                    for m, cmd in cmds:
-                        has_zenoh = check_zenoh_config(m["user"], m["ip"])
-                        if has_zenoh:
-                            self.app.call_from_thread(
-                                log.write, f"  [green]{m['name']}: zenoh config OK[/]"
-                            )
-                        else:
-                            self.app.call_from_thread(
-                                log.write,
-                                f"  [red]{m['name']}: zenoh config MISSING — "
-                                f"deploy with Zenoh screen (z) first[/]"
-                            )
-                            all_ok = False
-                    if not all_ok:
+                    # Phase 0: Deploy zenoh configs to selected robots + BS
+                    deploy_targets = [runtime_config[n] for n in _robot_names if n in runtime_config]
+                    if _bs_machine:
+                        deploy_targets.append(_bs_machine)
+                    if deploy_targets:
                         self.app.call_from_thread(
-                            log.write,
-                            "[bold red]ABORT: zenoh config missing on some robots. "
-                            "Deploy configs first.[/]"
+                            log.write, f"[bold]Deploying zenoh configs ({len(deploy_targets)} machines)...[/]"
                         )
-                        return
-
-                    self.app.call_from_thread(
-                        log.write, "[dim]Pre-launch checks passed.[/]"
-                    )
+                        all_ok = True
+                        for m in deploy_targets:
+                            try:
+                                endpoints = generate_zenoh_endpoints(
+                                    topo, active_network, m["name"],
+                                    robot_filter=_robot_names,
+                                )
+                                ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
+                                color = "green" if ok else "red"
+                                self.app.call_from_thread(
+                                    log.write, f"  [{color}]{m['name']}: {msg} ({len(endpoints)} ep)[/{color}]"
+                                )
+                                if not ok:
+                                    all_ok = False
+                            except KeyError:
+                                self.app.call_from_thread(
+                                    log.write, f"  [dim]{m['name']}: no address on {active_network}[/]"
+                                )
+                        if not all_ok:
+                            self.app.call_from_thread(
+                                log.write, "[bold red]ABORT: zenoh deploy failed on some machines.[/]"
+                            )
+                            return
 
                     # Phase 1: Transfer prior maps if needed
                     if prior_info:
