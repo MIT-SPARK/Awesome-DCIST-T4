@@ -1984,8 +1984,9 @@ def _launch_tui(network, topology_path, output_root):
                 Label("[bold]System Status[/] (r=refresh)"),
                 Static(id="monitor_table"),
                 Rule(),
-                Label("[bold]Node Readiness[/] (n=refresh, Enter=details, k=stop & save)"),
+                Label("[bold]Node Readiness[/] (n=refresh, Enter=details, Esc=back, k=stop & save)"),
                 DataTable(id="node_summary_table"),
+                Static(id="node_detail_view"),
                 Rule(),
                 RichLog(id="monitor_log", highlight=True, markup=True, max_lines=30),
             )
@@ -2115,30 +2116,33 @@ def _launch_tui(network, topology_path, output_root):
                 )
 
         def action_drill_down(self):
-            """Show detailed per-node status for the selected robot."""
+            """Show detailed per-node status for the selected robot in the detail view."""
             node_table = self.query_one("#node_summary_table", DataTable)
-            log = self.query_one("#monitor_log", RichLog)
+            detail = self.query_one("#node_detail_view", Static)
 
             try:
                 from textual.coordinate import Coordinate
                 row_idx = node_table.cursor_coordinate.row
                 robot_name = str(node_table.get_cell_at(Coordinate(row_idx, 0)))
             except Exception:
-                log.write("[red]No robot selected in node summary table.[/]")
                 return
 
             nodes = self._node_status.get(robot_name)
             if not nodes:
-                log.write(f"[red]No node data for {robot_name}.[/]")
+                detail.update(f"[red]No node data for {robot_name}.[/]")
                 return
 
-            log.write(f"\n[bold]Node details for {robot_name}:[/]")
+            t = Table(box=None, expand=True, pad_edge=False, title=f"Node details: {robot_name}")
+            t.add_column("Status", no_wrap=True, min_width=8)
+            t.add_column("Node", no_wrap=True, min_width=12)
+            t.add_column("Notes", no_wrap=False)
             for n in sorted(nodes, key=lambda x: x["nickname"]):
                 status = n["status"]
                 color = _STATUS_COLORS.get(status, "white")
                 sname = _STATUS_NAMES.get(status, "?")
-                notes = f" — {n['notes']}" if n["notes"] else ""
-                log.write(f"  [{color}]{sname:8s}[/{color}]  {n['nickname']}{notes}")
+                notes = n.get("notes", "")
+                t.add_row(f"[{color}]{sname}[/{color}]", n["nickname"], notes)
+            detail.update(t)
 
         def action_stop_save(self):
             """Send shutdown signal to all online robots via tmux."""
