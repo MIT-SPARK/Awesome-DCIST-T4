@@ -1418,14 +1418,22 @@ def _launch_tui(network, topology_path, output_root):
             log = self.query_one("#launch_log", RichLog)
             log.write(f"[bold cyan]Auto-populating for {mode} mode...[/]")
 
-            # Rebuild robot list, then select online ones
-            robot_sel = self.query_one("#robot_select", SelectionList)
-            robot_sel.clear_options()
-            for m in runtime_config.values():
-                if m["role"] == "robot":
-                    robot_sel.add_option((m["name"], m["name"]))
-                    if m.get("online"):
-                        robot_sel.select(m["name"])
+            def _replace_selection_list(widget_id, options):
+                """Replace a SelectionList widget with new options (label, value, selected)."""
+                old = self.query_one(f"#{widget_id}", SelectionList)
+                parent = old.parent
+                idx = list(parent.children).index(old)
+                old.remove()
+                new_sel = SelectionList(*options, id=widget_id)
+                parent.mount(new_sel, before=idx)
+
+            # Rebuild robot list with online robots pre-selected
+            robot_options = [
+                (m["name"], m["name"], m.get("online", False))
+                for m in runtime_config.values()
+                if m["role"] == "robot"
+            ]
+            _replace_selection_list("robot_select", robot_options)
 
             # Pick session based on first online robot's platform
             first_robot = next(
@@ -1437,38 +1445,34 @@ def _launch_tui(network, topology_path, output_root):
             if first_robot:
                 target_session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
 
-            # Rebuild session list, then select target
+            # Rebuild session list with target pre-selected
             if target_session:
-                sess_sel = self.query_one("#session_select", SelectionList)
-                sess_sel.clear_options()
-                for s in self._all_sessions:
-                    sess_sel.add_option((s, s))
-                sess_sel.select(target_session)
+                sess_options = [(s, s, s == target_session) for s in self._all_sessions]
+                _replace_selection_list("session_select", sess_options)
                 log.write(f"  Robot session: [cyan]{target_session}[/]")
 
-            # Rebuild BS list, then select local
+            # Rebuild BS list with local pre-selected
             local_bs = None
-            bs_sel = self.query_one("#bs_select", SelectionList)
-            bs_sel.clear_options()
+            bs_options = []
             for m in runtime_config.values():
                 if m["role"] == "base_station":
                     is_local = m["ip"] in _local_ips
                     label = f"{m['name']} (local)" if is_local else m["name"]
-                    bs_sel.add_option((label, m["name"]))
+                    bs_options.append((label, m["name"], is_local))
                     if is_local:
                         local_bs = m["name"]
+            _replace_selection_list("bs_select", bs_options)
             if local_bs:
-                bs_sel.select(local_bs)
                 log.write(f"  Base station: [cyan]{local_bs} (local)[/]")
 
-            # Rebuild BS session list, then select default
-            bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
-            bs_sess_sel.clear_options()
-            for s in self._all_sessions:
-                if "base_station" in s:
-                    bs_sess_sel.add_option((s, s))
+            # Rebuild BS session list with default pre-selected
+            bs_sess_options = [
+                (s, s, s == bs_session)
+                for s in self._all_sessions
+                if "base_station" in s
+            ]
+            _replace_selection_list("bs_session_select", bs_sess_options)
             if bs_session:
-                bs_sess_sel.select(bs_session)
                 log.write(f"  BS session: [cyan]{bs_session}[/]")
 
             if mode == "relocalize":
