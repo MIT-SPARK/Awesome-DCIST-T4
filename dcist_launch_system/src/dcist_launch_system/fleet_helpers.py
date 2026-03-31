@@ -801,12 +801,14 @@ def get_ros_node_status(timeout=5):
 
     Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
     """
-    # Run through login shell to ensure ROS env is sourced (.zshrc)
+    # Run through login shell to ensure ROS env is sourced (.zshrc).
+    # Increase effective timeout to account for shell startup (~3s).
     shell = "zsh" if shutil.which("zsh") else "bash"
     ros_cmd = (
         "ros2 topic echo /global/ros_system_monitor/table_in "
         "ros_system_monitor_msgs/msg/StatusTable"
     )
+    effective_timeout = timeout + 5  # extra time for shell init
     try:
         proc = subprocess.Popen(
             [shell, "-l", "-c", ros_cmd],
@@ -815,15 +817,18 @@ def get_ros_node_status(timeout=5):
             text=True,
         )
         try:
-            stdout, _ = proc.communicate(timeout=timeout)
+            stdout, stderr = proc.communicate(timeout=effective_timeout)
         except subprocess.TimeoutExpired:
             # Expected: we collect whatever was produced before timeout
             proc.kill()
-            stdout, _ = proc.communicate(timeout=5)
+            stdout, stderr = proc.communicate(timeout=5)
         if not stdout or not stdout.strip():
+            # Return stderr as debug info in a special key
+            if stderr and stderr.strip():
+                return {"_debug_stderr": stderr.strip()[:500]}
             return {}
-    except OSError:
-        return {}
+    except OSError as e:
+        return {"_debug_error": str(e)}
 
     # ros2 topic echo outputs multiple YAML documents separated by ---
     robots = {}

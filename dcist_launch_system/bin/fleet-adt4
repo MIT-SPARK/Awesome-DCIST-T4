@@ -2092,6 +2092,14 @@ def _launch_tui(network, topology_path, output_root):
                 node_table = self.query_one("#node_summary_table", DataTable)
                 node_table.clear()
 
+                # Show debug info if present
+                debug_stderr = status.pop("_debug_stderr", None)
+                debug_error = status.pop("_debug_error", None)
+                if debug_stderr:
+                    log.write(f"[dim]ros2 stderr: {debug_stderr}[/]")
+                if debug_error:
+                    log.write(f"[dim]ros2 error: {debug_error}[/]")
+
                 if not status:
                     zenohd_running = (
                         (_fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None)
