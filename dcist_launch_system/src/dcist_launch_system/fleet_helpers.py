@@ -801,14 +801,18 @@ def get_ros_node_status(timeout=5):
 
     Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
     """
-    # Run through login shell to ensure ROS env is sourced (.zshrc).
-    # Increase effective timeout to account for shell startup (~3s).
+    # Source the full workspace (not just ROS base) so custom message types
+    # like ros_system_monitor_msgs are available.
     shell = "zsh" if shutil.which("zsh") else "bash"
-    ros_cmd = "ros2 topic echo /global/ros_system_monitor/table_in"
-    effective_timeout = timeout + 5  # extra time for shell init
+    ros_cmd = (
+        "source ~/dcist_ws/install/setup.zsh 2>/dev/null || "
+        "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
+        "ros2 topic echo /global/ros_system_monitor/table_in"
+    )
+    effective_timeout = timeout + 5  # extra time for shell/workspace init
     try:
         proc = subprocess.Popen(
-            [shell, "-l", "-c", ros_cmd],
+            [shell, "-c", ros_cmd],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -820,7 +824,6 @@ def get_ros_node_status(timeout=5):
             proc.kill()
             stdout, stderr = proc.communicate(timeout=5)
         if not stdout or not stdout.strip():
-            # Return stderr as debug info in a special key
             if stderr and stderr.strip():
                 return {"_debug_stderr": stderr.strip()[:500]}
             return {}
