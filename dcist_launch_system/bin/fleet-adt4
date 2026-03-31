@@ -2034,8 +2034,9 @@ def _launch_tui(network, topology_path, output_root):
             node_table.add_column("Issues", key="issues")
             node_table.cursor_type = "row"
 
+            self._node_poll_timer = None
             self.action_refresh()
-            self.action_refresh_nodes()
+            self._start_node_polling()
 
         def action_refresh(self):
             log = self.query_one("#monitor_log", RichLog)
@@ -2062,9 +2063,16 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
-        def action_refresh_nodes(self):
+        def _start_node_polling(self):
+            """Start background polling of ROS node status every 15s."""
+            def _poll():
+                self.action_refresh_nodes(quiet=True)
+            self._node_poll_timer = self.set_interval(15, _poll)
+
+        def action_refresh_nodes(self, quiet=False):
             log = self.query_one("#monitor_log", RichLog)
-            log.write("[dim]Fetching ROS node status (13s)...[/]")
+            if not quiet:
+                log.write("[dim]Fetching ROS node status...[/]")
 
             def do_fetch():
                 return get_ros_node_status(timeout=8)
@@ -2073,9 +2081,9 @@ def _launch_tui(network, topology_path, output_root):
                 # Show debug info if present
                 debug_stderr = status.pop("_debug_stderr", None)
                 debug_error = status.pop("_debug_error", None)
-                if debug_stderr:
+                if debug_stderr and not quiet:
                     log.write(f"[dim]ros2 stderr: {debug_stderr}[/]")
-                if debug_error:
+                if debug_error and not quiet:
                     log.write(f"[dim]ros2 error: {debug_error}[/]")
 
                 self._node_status = status
@@ -2083,7 +2091,8 @@ def _launch_tui(network, topology_path, output_root):
                 node_table.clear()
 
                 if not status:
-                    log.write("[yellow]No node status received. Check that dcist_ws is built and ros_system_monitor is running.[/]")
+                    if not quiet:
+                        log.write("[yellow]No node status received. Check that dcist_ws is built and ros_system_monitor is running.[/]")
                     return
 
                 for robot_name in sorted(status):
