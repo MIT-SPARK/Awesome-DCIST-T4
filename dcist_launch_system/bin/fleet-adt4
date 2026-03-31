@@ -688,54 +688,40 @@ def _launch_tui(network, topology_path, output_root):
             return False
 
     class PriorMapSelector(Vertical):
-        """Reusable widget for selecting prior maps across online fleet nodes."""
+        """Reusable widget for browsing and selecting prior maps from fleet nodes.
+
+        Uses the same Tree-based approach as MapsScreen. Click an experiment
+        to select it. Experiments with both hydra + roman are marked with a green check.
+        """
         def compose(self) -> ComposeResult:
-            yield Label("Prior map folder (must have hydra + roman; auto-transferred to targets):")
-            yield Input(placeholder="Filter prior maps...", id="prior_search")
-            yield SelectionList(*[("(none)", "(none)")], id="prior_select")
-            yield Input(placeholder="(optional) custom absolute path overrides selection", id="prior_input")
+            yield Label("Prior map (click to select, or type custom path):")
+            yield Input(placeholder="Filter experiments...", id="prior_search")
+            yield Tree("Fleet Experiments", id="prior_tree")
+            yield Input(placeholder="(optional) custom: machine:~/adt4_output/exp", id="prior_input")
 
         def on_mount(self):
-            self._prior_map_info = {}
-            self._all_priors = []
-            # Wait a tick then fetch automatically
+            self._selected_path = ""
+            self._selected_source = None
+            self._all_results = []
             self.set_timer(0.5, self.refresh_priors)
 
         def refresh_priors(self, log_widget=None):
-            if log_widget:
-                self.app.call_from_thread(log_widget.write, "[dim]Fetching prior maps from online machines...[/]")
 
             def do_fetch():
-                prior_maps = []
-                for m in runtime_config.values():
-                    if not m.get("online", False):
-                        continue
-                    exps = list_remote_experiments(m["user"], m["ip"], output_root)
-                    for exp in exps:
-                        subdirs = exp.get("subdirs", [])
-                        if "hydra" in subdirs and "roman" in subdirs:
-                            path = f"{output_root}/{exp['name']}"
-                            label = f"{m['name']}:{exp['name']} ({exp.get('size', '?')})"
-                            prior_maps.append((label, path, m["name"]))
-                return prior_maps
+                machines = [m for m in runtime_config.values() if m.get("online", False)]
+                def fetch(m):
+                    return list_remote_experiments(m["user"], m["ip"], output_root)
+                return run_parallel(fetch, machines)
 
-            def on_done(prior_maps):
-                self._prior_map_info = {}
-                self._all_priors = []
-                try:
-                    sel = self.query_one("#prior_select", SelectionList)
-                    sel.clear_options()
-                    sel.add_option(("(none)", "(none)"))
-                    for label, path, source in prior_maps:
-                        val = f"{source}:{path}"
-                        self._prior_map_info[val] = (path, source)
-                        self._all_priors.append((label, val))
-                        sel.add_option((label, val))
-                    self.query_one("#prior_search", Input).value = ""
-                    if log_widget:
-                        self.app.call_from_thread(log_widget.write, f"[green]Found {len(prior_maps)} prior maps (with both hydra + roman).[/]")
-                except Exception:
-                    pass
+            def on_done(results):
+                self._all_results = results
+                self._populate_tree()
+                if log_widget:
+                    total = sum(
+                        len(exps) for _, exps in results
+                        if not isinstance(exps, Exception)
+                    )
+                    log_widget.write(f"[green]Found {total} experiments across fleet.[/]")
 
             def _fetch_then_done():
                 result = do_fetch()
@@ -743,15 +729,46 @@ def _launch_tui(network, topology_path, output_root):
 
             self.app.run_worker(_fetch_then_done, thread=True)
 
+        def _populate_tree(self, query=""):
+            tree = self.query_one("#prior_tree", Tree)
+            tree.clear()
+            for m, exps in sorted(self._all_results, key=lambda x: x[0]["name"]):
+                if isinstance(exps, Exception):
+                    node = tree.root.add(m["name"], expand=True)
+                    node.add_leaf(f"[red]Error: {exps}[/]")
+                    continue
+                filtered = [
+                    e for e in sorted(exps, key=lambda e: e["name"])
+                    if _fuzzy_match(query, e["name"])
+                ] if query else sorted(exps, key=lambda e: e["name"])
+                if not filtered and query:
+                    continue
+                node = tree.root.add(m["name"], expand=True)
+                if not filtered:
+                    node.add_leaf("[dim]no experiments[/]")
+                    continue
+                for exp in filtered:
+                    subdirs = exp.get("subdirs", [])
+                    has_prior = "hydra" in subdirs and "roman" in subdirs
+                    tag = " [green]\u2714[/]" if has_prior else ""
+                    label = f"{exp['name']}  ({exp.get('size', '?')}){tag}"
+                    leaf = node.add_leaf(label)
+                    leaf.data = {
+                        "machine": m["name"],
+                        "experiment": exp["name"],
+                        "path": f"{output_root}/{exp['name']}",
+                    }
+            tree.root.expand_all()
+
         def on_input_changed(self, event: Input.Changed):
-            if event.input.id == "prior_search":
-                query = event.value.strip()
-                sel = self.query_one("#prior_select", SelectionList)
-                sel.clear_options()
-                sel.add_option(("(none)", "(none)"))
-                for label, val in getattr(self, "_all_priors", []):
-                    if _fuzzy_match(query, label):
-                        sel.add_option((label, val))
+            if event.input.id == "prior_search" and self._all_results:
+                self._populate_tree(event.value.strip())
+
+        def on_tree_node_selected(self, event):
+            node = event.node
+            if hasattr(node, "data") and node.data and "experiment" in node.data:
+                self._selected_path = node.data["path"]
+                self._selected_source = node.data["machine"]
 
         def get_prior_map(self):
             """Return (prior_path, source_machine_name) or ("", None)."""
@@ -761,13 +778,8 @@ def _launch_tui(network, topology_path, output_root):
                     parts = custom.split(":", 1)
                     return parts[1], parts[0]
                 return custom, None
-            sel = self.query_one("#prior_select", SelectionList)
-            selected = list(sel.selected) if hasattr(sel, 'selected') else []
-            if selected and selected[0] != "(none)":
-                val = selected[0]
-                if val in getattr(self, "_prior_map_info", {}):
-                    return self._prior_map_info[val]
-                return val.split(":", 1)[1] if ":" in val else val, None
+            if self._selected_path:
+                return self._selected_path, self._selected_source
             return "", None
 
     class MapsScreen(ModalScreen):
@@ -1518,8 +1530,7 @@ def _launch_tui(network, topology_path, output_root):
             self._launching = True
             experiment = self.query_one("#experiment_input", Input).value.strip()
             # Snapshot session name before thread starts (DOM queries from threads are unsafe)
-            _sel = self.query_one("#launch_session_select", SelectionList)
-            _launch_session_name = list(_sel.selected)[0] if list(_sel.selected) else None
+            _launch_session_name = self._get_selected_session()
 
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
