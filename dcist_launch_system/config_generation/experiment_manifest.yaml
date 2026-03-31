@@ -6,9 +6,6 @@ launch_configs:
     multi_status: []
     rviz: []
     relocalize_viz: []
-    spot_recording: []
-    phoenix_recording: []
-    base_station_recording: []
 
     sim_spot: []
     bag_spot: []
@@ -35,29 +32,24 @@ launch_configs:
     plan_prior: [main, prior_dsg, planning]
     plan_prior_heracles: [main, heracles_prior_dsg, planning]
 
-    spot_data_collection: [main, spot_recording, spot_real, gps]
-    phoenix_data_collection: [main, phoenix_recording, phoenix_real, gps]
+    spot_data_collection: [main, spot_real, gps]
+    phoenix_data_collection: [main, phoenix_real, gps]
 
     spot_bag: [bag_map, bag_spot]
     spot_bag_relocalize: [bag_relocalize, bag_spot]
 
     real_spot: [map, spot_real, gps]
-    real_spot_record: [map, spot_real, spot_recording, gps]
     real_spot_relocalize: [relocalize, spot_real, gps]
-    real_spot_relocalize_record: [relocalize, spot_real, spot_recording, gps]
     real_spot_no_relocalize: [no_relocalize, spot_real, gps]
 
     real_phoenix: [map, phoenix_real, gps]
     real_phoenix_relocalize: [relocalize, phoenix_real, gps]
-    real_phoenix_relocalize_record: [relocalize, phoenix_real, phoenix_recording, gps]
     real_phoenix_no_relocalize: [no_relocalize, gps]
 
     spot_prior_dsg: [plan_prior, sim_spot]
     spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
     base_station: [plan_prior, multi_status]
     base_station_heracles: [plan_prior_heracles, multi_status]
-    base_station_record: [plan_prior, multi_status, base_station_recording]
-    base_station_heracles_record: [plan_prior_heracles, multi_status, base_station_recording]
 
     hydra_devel: [core, status, hydra_experimental, rviz]
 
@@ -101,16 +93,8 @@ experiments:
         launch_config: base_station
         config: [default_params]
 
-    base_station_record:
-        launch_config: base_station_record
-        config: [default_params]
-
     base_station_heracles:
         launch_config: base_station_heracles
-        config: [default_params]
-
-    base_station_heracles_record:
-        launch_config: base_station_heracles_record
         config: [default_params]
 
     spot_bag:
@@ -125,16 +109,8 @@ experiments:
         launch_config: real_spot
         config: [real_spot]
 
-    real_spot_record:
-        launch_config: real_spot_record
-        config: [real_spot]
-
     real_spot_relocalize:
         launch_config: real_spot_relocalize
-        config: [real_spot_relocalize, apollo_relocalize]
-
-    real_spot_relocalize_record:
-        launch_config: real_spot_relocalize_record
         config: [real_spot_relocalize, apollo_relocalize]
 
     real_spot_no_relocalize:
@@ -147,10 +123,6 @@ experiments:
 
     real_phoenix_relocalize:
         launch_config: real_phoenix_relocalize
-        config: [real_phoenix_relocalize]
-
-    real_phoenix_relocalize_record:
-        launch_config: real_phoenix_relocalize_record
         config: [real_phoenix_relocalize]
 
     real_phoenix_no_relocalize:
