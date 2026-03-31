@@ -548,7 +548,7 @@ def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None)
                 continue
             if m.get("role") != "robot":
                 continue
-            if robot_filter and name not in robot_filter:
+            if robot_filter is not None and name not in robot_filter:
                 continue
             addrs = m.get("addresses", {})
             if network in addrs:

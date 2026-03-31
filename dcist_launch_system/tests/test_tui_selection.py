@@ -81,55 +81,42 @@ async def test_selection_list_deselect_all():
 # ---------------------------------------------------------------------------
 
 
-class ReplaceTestApp(App):
-    """Test replacing a SelectionList widget entirely."""
+class DeselReselectApp(App):
+    """Test deselect_all + select pattern (what _apply_preset uses)."""
 
-    BINDINGS = [Binding("r", "replace_list", "Replace")]
+    BINDINGS = [Binding("r", "reselect", "Reselect")]
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(
-            Label("Before:"),
-            SelectionList(
-                ("A", "a", False),
-                ("B", "b", False),
-                id="my_list",
-            ),
-            Label("After:"),
-        )
-
-    def action_replace_list(self):
-        old = self.query_one("#my_list", SelectionList)
-        parent = old.parent
-        idx = list(parent.children).index(old)
-        old.remove()
-        new_sel = SelectionList(
+        yield SelectionList(
             ("A", "a", True),
-            ("B", "b", False),
-            ("C", "c", True),
+            ("B", "b", True),
+            ("C", "c", False),
             id="my_list",
         )
-        parent.mount(new_sel, before=idx)
+
+    def action_reselect(self):
+        sel = self.query_one("#my_list", SelectionList)
+        sel.deselect_all()
+        sel.select("c")
 
 
 @pytest.mark.asyncio
-async def test_replace_selection_list():
-    """Verify widget replacement preserves selections."""
-    app = ReplaceTestApp()
+async def test_deselect_all_then_select():
+    """Verify deselect_all + select pattern works (used in _apply_preset)."""
+    app = DeselReselectApp()
     async with app.run_test() as pilot:
-        # Initially nothing selected
         sel = app.query_one("#my_list", SelectionList)
-        assert list(sel.selected) == []
+        # Initially a and b selected
+        selected = list(sel.selected)
+        assert "a" in selected
+        assert "b" in selected
 
-        # Replace the widget
+        # Reselect to only c
         await pilot.press("r")
         await pilot.pause()
 
-        # Query the NEW widget
-        sel = app.query_one("#my_list", SelectionList)
         selected = list(sel.selected)
-        assert "a" in selected, f"a should be selected after replace, got {selected}"
-        assert "c" in selected, f"c should be selected after replace, got {selected}"
-        assert "b" not in selected, f"b should NOT be selected, got {selected}"
+        assert selected == ["c"], f"should have only c, got {selected}"
 
 
 # ---------------------------------------------------------------------------
@@ -175,7 +162,8 @@ async def test_cached_screen_preserves_selection():
         await pilot.press("l")
         await pilot.pause()
 
-        sel = app.query_one("#cached_list", SelectionList)
+        screen = app.screen
+        sel = screen.query_one("#cached_list", SelectionList)
         assert "one" in list(sel.selected)
 
         # Select "two" as well
@@ -190,7 +178,8 @@ async def test_cached_screen_preserves_selection():
         await pilot.press("l")
         await pilot.pause()
 
-        sel = app.query_one("#cached_list", SelectionList)
+        screen = app.screen
+        sel = screen.query_one("#cached_list", SelectionList)
         selected = list(sel.selected)
         assert "one" in selected, f"one should persist, got {selected}"
         assert "two" in selected, f"two should persist, got {selected}"
