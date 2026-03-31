@@ -1225,7 +1225,12 @@ def _launch_tui(network, topology_path, output_root):
                     del runtime_config[mname]
                     _deleted_machines.add(mname)
                     log.write(f"Removed [bold]{mname}[/] from session.")
-                    self._rebuild_form()
+                    # Remove just this row instead of rebuilding entire form
+                    try:
+                        row = self.query_one(f"#row_{mname}", Vertical)
+                        row.remove()
+                    except Exception:
+                        pass
 
         def action_add_machine_action(self):
             self._add_machine(self.query_one("#config_log", RichLog))
