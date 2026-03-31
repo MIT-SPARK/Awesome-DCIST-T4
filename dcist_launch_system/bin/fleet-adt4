@@ -2064,34 +2064,12 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_refresh_nodes(self):
             log = self.query_one("#monitor_log", RichLog)
-            if not shutil.which("ros2"):
-                log.write("[yellow]ROS 2 not found — node status unavailable. System status and SSH features still work.[/]")
-                return
-            log.write("[dim]Fetching ROS node status via topic (8s timeout)...[/]")
+            log.write("[dim]Fetching ROS node status (13s)...[/]")
 
             def do_fetch():
-                # Quick check: is the topic advertised?
-                try:
-                    _shell = "zsh" if shutil.which("zsh") else "bash"
-                    topic_check = subprocess.run(
-                        [_shell, "-l", "-c", "ros2 topic list"],
-                        capture_output=True, text=True, timeout=5,
-                    )
-                    topics = topic_check.stdout.strip().split("\n") if topic_check.returncode == 0 else []
-                    has_topic = any("/global/ros_system_monitor/table_in" in t for t in topics)
-                except Exception:
-                    has_topic = False
-                    topics = []
+                return get_ros_node_status(timeout=8)
 
-                status = get_ros_node_status(timeout=8)
-                return status, has_topic, len(topics)
-
-            def on_done(result):
-                status, has_topic, n_topics = result
-                self._node_status = status
-                node_table = self.query_one("#node_summary_table", DataTable)
-                node_table.clear()
-
+            def on_done(status):
                 # Show debug info if present
                 debug_stderr = status.pop("_debug_stderr", None)
                 debug_error = status.pop("_debug_error", None)
@@ -2100,26 +2078,12 @@ def _launch_tui(network, topology_path, output_root):
                 if debug_error:
                     log.write(f"[dim]ros2 error: {debug_error}[/]")
 
+                self._node_status = status
+                node_table = self.query_one("#node_summary_table", DataTable)
+                node_table.clear()
+
                 if not status:
-                    zenohd_running = (
-                        (_fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None)
-                        or subprocess.run(
-                            ["pgrep", "-f", "rmw_zenohd"],
-                            capture_output=True,
-                        ).returncode == 0
-                    )
-                    if not zenohd_running:
-                        log.write("[red]No node status — zenohd is not running. Launch a base station session or restart fleet-adt4 with ROS sourced.[/]")
-                    elif not has_topic:
-                        log.write(f"[yellow]No node status — topic /global/ros_system_monitor/table_in not found ({n_topics} topics visible). Is ros_system_monitor running on robots?[/]")
-                    else:
-                        online = [m["name"] for m in runtime_config.values() if m.get("online") and m.get("role") == "robot"]
-                        if online:
-                            log.write(f"[yellow]No node status received within 8s. Online robots: {', '.join(online)}[/]")
-                            log.write("[dim]  Robots may still be starting. Try pressing n again in 30s.[/]")
-                            log.write("[dim]  Check: timeout 10 ros2 topic echo /global/ros_system_monitor/table_in[/]")
-                        else:
-                            log.write("[yellow]No node status — zenohd is running but no robots are online.[/]")
+                    log.write("[yellow]No node status received. Check that dcist_ws is built and ros_system_monitor is running.[/]")
                     return
 
                 for robot_name in sorted(status):
