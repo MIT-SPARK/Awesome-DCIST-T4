@@ -605,6 +605,10 @@ def _launch_tui(network, topology_path, output_root):
     runtime_config = {m["name"]: dict(m) for m in all_machines}
     _deleted_machines = set()  # track explicit removals for save
 
+    # Cache local IPs for detecting when a base station is the local machine
+    from dcist_launch_system.fleet_helpers import get_local_ips
+    _local_ips = set(get_local_ips())
+
     def _fuzzy_match(query, text):
         """Subsequence fuzzy match — all chars of query appear in order in text."""
         if not query:
@@ -2243,11 +2247,11 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 Label("Base station:"),
                 SelectionList(
-                    *([("local_computer", "This Computer (local)", True)] + [
-                        (m["name"], m["name"], m.get("online", False))
+                    *[
+                        (m["name"], f"{m['name']} (local)" if m["ip"] in _local_ips else m["name"], m.get("online", False) or m["ip"] in _local_ips)
                         for m in runtime_config.values()
                         if m["role"] == "base_station"
-                    ]),
+                    ],
                     id="mission_base_station",
                 ),
                 Label("Base station session:"),
@@ -2588,8 +2592,8 @@ def _launch_tui(network, topology_path, output_root):
 
             # Build the target list: selected robots + selected base station
             targets = list(robots)
-            if bs and bs.get("ip") != "127.0.0.1":
-                # Add BS if it's a remote machine (not local_computer)
+            if bs:
+                # Add BS — ssh_cmd handles local detection transparently
                 targets.append(bs)
 
             if not targets:
@@ -2846,17 +2850,7 @@ def _launch_tui(network, topology_path, output_root):
             selected = list(sel.selected)
             if not selected:
                 return None
-            name = selected[0]
-            if name == "local_computer":
-                import socket
-                return {
-                    "name": socket.gethostname(),
-                    "role": "base_station",
-                    "ip": "127.0.0.1",
-                    "user": os.environ.get("USER"),
-                    "platform_id": getattr(os, 'getenv', lambda k, d: d)('ADT4_PLATFORM_ID', "localhost")
-                }
-            return runtime_config.get(name)
+            return runtime_config.get(selected[0])
 
         def _get_bs_session(self):
             sel = self.query_one("#mission_bs_session", SelectionList)
