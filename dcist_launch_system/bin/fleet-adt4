@@ -1122,8 +1122,9 @@ def _launch_tui(network, topology_path, output_root):
     class ConfigScreen(ModalScreen):
         """Topology editor — manages machines in topology.yaml."""
         BINDINGS = [
-            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("escape", "dismiss_or_cancel", "Back", priority=True),
             Binding("e", "edit_selected", "Edit [e]", priority=True),
+            Binding("enter", "edit_selected", "Edit", priority=True, show=False),
             Binding("f2", "add_machine_action", "Add [F2]", priority=True),
             Binding("f3", "recheck_action", "Recheck [F3]", priority=True),
             Binding("f4", "remove_selected", "Remove [F4]", priority=True),
@@ -1301,6 +1302,25 @@ def _launch_tui(network, topology_path, output_root):
 
             log.write(f"[green]Updated {name}[/]")
             return True
+
+        def action_dismiss_or_cancel(self):
+            if self._editing:
+                self._editing = None
+                form = self.query_one("#edit_form", Vertical)
+                form.remove_children()
+                log = self.query_one("#config_log", RichLog)
+                log.write("[dim]Edit cancelled.[/]")
+            else:
+                self.dismiss()
+
+        def on_data_table_cursor_moved(self, event):
+            if event.data_table.id == "config_table" and self._editing and self._editing != "__new__":
+                name = self._get_selected_name()
+                if name and name != self._editing:
+                    # Auto-save current edit, switch to new machine
+                    log = self.query_one("#config_log", RichLog)
+                    self._apply_edit(log)
+                    self._show_edit_form(name)
 
         def action_edit_selected(self):
             name = self._get_selected_name()
