@@ -2115,8 +2115,16 @@ def _launch_tui(network, topology_path, output_root):
                     key=robot_name,
                 )
 
+        def on_data_table_cursor_moved(self, event):
+            """Update detail view when cursor moves in the node summary table."""
+            if event.data_table.id == "node_summary_table":
+                self._show_node_detail()
+
         def action_drill_down(self):
-            """Show detailed per-node status for the selected robot in the detail view."""
+            self._show_node_detail()
+
+        def _show_node_detail(self):
+            """Show detailed per-node status for the currently selected robot."""
             node_table = self.query_one("#node_summary_table", DataTable)
             detail = self.query_one("#node_detail_view", Static)
 
@@ -2129,7 +2137,7 @@ def _launch_tui(network, topology_path, output_root):
 
             nodes = self._node_status.get(robot_name)
             if not nodes:
-                detail.update(f"[red]No node data for {robot_name}.[/]")
+                detail.update(f"[dim]No node data for {robot_name}.[/]")
                 return
 
             t = Table(box=None, expand=True, pad_edge=False, title=f"Node details: {robot_name}")
