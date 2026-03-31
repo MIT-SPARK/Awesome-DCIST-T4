@@ -1413,10 +1413,19 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_preset_mapping(self):
             self._mode = "mapping"
+            # Save to app so re-opening preserves mode
+            try:
+                self.app._last_launch_mode = "mapping"
+            except Exception:
+                pass
             self._apply_preset("mapping")
 
         def action_preset_relocalize(self):
             self._mode = "relocalize"
+            try:
+                self.app._last_launch_mode = "relocalize"
+            except Exception:
+                pass
             self._apply_preset("relocalize")
 
         def _apply_preset(self, mode):
@@ -3287,9 +3296,10 @@ def _launch_tui(network, topology_path, output_root):
             self.push_screen(MapsScreen())
 
         def action_show_launch(self):
-            if not hasattr(self, "_launch_screen") or self._launch_screen is None:
-                self._launch_screen = LaunchScreen()
-            self.push_screen(self._launch_screen)
+            # Create fresh each time — Textual doesn't preserve select()
+            # state across dismiss/re-push. The mode is re-applied on mount.
+            mode = getattr(self, "_last_launch_mode", None)
+            self.push_screen(LaunchScreen(mode=mode))
 
         def action_show_config(self):
             self.push_screen(ConfigScreen())
