@@ -1818,21 +1818,60 @@ def _launch_tui(network, topology_path, output_root):
                         if not _check_sessions_and_prompt(self.app, all_targets, _launch_session_name, log):
                             return
 
-                    # Phase 2: Launch on each robot
+                    # Phase 2: Check for existing output dirs
+                    out_dir = f"{output_root}/{experiment}"
+                    conflicts = []
+                    for m, cmd in cmds:
+                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
+                        if "EXISTS" in out:
+                            conflicts.append(m["name"])
+
+                    if conflicts:
+                        names = ", ".join(conflicts)
+                        self.app.call_from_thread(
+                            log.write,
+                            f"[yellow]{out_dir} already exists on: {names}[/]"
+                        )
+                        # Prompt user via modal
+                        user_decision = [None]
+                        ev = threading.Event()
+
+                        def ask_overwrite():
+                            def on_dismiss(result):
+                                user_decision[0] = result
+                                ev.set()
+                            msg = (
+                                f"Output directory '{experiment}' already exists on:\n"
+                                f"{names}\n\n"
+                                f"Overwrite existing directories and launch?"
+                            )
+                            self.app.push_screen(
+                                ConfirmSessionKillScreen(msg), on_dismiss
+                            )
+
+                        self.app.call_from_thread(ask_overwrite)
+                        ev.wait(timeout=120)
+
+                        if not user_decision[0]:
+                            self.app.call_from_thread(
+                                log.write, "[red]Launch aborted — existing directories preserved.[/]"
+                            )
+                            return
+
+                        # Remove existing dirs on conflicting machines
+                        for m, cmd in cmds:
+                            if m["name"] in conflicts:
+                                self.app.call_from_thread(
+                                    log.write, f"  [dim]Removing {out_dir} on {m['name']}...[/]"
+                                )
+                                ssh_cmd(m["user"], m["ip"], f"rm -rf {_quote_path(out_dir)}", timeout=15)
+
+                    # Launch on each robot
                     self.app.call_from_thread(
                         log.write,
                         "[bold]" + ("Phase 2: " if prior_info else "") + "Launching...[/]"
                     )
                     for m, cmd in cmds:
-                        out_dir = f"{output_root}/{experiment}"
-                        rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
-                        if "EXISTS" in out:
-                            self.app.call_from_thread(
-                                log.write,
-                                f"  [bold red]SKIP {m['name']}: {out_dir} already exists. "
-                                f"Use CLI with --force to override.[/]"
-                            )
-                            continue
                         self.app.call_from_thread(
                             log.write, f"  Launching on [bold]{m['name']}[/]..."
                         )
