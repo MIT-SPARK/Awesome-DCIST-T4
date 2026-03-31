@@ -1933,7 +1933,7 @@ def _launch_tui(network, topology_path, output_root):
                         # nohup & always returns 0; verify tmux session started
                         import time
                         time.sleep(3)
-                        tmux_name = _bs_session.split("-")[0] if "-" in _bs_session else "adt4"
+                        tmux_name = "adt4_system"
                         trc, tout, _ = ssh_cmd(
                             _bs_machine["user"], _bs_machine["ip"],
                             f"tmux has-session -t {shlex.quote(tmux_name)} 2>/dev/null && echo OK",
