@@ -801,28 +801,29 @@ def get_ros_node_status(timeout=5):
 
     Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
     """
-    # Run through login shell to ensure ROS env is sourced
+    # Run through login shell to ensure ROS env is sourced (.zshrc)
     shell = "zsh" if shutil.which("zsh") else "bash"
-    cmd = [
-        shell, "-l", "-c",
+    ros_cmd = (
         "ros2 topic echo /global/ros_system_monitor/table_in "
-        "ros_system_monitor_msgs/msg/StatusTable",
-    ]
+        "ros_system_monitor_msgs/msg/StatusTable"
+    )
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired as e:
-        # Expected: we collect messages until timeout
-        stdout = e.stdout if e.stdout else ""
-        if isinstance(stdout, bytes):
-            stdout = stdout.decode("utf-8", errors="replace")
-        if not stdout.strip():
+        proc = subprocess.Popen(
+            [shell, "-l", "-c", ros_cmd],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            stdout, _ = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # Expected: we collect whatever was produced before timeout
+            proc.kill()
+            stdout, _ = proc.communicate(timeout=5)
+        if not stdout or not stdout.strip():
             return {}
     except OSError:
         return {}
-    else:
-        stdout = result.stdout
-        if not stdout.strip():
-            return {}
 
     # ros2 topic echo outputs multiple YAML documents separated by ---
     robots = {}
