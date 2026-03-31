@@ -2443,11 +2443,12 @@ def _launch_tui(network, topology_path, output_root):
                 if self._running:
                     # Auto-reset if stuck for >5 minutes
                     import time as _time
-                    if self._running_since and (_time.monotonic() - self._running_since) > 300:
-                        log.write("[yellow]Previous step timed out (>5min). Resetting...[/]")
+                    elapsed = _time.monotonic() - self._running_since if self._running_since else 0
+                    if self._running_since and elapsed > 60:
+                        log.write("[yellow]Previous step timed out (>60s). Resetting...[/]")
                         self._running = False
                     else:
-                        log.write("[yellow]A step is still running. Please wait...[/]")
+                        log.write(f"[yellow]A step is still running (step {self._current_step + 1}, {elapsed:.0f}s). Please wait...[/]")
                         return
                 if self._current_step >= len(self._steps):
                     log.write("[green]All steps complete![/]")
@@ -2493,14 +2494,22 @@ def _launch_tui(network, topology_path, output_root):
                 return
 
             import time as _time
-            self._running = True
-            self._running_since = _time.monotonic()
-            step["status"] = "running"
-            self._rebuild_steps()
-            
-            # SNAPSHOT DOM VALUES BEFORE THREAD STARTS
-            robots = self._mission_params.get("robots", [])
-            log.write(f"[dim]Starting step with {len(robots)} robot(s)...[/]")
+            try:
+                self._running = True
+                self._running_since = _time.monotonic()
+                step["status"] = "running"
+                self._rebuild_steps()
+
+                # SNAPSHOT DOM VALUES BEFORE THREAD STARTS
+                robots = self._mission_params.get("robots", [])
+                log.write(f"[dim]Starting step with {len(robots)} robot(s)...[/]")
+            except Exception as exc:
+                # Reset running flag if setup fails before thread starts
+                self._running = False
+                self._running_since = 0
+                import traceback
+                log.write(f"[red]Failed to start step: {exc}\n{traceback.format_exc()}[/red]")
+                return
 
             def run_step():
                 try:
