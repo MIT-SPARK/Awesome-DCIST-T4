@@ -233,6 +233,8 @@ def render_tmux(root_path, manifest, tmux_output_dir):
     # Generate the tmux launch files
     all_configs = manifest["launch_configs"]
     components = [x.stem for x in (root_path / "launch_components").glob("*.yaml")]
+    important_variants = set(manifest.get("important_variants", []))
+    generated_variants = []
     for exp_key, exp in manifest["experiments"].items():
         log_info(f"Generating launch files for experiment {exp_key}")
 
@@ -289,6 +291,9 @@ def render_tmux(root_path, manifest, tmux_output_dir):
                 continue
 
             contents = yaml.safe_load(ret.stdout)
+            generated_variants.append(logging_key)
+            if logging_key in important_variants:
+                extras["adt4_important"] = True
             if "nodes_to_monitor" in contents:
                 monitor_str = yaml.dump(
                     {"nodes_to_track": contents["nodes_to_monitor"]},
@@ -297,9 +302,15 @@ def render_tmux(root_path, manifest, tmux_output_dir):
                 ).strip("\n")
                 extras["environment"]["ADT4_MONITOR_CONFIG"] = monitor_str
 
-            cmd += ["-c", _dump_str(extras)]
+            final_cmd = cmd + ["-c", _dump_str(extras)]
             with base_launch_fn.open("w") as fout:
-                subprocess.run(cmd, stdout=fout)
+                subprocess.run(final_cmd, stdout=fout)
+
+    unmatched = important_variants - set(generated_variants)
+    if unmatched:
+        log_warn(
+            f"important_variants in manifest do not match any generated variant: {unmatched}"
+        )
 
 
 def render_manifest(root_path, conf_output_dir, tmux_output_dir):

@@ -19,9 +19,17 @@ configs:
   prior_dsg: []
   relocalize: []
   apollo_relocalize: [relocalize]
+# Variant names shown first in run-adt4 session selection
+important_variants:
+  - base_station-default
+  - base_station_heracles-default
+  - phoenix-default
+  - phoenix_relocalize-relocalize
+  - spot-default
+  - spot_relocalize-relocalize
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
-  # base station
+  # base station — these run on the base station only (no robot hardware needed)
   base_station:
     launch_config: [plan_prior, multi_status]
     config: [default]
@@ -29,7 +37,7 @@ experiments:
     launch_config: [plan_prior_heracles, multi_status]
     config: [default]
 
-  # spot configs
+  # spot configs — require Spot hardware or bag playback
   spot:
     launch_config: [map, spot_real, sensors]
     config: [default]
@@ -49,7 +57,7 @@ experiments:
     launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]
 
-  # phoenix
+  # phoenix — require Phoenix hardware or bag playback
   phoenix:
     launch_config: [map, phoenix_real, sensors]
     config: [default]
@@ -69,7 +77,7 @@ experiments:
     launch_config: [no_relocalize, sensors]
     config: [relocalize]
 
-  # development
+  # development — offline/simulation experiments
   hydra_devel:
     launch_config: [main, hydra_instance, rviz]
     config: [devel]
