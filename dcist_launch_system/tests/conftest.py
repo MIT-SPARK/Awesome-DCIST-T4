@@ -58,3 +58,55 @@ def sample_topology():
             "connect_network": "silvus",
         },
     }
+
+
+@pytest.fixture
+def rviz_template(tmp_path):
+    """Minimal rviz template with topics and TF frames for namespace tests."""
+    content = """\
+Panels: []
+Visualization Manager:
+  Displays:
+    - Class: rviz_default_plugins/Marker
+      Name: HydraGraph
+      Value: hydra_visualizer/graph
+      Enabled: true
+    - Class: rviz_default_plugins/TF
+      Frames:
+        euclid/base_link:
+          Enabled: true
+        euclid/body:
+          Enabled: true
+    - Class: rviz_default_plugins/Image
+      Value: frontright/semantic_overlay/image_raw
+"""
+    f = tmp_path / "dcist.rviz"
+    f.write_text(content)
+    return f
+
+
+@pytest.fixture
+def zenoh_template(tmp_path):
+    """Minimal JSON5 zenoh router template for patching tests."""
+    content = """\
+{
+  mode: "router",
+  connect: {
+    /// Example: endpoints: ["tcp/10.0.0.1:7447"]
+    endpoints: []
+  },
+  listen: {
+    endpoints: [
+      "tcp/[::]:7447"
+    ]
+  },
+  transport: {
+    link: {
+      tx: { sequence_number_resolution: 268435456 }
+    }
+  }
+}
+"""
+    f = tmp_path / "zenoh_router_template.json5"
+    f.write_text(content)
+    return f
