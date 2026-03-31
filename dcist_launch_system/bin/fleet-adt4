@@ -1703,10 +1703,10 @@ def _launch_tui(network, topology_path, output_root):
                             )
                             # Restart fleet zenohd on port+1
                             zenoh_port = topo.get("zenoh", {}).get("port", 7447)
-                            if _start_fleet_zenohd(force_port=zenoh_port + 1):
-                                self.app.call_from_thread(
-                                    log.write, f"  [dim]Fleet zenohd restarted on port {zenoh_port + 1}[/]"
-                                )
+                            zok, zmsg = _start_fleet_zenohd(force_port=zenoh_port + 1)
+                            self.app.call_from_thread(
+                                log.write, f"  [dim]Fleet zenohd: {zmsg}[/]" if zok else f"  [yellow]Fleet zenohd: {zmsg}[/]"
+                            )
                         else:
                             self.app.call_from_thread(
                                 log.write, f"  [red]{_bs_machine['name']}: FAILED (rc={rc}) {err}[/]"
@@ -1731,6 +1731,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("z", "check_zenoh", "Zenoh/Radio", priority=True),
             Binding("f3", "check_silvus_routes", "Check Routes [F3]", priority=True),
             Binding("f4", "add_silvus_routes", "Add Routes [F4]", priority=True),
+            Binding("f2", "start_zenohd", "Start Zenohd [F2]", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
@@ -2123,6 +2124,33 @@ def _launch_tui(network, topology_path, output_root):
                 self.app.call_from_thread(on_done, results)
 
             threading.Thread(target=bg, daemon=True).start()
+
+        def action_start_zenohd(self):
+            """Manually start/restart the fleet-managed zenohd."""
+            log = self.query_one("#monitor_log", RichLog)
+
+            # Check if a system zenohd is already running (e.g. from base station tmux)
+            system_zenohd = subprocess.run(
+                ["pgrep", "-f", "rmw_zenohd"], capture_output=True
+            ).returncode == 0
+            fleet_zenohd = _fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None
+
+            if system_zenohd and not fleet_zenohd:
+                log.write("[yellow]A zenohd is already running (likely from base station tmux). "
+                          "Starting fleet zenohd on port+1 to avoid conflict...[/]")
+                zenoh_port = topo.get("zenoh", {}).get("port", 7447)
+                ok, msg = _start_fleet_zenohd(force_port=zenoh_port + 1)
+            elif fleet_zenohd:
+                log.write("[dim]Fleet zenohd already running. Stopping and restarting...[/]")
+                _stop_fleet_zenohd()
+                ok, msg = _start_fleet_zenohd()
+            else:
+                ok, msg = _start_fleet_zenohd()
+
+            color = "green" if ok else "red"
+            log.write(f"[{color}]Fleet zenohd: {msg}[/{color}]")
+            if ok:
+                log.write("[dim]Press 'n' to refresh node status.[/]")
 
     # ---- Zenoh Screen ----
 
@@ -3008,8 +3036,8 @@ def _launch_tui(network, topology_path, output_root):
                 self._tlog(log, f"  [green]{bs['name']}: base station launched[/]")
                 # Restart fleet zenohd on port+1 so ROS monitoring still works
                 zenoh_port = topo.get("zenoh", {}).get("port", 7447)
-                if _start_fleet_zenohd(force_port=zenoh_port + 1):
-                    self._tlog(log, f"  [dim]Fleet zenohd restarted on port {zenoh_port + 1}[/]")
+                zok, zmsg = _start_fleet_zenohd(force_port=zenoh_port + 1)
+                self._tlog(log, f"  [dim]Fleet zenohd: {zmsg}[/]" if zok else f"  [yellow]Fleet zenohd: {zmsg}[/]")
                 return True
             else:
                 self._tlog(log, f"  [red]{bs['name']}: FAILED (rc={rc}) {err}[/]")
@@ -3186,19 +3214,17 @@ def _launch_tui(network, topology_path, output_root):
         """Start (or restart) the fleet-managed zenohd.
 
         If force_port is given, use that listen port instead of auto-detecting.
-        Returns True if started successfully.
+        Returns (True, message) if started, (False, reason) otherwise.
         """
         if not shutil.which("ros2"):
-            return False
+            return False, "ros2 not found on PATH — source your ROS workspace first"
 
         # Don't start if one is already running under our control
         if _fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None:
-            return True
+            return True, "already running"
 
         try:
-            from dcist_launch_system.fleet_helpers import get_local_ips
-
-            local_ips = get_local_ips()
+            local_ips = _local_ips
             zenoh_conf = topo.get("zenoh", {})
             port = zenoh_conf.get("port", 7447)
 
@@ -3234,20 +3260,28 @@ def _launch_tui(network, topology_path, output_root):
             config_path = patch_zenoh_config_local(
                 endpoints, listen_port=listen_port,
             )
-            if config_path:
-                _fleet_zenoh["config"] = config_path
-                env = os.environ.copy()
-                env["ZENOH_ROUTER_CONFIG_URI"] = config_path
-                _fleet_zenoh["proc"] = subprocess.Popen(
-                    ["ros2", "run", "rmw_zenoh_cpp", "rmw_zenohd"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    env=env,
-                )
-                return True
-        except Exception:
-            pass
-        return False
+            if not config_path:
+                return False, "failed to patch zenoh config (template missing?)"
+
+            _fleet_zenoh["config"] = config_path
+            env = os.environ.copy()
+            env["ZENOH_ROUTER_CONFIG_URI"] = config_path
+            _fleet_zenoh["proc"] = subprocess.Popen(
+                ["ros2", "run", "rmw_zenoh_cpp", "rmw_zenohd"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
+            )
+            # Check it didn't die immediately
+            import time
+            time.sleep(0.5)
+            if _fleet_zenoh["proc"].poll() is not None:
+                rc = _fleet_zenoh["proc"].returncode
+                _fleet_zenoh["proc"] = None
+                return False, f"rmw_zenohd exited immediately (rc={rc}) — is rmw_zenoh_cpp installed?"
+            return True, f"started on port {listen_port} with {len(endpoints)} endpoint(s)"
+        except Exception as e:
+            return False, f"error: {e}"
 
     try:
         already_running = subprocess.run(
