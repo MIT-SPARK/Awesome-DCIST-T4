@@ -5,6 +5,7 @@ import ipaddress
 import pathlib
 import re
 import shlex
+import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -177,8 +178,11 @@ def ssh_cmd(user, ip, cmd, timeout=5):
     """Run a command via SSH (or locally if ip is local). Returns (returncode, stdout, stderr)."""
     if ip in get_local_ips():
         try:
+            # Use zsh login shell for local commands — sources .zshrc env vars
+            # and handles ROS workspace setup.zsh syntax
+            shell = "zsh" if shutil.which("zsh") else "bash"
             result = subprocess.run(
-                ["bash", "-c", cmd],
+                [shell, "-l", "-c", cmd],
                 capture_output=True,
                 text=True,
                 timeout=timeout + 10,
