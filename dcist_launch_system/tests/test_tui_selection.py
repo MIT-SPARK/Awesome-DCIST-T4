@@ -154,11 +154,14 @@ class CachedScreenApp(App):
 
 
 @pytest.mark.asyncio
-async def test_cached_screen_preserves_selection():
-    """Verify selections persist across dismiss/re-push of cached screen."""
+async def test_cached_screen_loses_runtime_selections():
+    """Document Textual limitation: select() changes don't survive dismiss/re-push.
+
+    Only constructor-set selections persist. This is why we create fresh
+    LaunchScreen instances and re-apply presets on mount rather than caching.
+    """
     app = CachedScreenApp()
     async with app.run_test() as pilot:
-        # Open screen
         await pilot.press("l")
         await pilot.pause()
 
@@ -166,23 +169,21 @@ async def test_cached_screen_preserves_selection():
         sel = screen.query_one("#cached_list", SelectionList)
         assert "one" in list(sel.selected)
 
-        # Select "two" as well
         sel.select("two")
         assert "two" in list(sel.selected)
 
-        # Dismiss
         await pilot.press("escape")
         await pilot.pause()
 
-        # Re-open — should still have both selected
         await pilot.press("l")
         await pilot.pause()
 
         screen = app.screen
         sel = screen.query_one("#cached_list", SelectionList)
         selected = list(sel.selected)
-        assert "one" in selected, f"one should persist, got {selected}"
-        assert "two" in selected, f"two should persist, got {selected}"
+        # "two" is NOT preserved — Textual limitation
+        assert "one" in selected, f"constructor selection should persist, got {selected}"
+        assert "two" not in selected, "runtime select() does NOT persist across dismiss/re-push"
 
 
 # ---------------------------------------------------------------------------
