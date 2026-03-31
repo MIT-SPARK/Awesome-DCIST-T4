@@ -734,8 +734,8 @@ def _launch_tui(network, topology_path, output_root):
                     pass
 
             def _fetch_then_done():
-                do_fetch()
-                self.app.call_from_thread(on_done)
+                result = do_fetch()
+                self.app.call_from_thread(on_done, result)
 
             self.app.run_worker(_fetch_then_done, thread=True)
 
