@@ -243,9 +243,9 @@ def render_tmux(root_path, manifest, tmux_output_dir):
         launch_configs = resolve_unique_dirs(all_configs, keys, components)
         log_debug(f"Building launch config with windows: {launch_configs}")
 
-        cmd = ["composite-configs", "-d", "-f", base_launch_file]
+        base_cmd = ["composite-configs", "-d", "-f", base_launch_file]
         for lc in launch_configs:
-            cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
+            base_cmd += ["-f", root_path / "launch_components" / f"{lc}.yaml"]
 
         special_keys = ["launch_config"]
         extra_keys = [k for k in exp.keys() if k not in special_keys]
@@ -281,7 +281,7 @@ def render_tmux(root_path, manifest, tmux_output_dir):
             }
             extras["environment"].update(tmux)
 
-            cmd = [str(x) for x in cmd]
+            cmd = [str(x) for x in base_cmd]
             base_launch_fn = tmux_output_dir / f"{logging_key}.yaml"
             log_debug(f"    Calling: {' '.join(cmd)} > {base_launch_fn}")
 
@@ -292,8 +292,6 @@ def render_tmux(root_path, manifest, tmux_output_dir):
 
             contents = yaml.safe_load(ret.stdout)
             generated_variants.append(logging_key)
-            if logging_key in important_variants:
-                extras["adt4_important"] = True
             if "nodes_to_monitor" in contents:
                 monitor_str = yaml.dump(
                     {"nodes_to_track": contents["nodes_to_monitor"]},
@@ -302,15 +300,13 @@ def render_tmux(root_path, manifest, tmux_output_dir):
                 ).strip("\n")
                 extras["environment"]["ADT4_MONITOR_CONFIG"] = monitor_str
 
-            final_cmd = cmd + ["-c", _dump_str(extras)]
+            cmd += ["-c", _dump_str(extras)]
             with base_launch_fn.open("w") as fout:
-                subprocess.run(final_cmd, stdout=fout)
+                subprocess.run(cmd, stdout=fout)
 
     unmatched = important_variants - set(generated_variants)
     if unmatched:
-        log_warn(
-            f"important_variants in manifest do not match any generated variant: {unmatched}"
-        )
+        log_warn(f"Some important variants were not generated: {unmatched}")
 
 
 def render_manifest(root_path, conf_output_dir, tmux_output_dir):
