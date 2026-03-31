@@ -2084,40 +2084,70 @@ def _launch_tui(network, topology_path, output_root):
                 log.write("[yellow]No node status yet — poller may still be starting.[/]")
 
         def _update_node_table(self):
-            """Read latest from persistent poller and refresh the table."""
+            """Read latest from persistent poller and refresh the table.
+
+            Uses update_cell to avoid clearing/rebuilding which resets cursor.
+            """
             status = self._node_poller.get_status()
             self._node_status = status
             node_table = self.query_one("#node_summary_table", DataTable)
-            node_table.clear()
 
             if not status:
                 return
 
+            # Build new row data
+            new_rows = {}
             for robot_name in sorted(status):
                 nodes = status[robot_name]
                 color, label = compute_robot_readiness(nodes)
                 n_total = len(nodes)
                 n_nominal = sum(1 for n in nodes if n["status"] == _STATUS_NOMINAL)
-
                 issues = []
                 for n in nodes:
                     if n["status"] != _STATUS_NOMINAL:
                         sname = _STATUS_NAMES.get(n["status"], "?")
                         issues.append(f"{n['nickname']}={sname}")
-                issue_str = ", ".join(issues) if issues else "none"
-
-                readiness_str = f"[{color}]{label}[/{color}]"
-                node_table.add_row(
-                    robot_name,
-                    readiness_str,
+                new_rows[robot_name] = (
+                    f"[{color}]{label}[/{color}]",
                     f"{n_nominal}/{n_total}",
-                    issue_str,
-                    key=robot_name,
+                    ", ".join(issues) if issues else "none",
                 )
 
+            # Check if rows changed — update in place if possible
+            existing_keys = set()
+            try:
+                from textual.coordinate import Coordinate
+                for i in range(node_table.row_count):
+                    existing_keys.add(str(node_table.get_cell_at(Coordinate(i, 0))))
+            except Exception:
+                existing_keys = set()
+
+            if existing_keys == set(new_rows.keys()):
+                # Same robots — update cells in place (no cursor reset)
+                for i, robot_name in enumerate(sorted(new_rows)):
+                    readiness, node_count, issue_str = new_rows[robot_name]
+                    try:
+                        from textual.coordinate import Coordinate
+                        node_table.update_cell_at(Coordinate(i, 1), readiness)
+                        node_table.update_cell_at(Coordinate(i, 2), node_count)
+                        node_table.update_cell_at(Coordinate(i, 3), issue_str)
+                    except Exception:
+                        break
+            else:
+                # Robot set changed — rebuild
+                self._rebuilding_table = True
+                node_table.clear()
+                for robot_name in sorted(new_rows):
+                    readiness, node_count, issue_str = new_rows[robot_name]
+                    node_table.add_row(robot_name, readiness, node_count, issue_str, key=robot_name)
+                self._rebuilding_table = False
+
+            # Also refresh the detail view if one is showing
+            self._show_node_detail()
+
         def on_data_table_cursor_moved(self, event):
-            """Update detail view when cursor moves in the node summary table."""
-            if event.data_table.id == "node_summary_table":
+            """Update detail view when cursor moves via arrow keys or click."""
+            if event.data_table.id == "node_summary_table" and not getattr(self, "_rebuilding_table", False):
                 self._show_node_detail()
 
         def action_drill_down(self):
