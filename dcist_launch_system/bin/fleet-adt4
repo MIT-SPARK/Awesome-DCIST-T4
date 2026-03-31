@@ -39,6 +39,9 @@ from dcist_launch_system.fleet_helpers import (
     _quote_path,
     check_machine,
     check_zenoh_config,
+    check_zenoh_port,
+    check_silvus_route,
+    add_silvus_route,
     compute_robot_readiness,
     deploy_zenoh_config,
     generate_namespaced_rviz,
@@ -47,6 +50,7 @@ from dcist_launch_system.fleet_helpers import (
     generate_zenoh_endpoints,
     get_remote_status,
     get_ros_node_status,
+    get_silvus_link_quality,
     hash_remote_experiment,
     patch_zenoh_config_local,
     list_remote_experiments,
@@ -729,7 +733,11 @@ def _launch_tui(network, topology_path, output_root):
                 except Exception:
                     pass
 
-            self.app.run_worker(do_fetch, thread=True).then(on_done)
+            def _fetch_then_done():
+                do_fetch()
+                self.app.call_from_thread(on_done)
+
+            self.app.run_worker(_fetch_then_done, thread=True)
 
         def on_input_changed(self, event: Input.Changed):
             if event.input.id == "prior_search":
@@ -1634,6 +1642,9 @@ def _launch_tui(network, topology_path, output_root):
             Binding("k", "stop_save", "Stop & Save", priority=True),
             Binding("enter", "drill_down", "Details", priority=True),
             Binding("v", "gen_rviz", "RViz Config", priority=True),
+            Binding("z", "check_zenoh", "Zenoh/Radio", priority=True),
+            Binding("f3", "check_silvus_routes", "Check Routes [F3]", priority=True),
+            Binding("f4", "add_silvus_routes", "Add Routes [F4]", priority=True),
         ]
 
         def compose(self) -> ComposeResult:
@@ -1870,6 +1881,147 @@ def _launch_tui(network, topology_path, output_root):
             log.write(f"[bold]RViz configs generated.[/] Launch with:")
             log.write(f"  [dim]rviz2 -d /tmp/dcist_<robot>.rviz[/]")
 
+        def action_check_zenoh(self):
+            """Check zenoh port reachability + Silvus radio link quality for all machines."""
+            log = self.query_one("#monitor_log", RichLog)
+            log.write("[dim]Checking zenoh connectivity and radio link quality...[/]")
+
+            zenoh_conf = topo.get("zenoh", {})
+            zenoh_port = zenoh_conf.get("port", 7447)
+
+            def do_check():
+                machines = list(runtime_config.values())
+                sys_radios = topo.get("silvus_radios", {}).get("radios", {})
+                silvus_mgmt_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
+
+                results = []
+                for m in machines:
+                    ip = m["ip"]
+                    zenoh_ok = check_zenoh_port(ip, port=zenoh_port)
+
+                    radio = None
+                    if m.get("online") and silvus_mgmt_ips:
+                        try:
+                            radio = get_silvus_link_quality(m["user"], ip, silvus_mgmt_ips)
+                        except Exception:
+                            pass
+
+                    results.append((m, zenoh_ok, radio))
+                return results
+
+            def on_done(results):
+                log.write(f"\n[bold]Zenoh Port {zenoh_port} Reachability:[/]")
+                for m, zenoh_ok, _ in sorted(results, key=lambda x: x[0]["name"]):
+                    color = "green" if zenoh_ok else "red"
+                    status = "OPEN" if zenoh_ok else "CLOSED"
+                    log.write(f"  [{color}]{m['name']:12s} {m['ip']:18s} {status}[/{color}]")
+
+                has_radio = any(r for _, _, r in results if r)
+                if has_radio:
+                    log.write(f"\n[bold]Silvus Radio Link Quality:[/]")
+                    for m, _, radio in sorted(results, key=lambda x: x[0]["name"]):
+                        if not radio:
+                            continue
+                        if "error" in radio:
+                            log.write(f"  [red]{m['name']:12s} {radio['error']}[/]")
+                        elif "raw" in radio:
+                            log.write(f"  [dim]{m['name']:12s} {radio['raw']}[/]")
+                        else:
+                            bat = radio.get("battery", "?")
+                            mesh = radio.get("mesh_nodes", "?")
+                            neighbors = radio.get("neighbor_count", "?")
+                            rssi = radio.get("rssi", "N/A")
+                            snr = radio.get("snr", "N/A")
+                            log.write(
+                                f"  [cyan]{m['name']:12s}[/] "
+                                f"Bat:{bat}% Mesh:{mesh} Neighbors:{neighbors} "
+                                f"RSSI:{rssi} SNR:{snr}"
+                            )
+                log.write("[bold]Zenoh/radio check complete.[/]")
+
+            def bg():
+                results = do_check()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
+        def action_check_silvus_routes(self):
+            """Check if Silvus management route exists on all machines + locally."""
+            log = self.query_one("#monitor_log", RichLog)
+            log.write("[dim]Checking Silvus management routes...[/]")
+
+            mgmt_subnet = topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
+
+            def do_check():
+                results = []
+                # Check local machine first
+                local_info = check_silvus_route(mgmt_subnet=mgmt_subnet)
+                results.append(("LOCAL", None, local_info))
+
+                # Check all online machines
+                machines = [m for m in runtime_config.values() if m.get("online")]
+                for m in machines:
+                    try:
+                        info = check_silvus_route(m["user"], m["ip"], mgmt_subnet)
+                        results.append((m["name"], m, info))
+                    except Exception as e:
+                        results.append((m["name"], m, {"has_route": False, "interface": None, "silvus_iface": None, "error": str(e)}))
+                return results
+
+            def on_done(results):
+                log.write(f"\n[bold]Silvus Management Route ({mgmt_subnet}):[/]")
+                for name, m, info in sorted(results, key=lambda x: x[0]):
+                    iface = info.get("silvus_iface") or "—"
+                    if info.get("has_route"):
+                        route = info.get("route_info", "OK")
+                        log.write(f"  [green]{name:12s}[/] iface={iface}  [green]ROUTE OK[/] ({route})")
+                    elif info.get("silvus_iface"):
+                        log.write(f"  [red]{name:12s}[/] iface={iface}  [red]NO ROUTE[/] — press F4 to add")
+                    else:
+                        log.write(f"  [dim]{name:12s}[/] [dim]No Silvus interface (no 192.168.100.x address)[/]")
+
+            def bg():
+                results = do_check()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
+        def action_add_silvus_routes(self):
+            """Add Silvus management route on all machines that are missing it (requires sudo)."""
+            log = self.query_one("#monitor_log", RichLog)
+            log.write("[yellow]Adding Silvus management routes (requires sudo)...[/]")
+
+            mgmt_subnet = topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
+
+            def do_add():
+                results = []
+                # Local machine
+                ok, msg = add_silvus_route(mgmt_subnet=mgmt_subnet)
+                results.append(("LOCAL", ok, msg))
+
+                # All online machines
+                machines = [m for m in runtime_config.values() if m.get("online")]
+                for m in machines:
+                    try:
+                        ok, msg = add_silvus_route(m["user"], m["ip"], mgmt_subnet)
+                        results.append((m["name"], ok, msg))
+                    except Exception as e:
+                        results.append((m["name"], False, str(e)))
+                return results
+
+            def on_done(results):
+                log.write(f"\n[bold]Silvus Route Setup ({mgmt_subnet}):[/]")
+                for name, ok, msg in sorted(results, key=lambda x: x[0]):
+                    color = "green" if ok else "red"
+                    log.write(f"  [{color}]{name:12s}: {msg}[/{color}]")
+                log.write("[bold]Route setup complete.[/]")
+
+            def bg():
+                results = do_add()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
+
     # ---- Zenoh Screen ----
 
     class ZenohScreen(ModalScreen):
@@ -2007,6 +2159,10 @@ def _launch_tui(network, topology_path, output_root):
             Binding("r", "refresh_priors", "Refresh Priors", priority=True),
         ]
 
+        def action_dismiss(self):
+            self._loop_poll_stop = True
+            self.dismiss()
+
         DEFAULT_CSS = """
         MissionScreen #mission_log {
             min-height: 10;
@@ -2054,6 +2210,7 @@ def _launch_tui(network, topology_path, output_root):
                 ]
             self._rviz_config_path = None  # set by _step_gen_rviz
             self._confirmed = False
+            self._loop_poll_stop = False  # flag to stop loop closure polling
 
             for step in self._steps:
                 step["status"] = "pending"
@@ -2327,6 +2484,11 @@ def _launch_tui(network, topology_path, output_root):
                 self._rebuild_steps()
                 log.write(f"[cyan]Step {self._current_step + 1}: {step['name']} — waiting for operator[/]")
                 log.write("[dim]Press F5 when done to advance to the next step.[/]")
+
+                # Start loop closure polling for relocalize manual step
+                if "loop closures" in step["name"] and shutil.which("ros2"):
+                    self._start_loop_closure_polling(log)
+
                 self._current_step += 1
                 return
 
@@ -2408,17 +2570,29 @@ def _launch_tui(network, topology_path, output_root):
                 return True  # skip unknown
 
         def _step_deploy_zenoh(self, robots, log):
-            """Deploy zenoh configs to all robots and base stations."""
+            """Deploy zenoh configs to all robots and base stations.
+
+            Base stations are scoped to only the selected robots (not the full fleet),
+            enabling multi-base-station experiments without cross-pollination.
+            """
             all_machines = list(runtime_config.values())
             online = [m for m in all_machines if m.get("online")]
             if not online:
                 self._tlog(log, "[red]No online machines.[/]")
                 return False
 
+            # Scope: base stations only connect to selected robots
+            robot_names = [m["name"] for m in robots]
+            self._tlog(log, f"  [dim]Scoping zenoh to robots: {', '.join(robot_names)}[/]")
+
             success = True
             for m in online:
                 try:
-                    endpoints = generate_zenoh_endpoints(topo, active_network, m["name"])
+                    endpoints = generate_zenoh_endpoints(
+                        topo, active_network, m["name"],
+                        robot_filter=robot_names,
+                    )
+                    self._tlog(log, f"  [dim]{m['name']}: {len(endpoints)} endpoint(s)[/]")
                     ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
                     color = "green" if ok else "red"
                     self._tlog(log, f"  [{color}]{m['name']}: {msg}[/{color}]")
@@ -2524,6 +2698,7 @@ def _launch_tui(network, topology_path, output_root):
                     f"-c {shlex.quote(platform)} -o {q_output} -y{prior_flag} "
                     f"--tmuxp-args \"-d\""
                 )
+                self._tlog(log, f"  [dim][{m['user']}@{m['ip']}] {cmd}[/]")
                 self._tlog(log, f"  Launching on {m['name']}...")
                 rc, out, err = ssh_cmd(m["user"], m["ip"], cmd, timeout=30)
                 if rc == 0:
@@ -2603,6 +2778,52 @@ def _launch_tui(network, topology_path, output_root):
                 self._rviz_config_path = paths[0]
             return True
 
+        def _start_loop_closure_polling(self, log):
+            """Poll ROS node status every 10s and report loop closure counts."""
+            import re as _re
+            self._loop_poll_stop = False
+            robot_names = {m["name"] for m in self._mission_params.get("robots", [])}
+            LC_THRESHOLD = 5
+
+            def _poll():
+                import time
+                while not self._loop_poll_stop:
+                    try:
+                        status = get_ros_node_status(timeout=8)
+                        if not status:
+                            time.sleep(10)
+                            continue
+                        parts = []
+                        all_ready = True
+                        for rname in sorted(robot_names):
+                            nodes = status.get(rname, [])
+                            for n in nodes:
+                                if "hydra_multi" not in n.get("nickname", ""):
+                                    continue
+                                notes = n.get("notes", "")
+                                match = _re.search(r"(\d+)\s*(?:loop\s*closures?|lc)", notes, _re.IGNORECASE)
+                                if match:
+                                    count = int(match.group(1))
+                                    color = "green" if count >= LC_THRESHOLD else "yellow"
+                                    parts.append(f"[{color}]{rname}: {count}/{LC_THRESHOLD} LC[/{color}]")
+                                    if count < LC_THRESHOLD:
+                                        all_ready = False
+                                elif notes:
+                                    parts.append(f"[dim]{rname}: {notes}[/]")
+                                    all_ready = False
+                                else:
+                                    all_ready = False
+                        if parts:
+                            self._tlog(log, "  Loop closures: " + ", ".join(parts))
+                        if all_ready and parts:
+                            self._tlog(log, "[bold green]All robots have enough loop closures! Press F5 to continue.[/]")
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(10)
+
+            threading.Thread(target=_poll, daemon=True).start()
+
         def _get_base_station(self):
             sel = self.query_one("#mission_base_station", SelectionList)
             selected = list(sel.selected)
@@ -2667,10 +2888,15 @@ def _launch_tui(network, topology_path, output_root):
                 f"--tmuxp-args \"-d\""
             )
 
+            self._tlog(log, f"  [dim][{bs['user']}@{bs['ip']}] {cmd}[/]")
             self._tlog(log, f"  Launching base station on {bs['name']}...")
             rc, out, err = ssh_cmd(bs["user"], bs["ip"], cmd, timeout=30)
             if rc == 0:
                 self._tlog(log, f"  [green]{bs['name']}: base station launched[/]")
+                # Restart fleet zenohd on port+1 so ROS monitoring still works
+                zenoh_port = topo.get("zenoh", {}).get("port", 7447)
+                if _start_fleet_zenohd(force_port=zenoh_port + 1):
+                    self._tlog(log, f"  [dim]Fleet zenohd restarted on port {zenoh_port + 1}[/]")
                 return True
             else:
                 self._tlog(log, f"  [red]{bs['name']}: FAILED (rc={rc}) {err}[/]")
@@ -2842,13 +3068,21 @@ def _launch_tui(network, topology_path, output_root):
             import time
             time.sleep(1)  # allow port to be released (TIME_WAIT)
             _fleet_zenoh["proc"] = None
-    try:
-        already_running = subprocess.run(
-            ["pgrep", "-f", "rmw_zenohd"],
-            capture_output=True,
-        ).returncode == 0
 
-        if not already_running and shutil.which("ros2"):
+    def _start_fleet_zenohd(force_port=None):
+        """Start (or restart) the fleet-managed zenohd.
+
+        If force_port is given, use that listen port instead of auto-detecting.
+        Returns True if started successfully.
+        """
+        if not shutil.which("ros2"):
+            return False
+
+        # Don't start if one is already running under our control
+        if _fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None:
+            return True
+
+        try:
             from dcist_launch_system.fleet_helpers import get_local_ips
 
             local_ips = get_local_ips()
@@ -2867,14 +3101,22 @@ def _launch_tui(network, topology_path, output_root):
                 endpoints = generate_zenoh_endpoints(
                     topo, active_network, local_machine["name"]
                 )
-                listen_port = port
+                listen_port = force_port or port
             else:
                 endpoints = [
                     f"tcp/{m['ip']}:{port}"
                     for m in runtime_config.values()
                     if m.get("role") == "base_station" and m.get("ip")
                 ]
-                listen_port = port + 1
+                listen_port = force_port or (port + 1)
+
+            # Clean up previous config
+            if _fleet_zenoh["config"]:
+                try:
+                    os.unlink(_fleet_zenoh["config"])
+                except OSError:
+                    pass
+                _fleet_zenoh["config"] = None
 
             config_path = patch_zenoh_config_local(
                 endpoints, listen_port=listen_port,
@@ -2889,6 +3131,19 @@ def _launch_tui(network, topology_path, output_root):
                     stderr=subprocess.DEVNULL,
                     env=env,
                 )
+                return True
+        except Exception:
+            pass
+        return False
+
+    try:
+        already_running = subprocess.run(
+            ["pgrep", "-f", "rmw_zenohd"],
+            capture_output=True,
+        ).returncode == 0
+
+        if not already_running:
+            _start_fleet_zenohd()
     except Exception:
         pass  # non-critical — monitor will just lack ROS topic data
 

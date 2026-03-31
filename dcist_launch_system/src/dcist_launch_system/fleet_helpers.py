@@ -525,11 +525,12 @@ else:
 _ZENOH_CONFIG_FILE = "DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5"
 
 
-def generate_zenoh_endpoints(topology, network, machine_name):
+def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None):
     """Compute the connect endpoints for a machine based on its role.
 
-    Base stations get connect endpoints to all robots on the network (star topology).
+    Base stations get connect endpoints to robots on the network (star topology).
     Robots get no connect endpoints — base stations connect to them.
+    If robot_filter is set (list of robot names), only those robots are included.
     Returns list of endpoint strings, e.g. ["tcp/192.168.100.3:7447"].
     """
     machines = topology.get("machines", {})
@@ -541,11 +542,13 @@ def generate_zenoh_endpoints(topology, network, machine_name):
 
     connect_endpoints = []
     if is_base:
-        # Base stations connect to all robots (star topology)
+        # Base stations connect to robots (star topology)
         for name, m in sorted(machines.items()):
             if name == machine_name:
                 continue
             if m.get("role") != "robot":
+                continue
+            if robot_filter and name not in robot_filter:
                 continue
             addrs = m.get("addresses", {})
             if network in addrs:
@@ -979,3 +982,173 @@ def generate_namespaced_rviz(robot_name, template_path=None, output_path=None):
         f.write(content)
 
     return str(output_path)
+
+
+def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
+    """Check if a route to the Silvus management subnet exists.
+
+    If user/ip are None, checks locally. Otherwise checks via SSH.
+    Returns dict: {has_route: bool, interface: str or None, silvus_iface: str or None}
+    """
+    # Find the silvus data interface (192.168.100.x) and check for mgmt route
+    cmd = (
+        "iface=$(ip -4 -o addr show | grep '192\\.168\\.100\\.' | awk '{print $2}' | head -1); "
+        f"route=$(ip route show {mgmt_subnet} 2>/dev/null | head -1); "
+        "echo \"$iface|$route\""
+    )
+    if user and ip:
+        rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
+    else:
+        rc = 0
+        try:
+            result = subprocess.run(
+                ["bash", "-c", cmd], capture_output=True, text=True, timeout=5
+            )
+            out = result.stdout.strip()
+            rc = result.returncode
+        except Exception:
+            return {"has_route": False, "interface": None, "silvus_iface": None}
+
+    if rc != 0 or not out:
+        return {"has_route": False, "interface": None, "silvus_iface": None}
+
+    parts = out.strip().split("|", 1)
+    silvus_iface = parts[0].strip() if parts[0].strip() else None
+    route_line = parts[1].strip() if len(parts) > 1 else ""
+    has_route = bool(route_line)
+
+    return {
+        "has_route": has_route,
+        "interface": silvus_iface,
+        "silvus_iface": silvus_iface,
+        "route_info": route_line if route_line else None,
+    }
+
+
+def add_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=None):
+    """Add a route to the Silvus management subnet via the Silvus data interface.
+
+    If user/ip are None, runs locally. Otherwise runs via SSH.
+    Requires sudo. Returns (success: bool, message: str).
+    """
+    if not interface:
+        info = check_silvus_route(user, ip, mgmt_subnet)
+        interface = info.get("silvus_iface")
+        if not interface:
+            return False, "No Silvus interface found (no 192.168.100.x address)"
+        if info["has_route"]:
+            return True, f"Route already exists: {info['route_info']}"
+
+    cmd = f"sudo ip route add {mgmt_subnet} dev {shlex.quote(interface)}"
+    if user and ip:
+        rc, out, err = ssh_cmd(user, ip, cmd, timeout=10)
+    else:
+        try:
+            result = subprocess.run(
+                ["bash", "-c", cmd], capture_output=True, text=True, timeout=10
+            )
+            rc, out, err = result.returncode, result.stdout.strip(), result.stderr.strip()
+        except Exception as e:
+            return False, str(e)
+
+    if rc == 0:
+        return True, f"Route added: {mgmt_subnet} dev {interface}"
+    elif "File exists" in err:
+        return True, f"Route already exists on {interface}"
+    else:
+        return False, f"Failed (rc={rc}): {err}"
+
+
+def check_zenoh_port(ip, port=7447, timeout=2):
+    """Check if zenoh port is reachable on a remote machine via TCP connect.
+
+    Returns True if the port is open, False otherwise.
+    """
+    import socket
+    try:
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+
+def get_silvus_link_quality(user, ip, silvus_mgmt_ips):
+    """Query Silvus radio for link quality metrics (RSSI, SNR, neighbors).
+
+    Returns dict with keys: battery, mesh_nodes, neighbors (list of
+    {node_id, rssi, snr}), or None on failure.
+    """
+    if not silvus_mgmt_ips:
+        return None
+
+    py_script = """
+import urllib.request, json, sys, glob, math
+mgmt_ips = sys.argv[1:]
+local_mgmt = None
+for f in glob.glob('/home/*/.cache/silvus_diagnostics/*.radio'):
+    try:
+        with open(f) as fp:
+            local_mgmt = fp.read().strip().split('|')[1]
+            break
+    except: pass
+if not local_mgmt and mgmt_ips:
+    import time
+    best_t = 999
+    for mip in mgmt_ips:
+        try:
+            t0 = time.time()
+            urllib.request.urlopen(f'http://{mip}/cgi-bin/streamscape_api', timeout=0.3)
+            dt = time.time()-t0
+            if dt < best_t: best_t, local_mgmt = dt, mip
+        except: pass
+if not local_mgmt:
+    print('N/A')
+    sys.exit(0)
+try:
+    url = f'http://{local_mgmt}/cgi-bin/streamscape_api'
+    batch = [
+        {'jsonrpc':'2.0', 'method':'battery_percent', 'id':1},
+        {'jsonrpc':'2.0', 'method':'routing_tree', 'id':2},
+        {'jsonrpc':'2.0', 'method':'neighbor_list', 'id':3},
+        {'jsonrpc':'2.0', 'method':'rssi', 'id':4},
+        {'jsonrpc':'2.0', 'method':'snr_stats', 'id':5},
+    ]
+    req = urllib.request.Request(url, data=json.dumps(batch).encode(),
+                                headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req, timeout=3) as resp:
+        parsed = {r['id']: r.get('result') for r in json.loads(resp.read())}
+    bat = parsed.get(1, ['?'])[0]
+    bat = f'{float(bat):.0f}' if bat and bat != '?' else '?'
+    mesh = len(parsed.get(2) or [])
+    neighbors = parsed.get(3) or []
+    rssi_raw = parsed.get(4)
+    snr_raw = parsed.get(5)
+    # Format: bat|mesh|neighbor_count|rssi|snr
+    rssi_str = str(rssi_raw) if rssi_raw else 'N/A'
+    snr_str = str(snr_raw) if snr_raw else 'N/A'
+    print(f'{bat}|{mesh}|{len(neighbors)}|{rssi_str}|{snr_str}')
+except Exception as e:
+    print(f'ERR:{e}')
+"""
+    import base64
+    encoded = base64.b64encode(py_script.encode()).decode()
+    args = " ".join(silvus_mgmt_ips)
+    cmd = f"echo '{encoded}' | base64 -d | python3 - {args}"
+    rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=8)
+    if rc != 0 or not stdout or stdout.strip() in ("N/A", ""):
+        return None
+
+    line = stdout.strip()
+    if line.startswith("ERR:"):
+        return {"error": line}
+
+    parts = line.split("|")
+    if len(parts) >= 5:
+        return {
+            "battery": parts[0],
+            "mesh_nodes": parts[1],
+            "neighbor_count": parts[2],
+            "rssi": parts[3],
+            "snr": parts[4],
+        }
+    return {"raw": line}
