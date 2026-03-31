@@ -1313,7 +1313,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("escape", "dismiss", "Back", priority=True),
             Binding("d", "dry_run", "Dry Run", priority=True),
             Binding("g", "do_launch", "Launch (g)", priority=True),
-            Binding("r", "browse_prior", "Refresh Priors", priority=True),
+            Binding("p", "browse_prior", "Refresh Priors (p)", priority=True),
         ]
 
         DEFAULT_CSS = """
@@ -1338,9 +1338,10 @@ def _launch_tui(network, topology_path, output_root):
         }
         """
 
-        def __init__(self):
+        def __init__(self, mode=None):
             super().__init__()
             self._launching = False
+            self._mode = mode  # None=manual, "mapping", "relocalize"
 
         def compose(self) -> ComposeResult:
             robots = [
@@ -1357,8 +1358,9 @@ def _launch_tui(network, topology_path, output_root):
                 [f.stem for f in _TMUX_DIR.glob("*.yaml")]
             ) if _TMUX_DIR.exists() else []
 
+            mode_label = {"mapping": " (Mapping)", "relocalize": " (Relocalize)"}.get(self._mode, "")
             yield VerticalScroll(
-                Label("[bold]Launch[/] — configure and launch run-adt4 on robots and base station"),
+                Label(f"[bold]Launch{mode_label}[/] — g=launch, d=dry run, p=refresh priors"),
                 Rule(),
                 Label("Select robots:"),
                 SelectionList(*robots, id="robot_select"),
@@ -1384,6 +1386,56 @@ def _launch_tui(network, topology_path, output_root):
                 RichLog(id="launch_log", highlight=True, markup=True, max_lines=100),
             )
             yield Footer()
+
+        def on_mount(self):
+            if not self._mode:
+                return
+            # Auto-populate from fleet_defaults in topology
+            defaults = topo.get("fleet_defaults", {})
+            spot_platforms = set(defaults.get("spot_platforms", ["smaug", "topaz"]))
+            sessions_cfg = defaults.get("sessions", {})
+            mode_sessions = sessions_cfg.get(self._mode, {})
+            spot_session = mode_sessions.get("spot", "")
+            phoenix_session = mode_sessions.get("phoenix", "")
+            bs_session = defaults.get("base_station_session", "")
+
+            log = self.query_one("#launch_log", RichLog)
+            log.write(f"[bold cyan]Auto-populating for {self._mode} mode...[/]")
+
+            # Select all online robots
+            robot_sel = self.query_one("#robot_select", SelectionList)
+            for m in runtime_config.values():
+                if m["role"] == "robot" and m.get("online"):
+                    robot_sel.select(m["name"])
+
+            # Pick session based on first selected robot's platform
+            first_robot = next(
+                (m for m in runtime_config.values()
+                 if m["role"] == "robot" and m.get("online")),
+                None,
+            )
+            if first_robot:
+                session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
+                if session:
+                    sess_sel = self.query_one("#session_select", SelectionList)
+                    sess_sel.select(session)
+                    log.write(f"  Robot session: [cyan]{session}[/]")
+
+            # Select local base station
+            bs_sel = self.query_one("#bs_select", SelectionList)
+            for m in runtime_config.values():
+                if m["role"] == "base_station" and m["ip"] in _local_ips:
+                    bs_sel.select(m["name"])
+                    log.write(f"  Base station: [cyan]{m['name']} (local)[/]")
+                    break
+
+            # Select BS session
+            if bs_session:
+                bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
+                bs_sess_sel.select(bs_session)
+                log.write(f"  BS session: [cyan]{bs_session}[/]")
+
+            log.write("[dim]Review selections above, then press g to launch or d for dry run.[/]")
 
         def on_input_changed(self, event: Input.Changed):
             if event.input.id == "session_search":
@@ -3039,12 +3091,13 @@ def _launch_tui(network, topology_path, output_root):
 
         BINDINGS = [
             Binding("s", "refresh_status", "Recheck"),
-            Binding("m", "show_maps", "Maps"),
             Binding("l", "show_launch", "Launch"),
+            Binding("m", "show_mapping", "Mapping"),
+            Binding("r", "show_relocalize", "Relocalize"),
+            Binding("b", "show_maps", "Browse Maps"),
             Binding("c", "show_config", "Config"),
             Binding("o", "show_monitor", "Monitor"),
             Binding("z", "show_zenoh", "Zenoh"),
-            Binding("w", "show_mission", "Mission"),
             Binding("q", "quit", "Quit"),
         ]
 
@@ -3124,6 +3177,12 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_show_launch(self):
             self.push_screen(LaunchScreen())
+
+        def action_show_mapping(self):
+            self.push_screen(LaunchScreen(mode="mapping"))
+
+        def action_show_relocalize(self):
+            self.push_screen(LaunchScreen(mode="relocalize"))
 
         def action_show_config(self):
             self.push_screen(ConfigScreen())

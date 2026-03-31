@@ -35,3 +35,17 @@ zenoh:
 ssh:
   base_station_user: "rrg"
   robot_user: "swarm"
+
+fleet_defaults:
+  # Session auto-selection by platform for mapping and relocalize modes.
+  # Spot platforms (smaug, topaz) use spot sessions; others use phoenix.
+  spot_platforms: [smaug, topaz]
+  sessions:
+    mapping:
+      spot: "real_spot-real_spot"
+      phoenix: "real_phoenix-real_phoenix"
+    relocalize:
+      spot: "real_spot_relocalize-real_spot_relocalize"
+      phoenix: "real_phoenix_relocalize-real_phoenix_relocalize"
+  base_station_session: "base_station_heracles-default_params"
+  output_root: "~/adt4_output"
