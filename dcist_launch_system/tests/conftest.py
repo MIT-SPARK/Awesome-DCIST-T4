@@ -53,4 +53,8 @@ def sample_topology():
             "robot_user": "swarm",
             "base_station_user": "rrg",
         },
+        "zenoh": {
+            "port": 7447,
+            "connect_network": "silvus",
+        },
     }
