@@ -1715,21 +1715,23 @@ def _launch_tui(network, topology_path, output_root):
             _launch_session_name = self._get_selected_session()
 
             # Snapshot base station selection
-            bs_sel = self.query_one("#bs_select", SelectionList)
-            bs_names = list(bs_sel.selected)
-            _bs_machine = runtime_config.get(bs_names[0]) if bs_names else None
-            bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
-            bs_sess_list = list(bs_sess_sel.selected)
-            _bs_session = bs_sess_list[0] if bs_sess_list else None
-
-            # Snapshot robot names for zenoh scoping
             robot_sel = self.query_one("#robot_select", SelectionList)
             _robot_names = list(robot_sel.selected)
 
-            # Log the snapshot for debugging
-            log.write(f"[dim]Robots: {_robot_names}[/]")
-            log.write(f"[dim]Session: {_launch_session_name}[/]")
-            log.write(f"[dim]BS: {_bs_machine['name'] if _bs_machine else 'none'}, BS session: {_bs_session or 'none'}[/]")
+            bs_sel = self.query_one("#bs_select", SelectionList)
+            bs_selected = list(bs_sel.selected)
+            bs_sess_sel = self.query_one("#bs_session_select", SelectionList)
+            bs_sess_selected = list(bs_sess_sel.selected)
+
+            # Debug: show raw selection values
+            log.write(f"[dim]robots.selected = {_robot_names}[/]")
+            log.write(f"[dim]session = {_launch_session_name}[/]")
+            log.write(f"[dim]bs.selected = {bs_selected}[/]")
+            log.write(f"[dim]bs_session.selected = {bs_sess_selected}[/]")
+            log.write(f"[dim]bs option_count = {bs_sel.option_count}[/]")
+
+            _bs_machine = runtime_config.get(bs_selected[0]) if bs_selected else None
+            _bs_session = bs_sess_selected[0] if bs_sess_selected else None
 
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
