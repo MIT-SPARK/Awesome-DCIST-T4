@@ -1862,18 +1862,28 @@ def _launch_tui(network, topology_path, output_root):
                         platform = _bs_machine.get("platform_id", _bs_machine["name"])
                         bs_cmd = (
                             f"cd ~/dcist_ws && source install/setup.zsh && "
-                            f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
+                            f"nohup src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                             f"{shlex.quote(_bs_session)} -n {shlex.quote(_bs_machine['name'])} "
                             f"-c {shlex.quote(platform)} -o {q_output} -y "
-                            f"--tmuxp-args \"-d\""
+                            f"--tmuxp-args \"-d\" "
+                            f">/dev/null 2>&1 &"
                         )
                         self.app.call_from_thread(
                             log.write, f"  [dim][{_bs_machine['user']}@{_bs_machine['ip']}] {bs_cmd}[/]"
                         )
-                        rc, out, err = ssh_cmd(_bs_machine["user"], _bs_machine["ip"], bs_cmd, timeout=30)
-                        if rc == 0:
+                        rc, out, err = ssh_cmd(_bs_machine["user"], _bs_machine["ip"], bs_cmd, timeout=60)
+                        # nohup & always returns 0; verify tmux session started
+                        import time
+                        time.sleep(3)
+                        tmux_name = _bs_session.split("-")[0] if "-" in _bs_session else "adt4"
+                        trc, tout, _ = ssh_cmd(
+                            _bs_machine["user"], _bs_machine["ip"],
+                            f"tmux has-session -t {shlex.quote(tmux_name)} 2>/dev/null && echo OK",
+                            timeout=5,
+                        )
+                        if "OK" in tout:
                             self.app.call_from_thread(
-                                log.write, f"  [green]{_bs_machine['name']}: base station launched[/]"
+                                log.write, f"  [green]{_bs_machine['name']}: base station launched (tmux session: {tmux_name})[/]"
                             )
                             # Restart fleet zenohd on port+1
                             zenoh_port = topo.get("zenoh", {}).get("port", 7447)
@@ -1883,7 +1893,7 @@ def _launch_tui(network, topology_path, output_root):
                             )
                         else:
                             self.app.call_from_thread(
-                                log.write, f"  [red]{_bs_machine['name']}: FAILED (rc={rc}) {err}[/]"
+                                log.write, f"  [red]{_bs_machine['name']}: tmux session '{tmux_name}' not found after launch. rc={rc} {err}[/]"
                             )
 
                     self.app.call_from_thread(log.write, "[bold]Launch sequence complete.[/]")
