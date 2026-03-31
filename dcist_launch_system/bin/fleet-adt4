@@ -625,24 +625,42 @@ def _launch_tui(network, topology_path, output_root):
 
     # ---- Maps Screen ----
 
-    class ConfirmSessionKillScreen(ModalScreen[bool]):
-        def __init__(self, message: str):
+    class ConfirmScreen(ModalScreen[bool]):
+        BINDINGS = [
+            Binding("y", "confirm_yes", "Yes", priority=True),
+            Binding("n", "confirm_no", "No", priority=True),
+            Binding("escape", "confirm_no", "Cancel", priority=True),
+        ]
+
+        def __init__(self, message: str, yes_label: str = "Yes, Proceed (y)", no_label: str = "No, Cancel (n)"):
             super().__init__()
             self.message = message
+            self._yes_label = yes_label
+            self._no_label = no_label
 
         def compose(self) -> ComposeResult:
             yield Vertical(
                 Label(self.message),
                 Rule(),
+                Label("[dim]y=yes  n/escape=no[/]"),
                 Horizontal(
-                    Button("Yes, Terminate", variant="error", id="btn_yes"),
-                    Button("No, Abort", variant="primary", id="btn_no"),
+                    Button(self._yes_label, variant="error", id="btn_yes"),
+                    Button(self._no_label, variant="primary", id="btn_no"),
                 ),
                 id="confirm_kill_dialog"
             )
 
         def on_button_pressed(self, event: Button.Pressed) -> None:
             self.dismiss(event.button.id == "btn_yes")
+
+        def action_confirm_yes(self):
+            self.dismiss(True)
+
+        def action_confirm_no(self):
+            self.dismiss(False)
+
+    # Alias for backward compatibility
+    ConfirmSessionKillScreen = ConfirmScreen
 
     def _check_sessions_and_prompt(app, targets, session_name, log):
         """Check for running tmux sessions and prompt user in TUI threads to kill them."""
@@ -672,7 +690,7 @@ def _launch_tui(network, topology_path, output_root):
                 user_decision[0] = result
                 ev.set()
             msg = f"Session '{session_name}' is already running on {len(conflicts)} machine(s):\n{', '.join(conflicts)}\n\nTerminate existing sessions and proceed?"
-            app.push_screen(ConfirmSessionKillScreen(msg), on_dismiss)
+            app.push_screen(ConfirmScreen(msg, yes_label="Yes, Terminate (y)", no_label="No, Abort (n)"), on_dismiss)
 
         app.call_from_thread(ask)
         ev.wait()
@@ -1846,7 +1864,7 @@ def _launch_tui(network, topology_path, output_root):
                                 f"Overwrite existing directories and launch?"
                             )
                             self.app.push_screen(
-                                ConfirmSessionKillScreen(msg), on_dismiss
+                                ConfirmScreen(msg, yes_label="Yes, Overwrite (y)", no_label="No, Keep (n)"), on_dismiss
                             )
 
                         self.app.call_from_thread(ask_overwrite)
