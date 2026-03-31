@@ -1315,6 +1315,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("r", "preset_relocalize", "Relocalize (r)", priority=True),
             Binding("d", "dry_run", "Dry Run", priority=True),
             Binding("g", "do_launch", "Launch (g)", priority=True),
+            Binding("z", "deploy_zenoh", "Deploy Zenoh (z)", priority=True),
             Binding("p", "browse_prior", "Refresh Priors (p)", priority=True),
             Binding("f2", "toggle_log_size", "Log Size [F2]", priority=True),
         ]
@@ -1486,6 +1487,55 @@ def _launch_tui(network, topology_path, output_root):
         def action_browse_prior(self):
             log = self.query_one("#launch_log", RichLog)
             self.query_one("#launch_prior_selector", PriorMapSelector).refresh_priors(log)
+
+        def action_deploy_zenoh(self):
+            """Deploy zenoh configs to selected robots + base station."""
+            log = self.query_one("#launch_log", RichLog)
+
+            # Gather selected robots
+            robot_sel = self.query_one("#robot_select", SelectionList)
+            robot_names = list(robot_sel.selected)
+            targets = [runtime_config[n] for n in robot_names if n in runtime_config]
+
+            # Add selected base station
+            bs_sel = self.query_one("#bs_select", SelectionList)
+            bs_names = list(bs_sel.selected)
+            if bs_names and bs_names[0] in runtime_config:
+                targets.append(runtime_config[bs_names[0]])
+
+            if not targets:
+                log.write("[yellow]No robots or base station selected.[/]")
+                return
+
+            names = ", ".join(m["name"] for m in targets)
+            log.write(f"[bold]Deploying zenoh configs to: {names}[/]")
+            log.write(f"  [dim]BS connects to robots: {', '.join(robot_names)}[/]")
+
+            def do_deploy():
+                results = []
+                for m in targets:
+                    try:
+                        endpoints = generate_zenoh_endpoints(
+                            topo, active_network, m["name"],
+                            robot_filter=robot_names,
+                        )
+                        ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
+                        results.append((m["name"], ok, msg, len(endpoints)))
+                    except KeyError:
+                        results.append((m["name"], False, f"no address on {active_network}", 0))
+                return results
+
+            def on_done(results):
+                for name, ok, msg, n_ep in results:
+                    color = "green" if ok else "red"
+                    log.write(f"  [{color}]{name}: {msg} ({n_ep} endpoint(s))[/{color}]")
+                log.write("[bold]Zenoh deploy complete.[/]")
+
+            def bg():
+                results = do_deploy()
+                self.app.call_from_thread(on_done, results)
+
+            threading.Thread(target=bg, daemon=True).start()
 
         def action_toggle_log_size(self):
             self._log_size_idx = (self._log_size_idx + 1) % len(self._LOG_SIZES)
