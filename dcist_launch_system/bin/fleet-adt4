@@ -1323,8 +1323,9 @@ def _launch_tui(network, topology_path, output_root):
         LaunchScreen #session_select {
             max-height: 12;
         }
-        LaunchScreen #prior_select {
-            max-height: 10;
+        LaunchScreen #prior_tree {
+            min-height: 8;
+            max-height: 16;
         }
         LaunchScreen #launch_log {
             min-height: 6;
@@ -2183,6 +2184,10 @@ def _launch_tui(network, topology_path, output_root):
         DEFAULT_CSS = """
         MissionScreen #mission_log {
             min-height: 10;
+        }
+        MissionScreen #prior_tree {
+            min-height: 8;
+            max-height: 16;
         }
         """
 
