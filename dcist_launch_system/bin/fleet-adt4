@@ -2072,8 +2072,9 @@ def _launch_tui(network, topology_path, output_root):
             def do_fetch():
                 # Quick check: is the topic advertised?
                 try:
+                    _shell = "zsh" if shutil.which("zsh") else "bash"
                     topic_check = subprocess.run(
-                        ["ros2", "topic", "list"],
+                        [_shell, "-l", "-c", "ros2 topic list"],
                         capture_output=True, text=True, timeout=5,
                     )
                     topics = topic_check.stdout.strip().split("\n") if topic_check.returncode == 0 else []
@@ -2106,7 +2107,9 @@ def _launch_tui(network, topology_path, output_root):
                     else:
                         online = [m["name"] for m in runtime_config.values() if m.get("online") and m.get("role") == "robot"]
                         if online:
-                            log.write(f"[yellow]No node status received — topic exists but no data within 8s. Robots: {', '.join(online)}[/]")
+                            log.write(f"[yellow]No node status received within 8s. Online robots: {', '.join(online)}[/]")
+                            log.write("[dim]  Robots may still be starting. Try pressing n again in 30s.[/]")
+                            log.write("[dim]  Check: timeout 10 ros2 topic echo /global/ros_system_monitor/table_in[/]")
                         else:
                             log.write("[yellow]No node status — zenohd is running but no robots are online.[/]")
                     return

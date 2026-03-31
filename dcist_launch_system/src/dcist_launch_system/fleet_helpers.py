@@ -801,9 +801,11 @@ def get_ros_node_status(timeout=5):
 
     Status values: 1=NOMINAL, 2=WARNING, 3=ERROR, 4=NO_HB, 5=STARTUP
     """
+    # Run through login shell to ensure ROS env is sourced
+    shell = "zsh" if shutil.which("zsh") else "bash"
     cmd = [
-        "ros2", "topic", "echo",
-        "/global/ros_system_monitor/table_in",
+        shell, "-l", "-c",
+        "ros2 topic echo /global/ros_system_monitor/table_in "
         "ros_system_monitor_msgs/msg/StatusTable",
     ]
     try:
