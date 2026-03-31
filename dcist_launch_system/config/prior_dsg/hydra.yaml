@@ -1,5 +1,3 @@
----
-# general config
 paths: [khronos, khronos_ros]
 robot_id: 0
 config_verbosity: 0
@@ -7,7 +5,6 @@ map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
-# modules
 input:
   type: RosInput
   max_receiver_queue_size: 1
@@ -23,7 +20,8 @@ active_window:
   type: ActiveWindow
   map_window: {type: temporal, window_sec: 3.0}
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
-  projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  projective_integrator:
+    semantic_integrator: {type: SingleLabelIntegrator}
   min_output_separation: 0.5
   object_detector:
     type: ConnectedSemantics
@@ -44,13 +42,13 @@ active_window:
     type: MeshObjectExtractor
     verbosity: 0
     min_object_allocation_confidence: 0.5
-    min_object_volume: 0.005  # m^3
-    max_object_volume: 100.0  # m^3
-    min_dynamic_displacement: 1  # m
+    min_object_volume: 0.005
+    max_object_volume: 100.0
+    min_dynamic_displacement: 1
     only_extract_reconstructed_objects: true
     min_object_reconstruction_confidence: 0.5
     min_object_reconstruction_observations: 10
-    object_reconstruction_resolution: -0.05  # Positive: voxel size in meters.
+    object_reconstruction_resolution: -0.05
     visualizer_classification: false
     projective_integrator:
       num_threads: 8
@@ -70,10 +68,14 @@ frontend:
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5, mesh_resolution: 0.005}
   graph_connector:
     layers:
-      - {parent_layer: MESH_PLACES, child_layers: [layer: OBJECTS]}
+      - parent_layer: MESH_PLACES
+        child_layers:
+          - {layer: OBJECTS}
   graph_updater:
     layer_updates:
-      OBJECTS: {prefix: O, matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}}
+      OBJECTS:
+        prefix: O
+        matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
   surface_places:
     type: place_2d
     prefix: P
