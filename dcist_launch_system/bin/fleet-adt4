@@ -3266,19 +3266,31 @@ def _launch_tui(network, topology_path, output_root):
             _fleet_zenoh["config"] = config_path
             env = os.environ.copy()
             env["ZENOH_ROUTER_CONFIG_URI"] = config_path
+            import tempfile
+            stderr_log = tempfile.NamedTemporaryFile(
+                mode="w", prefix="fleet_zenohd_", suffix=".log", delete=False
+            )
             _fleet_zenoh["proc"] = subprocess.Popen(
                 ["ros2", "run", "rmw_zenoh_cpp", "rmw_zenohd"],
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stderr=stderr_log,
                 env=env,
             )
             # Check it didn't die immediately
             import time
-            time.sleep(0.5)
+            time.sleep(1.0)
             if _fleet_zenoh["proc"].poll() is not None:
                 rc = _fleet_zenoh["proc"].returncode
                 _fleet_zenoh["proc"] = None
-                return False, f"rmw_zenohd exited immediately (rc={rc}) — is rmw_zenoh_cpp installed?"
+                stderr_log.close()
+                try:
+                    with open(stderr_log.name) as f:
+                        err_output = f.read().strip()[-500:]  # last 500 chars
+                except Exception:
+                    err_output = ""
+                detail = f"\n  stderr: {err_output}" if err_output else ""
+                return False, f"rmw_zenohd exited immediately (rc={rc}){detail}\n  config: {config_path}"
+            stderr_log.close()
             return True, f"started on port {listen_port} with {len(endpoints)} endpoint(s)"
         except Exception as e:
             return False, f"error: {e}"
