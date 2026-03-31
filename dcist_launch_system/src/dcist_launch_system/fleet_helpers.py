@@ -804,10 +804,7 @@ def get_ros_node_status(timeout=5):
     # Run through login shell to ensure ROS env is sourced (.zshrc).
     # Increase effective timeout to account for shell startup (~3s).
     shell = "zsh" if shutil.which("zsh") else "bash"
-    ros_cmd = (
-        "ros2 topic echo /global/ros_system_monitor/table_in "
-        "ros_system_monitor_msgs/msg/StatusTable"
-    )
+    ros_cmd = "ros2 topic echo /global/ros_system_monitor/table_in"
     effective_timeout = timeout + 5  # extra time for shell init
     try:
         proc = subprocess.Popen(
