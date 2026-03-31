@@ -703,7 +703,15 @@ def _launch_tui(network, topology_path, output_root):
             self._selected_path = ""
             self._selected_source = None
             self._all_results = []
-            self.set_timer(0.5, self.refresh_priors)
+            self.set_timer(0.5, self._safe_refresh)
+
+        def _safe_refresh(self):
+            """Guard against NoActiveAppError on re-mount of cached screens."""
+            try:
+                self.app  # test if connected
+                self.refresh_priors()
+            except Exception:
+                pass
 
         def refresh_priors(self, log_widget=None):
 
@@ -715,7 +723,10 @@ def _launch_tui(network, topology_path, output_root):
 
             def on_done(results):
                 self._all_results = results
-                self._populate_tree()
+                try:
+                    self._populate_tree()
+                except Exception:
+                    pass
                 if log_widget:
                     total = sum(
                         len(exps) for _, exps in results
@@ -723,11 +734,14 @@ def _launch_tui(network, topology_path, output_root):
                     )
                     log_widget.write(f"[green]Found {total} experiments across fleet.[/]")
 
-            def _fetch_then_done():
+            def _bg():
                 result = do_fetch()
-                self.app.call_from_thread(on_done, result)
+                try:
+                    self.app.call_from_thread(on_done, result)
+                except Exception:
+                    pass
 
-            self.app.run_worker(_fetch_then_done, thread=True)
+            threading.Thread(target=_bg, daemon=True).start()
 
         def _populate_tree(self, query=""):
             tree = self.query_one("#prior_tree", Tree)
@@ -1498,27 +1512,23 @@ def _launch_tui(network, topology_path, output_root):
             self.query_one("#launch_prior_selector", PriorMapSelector).refresh_priors(log)
 
         def action_deploy_zenoh(self):
-            """Deploy zenoh configs to selected robots + base station."""
+            """Deploy zenoh config to base station (robots just listen)."""
             log = self.query_one("#launch_log", RichLog)
 
-            # Gather selected robots
+            # Get selected robots (for endpoint scoping)
             robot_sel = self.query_one("#robot_select", SelectionList)
             robot_names = list(robot_sel.selected)
-            targets = [runtime_config[n] for n in robot_names if n in runtime_config]
 
-            # Add selected base station
+            # Only deploy to base station
             bs_sel = self.query_one("#bs_select", SelectionList)
             bs_names = list(bs_sel.selected)
-            if bs_names and bs_names[0] in runtime_config:
-                targets.append(runtime_config[bs_names[0]])
-
-            if not targets:
-                log.write("[yellow]No robots or base station selected.[/]")
+            if not bs_names or bs_names[0] not in runtime_config:
+                log.write("[yellow]No base station selected.[/]")
                 return
 
-            names = ", ".join(m["name"] for m in targets)
-            log.write(f"[bold]Deploying zenoh configs to: {names}[/]")
-            log.write(f"  [dim]BS connects to robots: {', '.join(robot_names)}[/]")
+            targets = [runtime_config[bs_names[0]]]
+            log.write(f"[bold]Deploying zenoh config to {targets[0]['name']}...[/]")
+            log.write(f"  [dim]Endpoints → robots: {', '.join(robot_names)}[/]")
 
             def do_deploy():
                 results = []
@@ -1740,13 +1750,12 @@ def _launch_tui(network, topology_path, output_root):
 
             def do_launch():
                 try:
-                    # Phase 0: Deploy zenoh configs to selected robots + BS
-                    deploy_targets = [runtime_config[n] for n in _robot_names if n in runtime_config]
-                    if _bs_machine:
-                        deploy_targets.append(_bs_machine)
+                    # Phase 0: Deploy zenoh config to base station only
+                    # (robots just listen — star topology, no config change needed)
+                    deploy_targets = [_bs_machine] if _bs_machine else []
                     if deploy_targets:
                         self.app.call_from_thread(
-                            log.write, f"[bold]Deploying zenoh configs ({len(deploy_targets)} machines)...[/]"
+                            log.write, f"[bold]Deploying zenoh config to base station...[/]"
                         )
                         all_ok = True
                         for m in deploy_targets:
