@@ -1316,6 +1316,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("d", "dry_run", "Dry Run", priority=True),
             Binding("g", "do_launch", "Launch (g)", priority=True),
             Binding("p", "browse_prior", "Refresh Priors (p)", priority=True),
+            Binding("f2", "toggle_log_size", "Log Size [F2]", priority=True),
         ]
 
         DEFAULT_CSS = """
@@ -1340,10 +1341,13 @@ def _launch_tui(network, topology_path, output_root):
         }
         """
 
+        _LOG_SIZES = [12, 24, 40]
+
         def __init__(self, mode=None):
             super().__init__()
             self._launching = False
             self._mode = mode  # None=manual, "mapping", "relocalize"
+            self._log_size_idx = 0
 
         def compose(self) -> ComposeResult:
             robots = [
@@ -1482,6 +1486,12 @@ def _launch_tui(network, topology_path, output_root):
         def action_browse_prior(self):
             log = self.query_one("#launch_log", RichLog)
             self.query_one("#launch_prior_selector", PriorMapSelector).refresh_priors(log)
+
+        def action_toggle_log_size(self):
+            self._log_size_idx = (self._log_size_idx + 1) % len(self._LOG_SIZES)
+            new_h = self._LOG_SIZES[self._log_size_idx]
+            log = self.query_one("#launch_log", RichLog)
+            log.styles.min_height = new_h
 
         def _build_commands(self):
             log = self.query_one("#launch_log", RichLog)
