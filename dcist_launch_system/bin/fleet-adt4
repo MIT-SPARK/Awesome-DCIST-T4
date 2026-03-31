@@ -1707,6 +1707,11 @@ def _launch_tui(network, topology_path, output_root):
             robot_sel = self.query_one("#robot_select", SelectionList)
             _robot_names = list(robot_sel.selected)
 
+            # Log the snapshot for debugging
+            log.write(f"[dim]Robots: {_robot_names}[/]")
+            log.write(f"[dim]Session: {_launch_session_name}[/]")
+            log.write(f"[dim]BS: {_bs_machine['name'] if _bs_machine else 'none'}, BS session: {_bs_session or 'none'}[/]")
+
             # Set up progress bars for transfers if needed
             area = self.query_one("#launch_progress_area", Vertical)
             area.remove_children()
@@ -3271,7 +3276,9 @@ def _launch_tui(network, topology_path, output_root):
             self.push_screen(MapsScreen())
 
         def action_show_launch(self):
-            self.push_screen(LaunchScreen())
+            if not hasattr(self, "_launch_screen") or self._launch_screen is None:
+                self._launch_screen = LaunchScreen()
+            self.push_screen(self._launch_screen)
 
         def action_show_config(self):
             self.push_screen(ConfigScreen())
