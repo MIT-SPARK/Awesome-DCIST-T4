@@ -1,4 +1,6 @@
 ---
+plugins: !reset
+  mesh: {use_color_adaptor: false}
 renderer:
   layers:
     3p1: !reset
