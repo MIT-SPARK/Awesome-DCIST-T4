@@ -6,6 +6,7 @@ launch_configs:
   map: [main, hydra, roman]
   relocalize: [main, hydra_multi, roman]
   # development groupings
+  map_old: [main, hydra_old, roman]
   no_relocalize: [main, transform_publishers]
   bag_map: [map, rviz]
   bag_relocalize: [relocalize, rviz, relocalize_viz]
@@ -15,7 +16,7 @@ launch_configs:
 # Configs build the set of rosparams that will be loaded
 configs:
   default: []
-  devel: []
+  classic: []
   prior_dsg: []
   relocalize: []
   apollo_relocalize: [relocalize]
@@ -77,13 +78,15 @@ experiments:
     launch_config: [no_relocalize, sensors]
     config: [relocalize]
 
+  # scene graphs with mesh places and dense 2d segmentation
+  spot_old:
+    launch_config: [map_old, spot_real, sensors]
+    config: [classic]
+  phoenix_old:
+    launch_config: [map_old, phoenix_real, sensors]
+    config: [classic]
+
   # development — offline/simulation experiments
-  hydra_devel:
-    launch_config: [main, hydra_instance, rviz]
-    config: [devel]
-  hydra_spot_devel:
-    launch_config: [main, hydra_instance, spot_bag, rviz]
-    config: [devel]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
     config: [prior_dsg]
