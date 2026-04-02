@@ -7,6 +7,7 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
+  spot_executor: {}
   gps_monitor:
     external_monitor: {type: GpsMonitor}
   ntrip_monitor:
@@ -22,10 +23,10 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, tx_rx_monitor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
-  config: default
-  logging_key: phoenix-default
+  config: classic
+  logging_key: spot_old-classic
 options:
   default-command: /bin/zsh
 windows:
@@ -46,8 +47,8 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_instance_segmentation:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true labelspace_name:=instance_seg
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_semantic_inference:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true
@@ -58,9 +59,14 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_fastsam:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_map:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
-  - window_name: real_phoenix
+  - window_name: real_spot
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: ["sleep 5; tmux send-keys -t real_phoenix.2 \"ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml\" C-m", "cd ${ADT4_PHX_ROOT} && phx run"]
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_executor:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_state_publisher:=true launch_spot_base_link:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_camera_driver:=true launch_spot_camera_decompression:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_livox:=true
   - window_name: sensors
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

@@ -1,0 +1,12 @@
+---
+plugins: !reset
+  mesh: {use_color_adaptor: false}
+renderer:
+  layers:
+    3p1: !reset
+      z_offset_scale: 3.0
+      visualize: true
+      nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
+      boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
+      text: {draw: true, collapse: false, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
+      edges: {scale: 0.01, alpha: 0.5, color: {type: UniformEdgeColorAdapter}}

@@ -18,27 +18,25 @@ input:
         extrinsics: {type: ros}
 active_window:
   type: ActiveWindow
-  map_window: {}
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.15, truncation_distance: 0.3, with_semantics: true}
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
   min_output_separation: 0.5
   object_detector:
-    type: InstanceForwarding
-    min_cluster_size: 30
-    min_object_volume: 0.1
+    type: ConnectedSemantics
+    min_cluster_size: 20
+    use_full_connectivity: true
+    use_3d: true
     max_range: 10.0
-    min_range: 0.05
-    instance_id: true
-    verbosity: 1
+    grid_size: 0.2
   tracker:
     type: MaxIouTracker
-    track_by: pixels
+    track_by: voxels
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
+    voxel_size: 0.2
     temporal_window: 3.0
     min_num_observations: 10
-    verbosity: 0
   object_extractor:
     type: MeshObjectExtractor
     verbosity: 0
@@ -61,6 +59,7 @@ active_window:
       use_relative_height: true
       slice_height: 0.0
       num_slices: 1
+  map_window: {type: temporal, window_sec: 3.0}
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
@@ -77,22 +76,18 @@ frontend:
       OBJECTS:
         prefix: O
         matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
-  traversability_places:
-    type: traversability
-    layer: MESH_PLACES
-    estimator:
-      type: HeightTraversabilityEstimator
-      height_below: 0
-      height_above: 0.5
-      min_confidence: 1.0
-      min_traversability: 1.0
-      pessimistic: true
-    clustering:
-      type: RegionGrowingTraversabilityClustering
-      max_radius: 4.0
-      num_orientation_bins: 20
-    sinks:
-      - type: TraversabilityVisualizer
+  surface_places:
+    type: place_2d
+    prefix: P
+    pure_final_place_size: 3
+    enable_place_purity: false
+    impure_final_place_size: 1
+    cluster_tolerance: .3
+    min_cluster_size: 50
+    max_cluster_size: 100000
+    min_final_place_points: 10
+    place_max_neighbor_z_diff: .5
+    place_overlap_threshold: 0.0
 backend:
   type: BackendModule
   enable_zmq_interface: false
@@ -106,7 +101,7 @@ backend:
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
-    traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}
+    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0
