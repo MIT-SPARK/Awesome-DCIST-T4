@@ -1,6 +1,6 @@
 paths: [khronos, khronos_ros]
 robot_id: 0
-config_verbosity: 0
+config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
