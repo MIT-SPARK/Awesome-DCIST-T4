@@ -371,7 +371,7 @@ For example, consider `base_params/spot_executor_node.yaml`:
 /**:
     ros__parameters:
         odom_frame: "map"
-        body_frame: "body"
+        body_frame: "base_link"
         use_fake_spot_pose: false
         fake_spot_external_pose: true
         spot_ip: "10.0.0.3"
