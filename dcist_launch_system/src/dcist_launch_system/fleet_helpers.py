@@ -673,11 +673,40 @@ print("OK")
 _ZENOH_TEMPLATE = pathlib.Path(__file__).resolve().parent.parent.parent / "config" / "zenoh_router_template.json5"
 
 
-def patch_zenoh_config_local(endpoints, listen_port=7447, template_path=None):
+def _find_endpoints_array(text, section_start):
+    """Find the endpoints array in a config section, returning (prefix_end, array_start, array_end).
+
+    Uses bracket-counting so `]` inside IPv6 addresses like [::] are not confused
+    with the array closing bracket.  Returns None if not found.
+    """
+    ep_prefix = re.compile(r'^(\s*endpoints\s*:\s*)\[', re.MULTILINE)
+    for m in ep_prefix.finditer(text):
+        # Skip commented-out lines
+        line_start = text.rfind('\n', 0, m.start()) + 1
+        if text[line_start:m.start()].strip().startswith('//'):
+            continue
+        # m.end() - 1 is the position of the opening '['; count until the matching ']'
+        bracket_start = m.end() - 1  # position of '['
+        depth = 0
+        for i in range(bracket_start, len(text)):
+            if text[i] == '[':
+                depth += 1
+            elif text[i] == ']':
+                depth -= 1
+                if depth == 0:
+                    # section_start offsets positions back to the full content
+                    return section_start + m.start(), section_start + m.end() - 1, section_start + i + 1
+        break  # malformed — opening bracket with no match
+    return None
+
+
+def patch_zenoh_config_local(endpoints, template_path=None):
     """Create a patched zenoh config from the bundled template.
 
-    Surgically replaces connect.endpoints and listen port, preserving all
-    ROS transport/timeout/routing settings from the template.
+    Replaces connect.endpoints, preserving all other ROS transport/timeout/
+    routing settings from the template.  The listen port is left at the
+    template default (7447) since all zenoh instances — fleet or base station
+    — share the same port.
 
     Returns the path to the temporary config file, or None on failure.
     """
@@ -694,12 +723,10 @@ def patch_zenoh_config_local(endpoints, listen_port=7447, template_path=None):
     else:
         new_array = "[]"
 
-    # Patch connect.endpoints using the same regex approach as deploy_zenoh_config
+    # Locate the connect: { ... } section
     connect_match = re.search(r'^\s*connect\s*:\s*\{', content, re.MULTILINE)
     if not connect_match:
         return None
-
-    # Find the matching closing } for the connect section
     depth = 0
     connect_end = len(content)
     for i in range(connect_match.end() - 1, len(content)):
@@ -711,55 +738,12 @@ def patch_zenoh_config_local(endpoints, listen_port=7447, template_path=None):
                 connect_end = i + 1
                 break
 
-    connect_section = content[connect_match.start():connect_end]
-
-    # Find the actual endpoints: [...] — skip comment lines
-    ep_pattern = re.compile(r'^(\s*endpoints\s*:\s*)\[(.*?)\]', re.MULTILINE | re.DOTALL)
-    ep_match = None
-    for m in ep_pattern.finditer(connect_section):
-        line_start = connect_section.rfind('\n', 0, m.start()) + 1
-        line_prefix = connect_section[line_start:m.start()].strip()
-        if line_prefix.startswith('//'):
-            continue
-        ep_match = m
-        break
-
-    if not ep_match:
+    result = _find_endpoints_array(content[connect_match.start():connect_end], connect_match.start())
+    if result is None:
         return None
-
-    abs_start = connect_match.start() + ep_match.start()
-    abs_end = connect_match.start() + ep_match.end()
-    content = content[:abs_start] + ep_match.group(1) + new_array + content[abs_end:]
-
-    # Patch listen port: replace the listen endpoints array
-    listen_match = re.search(r'^\s*listen\s*:\s*\{', content, re.MULTILINE)
-    if listen_match:
-        depth = 0
-        listen_end = len(content)
-        for i in range(listen_match.end() - 1, len(content)):
-            if content[i] == '{':
-                depth += 1
-            elif content[i] == '}':
-                depth -= 1
-                if depth == 0:
-                    listen_end = i + 1
-                    break
-
-        listen_section = content[listen_match.start():listen_end]
-        lep_match = None
-        for m in ep_pattern.finditer(listen_section):
-            line_start = listen_section.rfind('\n', 0, m.start()) + 1
-            line_prefix = listen_section[line_start:m.start()].strip()
-            if line_prefix.startswith('//'):
-                continue
-            lep_match = m
-            break
-
-        if lep_match:
-            new_listen = f'[\n      "tcp/[::]:{listen_port}"\n    ]'
-            labs_start = listen_match.start() + lep_match.start()
-            labs_end = listen_match.start() + lep_match.end()
-            content = content[:labs_start] + lep_match.group(1) + new_listen + content[labs_end:]
+    ep_prefix_start, ep_bracket_open, ep_bracket_close = result
+    prefix_text = content[ep_prefix_start:ep_bracket_open]
+    content = content[:ep_prefix_start] + prefix_text + new_array + content[ep_bracket_close:]
 
     import tempfile
     tmp = tempfile.NamedTemporaryFile(
