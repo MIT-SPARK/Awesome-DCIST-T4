@@ -1,0 +1,94 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/dev.Dockerfile
+      args:
+        BASE_IMAGE: dcist-base:latest
+    image: dcist-dev:latest
+    container_name: dcist-dev
+    runtime: nvidia
+    volumes:
+      # Bind-mount the entire workspace for live editing
+      # Relative to this file: docker/ -> awesome_dcist_t4/ -> src/ -> dcist_ws/
+      - ../../..:/root/dcist_ws
+      # Named volumes for build artifacts (isolated from host)
+      - dcist-build:/root/dcist_ws/build
+      - dcist-install:/root/dcist_ws/install
+      - dcist-log:/root/dcist_ws/log
+      # Named volume for venvs (pip installs persist across container recreate)
+      - dcist-venvs:/opt/venvs
+      # Model weights cache
+      - dcist-weights:/root/dcist_ws/weights
+      # Semantic inference models (~/.semantic_inference, lazily downloaded)
+      - dcist-semantic-models:/root/.semantic_inference
+      # X11 for rviz2/rqt GUI
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Device access for hardware (Spot, ZED, GPS)
+      - /dev:/dev
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_zenoh_cpp}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ADT4_WS=/root/dcist_ws
+      - ADT4_ENV=/opt/venvs
+      - ADT4_DLS_PKG=/root/dcist_ws/src/awesome_dcist_t4/dcist_launch_system
+      - ADT4_ROBOT_NAME=${ADT4_ROBOT_NAME:-spot}
+      - ADT4_SIM_TIME=${ADT4_SIM_TIME:-false}
+      - ADT4_OUTPUT_DIR=${ADT4_OUTPUT_DIR:-/root/dcist_ws/output}
+      - ADT4_PRIOR_MAP=${ADT4_PRIOR_MAP:-}
+      # API keys (from .env file)
+      - ADT4_OPENAI_API_KEY=${ADT4_OPENAI_API_KEY:-}
+      - ADT4_DEEPGRAM_API_KEY=${ADT4_DEEPGRAM_API_KEY:-}
+      # Spot robot
+      - ADT4_BOSDYN_USERNAME=${ADT4_BOSDYN_USERNAME:-}
+      - ADT4_BOSDYN_PASSWORD=${ADT4_BOSDYN_PASSWORD:-}
+      - ADT4_BOSDYN_IP=${ADT4_BOSDYN_IP:-}
+      # Neo4j / Heracles
+      - ADT4_HERACLES_IP=${ADT4_HERACLES_IP:-localhost}
+      - ADT4_HERACLES_PORT=${ADT4_HERACLES_PORT:-7687}
+      # NTRIP GPS
+      - ADT4_NTRIP_HOST=${ADT4_NTRIP_HOST:-}
+      - ADT4_NTRIP_PORT=${ADT4_NTRIP_PORT:-}
+      - ADT4_NTRIP_MOUNTPOINT=${ADT4_NTRIP_MOUNTPOINT:-}
+      - ADT4_NTRIP_USERNAME=${ADT4_NTRIP_USERNAME:-}
+      - ADT4_NTRIP_PASSWORD=${ADT4_NTRIP_PASSWORD:-}
+    env_file:
+      - path: .env
+        required: false
+    privileged: true
+    stdin_open: true
+    tty: true
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  neo4j:
+    image: neo4j:5.25.1
+    container_name: dcist-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4j_pw}
+    ports:
+      - "7687:7687"
+      - "7474:7474"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 3s
+
+volumes:
+  dcist-build:
+  dcist-install:
+  dcist-log:
+  dcist-venvs:
+  dcist-weights:
+  dcist-semantic-models:
+  neo4j-data:

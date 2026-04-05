@@ -1,0 +1,73 @@
+# Robot deployment stack
+# Usage: docker compose -f docker-compose.deploy.yml up -d
+#
+# Configure via .env file or environment variables.
+
+services:
+  dcist:
+    image: dcist-deploy:latest
+    container_name: dcist-robot
+    runtime: nvidia
+    network_mode: host
+    privileged: true
+    volumes:
+      # Model weights (persistent)
+      - dcist-weights:/root/dcist_ws/weights
+      - dcist-semantic-models:/root/.semantic_inference
+      # Output directory for maps/logs
+      - ${HOST_OUTPUT_DIR:-./output}:/root/dcist_ws/output
+      # Device access for hardware
+      - /dev:/dev
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_zenoh_cpp}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ADT4_ROBOT_NAME=${ADT4_ROBOT_NAME:-spot}
+      - ADT4_SIM_TIME=${ADT4_SIM_TIME:-false}
+      - ADT4_OUTPUT_DIR=/root/dcist_ws/output
+      - ADT4_PRIOR_MAP=${ADT4_PRIOR_MAP:-}
+      - ADT4_BOSDYN_USERNAME=${ADT4_BOSDYN_USERNAME}
+      - ADT4_BOSDYN_PASSWORD=${ADT4_BOSDYN_PASSWORD}
+      - ADT4_BOSDYN_IP=${ADT4_BOSDYN_IP}
+      - ADT4_OPENAI_API_KEY=${ADT4_OPENAI_API_KEY:-}
+      - ADT4_DEEPGRAM_API_KEY=${ADT4_DEEPGRAM_API_KEY:-}
+      - ADT4_HERACLES_IP=${ADT4_HERACLES_IP:-localhost}
+      - ADT4_HERACLES_PORT=${ADT4_HERACLES_PORT:-7687}
+      - ADT4_NEO4J_USERNAME=${ADT4_NEO4J_USERNAME:-neo4j}
+      - ADT4_NEO4J_PASSWORD=${ADT4_NEO4J_PASSWORD:-neo4j_pw}
+      - ADT4_NTRIP_HOST=${ADT4_NTRIP_HOST:-}
+      - ADT4_NTRIP_PORT=${ADT4_NTRIP_PORT:-2101}
+      - ADT4_NTRIP_MOUNTPOINT=${ADT4_NTRIP_MOUNTPOINT:-}
+      - ADT4_NTRIP_USERNAME=${ADT4_NTRIP_USERNAME:-}
+      - ADT4_NTRIP_PASSWORD=${ADT4_NTRIP_PASSWORD:-}
+    env_file:
+      - path: .env
+        required: false
+    stdin_open: true
+    tty: true
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  neo4j:
+    image: neo4j:5.25.1
+    container_name: dcist-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4j_pw}
+    ports:
+      - "7687:7687"
+      - "7474:7474"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+      start_period: 3s
+
+volumes:
+  dcist-weights:
+  dcist-semantic-models:
+  neo4j-data:

@@ -1,0 +1,14 @@
+# Model weights (downloaded at runtime, stored in Docker volume)
+weights/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python caches
+**/__pycache__/
+**/*.pyc
+**/*.egg-info/
