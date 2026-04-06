@@ -231,7 +231,7 @@ def _run_rsync(cmd, stream=False, timeout=3600, progress_callback=None):
 
     try:
         proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
         )
         last_line = ""
         for line in proc.stdout:
@@ -253,8 +253,7 @@ def _run_rsync(cmd, stream=False, timeout=3600, progress_callback=None):
         except subprocess.TimeoutExpired:
             proc.kill()
             return -1, "", "rsync timeout"
-        stderr = proc.stderr.read() if proc.stderr else ""
-        return proc.returncode, "", stderr
+        return proc.returncode, "", ""
     except OSError as e:
         return -1, "", str(e)
 
@@ -489,7 +488,7 @@ else:
     print('N/A')
 """
         encoded = base64.b64encode(py_script.encode()).decode()
-        args = " ".join(silvus_ips)
+        args = " ".join(shlex.quote(ip) for ip in silvus_ips)
         cmd += f"; echo '---SILVUS---'; echo '{encoded}' | base64 -d | python3 - {args}"
 
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
@@ -784,7 +783,7 @@ def send_tmux_keys(user, ip, session="adt4_system", target="core.2", keys="Enter
     """
     safe_session = shlex.quote(session)
     safe_target = shlex.quote(f"{session}:{target}")
-    cmd = f"tmux send-keys -t {safe_target} {keys}"
+    cmd = f"tmux send-keys -t {safe_target} {shlex.quote(keys)}"
     rc, stdout, err = ssh_cmd(user, ip, cmd, timeout=5)
     if rc == 0:
         return True, "Keys sent"
@@ -918,9 +917,13 @@ class NodeStatusPoller:
             pass
         # Process died — check stderr
         if self._proc:
-            _, stderr = self._proc.communicate(timeout=2)
-            if stderr and stderr.strip():
-                self._error = stderr.strip()[:500]
+            try:
+                stderr = self._proc.stderr.read() if self._proc.stderr else ""
+                self._proc.wait(timeout=2)
+                if stderr and stderr.strip():
+                    self._error = stderr.strip()[:500]
+            except Exception:
+                pass
 
 
 def get_ros_node_status(timeout=5):
@@ -1319,6 +1322,7 @@ def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
     """
     import time
 
+    server = None
     try:
         server = subprocess.Popen(
             ["iperf3", "-s", "-1", "-p", str(port)],
@@ -1398,11 +1402,12 @@ def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
     except Exception as e:
         return {"error": str(e)}
     finally:
-        try:
-            server.terminate()
-            server.wait(timeout=3)
-        except Exception:
+        if server is not None:
             try:
-                server.kill()
+                server.terminate()
+                server.wait(timeout=3)
             except Exception:
-                pass
+                try:
+                    server.kill()
+                except Exception:
+                    pass
