@@ -1116,12 +1116,84 @@ def _launch_tui(network, topology_path, output_root):
 
     # ---- Config Screen ----
 
+    class EditMachineScreen(ModalScreen):
+        """Modal dialog for editing or adding a single machine entry."""
+        AUTO_FOCUS = "Input"
+        BINDINGS = [
+            Binding("escape", "cancel", "Cancel", priority=True),
+            Binding("f5", "save", "Save [F5]", priority=True),
+        ]
+        DEFAULT_CSS = """
+        EditMachineScreen { align: center middle; }
+        EditMachineScreen > Vertical {
+            width: 60;
+            height: auto;
+            border: thick $primary;
+            background: $surface;
+            padding: 1 2;
+        }
+        EditMachineScreen Input { width: 1fr; }
+        EditMachineScreen #err_label { color: $error; }
+        """
+
+        def __init__(self, name=None, minfo=None, existing_names=None, **kwargs):
+            super().__init__(**kwargs)
+            self._name = name
+            self._minfo = minfo or {}
+            self._existing_names = existing_names or set()
+
+        def compose(self) -> ComposeResult:
+            addrs = self._minfo.get("addresses", {})
+            title = f"Editing: {self._name}" if self._name else "Add New Machine"
+            rows = [Label(f"[bold]{title}[/]")]
+            sof = {"select_on_focus": False}
+            if not self._name:
+                rows.append(Input(placeholder="Name (e.g. newton)", id="ed_name", **sof))
+            rows += [
+                Input(value=self._minfo.get("role", "robot"), placeholder="Role (robot / base_station)", id="ed_role", **sof),
+                Input(value=self._minfo.get("platform_id", ""), placeholder="Platform (e.g. smaug)", id="ed_platform", **sof),
+                Input(value=addrs.get("mit_wifi", ""), placeholder="MIT WiFi IP (e.g. 10.29.x.x)", id="ed_mit_wifi", **sof),
+                Input(value=addrs.get("silvus", ""), placeholder="Silvus IP (e.g. 192.168.100.x)", id="ed_silvus", **sof),
+                Input(value=self._minfo.get("desc", ""), placeholder="Description", id="ed_desc", **sof),
+                Label("[dim]Tab=next field  F5=save  Escape=cancel[/]"),
+                Label("", id="err_label"),
+            ]
+            yield Vertical(*rows)
+
+        def action_cancel(self):
+            self.dismiss(None)
+
+        def action_save(self):
+            err = self.query_one("#err_label", Label)
+            if self._name:
+                name = self._name
+            else:
+                name = self.query_one("#ed_name", Input).value.strip()
+                if not name:
+                    err.update("[red]Name is required.[/]")
+                    return
+                if name in self._existing_names:
+                    err.update(f"[red]'{name}' already exists.[/]")
+                    return
+            role = self.query_one("#ed_role", Input).value.strip() or "robot"
+            if role not in ("robot", "base_station"):
+                err.update("[red]Role must be 'robot' or 'base_station'.[/]")
+                return
+            self.dismiss({
+                "name": name,
+                "role": role,
+                "platform": self.query_one("#ed_platform", Input).value.strip(),
+                "desc": self.query_one("#ed_desc", Input).value.strip(),
+                "mit_wifi": self.query_one("#ed_mit_wifi", Input).value.strip(),
+                "silvus": self.query_one("#ed_silvus", Input).value.strip(),
+            })
+
     class ConfigScreen(ModalScreen):
         """Topology editor — manages machines in topology.yaml."""
         BINDINGS = [
-            Binding("escape", "dismiss_or_cancel", "Back", priority=True),
-            Binding("e", "edit_selected", "Edit [e]", priority=True),
-            Binding("enter", "edit_selected", "Edit", priority=True, show=False),
+            Binding("escape", "dismiss", "Back", priority=True),
+            Binding("e", "edit_selected", "Edit [e]"),
+            Binding("enter", "edit_selected", "Edit", show=False),
             Binding("f2", "add_machine_action", "Add [F2]", priority=True),
             Binding("f3", "recheck_action", "Recheck [F3]", priority=True),
             Binding("f4", "remove_selected", "Remove [F4]", priority=True),
@@ -1130,8 +1202,6 @@ def _launch_tui(network, topology_path, output_root):
 
         DEFAULT_CSS = """
         ConfigScreen #config_table { height: auto; max-height: 16; }
-        ConfigScreen #edit_form { height: auto; }
-        ConfigScreen #edit_form Input { max-height: 1; }
         """
 
         def compose(self) -> ComposeResult:
@@ -1141,13 +1211,11 @@ def _launch_tui(network, topology_path, output_root):
                 Rule(),
                 DataTable(id="config_table"),
                 Rule(),
-                Vertical(id="edit_form"),
                 RichLog(id="config_log", highlight=True, markup=True, max_lines=20),
             )
             yield Footer()
 
         def on_mount(self):
-            self._editing = None  # machine name being edited, or "__new__"
             table = self.query_one("#config_table", DataTable)
             table.add_column("", key="status")
             table.add_column("Name", key="name")
@@ -1160,10 +1228,6 @@ def _launch_tui(network, topology_path, output_root):
             table.cursor_type = "row"
             self._refresh_config_table()
 
-        def _get_topo_machine(self, name):
-            """Get the full topology entry for a machine."""
-            return topo.get("machines", {}).get(name, {})
-
         def _refresh_config_table(self):
             table = self.query_one("#config_table", DataTable)
             table.clear()
@@ -1171,7 +1235,6 @@ def _launch_tui(network, topology_path, output_root):
             for mname in sorted(topo_machines):
                 minfo = topo_machines[mname]
                 addrs = minfo.get("addresses", {})
-                # Online status from runtime_config if available
                 rconf = runtime_config.get(mname, {})
                 online = rconf.get("online")
                 if online:
@@ -1205,90 +1268,35 @@ def _launch_tui(network, topology_path, output_root):
             except Exception:
                 return None
 
-        def _show_edit_form(self, name=None):
-            """Show edit form for a machine. name=None means add new."""
-            form = self.query_one("#edit_form", Vertical)
-            form.remove_children()
-            self._editing = name or "__new__"
-
-            if name and name in topo.get("machines", {}):
-                minfo = topo["machines"][name]
-                addrs = minfo.get("addresses", {})
-                form.mount(Label(f"[bold]Editing: {name}[/]"))
-                form.mount(Horizontal(
-                    Label("  Role: "), Input(value=minfo.get("role", "robot"), id="ed_role"),
-                    Label("  Platform: "), Input(value=minfo.get("platform_id", ""), id="ed_platform"),
-                    Label("  Desc: "), Input(value=minfo.get("desc", ""), id="ed_desc"),
-                ))
-                form.mount(Horizontal(
-                    Label("  MIT WiFi: "), Input(value=addrs.get("mit_wifi", ""), id="ed_mit_wifi"),
-                    Label("  Silvus: "), Input(value=addrs.get("silvus", ""), id="ed_silvus"),
-                ))
-                form.mount(Label("[dim]Press F5 to save, escape to cancel edit[/]"))
-            else:
-                form.mount(Label("[bold]Add New Machine[/]"))
-                form.mount(Horizontal(
-                    Label("  Name: "), Input(placeholder="e.g. newton", id="ed_name"),
-                    Label("  Role: "), Input(value="robot", id="ed_role"),
-                    Label("  Platform: "), Input(placeholder="e.g. smaug", id="ed_platform"),
-                ))
-                form.mount(Horizontal(
-                    Label("  MIT WiFi: "), Input(placeholder="e.g. 10.29.1.50", id="ed_mit_wifi"),
-                    Label("  Silvus: "), Input(placeholder="e.g. 192.168.100.50", id="ed_silvus"),
-                    Label("  Desc: "), Input(placeholder="description", id="ed_desc"),
-                ))
-                form.mount(Label("[dim]Press F5 to save, escape to cancel[/]"))
-
-        def _apply_edit(self, log):
-            """Apply the edit form values to the topology."""
+        def _apply_result(self, result, original_name=None):
+            """Apply an EditMachineScreen result dict to topo and runtime_config."""
+            if not result:
+                return
+            log = self.query_one("#config_log", RichLog)
+            name = result["name"]
+            role = result["role"]
+            platform = result["platform"]
+            desc = result["desc"]
+            mit_wifi = result["mit_wifi"]
+            silvus = result["silvus"]
             topo_machines = topo.setdefault("machines", {})
-            if self._editing == "__new__":
-                try:
-                    name = self.query_one("#ed_name", Input).value.strip()
-                except Exception:
-                    log.write("[yellow]No name provided.[/]")
-                    return False
-                if not name:
-                    log.write("[yellow]Name is required.[/]")
-                    return False
-                if name in topo_machines:
-                    log.write(f"[yellow]{name} already exists.[/]")
-                    return False
-            else:
-                name = self._editing
-
-            role = self.query_one("#ed_role", Input).value.strip() or "robot"
-            platform = self.query_one("#ed_platform", Input).value.strip()
-            desc = self.query_one("#ed_desc", Input).value.strip()
-            mit_wifi = self.query_one("#ed_mit_wifi", Input).value.strip()
-            silvus = self.query_one("#ed_silvus", Input).value.strip()
-
-            if role not in ("robot", "base_station"):
-                log.write("[yellow]Role must be 'robot' or 'base_station'.[/]")
-                return False
-
-            # Build addresses
             addrs = {}
             if mit_wifi:
                 addrs["mit_wifi"] = mit_wifi
             if silvus:
                 addrs["silvus"] = silvus
-            # Preserve existing addresses not shown (e.g. penn_wifi)
-            if name in topo_machines:
-                old_addrs = topo_machines[name].get("addresses", {})
-                for net, ip in old_addrs.items():
+            # Preserve other networks (e.g. penn_wifi) from the original entry
+            ref_name = original_name or name
+            if ref_name in topo_machines:
+                for net, ip in topo_machines[ref_name].get("addresses", {}).items():
                     if net not in ("mit_wifi", "silvus"):
                         addrs[net] = ip
-
             entry = {"role": role, "addresses": addrs}
             if platform:
                 entry["platform_id"] = platform
             if desc:
                 entry["desc"] = desc
-
             topo_machines[name] = entry
-
-            # Update runtime_config if this machine is on the active network
             if active_network in addrs:
                 ssh_conf = topo.get("ssh", {})
                 user = ssh_conf.get("base_station_user", "rrg") if role == "base_station" else ssh_conf.get("robot_user", "swarm")
@@ -1296,36 +1304,19 @@ def _launch_tui(network, topology_path, output_root):
                     "name": name, "role": role, "ip": addrs[active_network],
                     "user": user, "desc": desc, "platform_id": platform or "",
                 }
-
             log.write(f"[green]Updated {name}[/]")
-            return True
-
-        def action_dismiss_or_cancel(self):
-            if self._editing:
-                self._editing = None
-                form = self.query_one("#edit_form", Vertical)
-                form.remove_children()
-                log = self.query_one("#config_log", RichLog)
-                log.write("[dim]Edit cancelled.[/]")
-            else:
-                self.dismiss()
-
-        def on_data_table_cursor_moved(self, event):
-            if event.data_table.id == "config_table" and self._editing and self._editing != "__new__":
-                name = self._get_selected_name()
-                if name and name != self._editing:
-                    # Auto-save current edit, switch to new machine
-                    log = self.query_one("#config_log", RichLog)
-                    self._apply_edit(log)
-                    self._show_edit_form(name)
+            self._refresh_config_table()
 
         def action_edit_selected(self):
             name = self._get_selected_name()
-            if name:
-                self._show_edit_form(name)
+            if not name:
+                return
+            minfo = topo.get("machines", {}).get(name, {})
+            self.app.push_screen(EditMachineScreen(name, minfo), lambda r: self._apply_result(r, original_name=name))
 
         def action_add_machine_action(self):
-            self._show_edit_form(None)
+            existing = set(topo.get("machines", {}).keys())
+            self.app.push_screen(EditMachineScreen(None, {}, existing_names=existing), self._apply_result)
 
         def action_remove_selected(self):
             log = self.query_one("#config_log", RichLog)
@@ -1364,24 +1355,12 @@ def _launch_tui(network, topology_path, output_root):
 
         def action_save_action(self):
             log = self.query_one("#config_log", RichLog)
-            # Apply edit form if active
-            if self._editing:
-                if not self._apply_edit(log):
-                    return
-                self._editing = None
-                form = self.query_one("#edit_form", Vertical)
-                form.remove_children()
-                self._refresh_config_table()
-
-            # Remove deleted machines
             topo_machines = topo.get("machines", {})
             for mname in list(_deleted_machines):
                 if mname in topo_machines:
                     del topo_machines[mname]
             _deleted_machines.clear()
-
             topo["machines"] = topo_machines
-
             topo_path = pathlib.Path(topology_path) if topology_path else _DEFAULT_TOPOLOGY
             try:
                 with open(topo_path, "w") as f:
