@@ -297,8 +297,14 @@ def rsync_transfer(
 
     if src_is_local or dst_is_local:
         # One endpoint is local — single SSH hop using base station's keys.
-        src_arg = (src_path if src_is_local else src_remote) + "/"
-        dst_arg = (dst_path if dst_is_local else dst_remote) + "/"
+        # Expand ~ so the subprocess gets an absolute path (shell won't do it).
+        import os
+        local_src = os.path.expanduser(src_path) if src_is_local else None
+        local_dst = os.path.expanduser(dst_path) if dst_is_local else None
+        if local_dst:
+            pathlib.Path(local_dst).mkdir(parents=True, exist_ok=True)
+        src_arg = (local_src if src_is_local else src_remote) + "/"
+        dst_arg = (local_dst if dst_is_local else dst_remote) + "/"
         cmd = ["rsync"] + rsync_flags + ["-e", ssh_opts, src_arg, dst_arg]
         rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
         if rc == 0:
