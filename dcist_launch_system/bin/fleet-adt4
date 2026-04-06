@@ -41,7 +41,6 @@ from dcist_launch_system.fleet_helpers import (
     check_zenoh_config,
     check_zenoh_port,
     check_silvus_route,
-    add_silvus_route,
     compute_robot_readiness,
     deploy_zenoh_config,
     generate_namespaced_rviz,
@@ -2139,7 +2138,6 @@ def _launch_tui(network, topology_path, output_root):
             Binding("v", "gen_rviz", "RViz Config", priority=True),
             Binding("z", "check_zenoh", "Zenoh/Radio", priority=True),
             Binding("f3", "check_silvus_routes", "Check Routes [F3]", priority=True),
-            Binding("f4", "add_silvus_routes", "Add Routes [F4]", priority=True),
             Binding("f2", "start_zenohd", "Start Zenohd [F2]", priority=True),
             Binding("w", "bandwidth_test", "Bandwidth [w]", priority=True),
         ]
@@ -2490,15 +2488,37 @@ def _launch_tui(network, topology_path, output_root):
 
             def on_done(results):
                 log.write(f"\n[bold]Silvus Management Route ({mgmt_subnet}):[/]")
+                missing = []
                 for name, m, info in sorted(results, key=lambda x: x[0]):
                     iface = info.get("silvus_iface") or "—"
                     if info.get("has_route"):
                         route = info.get("route_info", "OK")
                         log.write(f"  [green]{name:12s}[/] iface={iface}  [green]ROUTE OK[/] ({route})")
                     elif info.get("silvus_iface"):
-                        log.write(f"  [red]{name:12s}[/] iface={iface}  [red]NO ROUTE[/] — press F4 to add")
+                        log.write(f"  [red]{name:12s}[/] iface={iface}  [red]NO ROUTE[/]")
+                        missing.append((name, m, iface))
                     else:
                         log.write(f"  [dim]{name:12s}[/] [dim]No Silvus interface (no 192.168.100.x address)[/]")
+                if missing:
+                    log.write(f"\n[bold yellow]Run these commands to add missing routes:[/]")
+                    for name, m, iface in missing:
+                        if m is None:
+                            # local machine
+                            log.write(f"\n  [bold]{name}[/] (run locally):")
+                            log.write(f"    [cyan]sudo ip route add {mgmt_subnet} dev {iface}[/]")
+                            log.write(f"  [dim]To make permanent (same USB dongle):[/]")
+                            log.write(f"    [cyan]conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]")
+                            log.write(f"    [cyan]nmcli con modify \"$conn\" +ipv4.routes \"{mgmt_subnet}\"[/]")
+                            log.write(f"    [cyan]nmcli con up \"$conn\"[/]")
+                        else:
+                            user, ip = m["user"], m["ip"]
+                            log.write(f"\n  [bold]{name}[/] (SSH to {ip}):")
+                            log.write(f"    [cyan]ssh {user}@{ip} sudo ip route add {mgmt_subnet} dev {iface}[/]")
+                            log.write(f"  [dim]To make permanent (same USB dongle):[/]")
+                            log.write(f"    [cyan]ssh {user}@{ip}[/]")
+                            log.write(f"    [cyan]  conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]")
+                            log.write(f"    [cyan]  nmcli con modify \"$conn\" +ipv4.routes \"{mgmt_subnet}\"[/]")
+                            log.write(f"    [cyan]  nmcli con up \"$conn\"[/]")
 
             def bg():
                 results = do_check()
@@ -2506,41 +2526,6 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
-        def action_add_silvus_routes(self):
-            """Add Silvus management route on all machines that are missing it (requires sudo)."""
-            log = self.query_one("#monitor_log", RichLog)
-            log.write("[yellow]Adding Silvus management routes (requires sudo)...[/]")
-
-            mgmt_subnet = topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
-
-            def do_add():
-                results = []
-                # Local machine
-                ok, msg = add_silvus_route(mgmt_subnet=mgmt_subnet)
-                results.append(("LOCAL", ok, msg))
-
-                # All online machines
-                machines = [m for m in runtime_config.values() if m.get("online")]
-                for m in machines:
-                    try:
-                        ok, msg = add_silvus_route(m["user"], m["ip"], mgmt_subnet)
-                        results.append((m["name"], ok, msg))
-                    except Exception as e:
-                        results.append((m["name"], False, str(e)))
-                return results
-
-            def on_done(results):
-                log.write(f"\n[bold]Silvus Route Setup ({mgmt_subnet}):[/]")
-                for name, ok, msg in sorted(results, key=lambda x: x[0]):
-                    color = "green" if ok else "red"
-                    log.write(f"  [{color}]{name:12s}: {msg}[/{color}]")
-                log.write("[bold]Route setup complete.[/]")
-
-            def bg():
-                results = do_add()
-                self.app.call_from_thread(on_done, results)
-
-            threading.Thread(target=bg, daemon=True).start()
 
         def action_start_zenohd(self):
             """Manually start/restart the fleet-managed zenohd."""
