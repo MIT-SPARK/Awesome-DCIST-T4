@@ -21,10 +21,6 @@ cd ~/dcist_ws/src/awesome_dcist_t4/network_diagnostics
 source ~/dcist_ws/install/setup.zsh
 ./scripts/zenoh_check.sh
 
-# Start monitoring dashboard (Grafana + Prometheus)
-python3 scripts/prometheus_exporter.py &
-cd monitoring && docker compose up -d
-# Open http://localhost:3001 (admin / adt4)
 ```
 
 ## Prerequisites
@@ -32,7 +28,6 @@ cd monitoring && docker compose up -d
 - Python 3 with PyYAML (included in all ROS2 installations)
 - ROS2 workspace sourced (for Zenoh and ROS2 tools): `source ~/dcist_ws/install/setup.zsh`
 - SSH keys set up for robot/base station access (for `ssh_check.sh`)
-- Docker (for Grafana/Prometheus monitoring stack)
 - Route to Silvus management network (for `silvus_status.sh`):
   ```bash
   # Find your Silvus ethernet interface
@@ -340,66 +335,6 @@ Captures a full diagnostic snapshot to a timestamped log file for post-mortem an
 
 Output: `~/adt4_diagnostics/diag_<hostname>_<YYYYMMDD_HHMMSS>.log`
 
-### `prometheus_exporter.py` — Prometheus Metrics Exporter
-
-Zero-dependency Python HTTP server that exposes ADT4 metrics for Prometheus scraping.
-
-```bash
-# Start exporter (default port 9100, 15s scrape interval)
-python3 scripts/prometheus_exporter.py
-
-# Custom port and interval
-python3 scripts/prometheus_exporter.py --port 9200 --interval 30
-```
-
-**Exposed metrics:**
-| Metric | Type | Labels |
-|--------|------|--------|
-| `adt4_radio_battery_percent` | gauge | radio |
-| `adt4_radio_voltage_mv` | gauge | radio |
-| `adt4_radio_temperature_c` | gauge | radio |
-| `adt4_radio_mesh_nodes` | gauge | radio |
-| `adt4_radio_reachable` | gauge | radio |
-| `adt4_peer_reachable` | gauge | target, network |
-| `adt4_peer_ping_rtt_ms` | gauge | target, network |
-| `adt4_zenoh_router_running` | gauge | |
-| `adt4_zenoh_admin_reachable` | gauge | |
-| `adt4_zenoh_session_count` | gauge | |
-
-### Monitoring Stack (Grafana + Prometheus)
-
-Pre-configured Docker Compose setup with a Grafana dashboard.
-
-```bash
-# 1. Start the metrics exporter
-python3 scripts/prometheus_exporter.py &
-
-# 2. Start Grafana + Prometheus
-cd monitoring
-docker compose up -d
-
-# 3. Open Grafana
-# http://localhost:3000 (or GRAFANA_PORT if 3000 is taken)
-# Login: admin / adt4
-# Dashboard: ADT4 > ADT4 Network Overview
-```
-
-**Dashboard panels:**
-- Radio battery gauge (color-coded: green >50%, yellow >20%, red <20%)
-- Radio voltage and temperature time series
-- Radio and peer reachability status
-- Mesh node count
-- Zenoh router/admin status
-- Peer ping RTT history
-- Peer reachability table
-
-```bash
-# If port 3000 is in use:
-GRAFANA_PORT=3001 docker compose up -d
-
-# To scrape exporters on other machines, edit monitoring/prometheus.yml
-```
-
 ### ROS2 Connectivity Test (`ros_connectivity_test` package)
 
 ROS2 pub/sub heartbeat test for verifying end-to-end middleware communication.
@@ -515,21 +450,6 @@ sudo ip route add 172.20.0.0/16 dev enx306893ab9ba5
 ./scripts/silvus_status.sh status
 ```
 
-### Setting up monitoring dashboards
-
-```bash
-# Start the exporter on each machine
-python3 scripts/prometheus_exporter.py &
-
-# On the base station, start Grafana + Prometheus
-cd monitoring && docker compose up -d
-
-# Edit monitoring/prometheus.yml to add remote exporters:
-#   - targets: ["192.168.100.3:9100"]  # euclid via Silvus
-
-# Open http://<base-station-ip>:3001
-```
-
 ## Launch System Integration
 
 The connectivity pub/sub nodes are included in the `status` and `multi_status` tmux windows, so they run automatically with any experiment that includes `main`.
@@ -559,18 +479,7 @@ network_diagnostics/
 │   ├── silvus_status.sh           # Silvus radio JSON-RPC API client
 │   ├── switch_network.sh          # WiFi ↔ Silvus switching
 │   ├── link_monitor.sh            # Live ping dashboard
-│   ├── ssh_check.sh               # SSH access verification
-│   └── prometheus_exporter.py     # Prometheus metrics HTTP server
-├── monitoring/
-│   ├── docker-compose.yaml        # Grafana + Prometheus stack
-│   ├── prometheus.yml             # Prometheus scrape config
-│   ├── dashboards/
-│   │   └── adt4_overview.json     # Pre-built Grafana dashboard
-│   └── provisioning/              # Grafana auto-provisioning
-│       ├── datasources/
-│       │   └── datasource.yml
-│       └── dashboards/
-│           └── dashboards.yml
+│   └── ssh_check.sh               # SSH access verification
 ├── ros_connectivity_test/         # ROS2 heartbeat pub/sub package
 │   ├── ros_connectivity_test/
 │   │   ├── pub_node.py            # Heartbeat publisher
