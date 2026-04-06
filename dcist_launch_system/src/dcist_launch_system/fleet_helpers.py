@@ -287,17 +287,33 @@ def rsync_transfer(
     for pat in (exclude or []):
         rsync_flags += ["--exclude", pat]
 
+    ssh_opts = "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10"
     src_remote = f"{src_user}@{src_ip}:{src_path}"
     dst_remote = f"{dst_user}@{dst_ip}:{dst_path}"
 
+    local_ips = get_local_ips()
+    src_is_local = src_ip in local_ips
+    dst_is_local = dst_ip in local_ips
+
+    if src_is_local or dst_is_local:
+        # One endpoint is local — single SSH hop using base station's keys.
+        src_arg = (src_path if src_is_local else src_remote) + "/"
+        dst_arg = (dst_path if dst_is_local else dst_remote) + "/"
+        cmd = ["rsync"] + rsync_flags + ["-e", ssh_opts, src_arg, dst_arg]
+        rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
+        if rc == 0:
+            return True, "direct", out
+        return False, "direct", err.strip()
+
     if not relay:
-        # Try direct robot-to-robot
-        cmd = ["rsync"] + rsync_flags + ["-e", "ssh -A", src_remote, dst_remote]
+        # Both endpoints remote — try direct robot-to-robot with agent forwarding.
+        # BatchMode=yes ensures no password prompt; if it fails we relay instead.
+        cmd = ["rsync"] + rsync_flags + ["-e", f"{ssh_opts} -A", src_remote + "/", dst_remote + "/"]
         rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
         if rc == 0:
             return True, "direct", out
 
-    # Fallback: relay through operator
+    # Both endpoints remote and direct failed: relay through base station
     local_tmp = pathlib.Path(relay_tmp) / pathlib.Path(src_path).name
     local_tmp.mkdir(parents=True, exist_ok=True)
 
@@ -1229,4 +1245,158 @@ except Exception as e:
             "rssi": parts[3],
             "snr": parts[4],
         }
-    return {"raw": line}
+
+
+# ---- Bandwidth testing (iperf3) ----
+
+def get_local_ip_for_network(topology, network):
+    """Return the local machine's IP on the given network, or None."""
+    local_ips = get_local_ips()
+    subnet_str = topology.get("networks", {}).get(network, {}).get("subnet")
+    if not subnet_str:
+        return None
+    subnet = ipaddress.ip_network(subnet_str, strict=False)
+    for ip in local_ips:
+        try:
+            if ipaddress.ip_address(ip) in subnet:
+                return ip
+        except ValueError:
+            pass
+    return None
+
+
+def check_iperf3(user, ip):
+    """Check if iperf3 is installed on the machine.
+
+    Returns True if installed, False otherwise.
+    """
+    rc, _, _ = ssh_cmd(user, ip, "which iperf3", timeout=5)
+    return rc == 0
+
+
+_IPERF3_INTERVAL_RE = re.compile(
+    r"\[\s*\d+\]\s+([\d.]+)-([\d.]+)\s+sec\s+"   # [ 5]  0.00-1.00 sec
+    r"[\d.]+\s+\S+Bytes\s+"                        # transfer (ignored)
+    r"([\d.]+)\s+(G|M|K)?bits/sec"                 # bitrate
+    r"(?:\s+([\d]+))?"                             # optional retransmits
+)
+
+
+def _parse_iperf3_line(line):
+    """Parse one iperf3 text output line.  Returns dict or None."""
+    m = _IPERF3_INTERVAL_RE.search(line)
+    if not m:
+        return None
+    rate, unit = float(m.group(3)), m.group(4) or ""
+    mbps = rate * 1000 if unit == "G" else rate if unit == "M" else rate / 1000 if unit == "K" else rate / 1e6
+    return {
+        "t_start": float(m.group(1)),
+        "t_end": float(m.group(2)),
+        "mbps": mbps,
+        "retransmits": int(m.group(5)) if m.group(5) else None,
+        "is_summary": "sender" in line or "receiver" in line,
+        "is_receiver": "receiver" in line,
+    }
+
+
+def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
+                    interval_cb=None):
+    """Run a single iperf3 throughput test with optional per-second streaming.
+
+    Starts an iperf3 server locally (single-run mode), then opens a streaming
+    SSH connection to client_ip to run the iperf3 client with 1-second intervals.
+
+    interval_cb(t_end, mbps, retransmits) is called once per second during the
+    test (retransmits is None when not reported by iperf3).
+
+    Returns {'mbps', 'retransmits', 'duration'} or {'error': str}.
+    """
+    import time
+
+    try:
+        server = subprocess.Popen(
+            ["iperf3", "-s", "-1", "-p", str(port)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        time.sleep(0.5)
+        if server.poll() is not None:
+            err = server.stderr.read().decode(errors="replace").strip()
+            return {"error": f"iperf3 server failed to start: {err or 'unknown error'}"}
+
+        use_tunnel = False
+        if client_ip in get_local_ips():
+            iperf_cmd = f"iperf3 -c {server_ip} -p {port} -t {duration} -i 1"
+            proc = subprocess.Popen(
+                ["zsh", "-l", "-c", iperf_cmd],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+        else:
+            # Probe whether the robot can reach our iperf3 port directly.
+            # If not (e.g. MIT WiFi client isolation), tunnel through SSH so
+            # the test still runs — but flag the result as tunneled since SSH
+            # encryption will reduce measured throughput.
+            rc, _, _ = ssh_cmd(client_user, client_ip,
+                               f"nc -zw3 {server_ip} {port}", timeout=8)
+            use_tunnel = (rc != 0)
+            if use_tunnel:
+                iperf_cmd = f"iperf3 -c localhost -p {port} -t {duration} -i 1"
+                ssh_extra = ["-R", f"{port}:localhost:{port}"]
+            else:
+                iperf_cmd = f"iperf3 -c {server_ip} -p {port} -t {duration} -i 1"
+                ssh_extra = []
+            proc = subprocess.Popen(
+                [
+                    "ssh",
+                    "-o", "ConnectTimeout=10",
+                    "-o", "BatchMode=yes",
+                    "-o", "StrictHostKeyChecking=no",
+                    *ssh_extra,
+                    f"{client_user}@{client_ip}",
+                    iperf_cmd,
+                ],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+
+        final_mbps = None
+        final_retr = 0
+        final_duration = float(duration)
+
+        for line in proc.stdout:
+            parsed = _parse_iperf3_line(line)
+            if parsed is None:
+                continue
+            if parsed["is_receiver"]:
+                final_mbps = parsed["mbps"]
+                final_retr = parsed["retransmits"] or 0
+                final_duration = parsed["t_end"]
+            elif not parsed["is_summary"] and interval_cb:
+                interval_cb(parsed["t_end"], parsed["mbps"], parsed["retransmits"])
+
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+        if final_mbps is None:
+            err = proc.stderr.read().strip()
+            return {"error": err or "iperf3 produced no results"}
+
+        return {
+            "mbps": final_mbps,
+            "retransmits": final_retr,
+            "duration": final_duration,
+            "tunneled": use_tunnel,
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        try:
+            server.terminate()
+            server.wait(timeout=3)
+        except Exception:
+            try:
+                server.kill()
+            except Exception:
+                pass
