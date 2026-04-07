@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """fleet-adt4: Interactive fleet management TUI and CLI for the ADT4 multi-robot system."""
 
+import json
 import os
 import pathlib
 import shlex
@@ -50,6 +51,7 @@ from dcist_launch_system.fleet_helpers import (
     get_remote_status,
     get_ros_node_status,
     get_silvus_link_quality,
+    get_silvus_radio_details,
     NodeStatusPoller,
     hash_remote_experiment,
     patch_zenoh_config_local,
@@ -2143,6 +2145,7 @@ def _launch_tui(network, topology_path, output_root):
             Binding("v", "gen_rviz", "RViz Config", priority=True),
             Binding("z", "check_zenoh", "Zenoh/Radio", priority=True),
             Binding("f3", "check_silvus_routes", "Check Routes [F3]", priority=True),
+            Binding("f4", "silvus_detail", "Radio Detail [F4]", priority=True),
             Binding("f2", "start_zenohd", "Start Zenohd [F2]", priority=True),
             Binding("w", "bandwidth_test", "Bandwidth [w]", priority=True),
         ]
@@ -2412,6 +2415,8 @@ def _launch_tui(network, topology_path, output_root):
             zenoh_conf = topo.get("zenoh", {})
             zenoh_port = zenoh_conf.get("port", 7447)
 
+            zenoh_admin_port = zenoh_conf.get("admin_port", 8000)
+
             def do_check():
                 machines = list(runtime_config.values())
                 sys_radios = topo.get("silvus_radios", {}).get("radios", {})
@@ -2430,9 +2435,21 @@ def _launch_tui(network, topology_path, output_root):
                             pass
 
                     results.append((m, zenoh_ok, radio))
-                return results
 
-            def on_done(results):
+                # Query Zenoh admin API from background thread
+                import urllib.request as _urlreq
+                zenoh_peers = None
+                zenoh_peers_err = None
+                try:
+                    url = f"http://localhost:{zenoh_admin_port}/@/router/local/link/**"
+                    with _urlreq.urlopen(url, timeout=2) as resp:
+                        zenoh_peers = json.loads(resp.read())
+                except Exception as e:
+                    zenoh_peers_err = str(e)
+
+                return results, zenoh_peers, zenoh_peers_err
+
+            def on_done(results, zenoh_peers, zenoh_peers_err):
                 log.write(f"\n[bold]Zenoh Port {zenoh_port} Reachability:[/]")
                 for m, zenoh_ok, _ in sorted(results, key=lambda x: x[0]["name"]):
                     color = "green" if zenoh_ok else "red"
@@ -2442,6 +2459,7 @@ def _launch_tui(network, topology_path, output_root):
                 has_radio = any(r for _, _, r in results if r)
                 if has_radio:
                     log.write(f"\n[bold]Silvus Radio Link Quality:[/]")
+                    radio_assignment = []  # (machine_name, node_id)
                     for m, _, radio in sorted(results, key=lambda x: x[0]["name"]):
                         if not radio:
                             continue
@@ -2460,11 +2478,38 @@ def _launch_tui(network, topology_path, output_root):
                                 f"Bat:{bat}% Mesh:{mesh} Neighbors:{neighbors} "
                                 f"RSSI:{rssi} SNR:{snr}"
                             )
+                            nid = radio.get("node_id")
+                            if nid:
+                                radio_assignment.append((m["name"], nid))
+
+                    if radio_assignment:
+                        log.write(f"\n[bold]Radio Assignment (current):[/]")
+                        for mname, nid in radio_assignment:
+                            log.write(f"  [cyan]{mname:12s}[/] → node {nid}")
+                        log.write(f"  [dim]Press F4 to see RSSI matrix and mesh topology.[/]")
+
+                # ---- Zenoh peer browser ----
+                log.write(f"\n[bold]Zenoh Connected Peers:[/]")
+                if zenoh_peers is not None:
+                    if zenoh_peers:
+                        for zid, meta in zenoh_peers.items():
+                            whatami = meta.get("whatami", "?") if isinstance(meta, dict) else "?"
+                            short_zid = zid[:8] if len(zid) > 8 else zid
+                            log.write(f"  [green]{short_zid}[/] ({whatami})")
+                    else:
+                        log.write("  [dim]No peers connected.[/]")
+                else:
+                    err_str = zenoh_peers_err or ""
+                    if "refused" in err_str or "timed out" in err_str or "unreachable" in err_str:
+                        log.write(f"  [dim]Admin API not available — start zenohd with --rest-http-port {zenoh_admin_port}[/]")
+                    else:
+                        log.write(f"  [dim]Admin API error: {err_str[:60]}[/]")
+
                 log.write("[bold]Zenoh/radio check complete.[/]")
 
             def bg():
-                results = do_check()
-                self.app.call_from_thread(on_done, results)
+                results, zenoh_peers, zenoh_peers_err = do_check()
+                self.app.call_from_thread(on_done, results, zenoh_peers, zenoh_peers_err)
 
             threading.Thread(target=bg, daemon=True).start()
 
@@ -2531,6 +2576,113 @@ def _launch_tui(network, topology_path, output_root):
 
             threading.Thread(target=bg, daemon=True).start()
 
+        def action_silvus_detail(self):
+            """Show Silvus RSSI link quality matrix and mesh routing topology."""
+            log = self.query_one("#monitor_log", RichLog)
+            sys_radios = topo.get("silvus_radios", {}).get("radios", {})
+            if not sys_radios:
+                log.write("[yellow]No Silvus radios defined in topology.[/]")
+                return
+            log.write("[dim]Querying Silvus radios (direct HTTP)...[/]")
+
+            def do_query():
+                return get_silvus_radio_details(topo)
+
+            def on_done(details):
+                if not details:
+                    log.write("[red]No radio data returned.[/]")
+                    return
+
+                # Build node_id → radio_name reverse map
+                nid_to_name = {}
+                for rname, info in details.items():
+                    nid = info.get("node_id")
+                    if nid:
+                        nid_to_name[int(nid)] = rname
+
+                names = sorted(details.keys())
+                col_w = max(len(n) for n in names) + 2
+
+                # ---- RSSI Matrix ----
+                log.write(f"\n[bold]Silvus RSSI Link Quality:[/]")
+                header = " " * (col_w + 2) + "".join(f"{n:>{col_w}}" for n in names)
+                log.write(f"  [dim]{header}[/]")
+
+                for src in names:
+                    info = details[src]
+                    if info.get("error"):
+                        log.write(f"  [red]{src:<{col_w}}[/]  [red](unreachable: {info['error'][:40]})[/]")
+                        continue
+                    row = f"  [cyan]{src:<{col_w}}[/]"
+                    link_stats = info.get("link_stats")
+                    rssi_raw = info.get("rssi")
+                    routing_tree = [int(x) for x in (info.get("routing_tree") or [])]
+                    src_nid = info.get("node_id")
+
+                    for dst in names:
+                        if src == dst:
+                            row += f"{'---':>{col_w}}"
+                            continue
+
+                        dst_nid = details[dst].get("node_id")
+                        val = None
+
+                        # Try link_stats (keyed by node_id string)
+                        if isinstance(link_stats, dict) and dst_nid is not None:
+                            try:
+                                val = float(link_stats.get(str(dst_nid)) or link_stats.get(str(int(dst_nid))))
+                            except (TypeError, ValueError):
+                                pass
+
+                        # Fallback: rssi field (single-neighbor case)
+                        if val is None and rssi_raw and isinstance(rssi_raw, list) and len(names) == 2:
+                            try:
+                                val = float(rssi_raw[0]) / 2.0
+                            except (TypeError, ValueError):
+                                pass
+
+                        if val is not None:
+                            if val > -60:
+                                cell = f"[green]{val:.0f}dB[/]"
+                            elif val > -80:
+                                cell = f"[yellow]{val:.0f}dB[/]"
+                            else:
+                                cell = f"[red]{val:.0f}dB[/]"
+                            row += f"{cell:>{col_w}}"
+                        elif dst_nid is not None and int(dst_nid) in routing_tree:
+                            row += f"[green]{'linked':>{col_w}}[/]"
+                        else:
+                            row += f"[dim]{'?':>{col_w}}[/]"
+                    log.write(row)
+
+                # ---- Mesh Topology ----
+                log.write(f"\n[bold]Mesh Routing (per radio):[/]")
+                for rname in names:
+                    info = details[rname]
+                    if info.get("error"):
+                        continue
+                    nid = info.get("node_id", "?")
+                    tree = info.get("routing_tree") or []
+                    # Resolve node IDs to radio names where possible
+                    tree_str = ", ".join(
+                        nid_to_name.get(int(n), str(n)) for n in tree
+                    ) if tree else "—"
+                    bat = info.get("battery")
+                    bat_str = f"  bat={bat:.0f}%" if bat is not None else ""
+                    log.write(f"  [cyan]{rname}[/] (node {nid}){bat_str}: [{tree_str}]")
+
+                mgmt_subnet = topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
+                all_err = all(d.get("error") for d in details.values())
+                if all_err:
+                    log.write(f"\n[yellow]All radios unreachable — is the {mgmt_subnet} route set? (press F3)[/]")
+                else:
+                    log.write(f"\n[dim]Press 'z' to see which robot currently has each radio.[/]")
+
+            def bg():
+                result = do_query()
+                self.app.call_from_thread(on_done, result)
+
+            threading.Thread(target=bg, daemon=True).start()
 
         def action_start_zenohd(self):
             """Manually start/restart the fleet-managed zenohd."""
