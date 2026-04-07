@@ -1215,6 +1215,7 @@ try:
         {'jsonrpc':'2.0', 'method':'neighbor_list', 'id':3},
         {'jsonrpc':'2.0', 'method':'rssi', 'id':4},
         {'jsonrpc':'2.0', 'method':'snr_stats', 'id':5},
+        {'jsonrpc':'2.0', 'method':'nodeid', 'id':6},
     ]
     req = urllib.request.Request(url, data=json.dumps(batch).encode(),
                                 headers={'Content-Type':'application/json'})
@@ -1226,10 +1227,12 @@ try:
     neighbors = parsed.get(3) or []
     rssi_raw = parsed.get(4)
     snr_raw = parsed.get(5)
-    # Format: bat|mesh|neighbor_count|rssi|snr
+    nid_raw = parsed.get(6)
+    nid_str = str(nid_raw[0]) if nid_raw else 'N/A'
+    # Format: bat|mesh|neighbor_count|rssi|snr|node_id
     rssi_str = str(rssi_raw) if rssi_raw else 'N/A'
     snr_str = str(snr_raw) if snr_raw else 'N/A'
-    print(f'{bat}|{mesh}|{len(neighbors)}|{rssi_str}|{snr_str}')
+    print(f'{bat}|{mesh}|{len(neighbors)}|{rssi_str}|{snr_str}|{nid_str}')
 except Exception as e:
     print(f'ERR:{e}')
 """
@@ -1253,7 +1256,81 @@ except Exception as e:
             "neighbor_count": parts[2],
             "rssi": parts[3],
             "snr": parts[4],
+            "node_id": parts[5] if len(parts) > 5 and parts[5] not in ("N/A", "") else None,
         }
+
+
+def get_silvus_radio_details(topology):
+    """Query all Silvus radios directly via HTTP from the local machine.
+
+    Returns dict[radio_name → info] where info has:
+      node_id, mgmt_ip, battery, routing_tree, rssi, link_stats, snr_stats, error
+    Radios are labeled by their name in topology["silvus_radios"]["radios"].
+    """
+    import urllib.request as _urlreq
+
+    radios = topology.get("silvus_radios", {}).get("radios", {})
+    if not radios:
+        return {}
+
+    results = {}
+    for radio_name, radio_cfg in radios.items():
+        mgmt_ip = radio_cfg.get("mgmt_ip")
+        topo_node_id = radio_cfg.get("node_id")
+        if not mgmt_ip:
+            continue
+
+        url = f"http://{mgmt_ip}/cgi-bin/streamscape_api"
+        batch = [
+            {"jsonrpc": "2.0", "method": "nodeid",         "params": [], "id": 1},
+            {"jsonrpc": "2.0", "method": "routing_tree",   "params": [], "id": 2},
+            {"jsonrpc": "2.0", "method": "battery_percent","params": [], "id": 3},
+            {"jsonrpc": "2.0", "method": "rssi",           "params": [], "id": 4},
+            {"jsonrpc": "2.0", "method": "link_stats",     "params": [], "id": 5},
+            {"jsonrpc": "2.0", "method": "snr_stats",      "params": [], "id": 6},
+        ]
+        try:
+            req = _urlreq.Request(
+                url,
+                data=json.dumps(batch).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            with _urlreq.urlopen(req, timeout=3) as resp:
+                resp_data = json.loads(resp.read())
+            parsed = {}
+            for r in resp_data:
+                rid = r.get("id", 0)
+                parsed[rid] = r.get("result") if "error" not in r else None
+
+            nid_raw = parsed.get(1)
+            node_id = int(nid_raw[0]) if nid_raw else topo_node_id
+
+            bat_raw = parsed.get(3)
+            battery = float(bat_raw[0]) if bat_raw else None
+
+            results[radio_name] = {
+                "node_id": node_id,
+                "mgmt_ip": mgmt_ip,
+                "battery": battery,
+                "routing_tree": [int(x) for x in (parsed.get(2) or [])],
+                "rssi": parsed.get(4),
+                "link_stats": parsed.get(5),
+                "snr_stats": parsed.get(6),
+                "error": None,
+            }
+        except Exception as e:
+            results[radio_name] = {
+                "node_id": topo_node_id,
+                "mgmt_ip": mgmt_ip,
+                "battery": None,
+                "routing_tree": [],
+                "rssi": None,
+                "link_stats": None,
+                "snr_stats": None,
+                "error": str(e),
+            }
+
+    return results
 
 
 # ---- Bandwidth testing (iperf3) ----
