@@ -285,7 +285,17 @@ silvus_radios:
 
 ### Network auto-detection
 
-On startup, `fleet-adt4` checks the local machine's IP addresses against the subnet defined for each network. The first match becomes the `active_network`. You can override this with `--network <name>`.
+On startup, `fleet-adt4` checks the local machine's IP addresses against the subnets defined in `topology.yaml`. Networks are checked in the order they appear in the file — the first matching network becomes the `active_network`. With the default topology, the priority is: **mit_wifi → penn_wifi → silvus**. If you're connected to both MIT WiFi and Silvus at the same time, MIT WiFi will be selected.
+
+Override with `--network <name>` to force a specific network:
+```bash
+fleet-adt4 --network silvus
+```
+
+To use a different topology file:
+```bash
+fleet-adt4 --topology /path/to/topology.yaml
+```
 
 ---
 

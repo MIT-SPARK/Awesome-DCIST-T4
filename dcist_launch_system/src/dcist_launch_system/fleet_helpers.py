@@ -1026,12 +1026,27 @@ def compute_robot_readiness(nodes):
 
 # Topics in dcist.rviz that need robot namespace prefixing.
 # These are relative topics (no leading /) that appear in the rviz config.
-_RVIZ_TOPICS_TO_NAMESPACE = [
-    "hydra_visualizer/graph",
-    "hydra_multi_visualizer/graph",
-    "frontright/semantic_overlay/image_raw",
-    "robot_description",
-]
+_RVIZ_TOPICS_CONFIG = (
+    pathlib.Path(__file__).resolve().parents[3]
+    / "dcist_launch_system"
+    / "config"
+    / "rviz_topics.yaml"
+)
+
+def _load_rviz_topics():
+    try:
+        import yaml as _yaml
+        with open(_RVIZ_TOPICS_CONFIG) as f:
+            return _yaml.safe_load(f).get("namespace_topics", [])
+    except Exception:
+        return [
+            "hydra_visualizer/graph",
+            "hydra_multi_visualizer/graph",
+            "frontright/semantic_overlay/image_raw",
+            "robot_description",
+        ]
+
+_RVIZ_TOPICS_TO_NAMESPACE = _load_rviz_topics()
 
 _DEFAULT_RVIZ_TEMPLATE = (
     pathlib.Path(__file__).resolve().parents[3]
