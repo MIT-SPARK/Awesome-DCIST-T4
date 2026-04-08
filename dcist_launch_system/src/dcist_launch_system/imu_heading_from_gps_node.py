@@ -51,8 +51,8 @@ class GpsHeadingNode(Node):
     def __init__(self):
         super().__init__("gps_heading_node")
 
-        self.declare_parameter("min_displacement_m", -1)
-        self.declare_parameter("publish_rate", -1)
+        self.declare_parameter("min_displacement_m", -1.0)
+        self.declare_parameter("publish_rate", -1.0)
         self.declare_parameter("imu_frame", "")
 
         self.min_disp = self.get_parameter("min_displacement_m").value
