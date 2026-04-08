@@ -2,7 +2,7 @@ visualizer_frame: $<var robot_name>/map
 graph: {type: GraphFromRos}
 plugins:
   mesh: {use_color_adaptor: false}
-  traversability: {type: TraversabilityPlugin}
+  traversability: {type: TraversabilityPlugin, layer: MESH_PLACES}
 renderer:
   layer_z_step: 2.0
   collapse_layers: false
