@@ -410,12 +410,19 @@ launch:
 
   # gps
   - arg: {name: launch_gps, default: 'false'}
-  - group:
-      - set_remap: {from: ublox_gps_node/fix, to: fix}
-      - set_remap: {from: /rtcm, to: rtcm}
-      - include:
-          if: $(var launch_gps)
-          file: $(find-pkg-share gps_dcist)/launch/ublox.launch.py
+  - node:
+      if: $(var launch_gps)
+      pkg: ublox_gps
+      exec: ublox_gps_node
+      name: ublox_gps_node
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/gps.yaml, allow_substs: true}
+      remap:
+        - from: ublox_gps_node/fix
+          to: fix
+        - from: /rtcm
+          to: rtcm
 
   # ntrip
   - arg: {name: launch_ntrip, default: 'false'}
