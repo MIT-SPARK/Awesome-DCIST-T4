@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
     odom_frame: $(var robot_name)/odom
-    body_frame: $(var robot_name)/base_link
+    body_frame: $(var robot_name)/body
     output_dir: $(env ADT4_OUTPUT_DIR)/spot_executor
     spot_ip: $(env ADT4_BOSDYN_IP)
     bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
     bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
-    mid_level_planner_type: astar
+    mid_level_planner_type: identity
     occupancy_inflation_radius: 0.2
     use_cost_map: true
     cost_map_safe_distance: 1.0
@@ -23,4 +23,4 @@
     fake_spot_yaw: 0.01
     follower_lookahead: 2.1
     goal_tolerance: 2.8
-    detector_model_path: $(env ADT4_WS)/weights/yolov8s-world.pt
+    detector_model_path: $(env ADT4_WS)/weights/yoloe-26m-seg.pt
