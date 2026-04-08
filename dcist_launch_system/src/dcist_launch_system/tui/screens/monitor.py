@@ -91,6 +91,7 @@ class MonitorScreen(ModalScreen):
         """Build a Rich Table from system status results."""
         t = Table(box=None, expand=True, pad_edge=False)
         t.add_column("Machine", no_wrap=True, min_width=8)
+        t.add_column("IP", no_wrap=True, max_width=16)
         t.add_column("Tmux", no_wrap=False, max_width=20)
         t.add_column("ROS2", no_wrap=True, max_width=5)
         t.add_column("Load 1/5/15m", no_wrap=False, max_width=16)
@@ -101,11 +102,13 @@ class MonitorScreen(ModalScreen):
         t.add_column("Radio", no_wrap=True, max_width=14)
         if results:
             for m, st in sorted(results, key=lambda x: x[0]["name"]):
+                ip = m.get("ip", "")
                 if isinstance(st, Exception):
-                    t.add_row(m["name"], str(st), "", "", "", "", "", "", "")
+                    t.add_row(m["name"], ip, str(st), "", "", "", "", "", "", "")
                 else:
                     t.add_row(
                         m["name"],
+                        ip,
                         st["tmux_sessions"],
                         st["ros2_procs"],
                         st["load"],
