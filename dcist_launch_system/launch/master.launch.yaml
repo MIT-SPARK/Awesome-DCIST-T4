@@ -437,3 +437,55 @@ launch:
           pkg: tx_rx_monitor_dcist
           exec: tx_rx_monitor_node
           name: tx_rx_monitor_node
+
+  - arg: {name: launch_ekf_global, default: 'false'}
+  - node:
+      if: $(var launch_ekf_global)
+      pkg: robot_localization
+      exec: ekf_node
+      name: ekf_global
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ekf_global_node.yaml, allow_substs: true}
+      remap:
+        - from: raw_odom_in
+          to: odom
+        - from: gps_odom_in
+          to: odometry/gps
+
+  - arg: {name: launch_navsat_transform, default: 'false'}
+  - node:
+      if: $(var launch_navsat_transform)
+      pkg: robot_localization
+      exec: navsat_transform_node
+      name: navsat_transform
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/navsat_transform_node.yaml, allow_substs: true}
+      remap:
+        - from: gps/fix
+          to: fix
+        - from: imu
+          to: imu_heading_from_gps_node/fake_imu_out
+
+  - arg: {name: launch_fake_imu_calculator, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_fake_imu_calculator)
+      pkg: dcist_launch_system
+      exec: imu_heading_from_gps_node
+      name: imu_heading_from_gps_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/imu_heading_from_gps_node.yaml, allow_substs: true}
+      remap:
+        - {from: ~/gps_in, to: fix}
+        - {from: ~/odom_in, to: odom}
+
+
+  - arg: {name: launch_static_body_to_gps, default: 'false'}
+  - node:
+      if: $(var launch_static_body_to_gps)
+      pkg: tf2_ros
+      exec: static_transform_publisher
+      args: --frame-id $(var robot_name)/body --child-frame-id gps --x 0 --y 0 --yaw 0

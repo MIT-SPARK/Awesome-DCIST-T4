@@ -1,0 +1,6 @@
+---
+/**:
+  ros__parameters:
+    min_displacement_m: 5.0
+    publish_rate: 20.0
+    imu_frame: $(var robot_name)/body
