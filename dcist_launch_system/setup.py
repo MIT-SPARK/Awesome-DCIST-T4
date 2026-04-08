@@ -63,6 +63,7 @@ setup(
             "record_topics = dcist_launch_system.record_topics:main",
             "static_tf_from_json = dcist_launch_system.static_tf_from_json:main",
             "run_offline_fusion = dcist_launch_system.run_offline_fusion:main",
+            "imu_heading_from_gps_node = dcist_launch_system.imu_heading_from_gps_node:main",
         ],
     },
 )

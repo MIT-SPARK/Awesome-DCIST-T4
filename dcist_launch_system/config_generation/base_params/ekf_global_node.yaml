@@ -1,0 +1,43 @@
+---
+/**:
+  ros__parameters:
+
+    # debug: true
+    # debug_out_file: /home/ubuntu/gps_debug.txt
+    frequency: 30.0
+    two_d_mode: true
+    publish_tf: true
+
+    # This configuration is for "we just want to think about one single frame
+    # (no difference between map and odom), and we have enough GPS + low enough
+    # estimation error to fuse everything in a single EKF with a single frame
+    # map_frame: $(var robot_name)/map
+    odom_frame: $(var robot_name)/odom
+    base_link_frame: $(var robot_name)/body
+    world_frame: $(var robot_name)/odom
+    map_frame: euclid/map
+
+    odom0: raw_odom_in
+    # From Spot odom we take: x, y, yaw, vx, vy, yawrate
+    odom0_config: [true, true, false,
+                   false, false, true,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    odom0_differential: false
+    odom0_relative: false
+    odom0_queue_size: 10
+
+    # --- GPS-derived position (from navsat_transform_node) ---
+    odom1: gps_odom_in
+
+    # From the GPS-based measurements (laundered through an odometry message)
+    # we just take x and y
+    odom1_config: [true,  true,  false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    odom1_differential: false
+    odom1_relative: false
+    odom1_queue_size: 10
