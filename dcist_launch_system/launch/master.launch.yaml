@@ -50,6 +50,8 @@ launch:
         - {from: color/image_raw, to: rgb/image_rect_color}
         # hard-coded top level namespace because of extra camera node namespace
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
+        # hard-coded top level name to avoid extra $(var robot_name)_zed topic
+        - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
       args: >
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
         --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
@@ -75,6 +77,8 @@ launch:
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
+        # hard-coded top level name to avoid extra $(var robot_name)_zed topic
+        - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
@@ -112,8 +116,6 @@ launch:
       args: >
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer.yaml
-        --config-utilities-file $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml
-        --config-utilities-file $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
   # Hydra-Multi

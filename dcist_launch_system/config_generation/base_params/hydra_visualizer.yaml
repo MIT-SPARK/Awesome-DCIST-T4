@@ -2,8 +2,11 @@
 visualizer_frame: $<var robot_name>/map
 graph: {type: GraphFromRos}
 plugins:
-  mesh: {use_color_adaptor: false}
-  traversability: {type: TraversabilityPlugin}
+  mesh:  # NOTE(nathan) technically this doesn't get used
+    type: MeshPlugin
+    use_color_adaptor: false
+    coloring:
+      type: SemanticMeshColoring
 renderer:
   layer_z_step: 2.0
   collapse_layers: false
@@ -29,11 +32,14 @@ renderer:
     3p1:
       z_offset_scale: 2.0
       visualize: true
-      nodes: {scale: 0.2, color: {type: LabelColorAdapter}, alpha: 0.9, use_sphere: true}
-      boundaries: {draw: true, collapse: false, wireframe_scale: 0.1, use_node_color: true, alpha: 1.0}
-      text: {draw: false, collapse: true, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
-      edges: {scale: 0.1, alpha: 0.8, color: {type: TraversabilityEdgeColorAdapter}}
+      nodes: {scale: 0.2, color: {type: UniformColorAdapter, color: [0, 0, 0]}, alpha: 0.9, use_sphere: true}
+      text: {draw: true, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
+      edges: {scale: 0.1, alpha: 0.8, color: {type: UniformColorAdapter, color: [0, 0, 0]}}
   interlayer_edges:
     - {from: 3*, to: 2p*, draw: false}
     - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
     - {from: 4, to: 3*, scale: 0.08, alpha: 0.5}
+  layer_plugins:
+    - layer: 3p1
+      plugins:
+        - {type: RegionGrowingBoundaryPlugin}
