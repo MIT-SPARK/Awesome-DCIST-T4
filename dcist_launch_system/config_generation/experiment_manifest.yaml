@@ -58,6 +58,10 @@ experiments:
     launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]
 
+  spot_adsg:
+    launch_config: [map, spot_adsg_real, sensors]
+    config: [default]
+
   # phoenix — require Phoenix hardware or bag playback
   phoenix:
     launch_config: [map, phoenix_real, sensors]
