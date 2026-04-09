@@ -46,6 +46,8 @@ from dcist_launch_system.fleet_helpers import (
     run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
+from dcist_launch_system.tui.screens.transfer import TransferScreen
+from dcist_launch_system.tui.screens.verify import VerifyScreen
 
 class PriorMapSelector(Vertical):
     """Reusable widget for browsing and selecting prior maps from fleet nodes.
