@@ -211,6 +211,19 @@ launch:
         - {from: ~/joint_states, to: joint_states}
         - {from: ~/occupancy_grid, to: hydra/tsdf/occupancy}
 
+  # Spot twist receiver
+  - arg: {name: launch_spot_twist_node, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_spot_twist_node)
+      pkg: spot_tools_ros
+      exec: spot_twist_node
+      name: spot_twist_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_twist_node.yaml, allow_substs: true}
+
+
   # Spot state publisher
   - arg: {name: launch_spot_state_publisher, default: 'false'}
   - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}

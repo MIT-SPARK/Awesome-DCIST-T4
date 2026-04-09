@@ -1,0 +1,6 @@
+---
+/**:
+  ros__parameters:
+    spot_ip: $(env ADT4_BOSDYN_IP)
+    bosdyn_client_username: $(env ADT4_BOSDYN_USERNAME)
+    bosdyn_client_password: $(env ADT4_BOSDYN_PASSWORD)
