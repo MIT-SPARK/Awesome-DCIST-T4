@@ -11,6 +11,7 @@ from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
+    Checkbox,
     Footer,
     Input,
     Label,
@@ -194,6 +195,7 @@ class LaunchScreen(ModalScreen):
                 "Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"
             ),
             Input(placeholder="date_description", id="experiment_input"),
+            Checkbox("Record topics (--record)", id="record_checkbox"),
             Rule(),
             PriorMapSelector(self.ctx, id="launch_prior_selector"),
             Rule(),
@@ -427,6 +429,9 @@ class LaunchScreen(ModalScreen):
         else:
             prior_paths = {rname: prior_path for rname in selected}
 
+        record = self.query_one("#record_checkbox", Checkbox).value
+        record_flag = " -r" if record else ""
+
         cmds = []
         for rname in selected:
             m = self.ctx.runtime_config[rname]
@@ -438,7 +443,7 @@ class LaunchScreen(ModalScreen):
                 f"src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                 f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
                 f"-c {shlex.quote(m['platform_id'])} "
-                f"-o {_quote_path(out_dir)} -y{prior_flag} "
+                f"-o {_quote_path(out_dir)} -y{prior_flag}{record_flag} "
                 f'--tmuxp-args "-d"'
             )
             cmds.append((m, remote_cmd))
