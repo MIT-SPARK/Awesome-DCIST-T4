@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    publish_rate_hz: 1.0
+    silent_threshold_sec: 5.0
+    report_rate_hz: 0.5
