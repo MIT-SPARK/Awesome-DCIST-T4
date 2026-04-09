@@ -428,11 +428,34 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     return hashes
 
 
-def get_remote_status(user, ip, silvus_ips=None):
+def get_remote_status(user, ip, silvus_ips=None, platform_type=None):
     """Get system status from a remote machine.
 
     Returns dict with keys: tmux_sessions, ros2_procs, load, disk, radio.
+    platform_type: if "spot", queries Spot robot battery via ROS 2 topic instead of sysfs.
     """
+    # Spot robots don't expose battery via /sys/class/power_supply; query the ROS 2 topic.
+    if platform_type == "spot":
+        bat_cmd = (
+            "echo '---BAT---'; "
+            "(source /opt/ros/humble/setup.bash 2>/dev/null; "
+            "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
+            "timeout 4 ros2 topic echo /spot/status/battery_states --once "
+            "--no-daemon 2>/dev/null | "
+            r"python3 -c \""
+            r"import sys,re; d=sys.stdin.read(); "
+            r"m=re.search(r'charge_percentage: ([0-9.]+)', d); "
+            r"print(str(int(float(m.group(1))*100))+'%' if m else 'N/A')"
+            r"\" 2>/dev/null) || echo 'N/A'"
+        )
+    else:
+        bat_cmd = (
+            "echo '---BAT---'; "
+            "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null "
+            "&& cat /sys/class/power_supply/BAT*/status 2>/dev/null "
+            "|| echo 'N/A'"
+        )
+
     cmd = (
         "echo '---TMUX---'; tmux list-sessions 2>/dev/null || echo 'none'; "
         "echo '---ROS2---'; pgrep -c -f 'ros2|zenoh' 2>/dev/null || echo '0'; "
@@ -440,7 +463,7 @@ def get_remote_status(user, ip, silvus_ips=None):
         "echo '---MEM---'; free -h 2>/dev/null | awk '/^Mem:/{print $3 \"/\" $2}' || echo 'N/A'; "
         "echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 || echo 'N/A'; "
         "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'; "
-        "echo '---BAT---'; cat /sys/class/power_supply/BAT*/capacity 2>/dev/null && cat /sys/class/power_supply/BAT*/status 2>/dev/null || echo 'N/A'"
+        + bat_cmd
     )
 
     if silvus_ips:

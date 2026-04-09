@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import shlex
+import subprocess
 import threading
 
 from textual.app import ComposeResult
@@ -23,6 +24,9 @@ from textual.widgets import (
 )
 from dcist_launch_system.fleet_helpers import (
     _quote_path,
+    _STATUS_COLORS,
+    _STATUS_NAMES,
+    _STATUS_NOMINAL,
     check_silvus_route,
     check_zenoh_config,
     check_zenoh_port,
@@ -31,6 +35,7 @@ from dcist_launch_system.fleet_helpers import (
     filter_reachable,
     generate_namespaced_rviz,
     generate_zenoh_endpoints,
+    get_local_ip_for_network,
     get_remote_status,
     get_ros_node_status,
     get_silvus_link_quality,
@@ -46,6 +51,7 @@ from dcist_launch_system.fleet_helpers import (
     run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
+from dcist_launch_system.tui.screens.bandwidth import BandwidthSelectScreen
 
 import json
 
@@ -150,7 +156,11 @@ class MonitorScreen(ModalScreen):
             silvus_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
 
             def fetch(m):
-                return get_remote_status(m["user"], m["ip"], silvus_ips=silvus_ips)
+                return get_remote_status(
+                    m["user"], m["ip"],
+                    silvus_ips=silvus_ips,
+                    platform_type=m.get("platform_type"),
+                )
 
             return run_parallel(fetch, machines)
 
@@ -617,7 +627,7 @@ class MonitorScreen(ModalScreen):
         system_zenohd = subprocess.run(
             ["pgrep", "-f", "rmw_zenohd"], capture_output=True
         ).returncode == 0
-        fleet_zenohd = _fleet_zenoh["proc"] and _fleet_zenoh["proc"].poll() is None
+        fleet_zenohd = self.ctx._fleet_zenoh["proc"] and self.ctx._fleet_zenoh["proc"].poll() is None
 
         if system_zenohd and not fleet_zenohd:
             log.write("[green]Base station zenohd is running on port 7447 — using it for ROS monitoring.[/]")
