@@ -1,54 +1,29 @@
 """Bandwidth test selection screen."""
+
 from __future__ import annotations
 
-import shlex
 import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
-    DataTable,
-    Footer,
-    Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
     SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
-    deploy_zenoh_config,
-    filter_reachable,
-    generate_namespaced_rviz,
-    generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
-    run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
     check_iperf3,
     run_iperf3_test,
 )
-from dcist_launch_system.tui.context import TuiContext
+
 
 class BandwidthSelectScreen(ModalScreen):
     """Select robots, run iperf3 tests with live progress, dismiss with results."""
+
     AUTO_FOCUS = "SelectionList"
     BINDINGS = [
         Binding("escape", "close", "Cancel/Close", priority=True),
@@ -104,7 +79,9 @@ class BandwidthSelectScreen(ModalScreen):
         hint.update("[dim]Escape to close when finished[/]")
         plog = self.query_one("#bw_progress", RichLog)
         plog.display = True
-        plog.write(f"[dim]Server: {self._server_ip}  →  {', '.join(m['name'] for m in chosen)}[/]")
+        plog.write(
+            f"[dim]Server: {self._server_ip}  →  {', '.join(m['name'] for m in chosen)}[/]"
+        )
 
         def emit(r):
             name = r.get("name", "?")
@@ -113,7 +90,11 @@ class BandwidthSelectScreen(ModalScreen):
             else:
                 mbps = r.get("mbps", 0)
                 color = "green" if mbps > 10 else "yellow" if mbps > 1 else "red"
-                tunnel_warn = "  [yellow](via SSH tunnel — direct port blocked)[/]" if r.get("tunneled") else ""
+                tunnel_warn = (
+                    "  [yellow](via SSH tunnel — direct port blocked)[/]"
+                    if r.get("tunneled")
+                    else ""
+                )
                 plog.write(
                     f"[{color}]{name}: {mbps:.1f} Mbps[/]"
                     f"  retransmits={r.get('retransmits', 0)}"
@@ -133,15 +114,21 @@ class BandwidthSelectScreen(ModalScreen):
                 if not check_iperf3(m["user"], m["ip"]):
                     r = {"name": name, "error": "iperf3 not installed"}
                 else:
+
                     def on_interval(t_end, mbps, retransmits, _name=name):
-                        color = "green" if mbps > 10 else "yellow" if mbps > 1 else "red"
+                        color = (
+                            "green" if mbps > 10 else "yellow" if mbps > 1 else "red"
+                        )
                         retr = f"  retr={retransmits}" if retransmits else ""
                         self.app.call_from_thread(
                             plog.write,
                             f"  [{color}]{t_end:.0f}s  {mbps:.0f} Mbits/sec{retr}[/]",
                         )
+
                     r = run_iperf3_test(
-                        self._server_ip, m["user"], m["ip"],
+                        self._server_ip,
+                        m["user"],
+                        m["ip"],
                         interval_cb=on_interval,
                     )
                     r["name"] = name
@@ -150,5 +137,5 @@ class BandwidthSelectScreen(ModalScreen):
 
         threading.Thread(target=bg, daemon=True).start()
 
-# ---- Monitor Screen ----
 
+# ---- Monitor Screen ----

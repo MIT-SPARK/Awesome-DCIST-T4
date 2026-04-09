@@ -1,53 +1,30 @@
 """Maps browser screen + PriorMapSelector widget."""
+
 from __future__ import annotations
 
-import shlex
 import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
-    DataTable,
     Footer,
     Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
-    SelectionList,
-    Static,
     Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
-    deploy_zenoh_config,
-    filter_reachable,
-    generate_namespaced_rviz,
-    generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
     list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
     run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
 from dcist_launch_system.tui.screens.transfer import TransferScreen
 from dcist_launch_system.tui.screens.verify import VerifyScreen
+
 
 class PriorMapSelector(Vertical):
     """Reusable widget for browsing and selecting prior maps from fleet nodes.
@@ -55,6 +32,7 @@ class PriorMapSelector(Vertical):
     Uses the same Tree-based approach as MapsScreen. Click an experiment
     to select it. Experiments with both hydra + roman are marked with a green check.
     """
+
     def __init__(self, ctx: TuiContext, **kwargs):
         super().__init__(**kwargs)
         self.ctx = ctx
@@ -63,7 +41,9 @@ class PriorMapSelector(Vertical):
         yield Label("Prior map (click to select, or type custom path):")
         yield Input(placeholder="Filter experiments...", id="prior_search")
         yield Tree("Fleet Experiments", id="prior_tree")
-        yield Input(placeholder="(optional) custom: machine:~/adt4_output/exp", id="prior_input")
+        yield Input(
+            placeholder="(optional) custom: machine:~/adt4_output/exp", id="prior_input"
+        )
 
     def on_mount(self):
         self._selected_path = ""
@@ -80,11 +60,14 @@ class PriorMapSelector(Vertical):
             pass
 
     def refresh_priors(self, log_widget=None):
-
         def do_fetch():
-            machines = [m for m in self.ctx.runtime_config.values() if m.get("online", False)]
+            machines = [
+                m for m in self.ctx.runtime_config.values() if m.get("online", False)
+            ]
+
             def fetch(m):
                 return list_remote_experiments(m["user"], m["ip"], self.ctx.output_root)
+
             return run_parallel(fetch, machines)
 
         def on_done(results):
@@ -95,8 +78,7 @@ class PriorMapSelector(Vertical):
                 pass
             if log_widget:
                 total = sum(
-                    len(exps) for _, exps in results
-                    if not isinstance(exps, Exception)
+                    len(exps) for _, exps in results if not isinstance(exps, Exception)
                 )
                 log_widget.write(f"[green]Found {total} experiments across fleet.[/]")
 
@@ -117,10 +99,15 @@ class PriorMapSelector(Vertical):
                 node = tree.root.add(m["name"], expand=True)
                 node.add_leaf(f"[red]Error: {exps}[/]")
                 continue
-            filtered = [
-                e for e in sorted(exps, key=lambda e: e["name"])
-                if self.ctx.fuzzy_match(query, e["name"])
-            ] if query else sorted(exps, key=lambda e: e["name"])
+            filtered = (
+                [
+                    e
+                    for e in sorted(exps, key=lambda e: e["name"])
+                    if self.ctx.fuzzy_match(query, e["name"])
+                ]
+                if query
+                else sorted(exps, key=lambda e: e["name"])
+            )
             if not filtered and query:
                 continue
             node = tree.root.add(m["name"], expand=True)
@@ -163,7 +150,6 @@ class PriorMapSelector(Vertical):
         return "", None
 
 
-
 class MapsScreen(ModalScreen):
     BINDINGS = [
         Binding("escape", "dismiss", "Back", priority=True),
@@ -203,7 +189,9 @@ class MapsScreen(ModalScreen):
         log.write("[dim]Fetching experiments from fleet...[/]")
 
         def do_fetch():
-            machines = [m for m in self.ctx.runtime_config.values() if m.get("online", False)]
+            machines = [
+                m for m in self.ctx.runtime_config.values() if m.get("online", False)
+            ]
 
             def fetch(m):
                 return list_remote_experiments(m["user"], m["ip"], self.ctx.output_root)
@@ -231,10 +219,15 @@ class MapsScreen(ModalScreen):
                 node.data = {"machine": m["name"]}
                 node.add_leaf(f"[red]Error: {exps}[/]")
                 continue
-            filtered = [
-                e for e in sorted(exps, key=lambda e: e["name"])
-                if self.ctx.fuzzy_match(query, e["name"])
-            ] if query else sorted(exps, key=lambda e: e["name"])
+            filtered = (
+                [
+                    e
+                    for e in sorted(exps, key=lambda e: e["name"])
+                    if self.ctx.fuzzy_match(query, e["name"])
+                ]
+                if query
+                else sorted(exps, key=lambda e: e["name"])
+            )
             if not filtered and query:
                 continue  # hide machines with no matches
             node = tree.root.add(m["name"], expand=True)
@@ -267,7 +260,9 @@ class MapsScreen(ModalScreen):
 
     def action_transfer_selected(self):
         if not self.selected_experiment:
-            self.query_one("#map_log", RichLog).write("[yellow]Select an experiment first.[/]")
+            self.query_one("#map_log", RichLog).write(
+                "[yellow]Select an experiment first.[/]"
+            )
             return
         self.app.push_screen(
             TransferScreen(self.ctx, self.selected_machine, self.selected_experiment)
@@ -275,8 +270,11 @@ class MapsScreen(ModalScreen):
 
     def action_verify_selected(self):
         if not self.selected_experiment:
-            self.query_one("#map_log", RichLog).write("[yellow]Select an experiment first.[/]")
+            self.query_one("#map_log", RichLog).write(
+                "[yellow]Select an experiment first.[/]"
+            )
             return
         self.app.push_screen(VerifyScreen(self.ctx, self.selected_experiment))
+
 
 # ---- Transfer Screen ----

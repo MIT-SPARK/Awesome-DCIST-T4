@@ -44,43 +44,44 @@ class SourceTracker:
 
     def percentiles(self):
         if not self.latencies:
-            return {'p50': 0.0, 'p95': 0.0, 'p99': 0.0, 'max': 0.0, 'min': 0.0}
+            return {"p50": 0.0, "p95": 0.0, "p99": 0.0, "max": 0.0, "min": 0.0}
         s = sorted(self.latencies)
         n = len(s)
         return {
-            'p50': s[n // 2],
-            'p95': s[min(int(n * 0.95), n - 1)],
-            'p99': s[min(int(n * 0.99), n - 1)],
-            'max': s[-1],
-            'min': s[0],
+            "p50": s[n // 2],
+            "p95": s[min(int(n * 0.95), n - 1)],
+            "p99": s[min(int(n * 0.99), n - 1)],
+            "max": s[-1],
+            "min": s[0],
         }
 
 
 class ConnectivitySubNode(Node):
-
     def __init__(self):
-        super().__init__('connectivity_sub')
+        super().__init__("connectivity_sub")
         self.declare_parameters(
-            namespace='',
+            namespace="",
             parameters=[
-                ('silent_threshold_sec', 5.0),
-                ('report_rate_hz', 0.5),
-            ]
+                ("silent_threshold_sec", 5.0),
+                ("report_rate_hz", 0.5),
+            ],
         )
 
-        self.silent_threshold = self.get_parameter(
-            'silent_threshold_sec'
-        ).get_parameter_value().double_value
-        report_rate = self.get_parameter(
-            'report_rate_hz'
-        ).get_parameter_value().double_value
+        self.silent_threshold = (
+            self.get_parameter("silent_threshold_sec")
+            .get_parameter_value()
+            .double_value
+        )
+        report_rate = (
+            self.get_parameter("report_rate_hz").get_parameter_value().double_value
+        )
 
-        self.robot_name = os.environ.get('ADT4_ROBOT_NAME', os.uname().nodename)
+        self.robot_name = os.environ.get("ADT4_ROBOT_NAME", os.uname().nodename)
         self.sources = {}
 
         self.status_pub = self.create_publisher(
             String,
-            '/connectivity_test/status',
+            "/connectivity_test/status",
             qos_profile=QoSProfile(depth=10),
         )
 
@@ -91,12 +92,17 @@ class ConnectivitySubNode(Node):
         self.create_timer(2.0, self.discover_topics)
         self.create_timer(1.0 / report_rate, self.report_status)
 
-        self.get_logger().info('Connectivity subscriber started, discovering heartbeat topics...')
+        self.get_logger().info(
+            "Connectivity subscriber started, discovering heartbeat topics..."
+        )
 
     def discover_topics(self):
         topic_list = self.get_topic_names_and_types()
         for topic_name, _ in topic_list:
-            if topic_name.endswith('/connectivity_test/heartbeat') and topic_name not in self.known_topics:
+            if (
+                topic_name.endswith("/connectivity_test/heartbeat")
+                and topic_name not in self.known_topics
+            ):
                 self.known_topics.add(topic_name)
                 self.create_subscription(
                     String,
@@ -104,7 +110,7 @@ class ConnectivitySubNode(Node):
                     self.heartbeat_cb,
                     QoSProfile(depth=10),
                 )
-                self.get_logger().info(f'Subscribed to {topic_name}')
+                self.get_logger().info(f"Subscribed to {topic_name}")
 
     def heartbeat_cb(self, msg):
         try:
@@ -112,13 +118,13 @@ class ConnectivitySubNode(Node):
         except json.JSONDecodeError:
             return
 
-        src = data.get('src', 'unknown')
-        seq = data.get('seq', 0)
-        ts = data.get('timestamp', time.time())
+        src = data.get("src", "unknown")
+        seq = data.get("seq", 0)
+        ts = data.get("timestamp", time.time())
 
         if src not in self.sources:
             self.sources[src] = SourceTracker()
-            self.get_logger().info(f'New source discovered: {src}')
+            self.get_logger().info(f"New source discovered: {src}")
 
         self.sources[src].update(seq, ts)
 
@@ -127,43 +133,49 @@ class ConnectivitySubNode(Node):
         report = {}
 
         for src, tracker in self.sources.items():
-            silent_for = now - tracker.last_seen if tracker.last_seen > 0 else float('inf')
+            silent_for = (
+                now - tracker.last_seen if tracker.last_seen > 0 else float("inf")
+            )
             alive = silent_for < self.silent_threshold
 
             if not alive:
-                self.get_logger().warn(f'Source {src} silent for {silent_for:.1f}s')
+                self.get_logger().warn(f"Source {src} silent for {silent_for:.1f}s")
 
             pct = tracker.percentiles()
             report[src] = {
-                'alive': alive,
-                'count': tracker.count,
-                'dropped': tracker.dropped,
-                'loss_rate': round(tracker.loss_rate, 4),
-                'avg_latency_ms': round(tracker.avg_latency * 1000, 2),
-                'p50_latency_ms': round(pct['p50'] * 1000, 2),
-                'p95_latency_ms': round(pct['p95'] * 1000, 2),
-                'p99_latency_ms': round(pct['p99'] * 1000, 2),
-                'max_latency_ms': round(pct['max'] * 1000, 2),
-                'min_latency_ms': round(pct['min'] * 1000, 2),
-                'silent_for_sec': round(silent_for, 2),
+                "alive": alive,
+                "count": tracker.count,
+                "dropped": tracker.dropped,
+                "loss_rate": round(tracker.loss_rate, 4),
+                "avg_latency_ms": round(tracker.avg_latency * 1000, 2),
+                "p50_latency_ms": round(pct["p50"] * 1000, 2),
+                "p95_latency_ms": round(pct["p95"] * 1000, 2),
+                "p99_latency_ms": round(pct["p99"] * 1000, 2),
+                "max_latency_ms": round(pct["max"] * 1000, 2),
+                "min_latency_ms": round(pct["min"] * 1000, 2),
+                "silent_for_sec": round(silent_for, 2),
             }
 
         if report:
             status_msg = String()
-            status_msg.data = json.dumps({
-                'reporter': self.robot_name,
-                'timestamp': now,
-                'sources': report,
-            })
+            status_msg.data = json.dumps(
+                {
+                    "reporter": self.robot_name,
+                    "timestamp": now,
+                    "sources": report,
+                }
+            )
             self.status_pub.publish(status_msg)
 
             # Log summary
-            lines = [f'  {src}: {"OK" if d["alive"] else "SILENT"} '
-                     f'(rx={d["count"]}, drop={d["dropped"]}, '
-                     f'lat={d["avg_latency_ms"]:.1f}ms, '
-                     f'p95={d["p95_latency_ms"]:.1f}ms)'
-                     for src, d in report.items()]
-            self.get_logger().info('Connectivity status:\n' + '\n'.join(lines))
+            lines = [
+                f"  {src}: {'OK' if d['alive'] else 'SILENT'} "
+                f"(rx={d['count']}, drop={d['dropped']}, "
+                f"lat={d['avg_latency_ms']:.1f}ms, "
+                f"p95={d['p95_latency_ms']:.1f}ms)"
+                for src, d in report.items()
+            ]
+            self.get_logger().info("Connectivity status:\n" + "\n".join(lines))
 
 
 def main(args=None):
@@ -174,5 +186,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

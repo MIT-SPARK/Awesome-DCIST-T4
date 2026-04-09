@@ -1,51 +1,27 @@
 """Transfer screen — copy experiments between machines."""
+
 from __future__ import annotations
 
-import shlex
 import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
-    DataTable,
     Footer,
-    Input,
     Label,
     ProgressBar,
     RichLog,
     Rule,
     SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
-    deploy_zenoh_config,
-    filter_reachable,
-    generate_namespaced_rviz,
-    generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
     rsync_transfer,
-    run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
+
 
 class TransferScreen(ModalScreen):
     BINDINGS = [
@@ -123,21 +99,22 @@ class TransferScreen(ModalScreen):
 
                     def make_cb(name):
                         def cb(pct):
-                            self.app.call_from_thread(
-                                self._update_progress, name, pct
-                            )
+                            self.app.call_from_thread(self._update_progress, name, pct)
+
                         return cb
 
                     ok, method, msg = rsync_transfer(
-                        src["user"], src["ip"], src_path,
-                        dst["user"], dst["ip"], dst_path,
+                        src["user"],
+                        src["ip"],
+                        src_path,
+                        dst["user"],
+                        dst["ip"],
+                        dst_path,
                         exclude=["recorded_data/"],
                         progress_callback=make_cb(dname),
                     )
                     if ok:
-                        self.app.call_from_thread(
-                            self._update_progress, dname, 100
-                        )
+                        self.app.call_from_thread(self._update_progress, dname, 100)
                         self.app.call_from_thread(
                             log.write, f"  [green]{dname}: OK ({method})[/]"
                         )
@@ -158,5 +135,5 @@ class TransferScreen(ModalScreen):
         except Exception:
             pass
 
-# ---- Verify Screen ----
 
+# ---- Verify Screen ----

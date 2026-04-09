@@ -4,11 +4,10 @@
 import json
 import os
 import time
-from collections import defaultdict
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from std_msgs.msg import String
 
 
@@ -38,44 +37,43 @@ class TopicBwTracker:
 
 
 class BwMonitorNode(Node):
-
     def __init__(self):
-        super().__init__('bw_monitor')
+        super().__init__("bw_monitor")
         self.declare_parameters(
-            namespace='',
+            namespace="",
             parameters=[
-                ('report_rate_hz', 1.0),
-                ('topic_filter', ''),
-                ('exclude_filter', '/rosout,/parameter_events'),
-            ]
+                ("report_rate_hz", 1.0),
+                ("topic_filter", ""),
+                ("exclude_filter", "/rosout,/parameter_events"),
+            ],
         )
 
-        report_rate = self.get_parameter(
-            'report_rate_hz'
-        ).get_parameter_value().double_value
-        self.topic_filter = self.get_parameter(
-            'topic_filter'
-        ).get_parameter_value().string_value
+        report_rate = (
+            self.get_parameter("report_rate_hz").get_parameter_value().double_value
+        )
+        self.topic_filter = (
+            self.get_parameter("topic_filter").get_parameter_value().string_value
+        )
         self.exclude_filter = set(
-            self.get_parameter(
-                'exclude_filter'
-            ).get_parameter_value().string_value.split(',')
+            self.get_parameter("exclude_filter")
+            .get_parameter_value()
+            .string_value.split(",")
         )
 
-        self.robot_name = os.environ.get('ADT4_ROBOT_NAME', os.uname().nodename)
+        self.robot_name = os.environ.get("ADT4_ROBOT_NAME", os.uname().nodename)
         self.trackers = {}  # topic -> TopicBwTracker
         self.subscriptions_map = {}  # topic -> subscription
 
         self.bw_pub = self.create_publisher(
             String,
-            '/connectivity_test/bandwidth',
+            "/connectivity_test/bandwidth",
             qos_profile=QoSProfile(depth=10),
         )
 
         self.create_timer(5.0, self.discover_topics)
         self.create_timer(1.0 / report_rate, self.report_bandwidth)
 
-        self.get_logger().info('Bandwidth monitor started')
+        self.get_logger().info("Bandwidth monitor started")
 
     def discover_topics(self):
         topic_list = self.get_topic_names_and_types()
@@ -91,7 +89,7 @@ class BwMonitorNode(Node):
 
             # Only subscribe to std_msgs/String topics for generic monitoring
             # For other types, we can still measure using serialized size
-            if 'std_msgs/msg/String' in topic_types:
+            if "std_msgs/msg/String" in topic_types:
                 self._subscribe_string(topic_name)
             # Skip other types to avoid import issues — the connectivity
             # heartbeat and status topics use String, which is the primary
@@ -110,7 +108,7 @@ class BwMonitorNode(Node):
 
         sub = self.create_subscription(String, topic_name, cb, qos)
         self.subscriptions_map[topic_name] = sub
-        self.get_logger().info(f'Monitoring bandwidth: {topic_name}')
+        self.get_logger().info(f"Monitoring bandwidth: {topic_name}")
 
     def report_bandwidth(self):
         if not self.trackers:
@@ -125,48 +123,50 @@ class BwMonitorNode(Node):
             total_bps += bps
             total_mps += mps
             report[topic] = {
-                'bytes_per_sec': round(bps, 1),
-                'msgs_per_sec': round(mps, 2),
-                'total_bytes': tracker.bytes_total,
-                'total_msgs': tracker.msg_count,
+                "bytes_per_sec": round(bps, 1),
+                "msgs_per_sec": round(mps, 2),
+                "total_bytes": tracker.bytes_total,
+                "total_msgs": tracker.msg_count,
             }
 
-        report['_summary'] = {
-            'total_bytes_per_sec': round(total_bps, 1),
-            'total_msgs_per_sec': round(total_mps, 2),
-            'topics_monitored': len(self.trackers),
+        report["_summary"] = {
+            "total_bytes_per_sec": round(total_bps, 1),
+            "total_msgs_per_sec": round(total_mps, 2),
+            "topics_monitored": len(self.trackers),
         }
 
         bw_msg = String()
-        bw_msg.data = json.dumps({
-            'reporter': self.robot_name,
-            'timestamp': time.time(),
-            'bandwidth': report,
-        })
+        bw_msg.data = json.dumps(
+            {
+                "reporter": self.robot_name,
+                "timestamp": time.time(),
+                "bandwidth": report,
+            }
+        )
         self.bw_pub.publish(bw_msg)
 
         # Log summary
         def fmt_bytes(b):
             if b >= 1024 * 1024:
-                return f'{b / (1024 * 1024):.1f} MB/s'
+                return f"{b / (1024 * 1024):.1f} MB/s"
             if b >= 1024:
-                return f'{b / 1024:.1f} KB/s'
-            return f'{b:.0f} B/s'
+                return f"{b / 1024:.1f} KB/s"
+            return f"{b:.0f} B/s"
 
         lines = []
         for topic, data in sorted(report.items()):
-            if topic == '_summary':
+            if topic == "_summary":
                 continue
             lines.append(
-                f'  {topic}: {fmt_bytes(data["bytes_per_sec"])} '
-                f'({data["msgs_per_sec"]:.1f} msg/s)'
+                f"  {topic}: {fmt_bytes(data['bytes_per_sec'])} "
+                f"({data['msgs_per_sec']:.1f} msg/s)"
             )
         lines.append(
-            f'  TOTAL: {fmt_bytes(total_bps)} '
-            f'({total_mps:.1f} msg/s, '
-            f'{len(self.trackers)} topics)'
+            f"  TOTAL: {fmt_bytes(total_bps)} "
+            f"({total_mps:.1f} msg/s, "
+            f"{len(self.trackers)} topics)"
         )
-        self.get_logger().info('Bandwidth:\n' + '\n'.join(lines))
+        self.get_logger().info("Bandwidth:\n" + "\n".join(lines))
 
 
 def main(args=None):
@@ -177,5 +177,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

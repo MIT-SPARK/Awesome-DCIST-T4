@@ -1,56 +1,34 @@
 """Config screen — topology editor."""
+
 from __future__ import annotations
 
-import shlex
+import pathlib
 import threading
 
+import yaml
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
     DataTable,
     Footer,
     Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
-    SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
-    deploy_zenoh_config,
+    _DEFAULT_TOPOLOGY,
     filter_reachable,
-    generate_namespaced_rviz,
-    generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
-    run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
 
-import yaml
 
 class EditMachineScreen(ModalScreen):
     """Modal dialog for editing or adding a single machine entry."""
+
     AUTO_FOCUS = "Input"
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
@@ -83,11 +61,36 @@ class EditMachineScreen(ModalScreen):
         if not self._name:
             rows.append(Input(placeholder="Name (e.g. newton)", id="ed_name", **sof))
         rows += [
-            Input(value=self._minfo.get("role", "robot"), placeholder="Role (robot / base_station)", id="ed_role", **sof),
-            Input(value=self._minfo.get("platform_id", ""), placeholder="Platform (e.g. smaug)", id="ed_platform", **sof),
-            Input(value=addrs.get("mit_wifi", ""), placeholder="MIT WiFi IP (e.g. 10.29.x.x)", id="ed_mit_wifi", **sof),
-            Input(value=addrs.get("silvus", ""), placeholder="Silvus IP (e.g. 192.168.100.x)", id="ed_silvus", **sof),
-            Input(value=self._minfo.get("desc", ""), placeholder="Description", id="ed_desc", **sof),
+            Input(
+                value=self._minfo.get("role", "robot"),
+                placeholder="Role (robot / base_station)",
+                id="ed_role",
+                **sof,
+            ),
+            Input(
+                value=self._minfo.get("platform_id", ""),
+                placeholder="Platform (e.g. smaug)",
+                id="ed_platform",
+                **sof,
+            ),
+            Input(
+                value=addrs.get("mit_wifi", ""),
+                placeholder="MIT WiFi IP (e.g. 10.29.x.x)",
+                id="ed_mit_wifi",
+                **sof,
+            ),
+            Input(
+                value=addrs.get("silvus", ""),
+                placeholder="Silvus IP (e.g. 192.168.100.x)",
+                id="ed_silvus",
+                **sof,
+            ),
+            Input(
+                value=self._minfo.get("desc", ""),
+                placeholder="Description",
+                id="ed_desc",
+                **sof,
+            ),
             Label("[dim]Tab=next field  F5=save  Escape=cancel[/]"),
             Label("", id="err_label"),
         ]
@@ -112,19 +115,21 @@ class EditMachineScreen(ModalScreen):
         if role not in ("robot", "base_station"):
             err.update("[red]Role must be 'robot' or 'base_station'.[/]")
             return
-        self.dismiss({
-            "name": name,
-            "role": role,
-            "platform": self.query_one("#ed_platform", Input).value.strip(),
-            "desc": self.query_one("#ed_desc", Input).value.strip(),
-            "mit_wifi": self.query_one("#ed_mit_wifi", Input).value.strip(),
-            "silvus": self.query_one("#ed_silvus", Input).value.strip(),
-        })
-
+        self.dismiss(
+            {
+                "name": name,
+                "role": role,
+                "platform": self.query_one("#ed_platform", Input).value.strip(),
+                "desc": self.query_one("#ed_desc", Input).value.strip(),
+                "mit_wifi": self.query_one("#ed_mit_wifi", Input).value.strip(),
+                "silvus": self.query_one("#ed_silvus", Input).value.strip(),
+            }
+        )
 
 
 class ConfigScreen(ModalScreen):
     """Topology editor — manages machines in topology.yaml."""
+
     BINDINGS = [
         Binding("escape", "dismiss", "Back", priority=True),
         Binding("e", "edit_selected", "Edit [e]"),
@@ -185,7 +190,11 @@ class ConfigScreen(ModalScreen):
             else:
                 dot = "[dim]\u25cb[/]"
             ssh_conf = self.ctx.topo.get("ssh", {})
-            user = ssh_conf.get("base_station_user", "rrg") if minfo.get("role") == "base_station" else ssh_conf.get("robot_user", "swarm")
+            user = (
+                ssh_conf.get("base_station_user", "rrg")
+                if minfo.get("role") == "base_station"
+                else ssh_conf.get("robot_user", "swarm")
+            )
             table.add_row(
                 dot,
                 mname,
@@ -202,6 +211,7 @@ class ConfigScreen(ModalScreen):
         table = self.query_one("#config_table", DataTable)
         try:
             from textual.coordinate import Coordinate
+
             row_idx = table.cursor_coordinate.row
             return str(table.get_cell_at(Coordinate(row_idx, 1)))
         except Exception:
@@ -238,10 +248,18 @@ class ConfigScreen(ModalScreen):
         topo_machines[name] = entry
         if self.ctx.active_network in addrs:
             ssh_conf = self.ctx.topo.get("ssh", {})
-            user = ssh_conf.get("base_station_user", "rrg") if role == "base_station" else ssh_conf.get("robot_user", "swarm")
+            user = (
+                ssh_conf.get("base_station_user", "rrg")
+                if role == "base_station"
+                else ssh_conf.get("robot_user", "swarm")
+            )
             self.ctx.runtime_config[name] = {
-                "name": name, "role": role, "ip": addrs[self.ctx.active_network],
-                "user": user, "desc": desc, "platform_id": platform or "",
+                "name": name,
+                "role": role,
+                "ip": addrs[self.ctx.active_network],
+                "user": user,
+                "desc": desc,
+                "platform_id": platform or "",
             }
         log.write(f"[green]Updated {name}[/]")
         self._refresh_config_table()
@@ -251,11 +269,16 @@ class ConfigScreen(ModalScreen):
         if not name:
             return
         minfo = self.ctx.topo.get("machines", {}).get(name, {})
-        self.app.push_screen(EditMachineScreen(name, minfo), lambda r: self._apply_result(r, original_name=name))
+        self.app.push_screen(
+            EditMachineScreen(name, minfo),
+            lambda r: self._apply_result(r, original_name=name),
+        )
 
     def action_add_machine_action(self):
         existing = set(self.ctx.topo.get("machines", {}).keys())
-        self.app.push_screen(EditMachineScreen(None, {}, existing_names=existing), self._apply_result)
+        self.app.push_screen(
+            EditMachineScreen(None, {}, existing_names=existing), self._apply_result
+        )
 
     def action_remove_selected(self):
         log = self.query_one("#config_log", RichLog)
@@ -300,7 +323,11 @@ class ConfigScreen(ModalScreen):
                 del topo_machines[mname]
         self.ctx._deleted_machines.clear()
         self.ctx.topo["machines"] = topo_machines
-        topo_path = pathlib.Path(self.ctx.topology_path) if self.ctx.topology_path else _DEFAULT_TOPOLOGY
+        topo_path = (
+            pathlib.Path(self.ctx.topology_path)
+            if self.ctx.topology_path
+            else _DEFAULT_TOPOLOGY
+        )
         try:
             with open(topo_path, "w") as f:
                 yaml.dump(self.ctx.topo, f, default_flow_style=False, sort_keys=False)
@@ -308,5 +335,5 @@ class ConfigScreen(ModalScreen):
         except OSError as e:
             log.write(f"[red]Failed to save: {e}[/]")
 
-# ---- Launch Screen ----
 
+# ---- Launch Screen ----

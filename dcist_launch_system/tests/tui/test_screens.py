@@ -3,18 +3,20 @@
 Each test mounts the relevant screen in a minimal App and verifies it renders
 without raising exceptions. Requires textual[dev] to be installed.
 """
+
 from __future__ import annotations
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # ConfirmScreen
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_confirm_screen_composes():
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.confirm import ConfirmScreen
 
     class TestApp(App):
@@ -32,6 +34,7 @@ async def test_confirm_screen_composes():
 async def test_confirm_screen_yes_dismisses():
     """Pressing 'y' should dismiss the confirm screen."""
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.confirm import ConfirmScreen
 
     class TestApp(App):
@@ -54,6 +57,7 @@ async def test_confirm_screen_yes_dismisses():
 async def test_confirm_screen_no_dismisses():
     """Pressing 'n' should dismiss the confirm screen."""
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.confirm import ConfirmScreen
 
     class TestApp(App):
@@ -74,9 +78,11 @@ async def test_confirm_screen_no_dismisses():
 # MapsScreen
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_maps_screen_composes(ctx):
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.maps import MapsScreen
 
     class TestApp(App):
@@ -94,9 +100,11 @@ async def test_maps_screen_composes(ctx):
 # ConfigScreen
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_config_screen_composes(ctx):
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.config import ConfigScreen
 
     class TestApp(App):
@@ -114,9 +122,11 @@ async def test_config_screen_composes(ctx):
 # ZenohScreen
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_zenoh_screen_composes(ctx):
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.zenoh_screen import ZenohScreen
 
     class TestApp(App):
@@ -134,9 +144,11 @@ async def test_zenoh_screen_composes(ctx):
 # MonitorScreen
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_monitor_screen_composes(ctx):
     from textual.app import App, ComposeResult
+
     from dcist_launch_system.tui.screens.monitor import MonitorScreen
 
     class TestApp(App):
@@ -154,10 +166,12 @@ async def test_monitor_screen_composes(ctx):
 # FleetApp
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_fleet_app_composes(ctx):
     """FleetApp main screen should compose and render its core widgets."""
     from textual.widgets import DataTable, RichLog
+
     from dcist_launch_system.tui.app import FleetApp
 
     async with FleetApp(ctx).run_test() as pilot:

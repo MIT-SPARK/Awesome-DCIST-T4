@@ -8,13 +8,10 @@ Run: pytest dcist_launch_system/tests/test_tui_selection.py -v
 """
 
 import pytest
-
 from textual.app import App, ComposeResult
-from textual.widgets import SelectionList, Label, Footer
 from textual.binding import Binding
 from textual.screen import ModalScreen
-from textual.containers import VerticalScroll
-
+from textual.widgets import Footer, Label, SelectionList
 
 # ---------------------------------------------------------------------------
 # Minimal reproduction of SelectionList behavior
@@ -43,7 +40,7 @@ class SelectionTestApp(App):
 async def test_selection_list_initial_state():
     """Verify SelectionList constructor sets initial selections correctly."""
     app = SelectionTestApp()
-    async with app.run_test() as pilot:
+    async with app.run_test():
         sel = app.query_one("#test_list", SelectionList)
         selected = list(sel.selected)
         assert "alpha" in selected, f"alpha should be selected, got {selected}"
@@ -55,18 +52,20 @@ async def test_selection_list_initial_state():
 async def test_selection_list_select_method():
     """Verify SelectionList.select() works after construction."""
     app = SelectionTestApp()
-    async with app.run_test() as pilot:
+    async with app.run_test():
         sel = app.query_one("#test_list", SelectionList)
         sel.select("beta")
         selected = list(sel.selected)
-        assert "beta" in selected, f"beta should be selected after select(), got {selected}"
+        assert "beta" in selected, (
+            f"beta should be selected after select(), got {selected}"
+        )
 
 
 @pytest.mark.asyncio
 async def test_selection_list_deselect_all():
     """Verify deselect_all + select works."""
     app = SelectionTestApp()
-    async with app.run_test() as pilot:
+    async with app.run_test():
         sel = app.query_one("#test_list", SelectionList)
         sel.deselect_all()
         selected = list(sel.selected)
@@ -182,8 +181,12 @@ async def test_cached_screen_loses_runtime_selections():
         sel = screen.query_one("#cached_list", SelectionList)
         selected = list(sel.selected)
         # "two" is NOT preserved — Textual limitation
-        assert "one" in selected, f"constructor selection should persist, got {selected}"
-        assert "two" not in selected, "runtime select() does NOT persist across dismiss/re-push"
+        assert "one" in selected, (
+            f"constructor selection should persist, got {selected}"
+        )
+        assert "two" not in selected, (
+            "runtime select() does NOT persist across dismiss/re-push"
+        )
 
 
 # ---------------------------------------------------------------------------

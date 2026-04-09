@@ -2,6 +2,7 @@
 
 import base64
 import ipaddress
+import json
 import pathlib
 import re
 import shlex
@@ -36,13 +37,16 @@ def _quote_path(path):
 
 _local_ips_cache = None
 
+
 def get_local_ips():
     global _local_ips_cache
     if _local_ips_cache is not None:
         return _local_ips_cache
     _local_ips_cache = ["127.0.0.1"]
     try:
-        result = subprocess.run(["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True)
+        result = subprocess.run(
+            ["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True
+        )
         for line in result.stdout.strip().splitlines():
             parts = line.split()
             for p in parts:
@@ -145,6 +149,7 @@ def filter_reachable(machines, max_workers=8, quiet=False):
 
     Each machine dict gets 'ping', 'ssh', 'online' keys added.
     """
+
     def check(m):
         result = check_machine(m)
         m.update(result)
@@ -195,9 +200,12 @@ def ssh_cmd(user, ip, cmd, timeout=5):
 
     ssh_args = [
         "ssh",
-        "-o", "ConnectTimeout=" + str(timeout),
-        "-o", "BatchMode=yes",
-        "-o", "StrictHostKeyChecking=no",
+        "-o",
+        "ConnectTimeout=" + str(timeout),
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=no",
         f"{user}@{ip}",
         cmd,
     ]
@@ -222,7 +230,9 @@ def _run_rsync(cmd, stream=False, timeout=3600, progress_callback=None):
     """
     if not stream and not progress_callback:
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout
+            )
             return result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired:
             return -1, "", "rsync timeout"
@@ -283,7 +293,7 @@ def rsync_transfer(
     rsync_flags = ["-az", "--info=progress2"]
     if delete:
         rsync_flags.append("--delete")
-    for pat in (exclude or []):
+    for pat in exclude or []:
         rsync_flags += ["--exclude", pat]
 
     ssh_opts = "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=10"
@@ -298,6 +308,7 @@ def rsync_transfer(
         # One endpoint is local — single SSH hop using base station's keys.
         # Expand ~ so the subprocess gets an absolute path (shell won't do it).
         import os
+
         local_src = os.path.expanduser(src_path) if src_is_local else None
         local_dst = os.path.expanduser(dst_path) if dst_is_local else None
         if local_dst:
@@ -305,7 +316,9 @@ def rsync_transfer(
         src_arg = (local_src if src_is_local else src_remote) + "/"
         dst_arg = (local_dst if dst_is_local else dst_remote) + "/"
         cmd = ["rsync"] + rsync_flags + ["-e", ssh_opts, src_arg, dst_arg]
-        rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
+        rc, out, err = _run_rsync(
+            cmd, stream=stream, progress_callback=progress_callback
+        )
         if rc == 0:
             return True, "direct", out
         return False, "direct", err.strip()
@@ -313,8 +326,14 @@ def rsync_transfer(
     if not relay:
         # Both endpoints remote — try direct robot-to-robot with agent forwarding.
         # BatchMode=yes ensures no password prompt; if it fails we relay instead.
-        cmd = ["rsync"] + rsync_flags + ["-e", f"{ssh_opts} -A", src_remote + "/", dst_remote + "/"]
-        rc, out, err = _run_rsync(cmd, stream=stream, progress_callback=progress_callback)
+        cmd = (
+            ["rsync"]
+            + rsync_flags
+            + ["-e", f"{ssh_opts} -A", src_remote + "/", dst_remote + "/"]
+        )
+        rc, out, err = _run_rsync(
+            cmd, stream=stream, progress_callback=progress_callback
+        )
         if rc == 0:
             return True, "direct", out
 
@@ -462,7 +481,7 @@ def get_remote_status(user, ip, silvus_ips=None, platform_type=None):
         "echo '---LOAD---'; uptime | sed 's/.*load average: //'; "
         "echo '---MEM---'; free -h 2>/dev/null | awk '/^Mem:/{print $3 \"/\" $2}' || echo 'N/A'; "
         "echo '---GPU---'; nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null | head -1 || echo 'N/A'; "
-        "echo '---DISK---'; df -h ~ 2>/dev/null | tail -1 | awk '{print $4 \" / \" $2 \" (\" $5 \" used)\"}'; "
+        'echo \'---DISK---\'; df -h ~ 2>/dev/null | tail -1 | awk \'{print $4 " / " $2 " (" $5 " used)"}\'; '
         + bat_cmd
     )
 
@@ -516,7 +535,16 @@ else:
 
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
     if rc != 0 or not stdout:
-        return {"tmux_sessions": "N/A", "ros2_procs": "N/A", "load": "N/A", "mem": "N/A", "gpu": "N/A", "disk": "N/A", "battery": "N/A", "radio": "N/A"}
+        return {
+            "tmux_sessions": "N/A",
+            "ros2_procs": "N/A",
+            "load": "N/A",
+            "mem": "N/A",
+            "gpu": "N/A",
+            "disk": "N/A",
+            "battery": "N/A",
+            "radio": "N/A",
+        }
 
     sections = {}
     current = None
@@ -532,7 +560,7 @@ else:
         tmux_sessions = "none"
     else:
         # Extract just session names (before the colon)
-        names = [l.split(":")[0] for l in tmux_lines if l.strip()]
+        names = [line.split(":")[0] for line in tmux_lines if line.strip()]
         tmux_sessions = ", ".join(names) if names else "none"
 
     # Format load averages (column header has the labels)
@@ -697,6 +725,7 @@ with open(config_path, 'w') as f:
 print("OK")
 """
     import base64
+
     encoded_script = base64.b64encode(py_script.encode()).decode()
     # Escape the new_array for shell (base64 encode it too)
     encoded_array = base64.b64encode(new_array.encode()).decode()
@@ -714,7 +743,11 @@ print("OK")
     return False, f"Failed: {err or stdout}"
 
 
-_ZENOH_TEMPLATE = pathlib.Path(__file__).resolve().parent.parent.parent / "config" / "zenoh_router_template.json5"
+_ZENOH_TEMPLATE = (
+    pathlib.Path(__file__).resolve().parent.parent.parent
+    / "config"
+    / "zenoh_router_template.json5"
+)
 
 
 def _find_endpoints_array(text, section_start):
@@ -723,23 +756,27 @@ def _find_endpoints_array(text, section_start):
     Uses bracket-counting so `]` inside IPv6 addresses like [::] are not confused
     with the array closing bracket.  Returns None if not found.
     """
-    ep_prefix = re.compile(r'^(\s*endpoints\s*:\s*)\[', re.MULTILINE)
+    ep_prefix = re.compile(r"^(\s*endpoints\s*:\s*)\[", re.MULTILINE)
     for m in ep_prefix.finditer(text):
         # Skip commented-out lines
-        line_start = text.rfind('\n', 0, m.start()) + 1
-        if text[line_start:m.start()].strip().startswith('//'):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        if text[line_start : m.start()].strip().startswith("//"):
             continue
         # m.end() - 1 is the position of the opening '['; count until the matching ']'
         bracket_start = m.end() - 1  # position of '['
         depth = 0
         for i in range(bracket_start, len(text)):
-            if text[i] == '[':
+            if text[i] == "[":
                 depth += 1
-            elif text[i] == ']':
+            elif text[i] == "]":
                 depth -= 1
                 if depth == 0:
                     # section_start offsets positions back to the full content
-                    return section_start + m.start(), section_start + m.end() - 1, section_start + i + 1
+                    return (
+                        section_start + m.start(),
+                        section_start + m.end() - 1,
+                        section_start + i + 1,
+                    )
         break  # malformed — opening bracket with no match
     return None
 
@@ -768,30 +805,38 @@ def patch_zenoh_config_local(endpoints, template_path=None):
         new_array = "[]"
 
     # Locate the connect: { ... } section
-    connect_match = re.search(r'^\s*connect\s*:\s*\{', content, re.MULTILINE)
+    connect_match = re.search(r"^\s*connect\s*:\s*\{", content, re.MULTILINE)
     if not connect_match:
         return None
     depth = 0
     connect_end = len(content)
     for i in range(connect_match.end() - 1, len(content)):
-        if content[i] == '{':
+        if content[i] == "{":
             depth += 1
-        elif content[i] == '}':
+        elif content[i] == "}":
             depth -= 1
             if depth == 0:
                 connect_end = i + 1
                 break
 
-    result = _find_endpoints_array(content[connect_match.start():connect_end], connect_match.start())
+    result = _find_endpoints_array(
+        content[connect_match.start() : connect_end], connect_match.start()
+    )
     if result is None:
         return None
     ep_prefix_start, ep_bracket_open, ep_bracket_close = result
     prefix_text = content[ep_prefix_start:ep_bracket_open]
-    content = content[:ep_prefix_start] + prefix_text + new_array + content[ep_bracket_close:]
+    content = (
+        content[:ep_prefix_start] + prefix_text + new_array + content[ep_bracket_close:]
+    )
 
     import tempfile
+
     tmp = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json5", prefix="fleet_zenoh_", delete=False,
+        mode="w",
+        suffix=".json5",
+        prefix="fleet_zenoh_",
+        delete=False,
     )
     tmp.write(content)
     tmp.flush()
@@ -804,7 +849,6 @@ def send_tmux_keys(user, ip, session="adt4_system", target="core.2", keys="Enter
 
     Returns (success: bool, message: str).
     """
-    safe_session = shlex.quote(session)
     safe_target = shlex.quote(f"{session}:{target}")
     cmd = f"tmux send-keys -t {safe_target} {shlex.quote(keys)}"
     rc, stdout, err = ssh_cmd(user, ip, cmd, timeout=5)
@@ -851,12 +895,14 @@ def _parse_status_yaml(yaml_text, robots):
             existing["status"] = node_info.get("status", 5)
             existing["notes"] = node_info.get("notes", "")
         else:
-            robots[robot_name].append({
-                "nickname": node_name,
-                "status": node_info.get("status", 5),
-                "notes": node_info.get("notes", ""),
-                "required": node_info.get("required", True),
-            })
+            robots[robot_name].append(
+                {
+                    "nickname": node_name,
+                    "status": node_info.get("status", 5),
+                    "notes": node_info.get("notes", ""),
+                    "required": node_info.get("required", True),
+                }
+            )
 
 
 class NodeStatusPoller:
@@ -914,6 +960,7 @@ class NodeStatusPoller:
         """Return a snapshot of the latest status dict."""
         with self._lock:
             import copy
+
             return copy.deepcopy(self._status)
 
     def get_error(self):
@@ -1056,9 +1103,11 @@ _RVIZ_TOPICS_CONFIG = (
     / "rviz_topics.yaml"
 )
 
+
 def _load_rviz_topics():
     try:
         import yaml as _yaml
+
         with open(_RVIZ_TOPICS_CONFIG) as f:
             return _yaml.safe_load(f).get("namespace_topics", [])
     except Exception:
@@ -1068,6 +1117,7 @@ def _load_rviz_topics():
             "frontright/semantic_overlay/image_raw",
             "robot_description",
         ]
+
 
 _RVIZ_TOPICS_TO_NAMESPACE = _load_rviz_topics()
 
@@ -1088,7 +1138,9 @@ def generate_namespaced_rviz(robot_name, template_path=None, output_path=None):
 
     Returns the output path.
     """
-    template_path = pathlib.Path(template_path) if template_path else _DEFAULT_RVIZ_TEMPLATE
+    template_path = (
+        pathlib.Path(template_path) if template_path else _DEFAULT_RVIZ_TEMPLATE
+    )
     if output_path is None:
         output_path = pathlib.Path(f"/tmp/dcist_{robot_name}.rviz")
 
@@ -1135,7 +1187,7 @@ def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
     cmd = (
         "iface=$(ip -4 -o addr show | grep '192\\.168\\.100\\.' | awk '{print $2}' | head -1); "
         f"route=$(ip route show {mgmt_subnet} 2>/dev/null | head -1); "
-        "echo \"$iface|$route\""
+        'echo "$iface|$route"'
     )
     if user and ip:
         rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
@@ -1188,7 +1240,11 @@ def add_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=
             result = subprocess.run(
                 ["bash", "-c", cmd], capture_output=True, text=True, timeout=10
             )
-            rc, out, err = result.returncode, result.stdout.strip(), result.stderr.strip()
+            rc, _, err = (
+                result.returncode,
+                result.stdout.strip(),
+                result.stderr.strip(),
+            )
         except Exception as e:
             return False, str(e)
 
@@ -1206,6 +1262,7 @@ def check_zenoh_port(ip, port=7447, timeout=2):
     Returns True if the port is open, False otherwise.
     """
     import socket
+
     try:
         with socket.create_connection((ip, port), timeout=timeout):
             return True
@@ -1275,6 +1332,7 @@ except Exception as e:
     print(f'ERR:{e}')
 """
     import base64
+
     encoded = base64.b64encode(py_script.encode()).decode()
     args = " ".join(silvus_mgmt_ips)
     cmd = f"echo '{encoded}' | base64 -d | python3 - {args}"
@@ -1294,7 +1352,9 @@ except Exception as e:
             "neighbor_count": parts[2],
             "rssi": parts[3],
             "snr": parts[4],
-            "node_id": parts[5] if len(parts) > 5 and parts[5] not in ("N/A", "") else None,
+            "node_id": parts[5]
+            if len(parts) > 5 and parts[5] not in ("N/A", "")
+            else None,
         }
 
 
@@ -1320,12 +1380,12 @@ def get_silvus_radio_details(topology):
 
         url = f"http://{mgmt_ip}/cgi-bin/streamscape_api"
         batch = [
-            {"jsonrpc": "2.0", "method": "nodeid",         "params": [], "id": 1},
-            {"jsonrpc": "2.0", "method": "routing_tree",   "params": [], "id": 2},
-            {"jsonrpc": "2.0", "method": "battery_percent","params": [], "id": 3},
-            {"jsonrpc": "2.0", "method": "rssi",           "params": [], "id": 4},
-            {"jsonrpc": "2.0", "method": "link_stats",     "params": [], "id": 5},
-            {"jsonrpc": "2.0", "method": "snr_stats",      "params": [], "id": 6},
+            {"jsonrpc": "2.0", "method": "nodeid", "params": [], "id": 1},
+            {"jsonrpc": "2.0", "method": "routing_tree", "params": [], "id": 2},
+            {"jsonrpc": "2.0", "method": "battery_percent", "params": [], "id": 3},
+            {"jsonrpc": "2.0", "method": "rssi", "params": [], "id": 4},
+            {"jsonrpc": "2.0", "method": "link_stats", "params": [], "id": 5},
+            {"jsonrpc": "2.0", "method": "snr_stats", "params": [], "id": 6},
         ]
         try:
             req = _urlreq.Request(
@@ -1373,6 +1433,7 @@ def get_silvus_radio_details(topology):
 
 # ---- Bandwidth testing (iperf3) ----
 
+
 def get_local_ip_for_network(topology, network):
     """Return the local machine's IP on the given network, or None."""
     local_ips = get_local_ips()
@@ -1399,10 +1460,10 @@ def check_iperf3(user, ip):
 
 
 _IPERF3_INTERVAL_RE = re.compile(
-    r"\[\s*\d+\]\s+([\d.]+)-([\d.]+)\s+sec\s+"   # [ 5]  0.00-1.00 sec
-    r"[\d.]+\s+\S+Bytes\s+"                        # transfer (ignored)
-    r"([\d.]+)\s+(G|M|K)?bits/sec"                 # bitrate
-    r"(?:\s+([\d]+))?"                             # optional retransmits
+    r"\[\s*\d+\]\s+([\d.]+)-([\d.]+)\s+sec\s+"  # [ 5]  0.00-1.00 sec
+    r"[\d.]+\s+\S+Bytes\s+"  # transfer (ignored)
+    r"([\d.]+)\s+(G|M|K)?bits/sec"  # bitrate
+    r"(?:\s+([\d]+))?"  # optional retransmits
 )
 
 
@@ -1412,7 +1473,15 @@ def _parse_iperf3_line(line):
     if not m:
         return None
     rate, unit = float(m.group(3)), m.group(4) or ""
-    mbps = rate * 1000 if unit == "G" else rate if unit == "M" else rate / 1000 if unit == "K" else rate / 1e6
+    mbps = (
+        rate * 1000
+        if unit == "G"
+        else rate
+        if unit == "M"
+        else rate / 1000
+        if unit == "K"
+        else rate / 1e6
+    )
     return {
         "t_start": float(m.group(1)),
         "t_end": float(m.group(2)),
@@ -1423,8 +1492,9 @@ def _parse_iperf3_line(line):
     }
 
 
-def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
-                    interval_cb=None):
+def run_iperf3_test(
+    server_ip, client_user, client_ip, port=5201, duration=5, interval_cb=None
+):
     """Run a single iperf3 throughput test with optional per-second streaming.
 
     Starts an iperf3 server locally (single-run mode), then opens a streaming
@@ -1454,16 +1524,19 @@ def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
             iperf_cmd = f"iperf3 -c {server_ip} -p {port} -t {duration} -i 1"
             proc = subprocess.Popen(
                 ["zsh", "-l", "-c", iperf_cmd],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
         else:
             # Probe whether the robot can reach our iperf3 port directly.
             # If not (e.g. MIT WiFi client isolation), tunnel through SSH so
             # the test still runs — but flag the result as tunneled since SSH
             # encryption will reduce measured throughput.
-            rc, _, _ = ssh_cmd(client_user, client_ip,
-                               f"nc -zw3 {server_ip} {port}", timeout=8)
-            use_tunnel = (rc != 0)
+            rc, _, _ = ssh_cmd(
+                client_user, client_ip, f"nc -zw3 {server_ip} {port}", timeout=8
+            )
+            use_tunnel = rc != 0
             if use_tunnel:
                 iperf_cmd = f"iperf3 -c localhost -p {port} -t {duration} -i 1"
                 ssh_extra = ["-R", f"{port}:localhost:{port}"]
@@ -1473,14 +1546,19 @@ def run_iperf3_test(server_ip, client_user, client_ip, port=5201, duration=5,
             proc = subprocess.Popen(
                 [
                     "ssh",
-                    "-o", "ConnectTimeout=10",
-                    "-o", "BatchMode=yes",
-                    "-o", "StrictHostKeyChecking=no",
+                    "-o",
+                    "ConnectTimeout=10",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "StrictHostKeyChecking=no",
                     *ssh_extra,
                     f"{client_user}@{client_ip}",
                     iperf_cmd,
                 ],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
 
         final_mbps = None

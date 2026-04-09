@@ -2,6 +2,7 @@
 
 Replaces closure captures from the original monolithic _launch_tui().
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
