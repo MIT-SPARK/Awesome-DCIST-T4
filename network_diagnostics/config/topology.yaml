@@ -12,7 +12,7 @@ machines:
   samoyed:   { role: robot, platform_id: samoyed, platform_type: phoenix, desc: "ARL Husky",      addresses: { silvus: "192.168.100.62" } }
   russell:   { role: base_station, desc: "Aaron's laptop",    addresses: { mit_wifi: "10.29.129.166", silvus: "192.168.100.101" } }
   bonsai:    { role: base_station, desc: "RRG dev computer",  addresses: { penn_wifi: "192.168.129.217" } }
-  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.29.144.89",  silvus: "192.168.100.100" } }
+  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.31.172.204", silvus: "192.168.100.100" } }
   sequia:    { role: base_station, desc: "Sequia base station", addresses: { mit_wifi: "10.29.166.252", silvus: "192.168.100.105" } }
 
 silvus_radios:

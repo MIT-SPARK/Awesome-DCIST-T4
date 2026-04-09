@@ -53,8 +53,8 @@ class PriorMapSelector(Vertical):
     Uses the same Tree-based approach as MapsScreen. Click an experiment
     to select it. Experiments with both hydra + roman are marked with a green check.
     """
-    def __init__(self, ctx: TuiContext):
-        super().__init__()
+    def __init__(self, ctx: TuiContext, **kwargs):
+        super().__init__(**kwargs)
         self.ctx = ctx
 
     def compose(self) -> ComposeResult:
