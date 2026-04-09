@@ -4,3 +4,5 @@
     use_fake_spot_interface: true
     use_fake_spot_pose: true
     fake_spot_external_pose: false
+    body_frame: $(var robot_name)/body
+    mid_level_planner_type: identity  # TODO(aryan|multy) fix mlp in sim
