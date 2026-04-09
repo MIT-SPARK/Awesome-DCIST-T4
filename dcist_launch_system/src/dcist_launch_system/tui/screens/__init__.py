@@ -1,4 +1,4 @@
-from .confirm import ConfirmScreen
+from .confirm import ConfirmScreen, TypeConfirmScreen
 from .maps import MapsScreen, PriorMapSelector
 from .transfer import TransferScreen
 from .verify import VerifyScreen
@@ -10,6 +10,7 @@ from .zenoh_screen import ZenohScreen
 
 __all__ = [
     "ConfirmScreen",
+    "TypeConfirmScreen",
     "MapsScreen",
     "PriorMapSelector",
     "TransferScreen",

@@ -56,3 +56,48 @@ class ConfirmScreen(ModalScreen[bool]):
     def action_confirm_no(self):
         self.dismiss(False)
 
+
+class TypeConfirmScreen(ModalScreen[bool]):
+    """Confirmation screen that requires typing a specific phrase to proceed.
+
+    Used when the stakes are high enough that a casual key-press is insufficient
+    (e.g. overwriting a directory larger than 1 GB).
+    """
+
+    BINDINGS = [
+        Binding("escape", "confirm_no", "Cancel", priority=True),
+    ]
+
+    def __init__(self, message: str, required_text: str = "confirm"):
+        super().__init__()
+        self.message = message
+        self._required_text = required_text
+
+    def compose(self) -> ComposeResult:
+        yield Vertical(
+            Label(self.message),
+            Rule(),
+            Label(f'Type [bold]{self._required_text}[/bold] and press Enter to proceed:'),
+            Input(placeholder=self._required_text, id="type_confirm_input"),
+            Rule(),
+            Horizontal(
+                Button("Proceed", variant="error", id="btn_yes", disabled=True),
+                Button("Cancel", variant="primary", id="btn_no"),
+            ),
+            id="type_confirm_dialog"
+        )
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        btn = self.query_one("#btn_yes", Button)
+        btn.disabled = event.value.strip().lower() != self._required_text.lower()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.value.strip().lower() == self._required_text.lower():
+            self.dismiss(True)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        self.dismiss(event.button.id == "btn_yes")
+
+    def action_confirm_no(self) -> None:
+        self.dismiss(False)
+
