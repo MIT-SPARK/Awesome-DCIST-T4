@@ -1,51 +1,27 @@
 """Verify screen — checksum comparison across fleet."""
+
 from __future__ import annotations
 
-import shlex
 import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
     DataTable,
     Footer,
-    Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
-    SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
-    deploy_zenoh_config,
-    filter_reachable,
-    generate_namespaced_rviz,
-    generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
     hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
     run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
+
 
 class VerifyScreen(ModalScreen):
     BINDINGS = [Binding("escape", "dismiss", "Back", priority=True)]
@@ -69,10 +45,14 @@ class VerifyScreen(ModalScreen):
         log.write("[dim]Computing checksums across fleet...[/]")
 
         def do_verify():
-            machines = [m for m in self.ctx.runtime_config.values() if m.get("online", False)]
+            machines = [
+                m for m in self.ctx.runtime_config.values() if m.get("online", False)
+            ]
 
             def fetch(m):
-                return hash_remote_experiment(m["user"], m["ip"], self.ctx.output_root, self.experiment)
+                return hash_remote_experiment(
+                    m["user"], m["ip"], self.ctx.output_root, self.experiment
+                )
 
             return run_parallel(fetch, machines)
 
@@ -122,5 +102,5 @@ class VerifyScreen(ModalScreen):
 
         threading.Thread(target=bg, daemon=True).start()
 
-# ---- Config Screen ----
 
+# ---- Config Screen ----

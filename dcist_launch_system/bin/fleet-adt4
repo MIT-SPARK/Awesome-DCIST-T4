@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """fleet-adt4 entry point — delegates to dcist_launch_system.tui package."""
+
 import os
 import pathlib
 import sys
@@ -20,6 +21,6 @@ _src = pathlib.Path(__file__).resolve().parent.parent / "src"
 if _src.is_dir() and str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
-from dcist_launch_system.tui import cli
+from dcist_launch_system.tui import cli  # noqa: E402
 
 cli()

@@ -1,4 +1,5 @@
 """FleetApp — main Textual application, zenohd lifecycle, and TUI entry point."""
+
 from __future__ import annotations
 
 import os
@@ -7,8 +8,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import threading
+import time
 
 import click
 from textual.app import App, ComposeResult
@@ -128,7 +129,10 @@ def _start_fleet_zenohd(ctx: TuiContext) -> tuple[bool, str]:
             except Exception:
                 err_output = ""
             detail = f"\n  stderr: {err_output}" if err_output else ""
-            return False, f"rmw_zenohd exited immediately (rc={rc}){detail}\n  config: {config_path}"
+            return (
+                False,
+                f"rmw_zenohd exited immediately (rc={rc}){detail}\n  config: {config_path}",
+            )
         stderr_log.close()
         return True, f"started on port {port} with {len(endpoints)} endpoint(s)"
     except Exception as e:
@@ -224,11 +228,13 @@ class FleetApp(App):
                     status_str,
                 )
                 # Update runtime_config with reachability
-                self.ctx.runtime_config[m["name"]].update({
-                    "ping": m.get("ping", False),
-                    "ssh": m.get("ssh", False),
-                    "online": m.get("online", False),
-                })
+                self.ctx.runtime_config[m["name"]].update(
+                    {
+                        "ping": m.get("ping", False),
+                        "ssh": m.get("ssh", False),
+                        "online": m.get("online", False),
+                    }
+                )
             log.write(f"[green]{n_online}/{len(all_machines)} machines online.[/]")
 
         def bg():
@@ -245,27 +251,33 @@ class FleetApp(App):
         # Create fresh each time — Textual doesn't preserve select()
         # state across dismiss/re-push. The mode is re-applied on mount.
         mode = getattr(self, "_last_launch_mode", None)
-        self.push_screen(LaunchScreen(
-            self.ctx,
-            stop_zenohd=lambda: _stop_fleet_zenohd(self.ctx),
-            mode=mode,
-        ))
+        self.push_screen(
+            LaunchScreen(
+                self.ctx,
+                stop_zenohd=lambda: _stop_fleet_zenohd(self.ctx),
+                mode=mode,
+            )
+        )
 
     def action_show_config(self):
         self.push_screen(ConfigScreen(self.ctx))
 
     def action_show_monitor(self):
-        self.push_screen(MonitorScreen(
-            self.ctx,
-            start_zenohd=lambda: _start_fleet_zenohd(self.ctx),
-            stop_zenohd=lambda: _stop_fleet_zenohd(self.ctx),
-        ))
+        self.push_screen(
+            MonitorScreen(
+                self.ctx,
+                start_zenohd=lambda: _start_fleet_zenohd(self.ctx),
+                stop_zenohd=lambda: _stop_fleet_zenohd(self.ctx),
+            )
+        )
 
     def action_show_zenoh(self):
         self.push_screen(ZenohScreen(self.ctx))
 
 
-def _launch_tui(network: str | None, topology_path: str | None, output_root: str) -> None:
+def _launch_tui(
+    network: str | None, topology_path: str | None, output_root: str
+) -> None:
     """Build TuiContext and run FleetApp."""
     try:
         import textual  # noqa: F401

@@ -25,7 +25,6 @@ from dcist_launch_system.fleet_helpers import (
     ssh_cmd,
 )
 
-
 # ---------------------------------------------------------------------------
 # load_topology
 # ---------------------------------------------------------------------------
@@ -183,9 +182,7 @@ class TestPingHost:
 class TestSshCmd:
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ssh_success(self, mock_run):
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="euclid", stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="euclid", stderr="")
         rc, out, err = ssh_cmd("swarm", "10.29.1.1", "hostname")
         assert rc == 0
         assert out == "euclid"
@@ -272,24 +269,29 @@ class TestHashRemoteExperiment:
     def test_parses_md5sums(self, mock_ssh):
         mock_ssh.return_value = (
             0,
-            "abc123def456  ./hydra/scene_graph.json\n"
-            "789012345678  ./roman/map.pkl",
+            "abc123def456  ./hydra/scene_graph.json\n789012345678  ./roman/map.pkl",
             "",
         )
-        result = hash_remote_experiment("swarm", "10.29.1.1", "~/adt4_output", "test_exp")
+        result = hash_remote_experiment(
+            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+        )
         assert result["./hydra/scene_graph.json"] == "abc123def456"
         assert result["./roman/map.pkl"] == "789012345678"
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_empty_on_failure(self, mock_ssh):
         mock_ssh.return_value = (1, "", "No such directory")
-        result = hash_remote_experiment("swarm", "10.29.1.1", "~/adt4_output", "test_exp")
+        result = hash_remote_experiment(
+            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+        )
         assert result == {}
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_empty_experiment(self, mock_ssh):
         mock_ssh.return_value = (0, "", "")
-        result = hash_remote_experiment("swarm", "10.29.1.1", "~/adt4_output", "test_exp")
+        result = hash_remote_experiment(
+            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+        )
         assert result == {}
 
 
@@ -565,25 +567,34 @@ class TestCheckZenohConfig:
 class TestGenerateNamespacedRviz:
     def test_namespaces_topics(self, tmp_path, rviz_template):
         output = tmp_path / "output.rviz"
-        generate_namespaced_rviz("robot", template_path=rviz_template, output_path=output)
+        generate_namespaced_rviz(
+            "robot", template_path=rviz_template, output_path=output
+        )
         content = output.read_text()
         assert "Value: robot/hydra_visualizer/graph" in content
         # Original un-namespaced version should not appear
-        lines = [l.strip() for l in content.splitlines()]
+        lines = [line.strip() for line in content.splitlines()]
         for line in lines:
             if "hydra_visualizer/graph" in line:
-                assert line.startswith("Value: robot/") or "robot/hydra_visualizer/graph" in line
+                assert (
+                    line.startswith("Value: robot/")
+                    or "robot/hydra_visualizer/graph" in line
+                )
 
     def test_replaces_robot_prefix(self, tmp_path, rviz_template):
         output = tmp_path / "output.rviz"
-        generate_namespaced_rviz("hamilton", template_path=rviz_template, output_path=output)
+        generate_namespaced_rviz(
+            "hamilton", template_path=rviz_template, output_path=output
+        )
         content = output.read_text()
         assert "hamilton/base_link:" in content
         assert "euclid/base_link:" not in content
 
     def test_writes_output_to_correct_path(self, tmp_path, rviz_template):
         output = tmp_path / "my_output.rviz"
-        result = generate_namespaced_rviz("robot", template_path=rviz_template, output_path=output)
+        result = generate_namespaced_rviz(
+            "robot", template_path=rviz_template, output_path=output
+        )
         assert result == str(output)
         assert output.exists()
 
@@ -598,9 +609,9 @@ class TestDeployZenohConfig:
     def test_success(self, mock_ssh):
         # Three calls: backup, check exists, run script
         mock_ssh.side_effect = [
-            (0, "", ""),             # backup
-            (0, "exists", ""),       # check exists
-            (0, "OK", ""),           # run update script
+            (0, "", ""),  # backup
+            (0, "exists", ""),  # check exists
+            (0, "OK", ""),  # run update script
         ]
         ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
         assert ok is True
@@ -609,8 +620,8 @@ class TestDeployZenohConfig:
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_config_missing(self, mock_ssh):
         mock_ssh.side_effect = [
-            (0, "", ""),     # backup
-            (1, "", ""),     # check exists fails
+            (0, "", ""),  # backup
+            (1, "", ""),  # check exists fails
         ]
         ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
         assert ok is False
@@ -619,14 +630,17 @@ class TestDeployZenohConfig:
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_endpoints_in_command(self, mock_ssh):
         mock_ssh.side_effect = [
-            (0, "", ""),         # backup
-            (0, "exists", ""),   # check exists
-            (0, "OK", ""),       # run update script
+            (0, "", ""),  # backup
+            (0, "exists", ""),  # check exists
+            (0, "OK", ""),  # run update script
         ]
-        deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447", "tcp/10.0.0.2:7447"])
+        deploy_zenoh_config(
+            "swarm", "10.29.1.1", ["tcp/10.0.0.1:7447", "tcp/10.0.0.2:7447"]
+        )
         # The third ssh_cmd call contains the remote command with base64-encoded endpoints
         third_call_cmd = mock_ssh.call_args_list[2][0][2]
         import base64
+
         # The endpoints are base64-encoded in the command; verify both are present
         # by checking the base64-decoded content
         b64_parts = [p for p in third_call_cmd.split("'") if len(p) > 20]
@@ -653,6 +667,7 @@ class TestPatchZenohConfigLocal:
         )
         assert result is not None
         import pathlib
+
         content = pathlib.Path(result).read_text()
         assert "10.0.0.1:7447" in content
 
@@ -662,6 +677,7 @@ class TestPatchZenohConfigLocal:
         )
         assert result is not None
         import pathlib
+
         content = pathlib.Path(result).read_text()
         assert "9999" in content
 

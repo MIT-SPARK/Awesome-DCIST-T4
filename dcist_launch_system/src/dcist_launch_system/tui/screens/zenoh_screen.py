@@ -1,51 +1,28 @@
 """Zenoh config management screen."""
+
 from __future__ import annotations
 
-import shlex
 import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
     DataTable,
     Footer,
-    Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
-    SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
     deploy_zenoh_config,
-    filter_reachable,
-    generate_namespaced_rviz,
     generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
     run_parallel,
-    send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
+
 
 class ZenohScreen(ModalScreen):
     BINDINGS = [
@@ -61,7 +38,9 @@ class ZenohScreen(ModalScreen):
     def compose(self) -> ComposeResult:
         yield Vertical(
             Label("[bold]Zenoh Config Manager[/]"),
-            Label(f"[dim]Network: {self.ctx.active_network} — Base stations connect to robots (star topology)[/]"),
+            Label(
+                f"[dim]Network: {self.ctx.active_network} — Base stations connect to robots (star topology)[/]"
+            ),
             Rule(),
             DataTable(id="zenoh_table"),
             Rule(),
@@ -88,7 +67,9 @@ class ZenohScreen(ModalScreen):
         for mname in sorted(self.ctx.runtime_config):
             mconf = self.ctx.runtime_config[mname]
             try:
-                endpoints = generate_zenoh_endpoints(self.ctx.topo, self.ctx.active_network, mname)
+                endpoints = generate_zenoh_endpoints(
+                    self.ctx.topo, self.ctx.active_network, mname
+                )
                 self._endpoints[mname] = endpoints
             except KeyError:
                 table.add_row(mname, mconf["role"], "?", "No address", key=mname)
@@ -98,13 +79,16 @@ class ZenohScreen(ModalScreen):
             connect_str = f"{n} robot(s)" if n else "none (listen only)"
             table.add_row(mname, mconf["role"], connect_str, "Ready", key=mname)
 
-        log.write(f"[dim]Computed endpoints for {len(self._endpoints)} machine(s). Press [bold]d[/] to deploy, [bold]p[/] to preview.[/]")
+        log.write(
+            f"[dim]Computed endpoints for {len(self._endpoints)} machine(s). Press [bold]d[/] to deploy, [bold]p[/] to preview.[/]"
+        )
 
     def action_preview(self):
         table = self.query_one("#zenoh_table", DataTable)
         log = self.query_one("#zenoh_log", RichLog)
         try:
             from textual.coordinate import Coordinate
+
             row_idx = table.cursor_coordinate.row
             mname = str(table.get_cell_at(Coordinate(row_idx, 0)))
         except Exception:
@@ -129,7 +113,9 @@ class ZenohScreen(ModalScreen):
             log.write("[red]No machines to deploy to.[/]")
             return
 
-        log.write("[dim]Deploying configs (updating connect.endpoints in existing JSON5)...[/]")
+        log.write(
+            "[dim]Deploying configs (updating connect.endpoints in existing JSON5)...[/]"
+        )
 
         def do_deploy():
             results = []
@@ -174,5 +160,5 @@ class ZenohScreen(ModalScreen):
 
         threading.Thread(target=bg, daemon=True).start()
 
-# ---- Main App ----
 
+# ---- Main App ----

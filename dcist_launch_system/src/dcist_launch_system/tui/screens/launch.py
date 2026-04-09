@@ -1,4 +1,5 @@
 """Launch screen — configure and start experiment sessions."""
+
 from __future__ import annotations
 
 import pathlib
@@ -7,11 +8,9 @@ import threading
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
-    DataTable,
     Footer,
     Input,
     Label,
@@ -19,37 +18,18 @@ from textual.widgets import (
     RichLog,
     Rule,
     SelectionList,
-    Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
     _quote_path,
-    check_silvus_route,
-    check_zenoh_config,
-    check_zenoh_port,
-    compute_robot_readiness,
     deploy_zenoh_config,
-    filter_reachable,
     generate_namespaced_rviz,
     generate_zenoh_endpoints,
-    get_remote_status,
-    get_ros_node_status,
-    get_silvus_link_quality,
-    get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
     rsync_transfer,
     run_parallel,
-    send_tmux_keys,
     ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
-
-import json
-
 from dcist_launch_system.tui.screens.confirm import ConfirmScreen, TypeConfirmScreen
 from dcist_launch_system.tui.screens.maps import PriorMapSelector
 
@@ -61,13 +41,21 @@ _TMUX_DIR = pathlib.Path(__file__).resolve().parents[4] / "tmux" / "autogenerate
 
 def check_sessions_and_prompt(app, targets, session_name, log):
     """Check for running tmux sessions and prompt user in TUI threads to kill them."""
+
     def check(m):
-        rc, _, _ = ssh_cmd(m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session_name)} 2>/dev/null", timeout=5)
+        rc, _, _ = ssh_cmd(
+            m["user"],
+            m["ip"],
+            f"tmux has-session -t {shlex.quote(session_name)} 2>/dev/null",
+            timeout=5,
+        )
         if rc == 0:
             return m["name"]
         return None
 
-    app.call_from_thread(log.write, f"  [dim]Checking for existing '{session_name}' sessions...[/]")
+    app.call_from_thread(
+        log.write, f"  [dim]Checking for existing '{session_name}' sessions...[/]"
+    )
     results = run_parallel(check, targets)
     conflicts = [r for _, r in results if isinstance(r, str)]
 
@@ -76,7 +64,7 @@ def check_sessions_and_prompt(app, targets, session_name, log):
 
     app.call_from_thread(
         log.write,
-        f"  [yellow]Session '{session_name}' already running on: {', '.join(conflicts)}[/]"
+        f"  [yellow]Session '{session_name}' already running on: {', '.join(conflicts)}[/]",
     )
 
     user_decision = [None]
@@ -86,8 +74,14 @@ def check_sessions_and_prompt(app, targets, session_name, log):
         def on_dismiss(result):
             user_decision[0] = result
             ev.set()
+
         msg = f"Session '{session_name}' is already running on {len(conflicts)} machine(s):\n{', '.join(conflicts)}\n\nTerminate existing sessions and proceed?"
-        app.push_screen(ConfirmScreen(msg, yes_label="Yes, Terminate (y)", no_label="No, Abort (n)"), on_dismiss)
+        app.push_screen(
+            ConfirmScreen(
+                msg, yes_label="Yes, Terminate (y)", no_label="No, Abort (n)"
+            ),
+            on_dismiss,
+        )
 
     app.call_from_thread(ask)
     ev.wait()
@@ -95,8 +89,16 @@ def check_sessions_and_prompt(app, targets, session_name, log):
     if user_decision[0]:
         for m in targets:
             if m["name"] in conflicts:
-                app.call_from_thread(log.write, f"  [dim]Terminating session {session_name} on {m['name']}...[/]")
-                ssh_cmd(m["user"], m["ip"], f"tmux kill-session -t {shlex.quote(session_name)}", timeout=5)
+                app.call_from_thread(
+                    log.write,
+                    f"  [dim]Terminating session {session_name} on {m['name']}...[/]",
+                )
+                ssh_cmd(
+                    m["user"],
+                    m["ip"],
+                    f"tmux kill-session -t {shlex.quote(session_name)}",
+                    timeout=5,
+                )
         return True
     else:
         app.call_from_thread(log.write, "[red]Launch aborted by user.[/]")
@@ -154,16 +156,24 @@ class LaunchScreen(ModalScreen):
             if m["role"] == "robot"
         ]
         base_stations = [
-            (m["name"], f"{m['name']} (local)" if m["ip"] in self.ctx._local_ips else m["name"], m.get("online", False) or m["ip"] in self.ctx._local_ips)
+            (
+                m["name"],
+                f"{m['name']} (local)" if m["ip"] in self.ctx._local_ips else m["name"],
+                m.get("online", False) or m["ip"] in self.ctx._local_ips,
+            )
             for m in self.ctx.runtime_config.values()
             if m["role"] == "base_station"
         ]
-        self._all_sessions = sorted(
-            [f.stem for f in _TMUX_DIR.glob("*.yaml")]
-        ) if _TMUX_DIR.exists() else []
+        self._all_sessions = (
+            sorted([f.stem for f in _TMUX_DIR.glob("*.yaml")])
+            if _TMUX_DIR.exists()
+            else []
+        )
 
         yield VerticalScroll(
-            Label("[bold]Launch[/] — m=mapping, r=relocalize, g=launch, d=dry run, p=refresh priors"),
+            Label(
+                "[bold]Launch[/] — m=mapping, r=relocalize, g=launch, d=dry run, p=refresh priors"
+            ),
             Rule(),
             Label("Select robots:"),
             SelectionList(*robots, id="robot_select"),
@@ -180,7 +190,9 @@ class LaunchScreen(ModalScreen):
                 id="bs_session_select",
             ),
             Rule(),
-            Label("Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"),
+            Label(
+                "Experiment (saved to ~/adt4_output/<name>/, e.g. 03252026_building_test):"
+            ),
             Input(placeholder="date_description", id="experiment_input"),
             Rule(),
             PriorMapSelector(self.ctx, id="launch_prior_selector"),
@@ -239,16 +251,27 @@ class LaunchScreen(ModalScreen):
         # Pick session based on first selected (or online) robot's platform
         selected_robots = list(robot_sel.selected)
         first_robot = next(
-            (self.ctx.runtime_config[n] for n in selected_robots if n in self.ctx.runtime_config),
+            (
+                self.ctx.runtime_config[n]
+                for n in selected_robots
+                if n in self.ctx.runtime_config
+            ),
             None,
         ) or next(
-            (m for m in self.ctx.runtime_config.values()
-             if m["role"] == "robot" and m.get("online")),
+            (
+                m
+                for m in self.ctx.runtime_config.values()
+                if m["role"] == "robot" and m.get("online")
+            ),
             None,
         )
         target_session = ""
         if first_robot:
-            target_session = spot_session if first_robot.get("platform_id") in spot_platforms else phoenix_session
+            target_session = (
+                spot_session
+                if first_robot.get("platform_id") in spot_platforms
+                else phoenix_session
+            )
 
         if target_session:
             sess_sel = self.query_one("#session_select", SelectionList)
@@ -282,7 +305,9 @@ class LaunchScreen(ModalScreen):
             log.write(f"  BS session: [cyan]{bs_session}[/]")
 
         if mode == "relocalize":
-            log.write("[yellow]Relocalize mode: prior map is required. Select one below or press p to refresh.[/]")
+            log.write(
+                "[yellow]Relocalize mode: prior map is required. Select one below or press p to refresh.[/]"
+            )
         log.write("[dim]Review selections, then g=launch, d=dry run.[/]")
 
     def on_input_changed(self, event: Input.Changed):
@@ -327,13 +352,22 @@ class LaunchScreen(ModalScreen):
             for m in targets:
                 try:
                     endpoints = generate_zenoh_endpoints(
-                        self.ctx.topo, self.ctx.active_network, m["name"],
+                        self.ctx.topo,
+                        self.ctx.active_network,
+                        m["name"],
                         robot_filter=robot_names,
                     )
                     ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
                     results.append((m["name"], ok, msg, len(endpoints)))
                 except KeyError:
-                    results.append((m["name"], False, f"no address on {self.ctx.active_network}", 0))
+                    results.append(
+                        (
+                            m["name"],
+                            False,
+                            f"no address on {self.ctx.active_network}",
+                            0,
+                        )
+                    )
             return results
 
         def on_done(results):
@@ -355,7 +389,6 @@ class LaunchScreen(ModalScreen):
         log.styles.min_height = new_h
 
     def _build_commands(self):
-        log = self.query_one("#launch_log", RichLog)
         robot_sel = self.query_one("#robot_select", SelectionList)
         selected = list(robot_sel.selected)
         if not selected:
@@ -369,10 +402,16 @@ class LaunchScreen(ModalScreen):
         if not experiment:
             return [], None, "No experiment name provided."
 
-        prior_path, prior_source = self.query_one("#launch_prior_selector", PriorMapSelector).get_prior_map()
+        prior_path, prior_source = self.query_one(
+            "#launch_prior_selector", PriorMapSelector
+        ).get_prior_map()
 
         if self._mode == "relocalize" and not prior_path:
-            return [], None, "Relocalize mode requires a prior map. Select one or press p to refresh."
+            return (
+                [],
+                None,
+                "Relocalize mode requires a prior map. Select one or press p to refresh.",
+            )
 
         # If prior map comes from a source machine, targets get it as prior_<name>
         if prior_path and prior_source:
@@ -400,13 +439,12 @@ class LaunchScreen(ModalScreen):
                 f"{shlex.quote(session)} -n {shlex.quote(m['name'])} "
                 f"-c {shlex.quote(m['platform_id'])} "
                 f"-o {_quote_path(out_dir)} -y{prior_flag} "
-                f"--tmuxp-args \"-d\""
+                f'--tmuxp-args "-d"'
             )
             cmds.append((m, remote_cmd))
 
         prior_info = (prior_path, prior_source) if prior_path else None
         return cmds, prior_info, None
-
 
     def action_dry_run(self):
         log = self.query_one("#launch_log", RichLog)
@@ -426,11 +464,15 @@ class LaunchScreen(ModalScreen):
                             f"  [dim]Transfer prior map: {prior_source} -> {m['name']} "
                             f"({exp_name} as {dest_name})[/]"
                         )
-                log.write(f"  [dim]Prior map path on targets: {self.ctx.output_root}/{dest_name}[/]")
+                log.write(
+                    f"  [dim]Prior map path on targets: {self.ctx.output_root}/{dest_name}[/]"
+                )
         for m, cmd in cmds:
-            log.write(f"  ssh {m['user']}@{m['ip']} \"{cmd}\"")
+            log.write(f'  ssh {m["user"]}@{m["ip"]} "{cmd}"')
 
-    def _transfer_prior_to_robot(self, prior_path, prior_source, target_machine, log, progress_callback=None):
+    def _transfer_prior_to_robot(
+        self, prior_path, prior_source, target_machine, log, progress_callback=None
+    ):
         """Transfer prior map from source machine to target if it doesn't exist."""
         exp_name = pathlib.Path(prior_path).name
         dest_name = f"prior_{exp_name}"
@@ -438,14 +480,15 @@ class LaunchScreen(ModalScreen):
 
         # Check if prior already exists on target
         rc, out, _ = ssh_cmd(
-            target_machine["user"], target_machine["ip"],
+            target_machine["user"],
+            target_machine["ip"],
             f"test -d {_quote_path(dest_path + '/hydra')} && test -d {_quote_path(dest_path + '/roman')} && echo OK",
             timeout=10,
         )
         if "OK" in out:
             self.app.call_from_thread(
                 log.write,
-                f"  [dim]{target_machine['name']}: prior map already present ({dest_name})[/]"
+                f"  [dim]{target_machine['name']}: prior map already present ({dest_name})[/]",
             )
             if progress_callback:
                 progress_callback(100)
@@ -454,20 +497,25 @@ class LaunchScreen(ModalScreen):
         # Need to transfer
         self.app.call_from_thread(
             log.write,
-            f"  [cyan]Transferring prior map to {target_machine['name']}...[/]"
+            f"  [cyan]Transferring prior map to {target_machine['name']}...[/]",
         )
         src = self.ctx.runtime_config.get(prior_source)
         if not src:
             self.app.call_from_thread(
                 log.write,
-                f"  [red]Source machine '{prior_source}' not found in config.[/]"
+                f"  [red]Source machine '{prior_source}' not found in config.[/]",
             )
             return False, ""
 
         ok, method, msg = rsync_transfer(
-            src["user"], src["ip"], prior_path,
-            target_machine["user"], target_machine["ip"], dest_path,
-            relay=False, exclude=["recorded_data/"],
+            src["user"],
+            src["ip"],
+            prior_path,
+            target_machine["user"],
+            target_machine["ip"],
+            dest_path,
+            relay=False,
+            exclude=["recorded_data/"],
             progress_callback=progress_callback,
         )
         if ok:
@@ -475,13 +523,13 @@ class LaunchScreen(ModalScreen):
                 progress_callback(100)
             self.app.call_from_thread(
                 log.write,
-                f"  [green]{target_machine['name']}: prior map transferred ({method})[/]"
+                f"  [green]{target_machine['name']}: prior map transferred ({method})[/]",
             )
             return True, dest_path
         else:
             self.app.call_from_thread(
                 log.write,
-                f"  [red]{target_machine['name']}: prior map transfer FAILED: {msg}[/]"
+                f"  [red]{target_machine['name']}: prior map transfer FAILED: {msg}[/]",
             )
             return False, ""
 
@@ -522,7 +570,9 @@ class LaunchScreen(ModalScreen):
         log.write(f"[dim]bs_session.selected = {bs_sess_selected}[/]")
         log.write(f"[dim]bs option_count = {bs_sel.option_count}[/]")
 
-        _bs_machine = self.ctx.runtime_config.get(bs_selected[0]) if bs_selected else None
+        _bs_machine = (
+            self.ctx.runtime_config.get(bs_selected[0]) if bs_selected else None
+        )
         _bs_session = bs_sess_selected[0] if bs_sess_selected else None
 
         # Set up progress bars for transfers if needed
@@ -538,7 +588,9 @@ class LaunchScreen(ModalScreen):
                         area.mount(
                             Vertical(
                                 Label(f"  {m['name']}:"),
-                                ProgressBar(total=100, show_eta=False, id=f"lpb_{m['name']}"),
+                                ProgressBar(
+                                    total=100, show_eta=False, id=f"lpb_{m['name']}"
+                                ),
                             )
                         )
 
@@ -549,29 +601,34 @@ class LaunchScreen(ModalScreen):
                 deploy_targets = [_bs_machine] if _bs_machine else []
                 if deploy_targets:
                     self.app.call_from_thread(
-                        log.write, f"[bold]Deploying zenoh config to base station...[/]"
+                        log.write, "[bold]Deploying zenoh config to base station...[/]"
                     )
                     all_ok = True
                     for m in deploy_targets:
                         try:
                             endpoints = generate_zenoh_endpoints(
-                                self.ctx.topo, self.ctx.active_network, m["name"],
+                                self.ctx.topo,
+                                self.ctx.active_network,
+                                m["name"],
                                 robot_filter=_robot_names,
                             )
                             ok, msg = deploy_zenoh_config(m["user"], m["ip"], endpoints)
                             color = "green" if ok else "red"
                             self.app.call_from_thread(
-                                log.write, f"  [{color}]{m['name']}: {msg} ({len(endpoints)} ep)[/{color}]"
+                                log.write,
+                                f"  [{color}]{m['name']}: {msg} ({len(endpoints)} ep)[/{color}]",
                             )
                             if not ok:
                                 all_ok = False
                         except KeyError:
                             self.app.call_from_thread(
-                                log.write, f"  [dim]{m['name']}: no address on {self.ctx.active_network}[/]"
+                                log.write,
+                                f"  [dim]{m['name']}: no address on {self.ctx.active_network}[/]",
                             )
                     if not all_ok:
                         self.app.call_from_thread(
-                            log.write, "[bold red]ABORT: zenoh deploy failed on some machines.[/]"
+                            log.write,
+                            "[bold red]ABORT: zenoh deploy failed on some machines.[/]",
                         )
                         return
 
@@ -580,7 +637,8 @@ class LaunchScreen(ModalScreen):
                     prior_path, prior_source = prior_info
                     if prior_source:
                         self.app.call_from_thread(
-                            log.write, "[bold]Phase 1: Ensuring prior maps on all robots...[/]"
+                            log.write,
+                            "[bold]Phase 1: Ensuring prior maps on all robots...[/]",
                         )
                         for m, cmd in cmds:
                             if m["name"] == prior_source:
@@ -591,48 +649,59 @@ class LaunchScreen(ModalScreen):
                                     self.app.call_from_thread(
                                         self._update_launch_progress, mname, pct
                                     )
+
                                 return cb
 
                             ok, dest_path = self._transfer_prior_to_robot(
-                                prior_path, prior_source, m, log,
+                                prior_path,
+                                prior_source,
+                                m,
+                                log,
                                 progress_callback=make_cb(m["name"]),
                             )
                             if not ok:
                                 self.app.call_from_thread(
                                     log.write,
-                                    f"  [bold red]ABORT: could not transfer prior to {m['name']}[/]"
+                                    f"  [bold red]ABORT: could not transfer prior to {m['name']}[/]",
                                 )
                                 return
 
                 # Phase 1.5: Verify no conflicting tmux sessions
                 all_targets = [m for m, _ in cmds]
                 if _launch_session_name:
-                    if not check_sessions_and_prompt(self.app, all_targets, _launch_session_name, log):
+                    if not check_sessions_and_prompt(
+                        self.app, all_targets, _launch_session_name, log
+                    ):
                         return
 
                 # Phase 2: Check for existing output dirs
                 out_dir = f"{self.ctx.output_root}/{experiment}"
                 conflicts = []
                 for m, cmd in cmds:
-                    rc, out, _ = ssh_cmd(m["user"], m["ip"], f"test -d {_quote_path(out_dir)} && echo EXISTS", timeout=5)
+                    rc, out, _ = ssh_cmd(
+                        m["user"],
+                        m["ip"],
+                        f"test -d {_quote_path(out_dir)} && echo EXISTS",
+                        timeout=5,
+                    )
                     if "EXISTS" in out:
                         conflicts.append(m["name"])
 
                 if conflicts:
                     names = ", ".join(conflicts)
                     self.app.call_from_thread(
-                        log.write,
-                        f"[yellow]{out_dir} already exists on: {names}[/]"
+                        log.write, f"[yellow]{out_dir} already exists on: {names}[/]"
                     )
 
                     # Measure sizes to decide whether to require typed "confirm"
-                    _GB = 1024 ** 3
+                    _GB = 1024**3
                     total_bytes = 0
                     for m, _ in cmds:
                         if m["name"] not in conflicts:
                             continue
                         rc_sz, sz_out, _ = ssh_cmd(
-                            m["user"], m["ip"],
+                            m["user"],
+                            m["ip"],
                             f"du -sb {_quote_path(out_dir)} 2>/dev/null | awk '{{print $1}}'",
                             timeout=10,
                         )
@@ -649,13 +718,14 @@ class LaunchScreen(ModalScreen):
                         size_str = f"{total_bytes / _GB:.1f} GB"
                         self.app.call_from_thread(
                             log.write,
-                            f"[red]Warning: existing data is ~{size_str}. Type 'confirm' to overwrite.[/]"
+                            f"[red]Warning: existing data is ~{size_str}. Type 'confirm' to overwrite.[/]",
                         )
 
                     def ask_overwrite():
                         def on_dismiss(result):
                             user_decision[0] = result
                             ev.set()
+
                         if total_bytes >= _GB:
                             size_str = f"{total_bytes / _GB:.1f} GB"
                             msg = (
@@ -664,7 +734,10 @@ class LaunchScreen(ModalScreen):
                                 f"[bold red]Total data at risk: ~{size_str}[/]\n\n"
                                 f"Type [bold]confirm[/bold] below to overwrite and proceed."
                             )
-                            self.app.push_screen(TypeConfirmScreen(msg, required_text="confirm"), on_dismiss)
+                            self.app.push_screen(
+                                TypeConfirmScreen(msg, required_text="confirm"),
+                                on_dismiss,
+                            )
                         else:
                             msg = (
                                 f"Output directory '{experiment}' already exists on:\n"
@@ -672,7 +745,12 @@ class LaunchScreen(ModalScreen):
                                 f"Overwrite existing directories and launch?"
                             )
                             self.app.push_screen(
-                                ConfirmScreen(msg, yes_label="Yes, Overwrite (y)", no_label="No, Keep (n)"), on_dismiss
+                                ConfirmScreen(
+                                    msg,
+                                    yes_label="Yes, Overwrite (y)",
+                                    no_label="No, Keep (n)",
+                                ),
+                                on_dismiss,
                             )
 
                     self.app.call_from_thread(ask_overwrite)
@@ -680,12 +758,14 @@ class LaunchScreen(ModalScreen):
 
                     if user_decision[0] is None:
                         self.app.call_from_thread(
-                            log.write, "[red]Launch aborted — confirmation timed out or app closed.[/]"
+                            log.write,
+                            "[red]Launch aborted — confirmation timed out or app closed.[/]",
                         )
                         return
                     if not user_decision[0]:
                         self.app.call_from_thread(
-                            log.write, "[red]Launch aborted — existing directories preserved.[/]"
+                            log.write,
+                            "[red]Launch aborted — existing directories preserved.[/]",
                         )
                         return
 
@@ -693,14 +773,20 @@ class LaunchScreen(ModalScreen):
                     for m, cmd in cmds:
                         if m["name"] in conflicts:
                             self.app.call_from_thread(
-                                log.write, f"  [dim]Removing {out_dir} on {m['name']}...[/]"
+                                log.write,
+                                f"  [dim]Removing {out_dir} on {m['name']}...[/]",
                             )
-                            ssh_cmd(m["user"], m["ip"], f"rm -rf {_quote_path(out_dir)}", timeout=15)
+                            ssh_cmd(
+                                m["user"],
+                                m["ip"],
+                                f"rm -rf {_quote_path(out_dir)}",
+                                timeout=15,
+                            )
 
                 # Launch on each robot
                 self.app.call_from_thread(
                     log.write,
-                    "[bold]" + ("Phase 2: " if prior_info else "") + "Launching...[/]"
+                    "[bold]" + ("Phase 2: " if prior_info else "") + "Launching...[/]",
                 )
                 for m, cmd in cmds:
                     self.app.call_from_thread(
@@ -713,7 +799,8 @@ class LaunchScreen(ModalScreen):
                         )
                     else:
                         self.app.call_from_thread(
-                            log.write, f"  [red]{m['name']}: FAILED (rc={rc}) {launch_err}[/]"
+                            log.write,
+                            f"  [red]{m['name']}: FAILED (rc={rc}) {launch_err}[/]",
                         )
                 # Phase 3: Launch base station if selected
                 if _bs_machine and _bs_session:
@@ -723,7 +810,8 @@ class LaunchScreen(ModalScreen):
                     # Stop fleet zenohd so BS can bind port 7447
                     if self.ctx._fleet_zenoh["proc"]:
                         self.app.call_from_thread(
-                            log.write, "  [dim]Stopping fleet zenohd (base station will take over)...[/]"
+                            log.write,
+                            "  [dim]Stopping fleet zenohd (base station will take over)...[/]",
                         )
                         self._stop_zenohd and self._stop_zenohd()
 
@@ -746,51 +834,66 @@ class LaunchScreen(ModalScreen):
                             )
                     except Exception as e:
                         self.app.call_from_thread(
-                            log.write, f"  [yellow]RViz config generation failed: {e}[/]"
+                            log.write,
+                            f"  [yellow]RViz config generation failed: {e}[/]",
                         )
 
                     out_dir = f"{self.ctx.output_root}/{experiment}"
                     q_output = _quote_path(out_dir)
                     platform = _bs_machine.get("platform_id") or _bs_machine["name"]
-                    config_flag = f" -c {shlex.quote(platform)}" if _bs_machine.get("platform_id") else ""
+                    config_flag = (
+                        f" -c {shlex.quote(platform)}"
+                        if _bs_machine.get("platform_id")
+                        else ""
+                    )
                     bs_cmd = (
                         f"cd ~/dcist_ws && source install/setup.zsh && "
                         f"nohup src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4 "
                         f"{shlex.quote(_bs_session)} -n {shlex.quote(_bs_machine['name'])}"
                         f"{config_flag} -o {q_output} -y{rviz_flag} "
-                        f"--tmuxp-args \"-d\" "
+                        f'--tmuxp-args "-d" '
                         f">/dev/null 2>&1 &"
                     )
                     self.app.call_from_thread(
-                        log.write, f"  [dim][{_bs_machine['user']}@{_bs_machine['ip']}] {bs_cmd}[/]"
+                        log.write,
+                        f"  [dim][{_bs_machine['user']}@{_bs_machine['ip']}] {bs_cmd}[/]",
                     )
-                    rc, out, err = ssh_cmd(_bs_machine["user"], _bs_machine["ip"], bs_cmd, timeout=60)
+                    rc, out, err = ssh_cmd(
+                        _bs_machine["user"], _bs_machine["ip"], bs_cmd, timeout=60
+                    )
                     # nohup & always returns 0; verify tmux session started
                     import time
+
                     time.sleep(3)
                     tmux_name = "adt4_system"
                     trc, tout, _ = ssh_cmd(
-                        _bs_machine["user"], _bs_machine["ip"],
+                        _bs_machine["user"],
+                        _bs_machine["ip"],
                         f"tmux has-session -t {shlex.quote(tmux_name)} 2>/dev/null && echo OK",
                         timeout=5,
                     )
                     if "OK" in tout:
                         self.app.call_from_thread(
-                            log.write, f"  [green]{_bs_machine['name']}: base station launched (tmux session: {tmux_name})[/]"
+                            log.write,
+                            f"  [green]{_bs_machine['name']}: base station launched (tmux session: {tmux_name})[/]",
                         )
                         self.app.call_from_thread(
-                            log.write, "  [dim]Base station zenohd is now active on port 7447.[/]"
+                            log.write,
+                            "  [dim]Base station zenohd is now active on port 7447.[/]",
                         )
                     else:
                         self.app.call_from_thread(
-                            log.write, f"  [red]{_bs_machine['name']}: tmux session '{tmux_name}' not found after launch. rc={rc} {err}[/]"
+                            log.write,
+                            f"  [red]{_bs_machine['name']}: tmux session '{tmux_name}' not found after launch. rc={rc} {err}[/]",
                         )
 
-                self.app.call_from_thread(log.write, "[bold]Launch sequence complete.[/]")
+                self.app.call_from_thread(
+                    log.write, "[bold]Launch sequence complete.[/]"
+                )
             finally:
                 self._launching = False
 
         threading.Thread(target=do_launch, daemon=True).start()
 
-# ---- Bandwidth Selection Screen ----
 
+# ---- Bandwidth Selection Screen ----

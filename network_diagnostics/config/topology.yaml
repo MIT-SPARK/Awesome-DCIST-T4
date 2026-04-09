@@ -1,51 +1,47 @@
+---
 networks:
-  mit_wifi:   { subnet: "10.29.0.0/16" }
-  penn_wifi:  { subnet: "192.168.129.0/24" }
-  silvus:     { subnet: "192.168.100.0/24" }
-
+  mit_wifi: {subnet: 10.29.0.0/16}
+  penn_wifi: {subnet: 192.168.129.0/24}
+  silvus: {subnet: 192.168.100.0/24}
 machines:
-  euclid:   { role: robot, platform_id: smaug,   platform_type: spot,    desc: "Smaug Jockey",   addresses: { mit_wifi: "10.29.141.193", penn_wifi: "192.168.129.234", silvus: "192.168.100.3" } }
-  hamilton:  { role: robot, platform_id: topaz,   platform_type: spot,    desc: "Topaz Jockey",   addresses: { mit_wifi: "10.31.182.148", penn_wifi: "192.168.129.210", silvus: "192.168.100.2" } }
-  gauss:     { role: robot, platform_id: samoyed, platform_type: phoenix, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.170.181" } }
-  lewis:     { role: robot, platform_id: samoyed, platform_type: phoenix, desc: "Husky Jockey",   addresses: { mit_wifi: "10.29.202.81",  penn_wifi: "192.168.129.218", silvus: "192.168.100.105" } }
-  apollo:    { role: robot, platform_id: apollo,  platform_type: spot,    desc: "ARL Spot",       addresses: { silvus: "192.168.100.13" } }
-  samoyed:   { role: robot, platform_id: samoyed, platform_type: phoenix, desc: "ARL Husky",      addresses: { silvus: "192.168.100.62" } }
-  russell:   { role: base_station, desc: "Aaron's laptop",    addresses: { mit_wifi: "10.29.129.166", silvus: "192.168.100.101" } }
-  bonsai:    { role: base_station, desc: "RRG dev computer",  addresses: { penn_wifi: "192.168.129.217" } }
-  willow:    { role: base_station, desc: "RRG base station",  addresses: { mit_wifi: "10.31.172.204", silvus: "192.168.100.100" } }
-  sequia:    { role: base_station, desc: "Sequia base station", addresses: { mit_wifi: "10.29.166.252", silvus: "192.168.100.105" } }
-
+  euclid: {role: robot, platform_id: smaug, platform_type: spot, desc: Smaug Jockey, addresses: {mit_wifi: 10.29.141.193, penn_wifi: 192.168.129.234, silvus: 192.168.100.3}}
+  hamilton: {role: robot, platform_id: topaz, platform_type: spot, desc: Topaz Jockey, addresses: {mit_wifi: 10.31.182.148, penn_wifi: 192.168.129.210, silvus: 192.168.100.2}}
+  gauss: {role: robot, platform_id: samoyed, platform_type: phoenix, desc: Husky Jockey, addresses: {mit_wifi: 10.29.170.181}}
+  lewis: {role: robot, platform_id: samoyed, platform_type: phoenix, desc: Husky Jockey, addresses: {mit_wifi: 10.29.202.81, penn_wifi: 192.168.129.218, silvus: 192.168.100.105}}
+  apollo: {role: robot, platform_id: apollo, platform_type: spot, desc: ARL Spot, addresses: {silvus: 192.168.100.13}}
+  samoyed: {role: robot, platform_id: samoyed, platform_type: phoenix, desc: ARL Husky, addresses: {silvus: 192.168.100.62}}
+  russell: {role: base_station, desc: Aaron's laptop, addresses: {mit_wifi: 10.29.129.166, silvus: 192.168.100.101}}
+  bonsai: {role: base_station, desc: RRG dev computer, addresses: {penn_wifi: 192.168.129.217}}
+  willow: {role: base_station, desc: RRG base station, addresses: {mit_wifi: 10.31.172.204, silvus: 192.168.100.100}}
+  sequia: {role: base_station, desc: Sequia base station, addresses: {mit_wifi: 10.29.166.252, silvus: 192.168.100.105}}
 silvus_radios:
-  mgmt_subnet: "172.20.0.0/16"
-  api_endpoint: "/cgi-bin/streamscape_api"
+  mgmt_subnet: 172.20.0.0/16
+  api_endpoint: /cgi-bin/streamscape_api
   # Radios are auto-detected at runtime — no static machine binding needed.
   # Run: silvus_status.sh detect  (to identify which radio is connected to this machine)
   radios:
-    radio_310061: { mgmt_ip: "172.20.187.45",  node_id: 310061 }
-    radio_310226: { mgmt_ip: "172.20.187.210", node_id: 310226 }
+    radio_310061: {mgmt_ip: 172.20.187.45, node_id: 310061}
+    radio_310226: {mgmt_ip: 172.20.187.210, node_id: 310226}
     # Add more radios as discovered:
     # radio_XXXXXX: { mgmt_ip: "172.20.x.x", node_id: XXXXXX }
   udp_telemetry:
     listen_port: 5100
-
 zenoh:
   port: 7447
   connect_network: silvus
-
 ssh:
-  base_station_user: "rrg"
-  robot_user: "swarm"
-
+  base_station_user: rrg
+  robot_user: swarm
 fleet_defaults:
   # Session auto-selection by platform for mapping and relocalize modes.
   # Spot platforms (smaug, topaz) use spot sessions; others use phoenix.
   spot_platforms: [smaug, topaz]
   sessions:
     mapping:
-      spot: "real_spot-real_spot"
-      phoenix: "real_phoenix-real_phoenix"
+      spot: real_spot-real_spot
+      phoenix: real_phoenix-real_phoenix
     relocalize:
-      spot: "real_spot_relocalize-real_spot_relocalize"
-      phoenix: "real_phoenix_relocalize-real_phoenix_relocalize"
-  base_station_session: "base_station_heracles-default_params"
-  output_root: "~/adt4_output"
+      spot: real_spot_relocalize-real_spot_relocalize
+      phoenix: real_phoenix_relocalize-real_phoenix_relocalize
+  base_station_session: base_station_heracles-default_params
+  output_root: ~/adt4_output

@@ -1,61 +1,44 @@
 """Monitor screen — runtime fleet status."""
+
 from __future__ import annotations
 
-import shlex
+import json
 import subprocess
 import threading
 
+from rich.table import Table
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
-    Button,
     DataTable,
     Footer,
-    Input,
     Label,
-    ProgressBar,
     RichLog,
     Rule,
-    SelectionList,
     Static,
-    Tree,
 )
+
 from dcist_launch_system.fleet_helpers import (
-    _quote_path,
     _STATUS_COLORS,
     _STATUS_NAMES,
     _STATUS_NOMINAL,
+    NodeStatusPoller,
     check_silvus_route,
-    check_zenoh_config,
     check_zenoh_port,
     compute_robot_readiness,
-    deploy_zenoh_config,
-    filter_reachable,
     generate_namespaced_rviz,
-    generate_zenoh_endpoints,
     get_local_ip_for_network,
     get_remote_status,
-    get_ros_node_status,
     get_silvus_link_quality,
     get_silvus_radio_details,
-    hash_remote_experiment,
-    list_remote_experiments,
-    NodeStatusPoller,
-    rsync_transfer,
     run_parallel,
     send_tmux_keys,
-    ssh_cmd,
-    check_iperf3,
-    run_iperf3_test,
 )
 from dcist_launch_system.tui.context import TuiContext
 from dcist_launch_system.tui.screens.bandwidth import BandwidthSelectScreen
 
-import json
-
-from rich.table import Table
 
 class MonitorScreen(ModalScreen):
     BINDINGS = [
@@ -85,7 +68,9 @@ class MonitorScreen(ModalScreen):
             Label("[bold]System Status[/] (r=refresh)"),
             Static(id="monitor_table"),
             Rule(),
-            Label("[bold]Node Readiness[/] (n=refresh, Enter=details, Esc=back, k=stop & save)"),
+            Label(
+                "[bold]Node Readiness[/] (n=refresh, Enter=details, Esc=back, k=stop & save)"
+            ),
             DataTable(id="node_summary_table"),
             Static(id="node_detail_view"),
             Rule(),
@@ -151,13 +136,16 @@ class MonitorScreen(ModalScreen):
         log.write("[dim]Refreshing system status...[/]")
 
         def do_fetch():
-            machines = [m for m in self.ctx.runtime_config.values() if m.get("online", False)]
+            machines = [
+                m for m in self.ctx.runtime_config.values() if m.get("online", False)
+            ]
             sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
             silvus_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
 
             def fetch(m):
                 return get_remote_status(
-                    m["user"], m["ip"],
+                    m["user"],
+                    m["ip"],
                     silvus_ips=silvus_ips,
                     platform_type=m.get("platform_type"),
                 )
@@ -225,6 +213,7 @@ class MonitorScreen(ModalScreen):
         existing_keys = set()
         try:
             from textual.coordinate import Coordinate
+
             for i in range(node_table.row_count):
                 existing_keys.add(str(node_table.get_cell_at(Coordinate(i, 0))))
         except Exception:
@@ -236,6 +225,7 @@ class MonitorScreen(ModalScreen):
                 readiness, node_count, issue_str = new_rows[robot_name]
                 try:
                     from textual.coordinate import Coordinate
+
                     node_table.update_cell_at(Coordinate(i, 1), readiness)
                     node_table.update_cell_at(Coordinate(i, 2), node_count)
                     node_table.update_cell_at(Coordinate(i, 3), issue_str)
@@ -247,7 +237,9 @@ class MonitorScreen(ModalScreen):
             node_table.clear()
             for robot_name in sorted(new_rows):
                 readiness, node_count, issue_str = new_rows[robot_name]
-                node_table.add_row(robot_name, readiness, node_count, issue_str, key=robot_name)
+                node_table.add_row(
+                    robot_name, readiness, node_count, issue_str, key=robot_name
+                )
             self._rebuilding_table = False
 
         # Also refresh the detail view if one is showing
@@ -255,7 +247,9 @@ class MonitorScreen(ModalScreen):
 
     def on_data_table_cursor_moved(self, event):
         """Update detail view when cursor moves via arrow keys or click."""
-        if event.data_table.id == "node_summary_table" and not getattr(self, "_rebuilding_table", False):
+        if event.data_table.id == "node_summary_table" and not getattr(
+            self, "_rebuilding_table", False
+        ):
             self._show_node_detail()
 
     def action_drill_down(self):
@@ -268,6 +262,7 @@ class MonitorScreen(ModalScreen):
 
         try:
             from textual.coordinate import Coordinate
+
             row_idx = node_table.cursor_coordinate.row
             robot_name = str(node_table.get_cell_at(Coordinate(row_idx, 0)))
         except Exception:
@@ -278,7 +273,9 @@ class MonitorScreen(ModalScreen):
             detail.update(f"[dim]No node data for {robot_name}.[/]")
             return
 
-        t = Table(box=None, expand=True, pad_edge=False, title=f"Node details: {robot_name}")
+        t = Table(
+            box=None, expand=True, pad_edge=False, title=f"Node details: {robot_name}"
+        )
         t.add_column("Status", no_wrap=True, min_width=8)
         t.add_column("Node", no_wrap=True, min_width=12)
         t.add_column("Notes", no_wrap=False)
@@ -293,18 +290,23 @@ class MonitorScreen(ModalScreen):
     def action_stop_save(self):
         """Send shutdown signal to all online robots via tmux."""
         log = self.query_one("#monitor_log", RichLog)
-        online_machines = [m for m in self.ctx.runtime_config.values() if m.get("online", False)]
+        online_machines = [
+            m for m in self.ctx.runtime_config.values() if m.get("online", False)
+        ]
         if not online_machines:
             log.write("[red]No online machines to stop.[/]")
             return
 
-        names = ", ".join(m["name"] for m in sorted(online_machines, key=lambda x: x["name"]))
+        names = ", ".join(
+            m["name"] for m in sorted(online_machines, key=lambda x: x["name"])
+        )
         log.write(f"[yellow]Sending Stop & Save to: {names}[/]")
 
         def do_stop():
             def stop_one(m):
                 ok, msg = send_tmux_keys(m["user"], m["ip"])
                 return m["name"], ok, msg
+
             return run_parallel(stop_one, online_machines)
 
         def on_done(results):
@@ -327,20 +329,22 @@ class MonitorScreen(ModalScreen):
         """Generate a namespaced rviz config for a robot."""
         log = self.query_one("#monitor_log", RichLog)
         # Use the first robot in self.ctx.runtime_config as default
-        robots = [m for m in sorted(self.ctx.runtime_config) if self.ctx.runtime_config[m].get("role") == "robot"]
+        robots = [
+            m
+            for m in sorted(self.ctx.runtime_config)
+            if self.ctx.runtime_config[m].get("role") == "robot"
+        ]
         if not robots:
             log.write("[red]No robots in config.[/]")
             return
 
         # Generate for each robot
         for robot_name in robots:
-            mconf = self.ctx.runtime_config[robot_name]
-            platform_id = mconf.get("platform_id", robot_name)
             out_path = generate_namespaced_rviz(robot_name)
             log.write(f"  Generated [cyan]{out_path}[/] for {robot_name}")
 
-        log.write(f"[bold]RViz configs generated.[/] Launch with:")
-        log.write(f"  [dim]rviz2 -d /tmp/dcist_<robot>.rviz[/]")
+        log.write("[bold]RViz configs generated.[/] Launch with:")
+        log.write("  [dim]rviz2 -d /tmp/dcist_<robot>.rviz[/]")
 
     def action_check_zenoh(self):
         """Check zenoh port reachability + Silvus radio link quality for all machines."""
@@ -355,7 +359,9 @@ class MonitorScreen(ModalScreen):
         def do_check():
             machines = list(self.ctx.runtime_config.values())
             sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
-            silvus_mgmt_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
+            silvus_mgmt_ips = [
+                r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
+            ]
 
             results = []
             for m in machines:
@@ -373,6 +379,7 @@ class MonitorScreen(ModalScreen):
 
             # Query Zenoh admin API from background thread
             import urllib.request as _urlreq
+
             zenoh_peers = None
             zenoh_peers_err = None
             try:
@@ -389,11 +396,13 @@ class MonitorScreen(ModalScreen):
             for m, zenoh_ok, _ in sorted(results, key=lambda x: x[0]["name"]):
                 color = "green" if zenoh_ok else "red"
                 status = "OPEN" if zenoh_ok else "CLOSED"
-                log.write(f"  [{color}]{m['name']:12s} {m['ip']:18s} {status}[/{color}]")
+                log.write(
+                    f"  [{color}]{m['name']:12s} {m['ip']:18s} {status}[/{color}]"
+                )
 
             has_radio = any(r for _, _, r in results if r)
             if has_radio:
-                log.write(f"\n[bold]Silvus Radio Link Quality:[/]")
+                log.write("\n[bold]Silvus Radio Link Quality:[/]")
                 radio_assignment = []  # (machine_name, node_id)
                 for m, _, radio in sorted(results, key=lambda x: x[0]["name"]):
                     if not radio:
@@ -418,25 +427,35 @@ class MonitorScreen(ModalScreen):
                             radio_assignment.append((m["name"], nid))
 
                 if radio_assignment:
-                    log.write(f"\n[bold]Radio Assignment (current):[/]")
+                    log.write("\n[bold]Radio Assignment (current):[/]")
                     for mname, nid in radio_assignment:
                         log.write(f"  [cyan]{mname:12s}[/] → node {nid}")
-                    log.write(f"  [dim]Press F4 to see RSSI matrix and mesh topology.[/]")
+                    log.write(
+                        "  [dim]Press F4 to see RSSI matrix and mesh topology.[/]"
+                    )
 
             # ---- Zenoh peer browser ----
-            log.write(f"\n[bold]Zenoh Connected Peers:[/]")
+            log.write("\n[bold]Zenoh Connected Peers:[/]")
             if zenoh_peers is not None:
                 if zenoh_peers:
                     for zid, meta in zenoh_peers.items():
-                        whatami = meta.get("whatami", "?") if isinstance(meta, dict) else "?"
+                        whatami = (
+                            meta.get("whatami", "?") if isinstance(meta, dict) else "?"
+                        )
                         short_zid = zid[:8] if len(zid) > 8 else zid
                         log.write(f"  [green]{short_zid}[/] ({whatami})")
                 else:
                     log.write("  [dim]No peers connected.[/]")
             else:
                 err_str = zenoh_peers_err or ""
-                if "refused" in err_str or "timed out" in err_str or "unreachable" in err_str:
-                    log.write(f"  [dim]Admin API not available — start zenohd with --rest-http-port {zenoh_admin_port}[/]")
+                if (
+                    "refused" in err_str
+                    or "timed out" in err_str
+                    or "unreachable" in err_str
+                ):
+                    log.write(
+                        f"  [dim]Admin API not available — start zenohd with --rest-http-port {zenoh_admin_port}[/]"
+                    )
                 else:
                     log.write(f"  [dim]Admin API error: {err_str[:60]}[/]")
 
@@ -453,7 +472,9 @@ class MonitorScreen(ModalScreen):
         log = self.query_one("#monitor_log", RichLog)
         log.write("[dim]Checking Silvus management routes...[/]")
 
-        mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
+        mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get(
+            "mgmt_subnet", "172.20.0.0/16"
+        )
 
         def do_check():
             results = []
@@ -468,7 +489,18 @@ class MonitorScreen(ModalScreen):
                     info = check_silvus_route(m["user"], m["ip"], mgmt_subnet)
                     results.append((m["name"], m, info))
                 except Exception as e:
-                    results.append((m["name"], m, {"has_route": False, "interface": None, "silvus_iface": None, "error": str(e)}))
+                    results.append(
+                        (
+                            m["name"],
+                            m,
+                            {
+                                "has_route": False,
+                                "interface": None,
+                                "silvus_iface": None,
+                                "error": str(e),
+                            },
+                        )
+                    )
             return results
 
         def on_done(results):
@@ -478,32 +510,48 @@ class MonitorScreen(ModalScreen):
                 iface = info.get("silvus_iface") or "—"
                 if info.get("has_route"):
                     route = info.get("route_info", "OK")
-                    log.write(f"  [green]{name:12s}[/] iface={iface}  [green]ROUTE OK[/] ({route})")
+                    log.write(
+                        f"  [green]{name:12s}[/] iface={iface}  [green]ROUTE OK[/] ({route})"
+                    )
                 elif info.get("silvus_iface"):
                     log.write(f"  [red]{name:12s}[/] iface={iface}  [red]NO ROUTE[/]")
                     missing.append((name, m, iface))
                 else:
-                    log.write(f"  [dim]{name:12s}[/] [dim]No Silvus interface (no 192.168.100.x address)[/]")
+                    log.write(
+                        f"  [dim]{name:12s}[/] [dim]No Silvus interface (no 192.168.100.x address)[/]"
+                    )
             if missing:
-                log.write(f"\n[bold yellow]Run these commands to add missing routes:[/]")
+                log.write("\n[bold yellow]Run these commands to add missing routes:[/]")
                 for name, m, iface in missing:
                     if m is None:
                         # local machine
                         log.write(f"\n  [bold]{name}[/] (run locally):")
-                        log.write(f"    [cyan]sudo ip route add {mgmt_subnet} dev {iface}[/]")
-                        log.write(f"  [dim]To make permanent (same USB dongle):[/]")
-                        log.write(f"    [cyan]conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]")
-                        log.write(f"    [cyan]nmcli con modify \"$conn\" +ipv4.routes \"{mgmt_subnet}\"[/]")
-                        log.write(f"    [cyan]nmcli con up \"$conn\"[/]")
+                        log.write(
+                            f"    [cyan]sudo ip route add {mgmt_subnet} dev {iface}[/]"
+                        )
+                        log.write("  [dim]To make permanent (same USB dongle):[/]")
+                        log.write(
+                            f"    [cyan]conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]"
+                        )
+                        log.write(
+                            f'    [cyan]nmcli con modify "$conn" +ipv4.routes "{mgmt_subnet}"[/]'
+                        )
+                        log.write('    [cyan]nmcli con up "$conn"[/]')
                     else:
                         user, ip = m["user"], m["ip"]
                         log.write(f"\n  [bold]{name}[/] (SSH to {ip}):")
-                        log.write(f"    [cyan]ssh {user}@{ip} sudo ip route add {mgmt_subnet} dev {iface}[/]")
-                        log.write(f"  [dim]To make permanent (same USB dongle):[/]")
+                        log.write(
+                            f"    [cyan]ssh {user}@{ip} sudo ip route add {mgmt_subnet} dev {iface}[/]"
+                        )
+                        log.write("  [dim]To make permanent (same USB dongle):[/]")
                         log.write(f"    [cyan]ssh {user}@{ip}[/]")
-                        log.write(f"    [cyan]  conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]")
-                        log.write(f"    [cyan]  nmcli con modify \"$conn\" +ipv4.routes \"{mgmt_subnet}\"[/]")
-                        log.write(f"    [cyan]  nmcli con up \"$conn\"[/]")
+                        log.write(
+                            f"    [cyan]  conn=$(nmcli -f NAME,DEVICE con show | grep {iface} | awk '{{print $1}}')[/]"
+                        )
+                        log.write(
+                            f'    [cyan]  nmcli con modify "$conn" +ipv4.routes "{mgmt_subnet}"[/]'
+                        )
+                        log.write('    [cyan]  nmcli con up "$conn"[/]')
 
         def bg():
             results = do_check()
@@ -539,20 +587,22 @@ class MonitorScreen(ModalScreen):
             col_w = max(len(n) for n in names) + 2
 
             # ---- RSSI Matrix ----
-            log.write(f"\n[bold]Silvus RSSI Link Quality:[/]")
+            log.write("\n[bold]Silvus RSSI Link Quality:[/]")
             header = " " * (col_w + 2) + "".join(f"{n:>{col_w}}" for n in names)
             log.write(f"  [dim]{header}[/]")
 
             for src in names:
                 info = details[src]
                 if info.get("error"):
-                    log.write(f"  [red]{src:<{col_w}}[/]  [red](unreachable: {info['error'][:40]})[/]")
+                    log.write(
+                        f"  [red]{src:<{col_w}}[/]  [red](unreachable: {info['error'][:40]})[/]"
+                    )
                     continue
                 row = f"  [cyan]{src:<{col_w}}[/]"
                 link_stats = info.get("link_stats")
                 rssi_raw = info.get("rssi")
                 routing_tree = [int(x) for x in (info.get("routing_tree") or [])]
-                src_nid = info.get("node_id")
+                _src_nid = info.get("node_id")
 
                 for dst in names:
                     if src == dst:
@@ -565,12 +615,20 @@ class MonitorScreen(ModalScreen):
                     # Try link_stats (keyed by node_id string)
                     if isinstance(link_stats, dict) and dst_nid is not None:
                         try:
-                            val = float(link_stats.get(str(dst_nid)) or link_stats.get(str(int(dst_nid))))
+                            val = float(
+                                link_stats.get(str(dst_nid))
+                                or link_stats.get(str(int(dst_nid)))
+                            )
                         except (TypeError, ValueError):
                             pass
 
                     # Fallback: rssi field (single-neighbor case)
-                    if val is None and rssi_raw and isinstance(rssi_raw, list) and len(names) == 2:
+                    if (
+                        val is None
+                        and rssi_raw
+                        and isinstance(rssi_raw, list)
+                        and len(names) == 2
+                    ):
                         try:
                             val = float(rssi_raw[0]) / 2.0
                         except (TypeError, ValueError):
@@ -591,7 +649,7 @@ class MonitorScreen(ModalScreen):
                 log.write(row)
 
             # ---- Mesh Topology ----
-            log.write(f"\n[bold]Mesh Routing (per radio):[/]")
+            log.write("\n[bold]Mesh Routing (per radio):[/]")
             for rname in names:
                 info = details[rname]
                 if info.get("error"):
@@ -599,19 +657,27 @@ class MonitorScreen(ModalScreen):
                 nid = info.get("node_id", "?")
                 tree = info.get("routing_tree") or []
                 # Resolve node IDs to radio names where possible
-                tree_str = ", ".join(
-                    nid_to_name.get(int(n), str(n)) for n in tree
-                ) if tree else "—"
+                tree_str = (
+                    ", ".join(nid_to_name.get(int(n), str(n)) for n in tree)
+                    if tree
+                    else "—"
+                )
                 bat = info.get("battery")
                 bat_str = f"  bat={bat:.0f}%" if bat is not None else ""
                 log.write(f"  [cyan]{rname}[/] (node {nid}){bat_str}: [{tree_str}]")
 
-            mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get("mgmt_subnet", "172.20.0.0/16")
+            mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get(
+                "mgmt_subnet", "172.20.0.0/16"
+            )
             all_err = all(d.get("error") for d in details.values())
             if all_err:
-                log.write(f"\n[yellow]All radios unreachable — is the {mgmt_subnet} route set? (press F3)[/]")
+                log.write(
+                    f"\n[yellow]All radios unreachable — is the {mgmt_subnet} route set? (press F3)[/]"
+                )
             else:
-                log.write(f"\n[dim]Press 'z' to see which robot currently has each radio.[/]")
+                log.write(
+                    "\n[dim]Press 'z' to see which robot currently has each radio.[/]"
+                )
 
         def bg():
             result = do_query()
@@ -624,20 +690,32 @@ class MonitorScreen(ModalScreen):
         log = self.query_one("#monitor_log", RichLog)
 
         # Check if a system zenohd is already running (e.g. from base station tmux)
-        system_zenohd = subprocess.run(
-            ["pgrep", "-f", "rmw_zenohd"], capture_output=True
-        ).returncode == 0
-        fleet_zenohd = self.ctx._fleet_zenoh["proc"] and self.ctx._fleet_zenoh["proc"].poll() is None
+        system_zenohd = (
+            subprocess.run(
+                ["pgrep", "-f", "rmw_zenohd"], capture_output=True
+            ).returncode
+            == 0
+        )
+        fleet_zenohd = (
+            self.ctx._fleet_zenoh["proc"]
+            and self.ctx._fleet_zenoh["proc"].poll() is None
+        )
 
         if system_zenohd and not fleet_zenohd:
-            log.write("[green]Base station zenohd is running on port 7447 — using it for ROS monitoring.[/]")
+            log.write(
+                "[green]Base station zenohd is running on port 7447 — using it for ROS monitoring.[/]"
+            )
             log.write("[dim]Press 'n' to refresh node status.[/]")
             return
         elif fleet_zenohd:
             log.write("[dim]Restarting fleet zenohd...[/]")
             self._stop_zenohd and self._stop_zenohd()
 
-        ok, msg = (self._start_zenohd() if self._start_zenohd else (False, "start_zenohd not configured"))
+        ok, msg = (
+            self._start_zenohd()
+            if self._start_zenohd
+            else (False, "start_zenohd not configured")
+        )
         color = "green" if ok else "red"
         log.write(f"[{color}]Fleet zenohd: {msg}[/{color}]")
         if ok:
@@ -646,10 +724,14 @@ class MonitorScreen(ModalScreen):
     def action_bandwidth_test(self):
         """Run iperf3 throughput test from base station to selected online robots."""
         import shutil
+
         log = self.query_one("#monitor_log", RichLog)
 
-        machines = [m for m in self.ctx.runtime_config.values()
-                    if m.get("online") and m.get("role") == "robot"]
+        machines = [
+            m
+            for m in self.ctx.runtime_config.values()
+            if m.get("online") and m.get("role") == "robot"
+        ]
         if not machines:
             log.write("[yellow]No online robots to test.[/]")
             return
@@ -660,13 +742,17 @@ class MonitorScreen(ModalScreen):
 
         server_ip = get_local_ip_for_network(self.ctx.topo, self.ctx.active_network)
         if not server_ip:
-            log.write(f"[red]Cannot determine local IP on network '{self.ctx.active_network}'.[/]")
+            log.write(
+                f"[red]Cannot determine local IP on network '{self.ctx.active_network}'.[/]"
+            )
             return
 
         def on_results(results):
             if not results:
                 return
-            log.write(f"[dim]── bandwidth test summary ({self.ctx.active_network}) ──[/]")
+            log.write(
+                f"[dim]── bandwidth test summary ({self.ctx.active_network}) ──[/]"
+            )
             for r in results:
                 name = r.get("name", "?")
                 if "error" in r:
@@ -674,7 +760,11 @@ class MonitorScreen(ModalScreen):
                 else:
                     mbps = r.get("mbps", 0)
                     color = "green" if mbps > 10 else "yellow" if mbps > 1 else "red"
-                    tunnel_warn = "  [yellow]SSH tunnel (direct port blocked)[/]" if r.get("tunneled") else ""
+                    tunnel_warn = (
+                        "  [yellow]SSH tunnel (direct port blocked)[/]"
+                        if r.get("tunneled")
+                        else ""
+                    )
                     log.write(
                         f"[{color}]{name}: {mbps:.1f} Mbps[/]"
                         f"  retransmits={r.get('retransmits', 0)}"
@@ -683,5 +773,5 @@ class MonitorScreen(ModalScreen):
 
         self.app.push_screen(BandwidthSelectScreen(machines, server_ip), on_results)
 
-# ---- Zenoh Screen ----
 
+# ---- Zenoh Screen ----
