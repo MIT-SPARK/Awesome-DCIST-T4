@@ -118,6 +118,8 @@ launch:
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
+
+
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
   - node:
@@ -323,6 +325,22 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml, allow_substs: true}
       remap:
         - {from: ~/dsg_out, to: hydra/backend/dsg}
+
+  # Prior Mesh Publisher
+  - arg: {name: launch_mesh_publisher, default: 'false'}
+  - node:
+      if: $(var launch_mesh_publisher)
+      pkg: kimera_pgmo_ros
+      exec: mesh_publisher_node
+      name: mesh_publisher
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: mesh, to: hydra/backend/dsg_mesh}
+      args: >
+        --config-utilities-var robot_name=$(var robot_name)
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/mesh_publisher.yaml
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
   # DSG Saver
   - arg: {name: launch_dsg_saver, default: 'false'}
