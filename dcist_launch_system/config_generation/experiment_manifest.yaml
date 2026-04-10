@@ -24,7 +24,6 @@ configs:
 important_variants:
   - base_station-default
   - base_station_heracles-default
-  - net_diag-default
   - phoenix-default
   - phoenix_relocalize-relocalize
   - spot-default
@@ -37,11 +36,6 @@ experiments:
     config: [default]
   base_station_heracles:
     launch_config: [plan_prior_heracles, multi_status]
-    config: [default]
-
-  # network diagnostics — run on the base station
-  net_diag:
-    launch_config: [net_diag]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
