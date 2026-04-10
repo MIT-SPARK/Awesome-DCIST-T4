@@ -38,10 +38,10 @@ fleet_defaults:
   spot_platforms: [smaug, topaz]
   sessions:
     mapping:
-      spot: real_spot-real_spot
-      phoenix: real_phoenix-real_phoenix
+      spot: spot-default
+      phoenix: phoenix-default
     relocalize:
-      spot: real_spot_relocalize-real_spot_relocalize
-      phoenix: real_phoenix_relocalize-real_phoenix_relocalize
-  base_station_session: base_station_heracles-default_params
+      spot: spot_relocalize-relocalize
+      phoenix: phoenix_relocalize-relocalize
+  base_station_session: base_station_heracles-default
   output_root: ~/adt4_output
