@@ -207,7 +207,7 @@ def ssh_cmd(user, ip, cmd, timeout=5):
         "-o",
         "StrictHostKeyChecking=no",
         f"{user}@{ip}",
-        cmd,
+        f"zsh -l -c {shlex.quote(cmd)}",
     ]
     try:
         result = subprocess.run(
