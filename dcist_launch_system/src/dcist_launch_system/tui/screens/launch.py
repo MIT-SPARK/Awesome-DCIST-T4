@@ -131,8 +131,11 @@ class LaunchScreen(ModalScreen):
     LaunchScreen #bs_session_select {
         max-height: 6;
     }
+    LaunchScreen #launch_prior_selector {
+        height: auto;
+    }
     LaunchScreen #prior_tree {
-        min-height: 8;
+        height: 12;
         max-height: 16;
     }
     LaunchScreen #launch_log {
