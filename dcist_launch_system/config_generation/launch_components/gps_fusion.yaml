@@ -1,0 +1,10 @@
+---
+windows:
+  - window_name: gps_fusion
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 run tf_odom_convert tf_to_odom_node --ros-args -r __ns:=/${ADT4_ROBOT_NAME} -p source_frame:=${ADT4_ROBOT_NAME}/odom -p target_frame:=${ADT4_ROBOT_NAME}/base_link -p publish_rate:=10.0
+      - ros2 run robot_localization ekf_node --ros-args -r __ns:=/${ADT4_ROBOT_NAME} --ros-args -r __node:=ekf_gps_fusion -r odometry/filtered:=gps_fused_odometry/odom -p odom_frame:=${ADT4_ROBOT_NAME}/odom -p base_link_frame:=${ADT4_ROBOT_NAME}/base_link -p world_frame:=${ADT4_ROBOT_NAME}/odom -p publish_tf:=false -p frequency:=30.0 -p sensor_timeout:=0.2 -p two_d_mode:=false -p print_diagnostics:=true -p "odom0:=tf_odom" -p "odom0_config:=[true,true,true,true,true,true,false,false,false,false,false,false,false,false,false]" -p odom0_queue_size:=10 -p odom0_differential:=false -p odom0_relative:=true -p "odom1:=odometry/gps" -p "odom1_config:=[true,true,false,false,false,false,false,false,false,false,false,false,false,false,false]" -p odom1_queue_size:=10 -p odom1_differential:=false -p odom1_relative:=false -p use_control:=false
+      - ros2 run robot_localization navsat_transform_node --ros-args -r __ns:=/${ADT4_ROBOT_NAME} -r gps/fix:=fix -r odometry/filtered:=gps_fused_odometry/odom -p frequency:=30.0 -p delay:=3.0 -p magnetic_declination_radians:=0.0 -p yaw_offset:=0.0 -p zero_altitude:=true -p broadcast_utm_transform:=false -p publish_filtered_gps:=false -p use_odometry_yaw:=true -p wait_for_datum:=false
+      - ros2 run tf_odom_convert odom_to_tf_node --ros-args -r __ns:=/${ADT4_ROBOT_NAME} -p odom_topic:=gps_fused_odometry/odom -p parent_frame:=${ADT4_ROBOT_NAME}/base_link -p child_frame:=${ADT4_ROBOT_NAME}/world_utm -p invert:=true

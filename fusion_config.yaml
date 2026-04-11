@@ -1,0 +1,6 @@
+- adt4: /home/masonbp/data/0911_gauss_relocalization_tests_prior_maps/4_prior_map/
+  bag: /home/masonbp/data/0911_bags/4_bag
+  robot: gauss
+- adt4: /home/masonbp/data/0911_gauss_relocalization_tests_prior_maps/4_prior_map/
+  bag: /home/masonbp/data/0911_bags/4_bag
+  robot: gauss
