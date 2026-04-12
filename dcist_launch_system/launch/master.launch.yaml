@@ -245,14 +245,16 @@ launch:
         - {name: robot_description, value: $(command $(var spot_urdf_command))}
       remap:
         - {from: /joint_states, to: joint_states}
+
+  # Misc calibrations
+  - arg: {name: launch_calibration_publisher, default: 'false'}
+  - let: {name: platform_file, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/calibration.yaml)}
   - node:
-      if: $(var launch_spot_state_publisher)
-      pkg: dcist_launch_system
+      if: $(var launch_calibration_publisher)
+      pkg: ianvs
       exec: static_tf_from_json
-      args: >
-        $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/zed_calibration.json
-        --frame-id $(var robot_name)/frontleft
-        --child-frame-id $(var robot_name)_zed_camera_link
+      param:
+        - {name: filepath, value: $(subs-file $(var platform_file))}
 
   # Spot camera driver
   - arg: {name: launch_spot_camera_driver, default: 'false'}
