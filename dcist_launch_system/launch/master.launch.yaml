@@ -118,8 +118,6 @@ launch:
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra_visualizer.yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
-
-
   # Hydra-Multi
   - arg: {name: launch_hydra_multi, default: 'false'}
   - node:
@@ -248,11 +246,11 @@ launch:
 
   # Misc calibrations
   - arg: {name: launch_calibration_publisher, default: 'false'}
-  - let: {name: platform_file, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/calibration.yaml)}
+  - let: {name: platform_file, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/calibration.yaml}
   - node:
       if: $(var launch_calibration_publisher)
       pkg: ianvs
-      exec: static_tf_from_json
+      exec: transform_file_broadcaster
       param:
         - {name: filepath, value: $(subs-file $(var platform_file))}
 
