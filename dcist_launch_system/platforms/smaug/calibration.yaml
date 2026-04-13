@@ -1,0 +1,29 @@
+---
+frames:
+  - frame_id: $(var robot_name)/frontleft
+    child_frame_id: $(var robot_name)_zed_camera_link
+    qw: 0.5860445702207298
+    qx: -0.1518423673416495
+    qy: -0.7689097936324478
+    qz: 0.20560492808050715
+    x: -0.1377625424350767
+    y: 0.021380403878896944
+    z: 0.057657655316766976
+  - frame_id: $(var robot_name)/body
+    child_frame_id: $(var robot_name)/gps
+    qw: 1.0
+    qx: 0.0
+    qy: 0.0
+    qz: 0.0
+    x: -0.22
+    y: 0.0
+    z: 0.54
+  - frame_id: $(var robot_name)/body
+    child_frame_id: $(var robot_name)/livox
+    qw: 1.0
+    qx: 0.0
+    qy: 0.0
+    qz: 0.0
+    x: -0.22
+    y: 0.0
+    z: 0.44
