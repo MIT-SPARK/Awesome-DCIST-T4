@@ -1,0 +1,8 @@
+# Topics to prefix with the robot namespace when generating per-robot RViz configs.
+# Add any topic that appears as a relative path in the RViz template and should
+# be namespaced (e.g., "hydra_visualizer/graph" → "<robot>/hydra_visualizer/graph").
+amespace_topics:
+  - hydra_visualizer/graph
+  - hydra_multi_visualizer/graph
+  - semantic_overlay/image_raw
+  - robot_description

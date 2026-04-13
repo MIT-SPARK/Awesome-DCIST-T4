@@ -1,3 +1,7 @@
 *.swp
 *__pycache__*
 *.pt
+
+# Network diagnostics
+adt4_diagnostics/
+*.pyc

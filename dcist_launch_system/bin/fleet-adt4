@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""fleet-adt4 entry point — delegates to dcist_launch_system.tui package."""
+
+import os
+import pathlib
+import sys
+
+# Re-exec with spark_env Python BEFORE importing the package (which imports textual).
+# This must stay at module level, before any package imports.
+if not os.environ.get("_FLEET_ADT4_REEXEC"):
+    _adt4_env = os.environ.get("ADT4_ENV", "")
+    if _adt4_env:
+        _spark_env = pathlib.Path(_adt4_env) / "spark_env"
+        _spark_python = _spark_env / "bin" / "python3"
+        if _spark_python.exists() and sys.prefix != str(_spark_env):
+            os.environ["_FLEET_ADT4_REEXEC"] = "1"
+            os.execv(str(_spark_python), [str(_spark_python)] + sys.argv)
+
+# Dev install: add src/ to path so the package is importable without install
+_src = pathlib.Path(__file__).resolve().parent.parent / "src"
+if _src.is_dir() and str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
+
+from dcist_launch_system.tui import cli  # noqa: E402
+
+cli()
