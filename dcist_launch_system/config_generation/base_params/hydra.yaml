@@ -2,7 +2,7 @@
 # general config
 paths: [khronos, khronos_ros]
 robot_id: 0
-config_verbosity: 0
+config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
@@ -21,13 +21,13 @@ input:
         extrinsics: {type: ros}
 active_window:
   type: ActiveWindow
-  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: true}
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   min_output_separation: 0.5
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
-    min_object_volume: 0.1
+    min_object_volume: 0.01
     max_range: 10.0
     min_range: 0.05
     instance_id: true
@@ -102,7 +102,12 @@ backend:
   optimize_on_lc: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
-    objects: {type: UpdateObjectsFunctor}
+    objects:
+      type: GenericUpdateFunctor
+      verbosity: 0
+      layer: OBJECTS
+      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}
+      merge_proposer: {strategy: {type: Pairwise}}
     traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}
   pgmo:
     run_mode: FULL
