@@ -104,7 +104,7 @@ backend:
     agents: {type: UpdateAgentsFunctor}
     objects:
       type: GenericUpdateFunctor
-      verbosity: 3
+      verbosity: 0
       layer: OBJECTS
       node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}
       merge_proposer: {strategy: {type: Pairwise}}
