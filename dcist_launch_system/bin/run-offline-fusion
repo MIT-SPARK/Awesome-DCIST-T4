@@ -7,31 +7,10 @@ import pathlib
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
-from typing import List
 
 import click
-import numpy as np
-import robotdatapy as rdp
-import yaml
 from roman.align.submap_align import submap_align
-from roman.map.offline_map_runner import VisualizationParams
-from roman.map.offline_map_runner import mapping as offline_roman_mapping
-from roman.offline_rpgo.densify_optimized_sparse_trajectory import (
-    densify_optimized_sparse_trajectory,
-)
 from roman.params.submap_align_params import SubmapAlignInputOutput, SubmapAlignParams
-
-
-@dataclass
-class FusionInput:
-    adt4_directory: pathlib.Path
-    bag_path: pathlib.Path
-    robot_name: str
-
-    @property
-    def name(self):
-        return self.adt4_directory.name
 
 
 def _info(msg):
@@ -86,16 +65,6 @@ def _roman_config(config):
     return SubmapAlignParams.from_yaml(str(config_path))
 
 
-def _fastsam_config(config):
-    pkg_path = pathlib.Path(__file__).absolute().parent.parent
-    config_path = pkg_path / "config" / config / "fastsam.yaml"
-    if not config_path.exists():
-        _error(f"Invalid FastSAM config: {config_path}")
-        sys.exit("Invalid config")
-    _info(f"Using FastSAM config: {config_path}")
-    return config_path
-
-
 def _convert_time(contents, idx):
     stamp_ns = int(contents["seconds"][idx] * 1.0e9)
     return stamp_ns + int(contents["nanoseconds"][idx])
@@ -105,30 +74,7 @@ def _convert_rot(contents):
     return {k: v for k, v in zip(contents["rotation_convention"], contents["rotation"])}
 
 
-def _extract_input_files(input_config: pathlib.Path) -> List[FusionInput]:
-    input_config = _normalize_path(input_config)
-    with input_config.open("r") as f:
-        input_config_dict = yaml.full_load(f)
-
-    fusion_inputs = []
-    for x in input_config_dict:
-        try:
-            fusion_inputs.append(
-                FusionInput(
-                    adt4_directory=_normalize_path(x["adt4"]),
-                    bag_path=_normalize_path(x["bag"]),
-                    robot_name=x["robot"],
-                )
-            )
-        except Exception as e:
-            _error(f"Error loading input fusion config: {e}")
-
-    return fusion_inputs
-
-
-def lcd(
-    config: SubmapAlignParams, fusion_inputs: List[FusionInput], output: pathlib.Path
-):
+def lcd(config: SubmapAlignParams, inputs, robot_names, output: pathlib.Path):
     """Run and collate loop closures between robots."""
     lcd_output = output / "lcd"
     lcd_output.mkdir(exist_ok=True)
@@ -140,14 +86,13 @@ def lcd(
 
     # iterate through every pair of robots
     loop_closures = []
-    robot_names = [x.adt4_directory.name for x in fusion_inputs]
-    for i in range(len(fusion_inputs)):
-        for j in range(i, len(fusion_inputs)):
-            name = f"{fusion_inputs[i].name}_{fusion_inputs[j].name}"
-            order = [fusion_inputs[i].name, fusion_inputs[j].name]
+    for i, input_i in range(len(inputs)):
+        for j in range(i, len(inputs)):
+            name = f"{robot_names[i]}_{robot_names[j]}"
+            order = [robot_names[i], robot_names[j]]
             input_files = [
-                fusion_inputs[i].adt4_directory / "roman" / "roman_map.pkl",
-                fusion_inputs[j].adt4_directory / "roman" / "roman_map.pkl",
+                inputs[i].adt4_directory / "roman" / "roman_map.pkl",
+                inputs[j].adt4_directory / "roman" / "roman_map.pkl",
             ]
             sm_io = SubmapAlignInputOutput(
                 inputs=[str(x) for x in input_files],
@@ -183,188 +128,46 @@ def lcd(
     return out_path
 
 
-def densify(
-    fusion_inputs: List[FusionInput],
-    optimized_trajectories: List[pathlib.Path],
-    output_dir: pathlib.Path,
-):
-    """Densify optimized trajectories using odometry data."""
-    for i in range(len(fusion_inputs)):
-        optimized_pose_data = rdp.data.PoseData.from_kmd_gt_csv(
-            optimized_trajectories[i], time_tol=100.0
-        )
-        try:
-            odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(fusion_inputs[i].bag_path),
-                f"{fusion_inputs[i].robot_name}/odom",
-                f"{fusion_inputs[i].robot_name}/base_link",
-                time_tol=10.0,
-            )
-        except Exception as _:
-            odometry_pose_data = rdp.data.PoseData.from_bag_tf(
-                str(fusion_inputs[i].bag_path),
-                f"{fusion_inputs[i].robot_name}/odom",
-                f"{fusion_inputs[i].robot_name}/body",
-                time_tol=10.0,
-            )
-
-        densified_optimized_trajectory = densify_optimized_sparse_trajectory(
-            dense_unoptimized=odometry_pose_data, sparse_optimized=optimized_pose_data
-        )
-
-        densified_optimized_trajectory.to_csv(
-            str(output_dir / f"{fusion_inputs[i].name}.csv")
-        )
-
-
-def rerun_roman(
-    fusion_inputs: List[FusionInput],
-    dense_optimized_trajectories: List[pathlib.Path],
-    output_dir: pathlib.Path,
-    fastsam_params_path: str,
-):
-    """Rerun ROMAN with densified trajectories."""
-
-    for i in range(len(fusion_inputs)):
-        try:
-            T_base_camera = rdp.data.PoseData.any_static_tf_from_bag(
-                str(fusion_inputs[i].bag_path),
-                f"{fusion_inputs[i].robot_name}/base_link",
-                f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
-            )
-        except Exception as _:
-            T_base_camera = rdp.data.PoseData.any_static_tf_from_bag(
-                str(fusion_inputs[i].bag_path),
-                f"{fusion_inputs[i].robot_name}/body",
-                f"{fusion_inputs[i].robot_name}_zed_left_camera_optical_frame",
-            )
-        robot_name = fusion_inputs[i].robot_name
-        data_params_dict = {
-            "dt": 1 / 6,
-            "runs": [fusion_inputs[i].name],
-            "img_data": {
-                "path": str(fusion_inputs[i].bag_path),
-                "topic": f"/{robot_name}/{robot_name}_zed/rgb/image_rect_color",
-                "camera_info_topic": f"/{robot_name}/{robot_name}_zed/rgb/camera_info",
-                "compressed": False,
-                "color_space": "bgr8",
-            },
-            "depth_data": {
-                "path": str(fusion_inputs[i].bag_path),
-                "topic": f"/{robot_name}/{robot_name}_zed/depth/depth_registered",
-                "camera_info_topic": f"/{robot_name}/{robot_name}_zed/depth/camera_info",
-                "compressed": False,
-            },
-            "pose_data": {
-                "type": "csv",
-                "path": str(dense_optimized_trajectories[i]),
-                "csv_options": rdp.data.pose_data.KIMERA_MULTI_GT_CSV_OPTIONS,
-                "time_tol": 10.0,
-                "T_camera_flu": {
-                    "input_type": "matrix",
-                    "matrix": np.linalg.inv(T_base_camera).flatten().tolist(),
-                },
-                "T_odombase_camera": {
-                    "input_type": "matrix",
-                    "matrix": T_base_camera.flatten().tolist(),
-                },
-            },
-        }
-
-        run_output_dir = output_dir / fusion_inputs[i].name
-        run_output_dir.mkdir(exist_ok=True)
-        run_params_dir = run_output_dir / "params"
-        run_params_dir.mkdir(exist_ok=True)
-        with open(run_params_dir / "data.yaml", "w") as f:
-            yaml.dump(data_params_dict, f)
-        subprocess.run(
-            ["cp", fastsam_params_path, str(run_params_dir / "fastsam.yaml")]
-        )
-        viz_params = VisualizationParams()
-        viz_params.viz_map = False
-        offline_roman_mapping(
-            params_path=str(run_params_dir),
-            output_path=str(run_output_dir / "roman_map"),
-            run_name=fusion_inputs[i].name,
-            max_time=600.0,  # otherwise RAM usage gets too high
-            viz_params=viz_params,
-        )
-
-        # will produce a file: roman / <run name> / roman_map.pkl
-        subprocess.run(
-            [
-                "cp",
-                str(run_output_dir / "roman_map.pkl"),
-                str(output_dir / f"{i + 1}.roman_map.pkl"),
-            ]
-        )
-        # finally saves to output_dir / run_id.roman_map.pkl
-
-
 @click.command()
-@click.argument("input_config", nargs=1, type=click.Path(exists=True))
 @click.argument("output", type=click.Path())
+@click.argument("inputs", nargs=-1, type=click.Path(exists=True))
 @click.option("-f", "--force", is_flag=True, help="proceed without prompting")
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
 @click.option("-l", "--log-level", type=int, default=0, help="glog level")
 @click.option("-c", "--config", default="default_params", help="config to use")
-@click.option(
-    "--run-roman/--no-run-roman", default=True, help="run roman after optimization"
-)
+@click.option("--run-lcd/--no-run-lcd", default=True, help="run lcd")
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
-def main(input_config, output, force, verbosity, log_level, config, run_roman, rerun):
+def main(output, inputs, force, verbosity, log_level, config, run_lcd, rerun):
     """
     Detect loop closures between robots and fuse scene graphs.
 
     \b
     Arguments:
         OUTPUT: directory to save results
-        ROBOT_DIRECTORIES: input directories for the robots
+        INPUTS: input directories for the robots
     """
-    fusion_inputs = _extract_input_files(input_config)
     output = _resolve_output(output, force, rerun)
-    robot_order = [x.adt4_directory.stem for x in fusion_inputs]
+    inputs = [_normalize_path(x) for x in inputs]
+    robot_order = [x.stem for x in inputs]
     _info(f"Robot order: {robot_order}")
 
-    hydra_multi_config = _hydra_multi_config(config)
     roman_config = _roman_config(config)
-    fastsam_config = _fastsam_config(config)
-    lcd_file = lcd(roman_config, fusion_inputs, output)
+    hydra_multi_config = _hydra_multi_config(config)
 
     command = ["hydra-multi-offline-fusion"]
     command += ["--verbosity", f"{verbosity}", "--log-level", f"{log_level}"]
     command += ["--starting-robot-id", "1"]
-    command += ["-o", str(output), "-l", str(lcd_file)]
-    command += [str(_normalize_path(x.adt4_directory) / "hydra") for x in fusion_inputs]
+    command += ["-o", str(output)]
+    command += [str(x / "hydra") for x in inputs]
     command += ["--config-utilities-file", str(hydra_multi_config)]
-    # TODO(nathan) think about passing optimizer params
+    if run_lcd:
+        lcd_file = lcd(roman_config, inputs, robot_order, output)
+        command += ["-l", str(lcd_file)]
 
     _info(f"cmd: {' '.join(command)}")
     ret = subprocess.run(command)
     if ret.returncode != 0:
         _error(f"Fusion failed: {ret.returncode}")
-
-    if not run_roman:
-        return
-
-    (output / "roman").mkdir(exist_ok=True)
-    sparse_optimized_trajectories = [
-        output / "backend" / f"robot_{i + 1}_trajectory.csv"
-        for i, x in enumerate(fusion_inputs)
-    ]
-    densify(
-        fusion_inputs=fusion_inputs,
-        optimized_trajectories=sparse_optimized_trajectories,
-        output_dir=output / "roman",
-    )
-    rerun_roman(
-        fusion_inputs=fusion_inputs,
-        dense_optimized_trajectories=[
-            output / "roman" / f"{x.adt4_directory.stem}.csv" for x in fusion_inputs
-        ],
-        output_dir=output / "roman",
-        fastsam_params_path=str(fastsam_config),
-    )
 
 
 if __name__ == "__main__":
