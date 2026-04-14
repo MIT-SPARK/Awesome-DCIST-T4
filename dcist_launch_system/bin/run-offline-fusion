@@ -86,13 +86,13 @@ def lcd(config: SubmapAlignParams, inputs, robot_names, output: pathlib.Path):
 
     # iterate through every pair of robots
     loop_closures = []
-    for i, input_i in range(len(inputs)):
+    for i in range(len(inputs)):
         for j in range(i, len(inputs)):
             name = f"{robot_names[i]}_{robot_names[j]}"
             order = [robot_names[i], robot_names[j]]
             input_files = [
-                inputs[i].adt4_directory / "roman" / "roman_map.pkl",
-                inputs[j].adt4_directory / "roman" / "roman_map.pkl",
+                inputs[i] / "roman" / "1.roman_map.pkl",
+                inputs[j] / "roman" / "1.roman_map.pkl",
             ]
             sm_io = SubmapAlignInputOutput(
                 inputs=[str(x) for x in input_files],
@@ -134,7 +134,7 @@ def lcd(config: SubmapAlignParams, inputs, robot_names, output: pathlib.Path):
 @click.option("-f", "--force", is_flag=True, help="proceed without prompting")
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
 @click.option("-l", "--log-level", type=int, default=0, help="glog level")
-@click.option("-c", "--config", default="default_params", help="config to use")
+@click.option("-c", "--config", default="default", help="config to use")
 @click.option("--run-lcd/--no-run-lcd", default=True, help="run lcd")
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
 def main(output, inputs, force, verbosity, log_level, config, run_lcd, rerun):
