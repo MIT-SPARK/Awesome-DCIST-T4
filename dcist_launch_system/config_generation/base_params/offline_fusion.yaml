@@ -9,7 +9,7 @@ backend:
   update_functors:
     agents: {type: UpdateAgentsFunctor}
     objects: {type: UpdateObjectsFunctor}
-    surface_places: {type: Update2dPlacesFunctor, min_size: 3}
+    places: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}
   initial_align:
     type: LoopClosureInitialAlign
     alignment_gnc_alpha: 0.9
