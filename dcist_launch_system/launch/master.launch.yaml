@@ -7,7 +7,7 @@ launch:
   - arg: {name: spark_env, default: $(env ADT4_ENV)/spark_env}
   - arg: {name: labelspace_name, default: ade20k_mit}
   - let: {name: camera, value: $(var robot_name)_zed}
-  - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
+  - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
   - let: {name: semantic_inference_model_name, value: ade20k-efficientvit_seg_l2}
 
@@ -234,7 +234,7 @@ launch:
       exec: static_tf_from_json
       args: >
         $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/zed_calibration.json
-        --frame-id $(var robot_name)/frontleft
+        --frame-id $(var robot_name)/body
         --child-frame-id $(var robot_name)_zed_camera_link
 
   # Spot camera driver
