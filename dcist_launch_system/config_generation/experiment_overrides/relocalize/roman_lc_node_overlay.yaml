@@ -2,3 +2,4 @@
 /**:
   ros__parameters:
     prior_session_maps: !replace [$(env ADT4_PRIOR_MAP)/roman/]
+    viz_robot_ids: !replace [1]

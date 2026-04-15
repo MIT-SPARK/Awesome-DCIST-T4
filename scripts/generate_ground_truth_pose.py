@@ -13,23 +13,27 @@ GPS_POSITIONS = {
 
 
 def generate_ground_truth_pose(
-    input_bag, output_csv, robot_name, max_gps_sigma=1.0, center=False
+    input_bag, output_csv, robot_name, max_gps_sigma=1.0, center=False, odom_stride=None
 ):
     gps_topic = f"/{robot_name}/fix"
-    odom_parent_frame = f"{robot_name}/odom"
     if robot_name in ["gauss", "lewis", "pascal"]:
-        odom_child_frame = f"{robot_name}/base_link"
+        odom_topic = f"/{robot_name}/dlio/odom_node/odom"
     elif robot_name in ["hamilton", "euclid"]:
-        odom_child_frame = f"{robot_name}/body"
+        odom_topic = f"/{robot_name}/odom"
     else:
         raise ValueError(f"Unknown robot name: {robot_name}")
 
+    print("Loading data...")
     gps_data = rdp.data.GPSData.from_bag(input_bag, gps_topic, time_tol=10.0)
     gps_data.rm_nans()
-    odometry = rdp.data.PoseData.from_bag_tf(
-        input_bag, odom_parent_frame, odom_child_frame, time_tol=10.0
-    )
+    odometry = rdp.data.PoseData.from_bag(input_bag, odom_topic, time_tol=10.0)
 
+    if odom_stride is not None:
+        odometry.times = odometry.times[::odom_stride]
+        odometry.positions = odometry.positions[::odom_stride]
+        odometry.orientations = odometry.orientations[::odom_stride]
+
+    print("Fusing GPS and odometry data...")
     fused = rdp.data_fusion.fuse_gps_and_local_pose_estimates(
         gps_data,
         odometry,
@@ -39,11 +43,13 @@ def generate_ground_truth_pose(
 
     if center:
         mean = np.mean([fused.position(t) for t in fused.times], axis=0)
+        print(f"Centering at: {list(mean)}")
         T_premultiply = np.eye(4)
         T_premultiply[:3, 3] = -mean
         fused.T_premultiply = T_premultiply
 
     fused.to_csv(output_csv)
+    print(f"Saved trajectory to {output_csv}")
 
 
 if __name__ == "__main__":
@@ -84,6 +90,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to center output fused trajectory",
     )
+    parser.add_argument(
+        "--odom-stride",
+        type=int,
+        default=None,
+    )
 
     args = parser.parse_args()
     generate_ground_truth_pose(
@@ -92,4 +103,5 @@ if __name__ == "__main__":
         args.robot_name,
         args.max_gps_sigma,
         center=args.center,
+        odom_stride=args.odom_stride,
     )
