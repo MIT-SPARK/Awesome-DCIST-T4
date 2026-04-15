@@ -7,9 +7,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import rclpy.time
-import tf2_ros
-
 import ros_system_monitor as rsm
+import tf2_ros
 from sensor_msgs.msg import NavSatFix
 from spark_config.config import Config, register_config
 
@@ -44,11 +43,16 @@ def latlon_to_utm(lat, lon):
         - (35 * e2**3 / 3072) * math.sin(6 * lat_rad)
     )
 
-    easting = k0 * N * (
-        A
-        + (1 - T + C) * A**3 / 6
-        + (5 - 18 * T + T**2 + 72 * C - 58 * e_prime2) * A**5 / 120
-    ) + 500000.0
+    easting = (
+        k0
+        * N
+        * (
+            A
+            + (1 - T + C) * A**3 / 6
+            + (5 - 18 * T + T**2 + 72 * C - 58 * e_prime2) * A**5 / 120
+        )
+        + 500000.0
+    )
 
     northing = k0 * (
         M
@@ -136,9 +140,7 @@ class RelocalizationMonitor:
 
     def _timer_cb(self):
         if self.origin_easting is None:
-            self._report(
-                rsm.Status.ERROR, "ADT4_ORIGIN_UTM not set or invalid"
-            )
+            self._report(rsm.Status.ERROR, "ADT4_ORIGIN_UTM not set or invalid")
             return
         if self.last_fix_time is None:
             self._report(rsm.Status.STARTUP, "Waiting for first GPS fix")

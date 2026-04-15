@@ -26,9 +26,7 @@ def generate_ground_truth_pose(
     print("Loading data...")
     gps_data = rdp.data.GPSData.from_bag(input_bag, gps_topic, time_tol=10.0)
     gps_data.rm_nans()
-    odometry = rdp.data.PoseData.from_bag(
-        input_bag, odom_topic, time_tol=10.0
-    )
+    odometry = rdp.data.PoseData.from_bag(input_bag, odom_topic, time_tol=10.0)
 
     if odom_stride is not None:
         odometry.times = odometry.times[::odom_stride]
@@ -105,5 +103,5 @@ if __name__ == "__main__":
         args.robot_name,
         args.max_gps_sigma,
         center=args.center,
-        odom_stride=args.odom_stride
+        odom_stride=args.odom_stride,
     )
