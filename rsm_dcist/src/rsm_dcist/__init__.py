@@ -1,3 +1,4 @@
 from rsm_dcist.example1_monitor import Example1NodeMonitorConfig
 from rsm_dcist.gps_monitor import GpsMonitorConfig
 from rsm_dcist.ntrip_monitor import NtripMonitorConfig
+from rsm_dcist.relocalization_monitor import RelocalizationMonitorConfig

@@ -3,6 +3,7 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
+  relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}
 windows:
   - window_name: roman
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
