@@ -16,4 +16,5 @@
     output_dir: $(var output_dir)/roman
     submap_knn: 5
     viz_robot_ids: [1]
+    lc_marker_cube_size: 2.0
 lc_required_associations: 5
