@@ -34,7 +34,7 @@ def generate_ground_truth_pose(
         odometry.times = odometry.times[::odom_stride]
         odometry.positions = odometry.positions[::odom_stride]
         odometry.orientations = odometry.orientations[::odom_stride]
-        
+
     print("Fusing GPS and odometry data...")
     fused = rdp.data_fusion.fuse_gps_and_local_pose_estimates(
         gps_data,
@@ -105,5 +105,5 @@ if __name__ == "__main__":
         args.robot_name,
         args.max_gps_sigma,
         center=args.center,
-        odom_stide=args.odom_stride
+        odom_stride=args.odom_stride
     )

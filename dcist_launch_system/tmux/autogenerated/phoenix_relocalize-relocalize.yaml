@@ -6,6 +6,8 @@ nodes_to_monitor:
   fastsam: {}
   roman_map: {}
   roman_lc: {}
+  relocalization_monitor:
+    external_monitor: {type: RelocalizationMonitor}
   gps_monitor:
     external_monitor: {type: GpsMonitor}
   ntrip_monitor:
@@ -21,7 +23,8 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, roman_lc: {}, roman_map: {}, tx_rx_monitor: {}}}"
+  ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: relocalize
   logging_key: phoenix_relocalize-relocalize

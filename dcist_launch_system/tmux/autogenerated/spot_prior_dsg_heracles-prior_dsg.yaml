@@ -13,6 +13,7 @@ environment:
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, spot_executor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: prior_dsg
