@@ -1,4 +1,6 @@
 ---
+enable_pgmo_logging: false
+disable_timer_output: false
 world_frame: map
 robots:
   - type: UnitInterface
@@ -32,6 +34,8 @@ backend:
   anchor_robot_id: -1
   optimize_on_lc: true
   enable_node_merging: true
+  external_loop_closures:
+    max_time_difference: 1.0
   update_functors:
     agents: {type: UpdateAgentsFunctor}
   initial_align:
@@ -52,7 +56,7 @@ backend:
       gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
     covariance:
       odom: 1.0e-04
-      loop_close: 1.0e-01
+      loop_close: 5.0e-01
       sg_loop_close: 1.0e-01
       prior: 1.0e-02
       mesh_mesh: 1.0e-02

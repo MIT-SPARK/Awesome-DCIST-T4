@@ -60,8 +60,8 @@ active_window:
     - type: TsdfOccupancyPublisher
       min_distance: 0.25
       use_relative_height: true
-      slice_height: 0.0
-      num_slices: 1
+      slice_height: 0.25
+      num_slices: 4
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
