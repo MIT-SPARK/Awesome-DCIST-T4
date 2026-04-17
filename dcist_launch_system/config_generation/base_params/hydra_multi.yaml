@@ -1,4 +1,6 @@
 ---
+enable_pgmo_logging: false
+disable_timer_output: false
 world_frame: map
 robots:
   - type: UnitInterface
@@ -32,6 +34,8 @@ backend:
   anchor_robot_id: -1
   optimize_on_lc: true
   enable_node_merging: true
+  external_loop_closures:
+    max_time_difference: 1.0
   update_functors:
     agents: {type: UpdateAgentsFunctor}
   initial_align:
