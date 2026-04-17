@@ -448,8 +448,12 @@ def hash_remote_experiment(user, ip, output_root, experiment):
 
 
 def get_remote_status(
-    user, ip, silvus_ips=None, platform_type=None,
-    doodlelabs_ips=None, doodlelabs_creds=None,
+    user,
+    ip,
+    silvus_ips=None,
+    platform_type=None,
+    doodlelabs_ips=None,
+    doodlelabs_creds=None,
 ):
     """Get system status from a remote machine.
 
@@ -600,9 +604,7 @@ except Exception:
 """
         encoded = base64.b64encode(py_script.encode()).decode()
         ruser, rpw = doodlelabs_creds or ("user", "DoodleSmartRadio")
-        args = " ".join(
-            shlex.quote(a) for a in [ruser, rpw, *doodlelabs_ips]
-        )
+        args = " ".join(shlex.quote(a) for a in [ruser, rpw, *doodlelabs_ips])
         cmd += f"; echo '---RADIO---'; echo '{encoded}' | base64 -d | python3 - {args}"
 
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
@@ -1706,11 +1708,16 @@ def get_doodlelabs_radio_details(topology):
 
     def _rpc(base, token, obj, method, args=None):
         payload = json.dumps(
-            {"jsonrpc": "2.0", "id": 1, "method": "call",
-             "params": [token, obj, method, args or {}]}
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "call",
+                "params": [token, obj, method, args or {}],
+            }
         ).encode()
         req = _urlreq.Request(
-            base, data=payload,
+            base,
+            data=payload,
             headers={"Content-Type": "application/json"},
         )
         with _urlreq.urlopen(req, timeout=4, context=ctx) as resp:
@@ -1730,7 +1737,10 @@ def get_doodlelabs_radio_details(topology):
         info = {"ip": ip, "error": None}
         try:
             code, login = _rpc(
-                base, null_token, "session", "login",
+                base,
+                null_token,
+                "session",
+                "login",
                 {"username": ruser, "password": rpw},
             )
             if code != 0 or not login:
@@ -1758,7 +1768,10 @@ def get_doodlelabs_radio_details(topology):
                 info["txpower"] = iw.get("txpower")
 
             code, data = _rpc(
-                base, token, "file", "read",
+                base,
+                token,
+                "file",
+                "read",
                 {"path": "/tmp/linkstate_current.json", "base64": False},
             )
             sta_stats = []
@@ -1774,7 +1787,10 @@ def get_doodlelabs_radio_details(topology):
             info["mesh_stats"] = mesh_stats
 
             code, data = _rpc(
-                base, token, "file", "exec",
+                base,
+                token,
+                "file",
+                "exec",
                 {"command": "cat", "params": ["/tmp/run/pancake.txt"]},
             )
             if code == 0 and data and data.get("stdout"):
@@ -1797,7 +1813,9 @@ def get_doodlelabs_radio_details(topology):
 
 
 def check_doodlelabs_route(
-    user=None, ip=None, mgmt_subnet="10.223.0.0/16",
+    user=None,
+    ip=None,
+    mgmt_subnet="10.223.0.0/16",
     local_subnet_pat="192.168.153.",
 ):
     """Check if a route to the Doodle Labs mesh subnet exists.

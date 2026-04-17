@@ -143,7 +143,9 @@ class MonitorScreen(ModalScreen):
             machines = [
                 m for m in self.ctx.runtime_config.values() if m.get("online", False)
             ]
-            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+            radio_type = get_active_radio_type(
+                self.ctx.topo, self.ctx.radio_type_override
+            )
             silvus_ips = None
             dl_ips = None
             dl_creds = None
@@ -153,9 +155,7 @@ class MonitorScreen(ModalScreen):
                     r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
                 ]
             elif radio_type == "doodlelabs":
-                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get(
-                    "radios", {}
-                )
+                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get("radios", {})
                 dl_ips = [r["ip"] for r in dl_radios.values() if "ip" in r]
                 # Use first radio's creds (assume uniform across fleet)
                 for r in dl_radios.values():
@@ -383,7 +383,9 @@ class MonitorScreen(ModalScreen):
 
         def do_check():
             machines = list(self.ctx.runtime_config.values())
-            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+            radio_type = get_active_radio_type(
+                self.ctx.topo, self.ctx.radio_type_override
+            )
             silvus_mgmt_ips = []
             dl_ips = []
             dl_creds = None
@@ -393,9 +395,7 @@ class MonitorScreen(ModalScreen):
                     r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
                 ]
             elif radio_type == "doodlelabs":
-                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get(
-                    "radios", {}
-                )
+                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get("radios", {})
                 dl_ips = [r["ip"] for r in dl_radios.values() if "ip" in r]
                 for r in dl_radios.values():
                     dl_creds = (
@@ -449,13 +449,11 @@ class MonitorScreen(ModalScreen):
                 )
 
             has_radio = any(r for _, _, r in results if r)
-            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+            radio_type = get_active_radio_type(
+                self.ctx.topo, self.ctx.radio_type_override
+            )
             if has_radio:
-                label = (
-                    "Doodle Labs"
-                    if radio_type == "doodlelabs"
-                    else "Silvus"
-                )
+                label = "Doodle Labs" if radio_type == "doodlelabs" else "Silvus"
                 log.write(f"\n[bold]{label} Radio Link Quality:[/]")
                 radio_assignment = []  # (machine_name, node_id_or_bssid)
                 for m, _, radio in sorted(results, key=lambda x: x[0]["name"]):
@@ -505,7 +503,7 @@ class MonitorScreen(ModalScreen):
 
                 if radio_assignment:
                     id_label = "BSSID" if radio_type == "doodlelabs" else "node"
-                    log.write(f"\n[bold]Radio Assignment (current):[/]")
+                    log.write("\n[bold]Radio Assignment (current):[/]")
                     for mname, rid in radio_assignment:
                         log.write(f"  [cyan]{mname:12s}[/] → {id_label} {rid}")
                     log.write(
@@ -594,9 +592,7 @@ class MonitorScreen(ModalScreen):
                     )
             return results
 
-        data_subnet = (
-            "192.168.153.x" if radio_type == "doodlelabs" else "192.168.100.x"
-        )
+        data_subnet = "192.168.153.x" if radio_type == "doodlelabs" else "192.168.100.x"
 
         def on_done(results):
             log.write(f"\n[bold]{label} Route ({mgmt_subnet}):[/]")
@@ -659,10 +655,7 @@ class MonitorScreen(ModalScreen):
             if local_no_iface:
                 # Show a template command for local even when the interface
                 # isn't present yet (USB unplugged, or not auto-configured).
-                log.write(
-                    "\n[bold yellow]Local has no "
-                    f"{data_subnet} interface.[/]"
-                )
+                log.write(f"\n[bold yellow]Local has no {data_subnet} interface.[/]")
                 if radio_type == "doodlelabs":
                     log.write(
                         "  [dim]Plug in the Doodle Labs radio via USB-ethernet, "
@@ -673,21 +666,15 @@ class MonitorScreen(ModalScreen):
                         "  [dim]Connect to the Silvus network, then find the "
                         "interface name:[/]"
                     )
-                log.write(
-                    f"    [cyan]ip -o addr show | grep '{data_subnet[:-1]}'[/]"
-                )
+                log.write(f"    [cyan]ip -o addr show | grep '{data_subnet[:-1]}'[/]")
                 log.write(
                     "  [dim]Then add the route (replace <iface> with what you "
                     "found above):[/]"
                 )
+                log.write(f"    [cyan]sudo ip route add {mgmt_subnet} dev <iface>[/]")
+                log.write("  [dim]For permanent route via NetworkManager:[/]")
                 log.write(
-                    f"    [cyan]sudo ip route add {mgmt_subnet} dev <iface>[/]"
-                )
-                log.write(
-                    "  [dim]For permanent route via NetworkManager:[/]"
-                )
-                log.write(
-                    f"    [cyan]conn=$(nmcli -f NAME,DEVICE con show "
+                    "    [cyan]conn=$(nmcli -f NAME,DEVICE con show "
                     "| grep <iface> | awk '{print $1}')[/]"
                 )
                 log.write(
@@ -913,9 +900,7 @@ class MonitorScreen(ModalScreen):
                     elif dst_bssid and dst_bssid in tq_by_peer:
                         tq = tq_by_peer[dst_bssid]
                         pct = int(tq * 100 / 255)
-                        color = (
-                            "green" if tq > 200 else "yellow" if tq > 128 else "red"
-                        )
+                        color = "green" if tq > 200 else "yellow" if tq > 128 else "red"
                         cell = f"[{color}]TQ{pct}%[/]"
                         row += f"{cell:>{col_w}}"
                     else:
@@ -945,9 +930,7 @@ class MonitorScreen(ModalScreen):
                     tree_str = ", ".join(parts)
                 else:
                     tree_str = "—"
-                log.write(
-                    f"  [cyan]{rname}[/]{bat_s}{sig_s}: [{tree_str}]"
-                )
+                log.write(f"  [cyan]{rname}[/]{bat_s}{sig_s}: [{tree_str}]")
 
             all_err = all(d.get("error") for d in details.values())
             if all_err:

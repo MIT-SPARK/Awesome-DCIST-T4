@@ -14,25 +14,24 @@ Usage:
 
 import argparse
 import json
-import os
+import platform
+import socket
 import ssl
+import subprocess
 import sys
 import threading
 import time
 import urllib.request
 import webbrowser
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-
-import platform
-import socket
-import subprocess
 
 import yaml
 
 # ---------------------------------------------------------------------------
 # Local machine info
 # ---------------------------------------------------------------------------
+
 
 def _get_local_machine_info():
     """Detect this machine's identity and Doodle Labs interface."""
@@ -47,7 +46,8 @@ def _get_local_machine_info():
     # Find the interface with a 192.168.153.x address
     try:
         result = subprocess.run(
-            ["ip", "-o", "addr", "show"], capture_output=True, text=True)
+            ["ip", "-o", "addr", "show"], capture_output=True, text=True
+        )
         for line in result.stdout.strip().split("\n"):
             if "192.168.153." in line:
                 parts = line.split()
@@ -74,9 +74,11 @@ def _get_local_machine_info():
                 k, v = line.split(":")
                 meminfo[k.strip()] = int(v.strip().split()[0]) * 1024
             info["mem_total"] = meminfo.get("MemTotal", 0)
-            info["mem_free"] = (meminfo.get("MemFree", 0)
-                                + meminfo.get("Buffers", 0)
-                                + meminfo.get("Cached", 0))
+            info["mem_free"] = (
+                meminfo.get("MemFree", 0)
+                + meminfo.get("Buffers", 0)
+                + meminfo.get("Cached", 0)
+            )
     except Exception:
         pass
     return info
@@ -94,12 +96,17 @@ NULL_TOKEN = "00000000000000000000000000000000"
 
 
 def _rpc(ip, token, obj, method, args=None):
-    payload = json.dumps({
-        "jsonrpc": "2.0", "id": 1, "method": "call",
-        "params": [token, obj, method, args or {}],
-    }).encode()
+    payload = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "call",
+            "params": [token, obj, method, args or {}],
+        }
+    ).encode()
     req = urllib.request.Request(
-        f"https://{ip}/ubus", data=payload,
+        f"https://{ip}/ubus",
+        data=payload,
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=5, context=_ssl_ctx) as resp:
@@ -113,8 +120,9 @@ def _rpc(ip, token, obj, method, args=None):
 
 
 def _login(ip, user, password):
-    code, data = _rpc(ip, NULL_TOKEN, "session", "login",
-                      {"username": user, "password": password})
+    code, data = _rpc(
+        ip, NULL_TOKEN, "session", "login", {"username": user, "password": password}
+    )
     if code == 0 and data:
         return data.get("ubus_rpc_session", "")
     return ""
@@ -142,8 +150,9 @@ def query_radio(ip, user, password):
             info["uptime"] = sysinfo.get("uptime", 0)
             mem = sysinfo.get("memory", {})
             info["mem_total"] = mem.get("total", 0)
-            info["mem_free"] = (mem.get("free", 0) + mem.get("buffered", 0)
-                                + mem.get("cached", 0))
+            info["mem_free"] = (
+                mem.get("free", 0) + mem.get("buffered", 0) + mem.get("cached", 0)
+            )
 
         code, iw = _rpc(ip, token, "iwinfo", "info", {"device": "wlan0"})
         if code == 0 and iw:
@@ -158,8 +167,13 @@ def query_radio(ip, user, password):
             info["noise"] = iw.get("noise")
             info["bitrate"] = iw.get("bitrate")
 
-        code, data = _rpc(ip, token, "file", "read",
-                          {"path": "/tmp/linkstate_current.json", "base64": False})
+        code, data = _rpc(
+            ip,
+            token,
+            "file",
+            "read",
+            {"path": "/tmp/linkstate_current.json", "base64": False},
+        )
         if code == 0 and data and data.get("data"):
             try:
                 ls = json.loads(data["data"])
@@ -169,9 +183,13 @@ def query_radio(ip, user, password):
             except json.JSONDecodeError:
                 pass
 
-        code, data = _rpc(ip, token, "file", "exec",
-                          {"command": "cat",
-                           "params": ["/tmp/run/pancake.txt"]})
+        code, data = _rpc(
+            ip,
+            token,
+            "file",
+            "exec",
+            {"command": "cat", "params": ["/tmp/run/pancake.txt"]},
+        )
         if code == 0 and data and data.get("stdout"):
             try:
                 pancake = json.loads(data["stdout"])
@@ -185,8 +203,9 @@ def query_radio(ip, user, password):
                 pass
 
         for field in ("latitude", "longitude", "altitude"):
-            code, data = _rpc(ip, token, "file", "read",
-                              {"path": f"/var/run/gps/{field}"})
+            code, data = _rpc(
+                ip, token, "file", "read", {"path": f"/var/run/gps/{field}"}
+            )
             if code == 0 and data and data.get("data"):
                 val = data["data"].strip()
                 if val and val != "0":
@@ -200,6 +219,7 @@ def query_radio(ip, user, password):
 # ---------------------------------------------------------------------------
 # Topology poller
 # ---------------------------------------------------------------------------
+
 
 class TopologyState:
     def __init__(self, topology_path):
@@ -245,11 +265,13 @@ class TopologyState:
 
         # Ethernet link from this machine to the directly-connected radio
         if local_connected_radio:
-            edges.append({
-                "from": "_this_machine",
-                "to": local_connected_radio,
-                "type": "ethernet",
-            })
+            edges.append(
+                {
+                    "from": "_this_machine",
+                    "to": local_connected_radio,
+                    "type": "ethernet",
+                }
+            )
 
         # Build edges from sta_stats and mesh_stats
         seen_edges = set()
@@ -263,15 +285,17 @@ class TopologyState:
                 key = tuple(sorted([src, dst]))
                 if key not in seen_edges:
                     seen_edges.add(key)
-                    edges.append({
-                        "from": src,
-                        "to": dst,
-                        "rssi": peer.get("rssi"),
-                        "rssi_ant": peer.get("rssi_ant", []),
-                        "mcs": peer.get("mcs"),
-                        "pl_ratio": peer.get("pl_ratio", 0),
-                        "type": "direct",
-                    })
+                    edges.append(
+                        {
+                            "from": src,
+                            "to": dst,
+                            "rssi": peer.get("rssi"),
+                            "rssi_ant": peer.get("rssi_ant", []),
+                            "mcs": peer.get("mcs"),
+                            "pl_ratio": peer.get("pl_ratio", 0),
+                            "type": "direct",
+                        }
+                    )
 
             for mesh_node in node.get("mesh_stats", []):
                 mac = mesh_node.get("orig_address", "").lower()
@@ -280,14 +304,16 @@ class TopologyState:
                 key = tuple(sorted([src, dst]))
                 if key not in seen_edges:
                     seen_edges.add(key)
-                    edges.append({
-                        "from": src,
-                        "to": dst,
-                        "tq": mesh_node.get("tq"),
-                        "hop_status": hop,
-                        "last_seen_ms": mesh_node.get("last_seen_msecs"),
-                        "type": "mesh",
-                    })
+                    edges.append(
+                        {
+                            "from": src,
+                            "to": dst,
+                            "tq": mesh_node.get("tq"),
+                            "hop_status": hop,
+                            "last_seen_ms": mesh_node.get("last_seen_msecs"),
+                            "type": "mesh",
+                        }
+                    )
 
         with self.lock:
             self.data = {
@@ -905,6 +931,7 @@ requestAnimationFrame(draw);
 # HTTP server
 # ---------------------------------------------------------------------------
 
+
 class Handler(BaseHTTPRequestHandler):
     state = None  # set in main
 
@@ -912,21 +939,22 @@ class Handler(BaseHTTPRequestHandler):
         pass  # quiet
 
     def do_GET(self):
-        if self.path == '/api/topology':
+        if self.path == "/api/topology":
             data = self.state.get()
             body = json.dumps(data).encode()
             self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', len(body))
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", len(body))
             self.end_headers()
             self.wfile.write(body)
-        elif self.path in ('/', '/index.html'):
+        elif self.path in ("/", "/index.html"):
             body = HTML_PAGE.replace(
-                'REFRESH_INTERVAL', str(self.refresh_interval),
+                "REFRESH_INTERVAL",
+                str(self.refresh_interval),
             ).encode()
             self.send_response(200)
-            self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', len(body))
+            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Length", len(body))
             self.end_headers()
             self.wfile.write(body)
         else:
@@ -934,17 +962,18 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Doodle Labs mesh topology visualizer')
-    parser.add_argument('--port', type=int, default=8780)
-    parser.add_argument('--refresh', type=int, default=5,
-                        help='poll interval in seconds')
-    parser.add_argument('--no-open', action='store_true',
-                        help="don't auto-open browser")
+    parser = argparse.ArgumentParser(description="Doodle Labs mesh topology visualizer")
+    parser.add_argument("--port", type=int, default=8780)
+    parser.add_argument(
+        "--refresh", type=int, default=5, help="poll interval in seconds"
+    )
+    parser.add_argument(
+        "--no-open", action="store_true", help="don't auto-open browser"
+    )
     args = parser.parse_args()
 
     script_dir = Path(__file__).resolve().parent
-    topology = script_dir.parent / 'config' / 'topology.yaml'
+    topology = script_dir.parent / "config" / "topology.yaml"
     if not topology.exists():
         print(f"topology.yaml not found at {topology}", file=sys.stderr)
         sys.exit(1)
@@ -958,16 +987,15 @@ def main():
     print(f"  Found {len(data['nodes'])} node(s), {len(data['edges'])} link(s)")
 
     # Start background poller
-    t = threading.Thread(target=poller_loop, args=(state, args.refresh),
-                         daemon=True)
+    t = threading.Thread(target=poller_loop, args=(state, args.refresh), daemon=True)
     t.start()
 
     # Start HTTP server
     Handler.state = state
     Handler.refresh_interval = args.refresh
-    server = HTTPServer(('127.0.0.1', args.port), Handler)
+    server = HTTPServer(("127.0.0.1", args.port), Handler)
 
-    url = f'http://localhost:{args.port}'
+    url = f"http://localhost:{args.port}"
     print(f"Serving at {url}  (refresh every {args.refresh}s)")
     print("Press Ctrl+C to stop.")
 
@@ -980,5 +1008,5 @@ def main():
         print("\nStopped.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
