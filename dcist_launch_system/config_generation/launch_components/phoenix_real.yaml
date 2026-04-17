@@ -2,4 +2,4 @@
 windows:
   - window_name: real_phoenix
     layout: tiled
-    panes: ['sleep 5; tmux send-keys -t real_phoenix.2 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m', 'cd ${ADT4_PHX_ROOT} && phx run']
+    panes: ['sleep 5; tmux send-keys -t real_phoenix.1 "ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml" C-m', 'cd ${ADT4_PHX_ROOT} && phx run']

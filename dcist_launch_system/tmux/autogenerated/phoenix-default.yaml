@@ -63,7 +63,7 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
   - window_name: real_phoenix
     layout: tiled
-    panes: ["sleep 5; tmux send-keys -t real_phoenix.2 \"ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml\" C-m", "cd ${ADT4_PHX_ROOT} && phx run"]
+    panes: ["sleep 5; tmux send-keys -t real_phoenix.1 \"ros2 launch mit_launch ${ADT4_ROBOT_NAME}_mppi_only.launch.yaml\" C-m", "cd ${ADT4_PHX_ROOT} && phx run"]
   - window_name: sensors
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
