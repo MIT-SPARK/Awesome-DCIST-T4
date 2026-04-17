@@ -25,10 +25,14 @@ from dcist_launch_system.fleet_helpers import (
     _STATUS_NAMES,
     _STATUS_NOMINAL,
     NodeStatusPoller,
+    check_doodlelabs_route,
     check_silvus_route,
     check_zenoh_port,
     compute_robot_readiness,
     generate_namespaced_rviz,
+    get_active_radio_type,
+    get_doodlelabs_link_quality,
+    get_doodlelabs_radio_details,
     get_local_ip_for_network,
     get_remote_status,
     get_silvus_link_quality,
@@ -139,8 +143,27 @@ class MonitorScreen(ModalScreen):
             machines = [
                 m for m in self.ctx.runtime_config.values() if m.get("online", False)
             ]
-            sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
-            silvus_ips = [r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r]
+            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+            silvus_ips = None
+            dl_ips = None
+            dl_creds = None
+            if radio_type == "silvus":
+                sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
+                silvus_ips = [
+                    r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
+                ]
+            elif radio_type == "doodlelabs":
+                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get(
+                    "radios", {}
+                )
+                dl_ips = [r["ip"] for r in dl_radios.values() if "ip" in r]
+                # Use first radio's creds (assume uniform across fleet)
+                for r in dl_radios.values():
+                    dl_creds = (
+                        r.get("user", "user"),
+                        r.get("password", "DoodleSmartRadio"),
+                    )
+                    break
 
             def fetch(m):
                 return get_remote_status(
@@ -148,6 +171,8 @@ class MonitorScreen(ModalScreen):
                     m["ip"],
                     silvus_ips=silvus_ips,
                     platform_type=m.get("platform_type"),
+                    doodlelabs_ips=dl_ips,
+                    doodlelabs_creds=dl_creds,
                 )
 
             return run_parallel(fetch, machines)
@@ -358,10 +383,26 @@ class MonitorScreen(ModalScreen):
 
         def do_check():
             machines = list(self.ctx.runtime_config.values())
-            sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
-            silvus_mgmt_ips = [
-                r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
-            ]
+            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+            silvus_mgmt_ips = []
+            dl_ips = []
+            dl_creds = None
+            if radio_type == "silvus":
+                sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
+                silvus_mgmt_ips = [
+                    r["mgmt_ip"] for r in sys_radios.values() if "mgmt_ip" in r
+                ]
+            elif radio_type == "doodlelabs":
+                dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get(
+                    "radios", {}
+                )
+                dl_ips = [r["ip"] for r in dl_radios.values() if "ip" in r]
+                for r in dl_radios.values():
+                    dl_creds = (
+                        r.get("user", "user"),
+                        r.get("password", "DoodleSmartRadio"),
+                    )
+                    break
 
             results = []
             for m in machines:
@@ -369,9 +410,16 @@ class MonitorScreen(ModalScreen):
                 zenoh_ok = check_zenoh_port(ip, port=zenoh_port)
 
                 radio = None
-                if m.get("online") and silvus_mgmt_ips:
+                if m.get("online"):
                     try:
-                        radio = get_silvus_link_quality(m["user"], ip, silvus_mgmt_ips)
+                        if radio_type == "silvus" and silvus_mgmt_ips:
+                            radio = get_silvus_link_quality(
+                                m["user"], ip, silvus_mgmt_ips
+                            )
+                        elif radio_type == "doodlelabs" and dl_ips:
+                            radio = get_doodlelabs_link_quality(
+                                m["user"], ip, dl_ips, dl_creds
+                            )
                     except Exception:
                         pass
 
@@ -401,9 +449,15 @@ class MonitorScreen(ModalScreen):
                 )
 
             has_radio = any(r for _, _, r in results if r)
+            radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
             if has_radio:
-                log.write("\n[bold]Silvus Radio Link Quality:[/]")
-                radio_assignment = []  # (machine_name, node_id)
+                label = (
+                    "Doodle Labs"
+                    if radio_type == "doodlelabs"
+                    else "Silvus"
+                )
+                log.write(f"\n[bold]{label} Radio Link Quality:[/]")
+                radio_assignment = []  # (machine_name, node_id_or_bssid)
                 for m, _, radio in sorted(results, key=lambda x: x[0]["name"]):
                     if not radio:
                         continue
@@ -411,6 +465,29 @@ class MonitorScreen(ModalScreen):
                         log.write(f"  [red]{m['name']:12s} {radio['error']}[/]")
                     elif "raw" in radio:
                         log.write(f"  [dim]{m['name']:12s} {radio['raw']}[/]")
+                    elif radio_type == "doodlelabs":
+                        bat_v = radio.get("battery_v")
+                        bat_s = f"{bat_v:.2f}V" if bat_v is not None else "?"
+                        mesh = radio.get("mesh_nodes", "?")
+                        neighbors = radio.get("neighbor_count", "?")
+                        sig = radio.get("signal")
+                        noise = radio.get("noise")
+                        sig_s = f"{sig}dBm" if sig is not None else "N/A"
+                        snr_s = (
+                            f"{sig - noise}dB"
+                            if sig is not None and noise is not None
+                            else "N/A"
+                        )
+                        temp = radio.get("temperature")
+                        temp_s = f" Temp:{temp:.0f}C" if temp is not None else ""
+                        log.write(
+                            f"  [cyan]{m['name']:12s}[/] "
+                            f"Bat:{bat_s} Mesh:{mesh} Peers:{neighbors} "
+                            f"Signal:{sig_s} SNR:{snr_s}{temp_s}"
+                        )
+                        bssid = radio.get("bssid")
+                        if bssid:
+                            radio_assignment.append((m["name"], bssid))
                     else:
                         bat = radio.get("battery", "?")
                         mesh = radio.get("mesh_nodes", "?")
@@ -427,9 +504,10 @@ class MonitorScreen(ModalScreen):
                             radio_assignment.append((m["name"], nid))
 
                 if radio_assignment:
-                    log.write("\n[bold]Radio Assignment (current):[/]")
-                    for mname, nid in radio_assignment:
-                        log.write(f"  [cyan]{mname:12s}[/] → node {nid}")
+                    id_label = "BSSID" if radio_type == "doodlelabs" else "node"
+                    log.write(f"\n[bold]Radio Assignment (current):[/]")
+                    for mname, rid in radio_assignment:
+                        log.write(f"  [cyan]{mname:12s}[/] → {id_label} {rid}")
                     log.write(
                         "  [dim]Press F4 to see RSSI matrix and mesh topology.[/]"
                     )
@@ -468,25 +546,37 @@ class MonitorScreen(ModalScreen):
         threading.Thread(target=bg, daemon=True).start()
 
     def action_check_silvus_routes(self):
-        """Check if Silvus management route exists on all machines + locally."""
-        log = self.query_one("#monitor_log", RichLog)
-        log.write("[dim]Checking Silvus management routes...[/]")
+        """Check if the radio management route exists on all machines + locally.
 
-        mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get(
-            "mgmt_subnet", "172.20.0.0/16"
-        )
+        Dispatches to the Silvus 172.20.0.0/16 check or the Doodle Labs
+        10.223.0.0/16 check based on radio type in topology.yaml.
+        """
+        log = self.query_one("#monitor_log", RichLog)
+        radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+        if radio_type == "doodlelabs":
+            dl_cfg = self.ctx.topo.get("doodlelabs_radios", {})
+            mgmt_subnet = dl_cfg.get("mgmt_subnet", "10.223.0.0/16")
+            check_fn = check_doodlelabs_route
+            label = "Doodle Labs Mesh"
+        else:
+            mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get(
+                "mgmt_subnet", "172.20.0.0/16"
+            )
+            check_fn = check_silvus_route
+            label = "Silvus Management"
+        log.write(f"[dim]Checking {label} routes ({mgmt_subnet})...[/]")
 
         def do_check():
             results = []
             # Check local machine first
-            local_info = check_silvus_route(mgmt_subnet=mgmt_subnet)
+            local_info = check_fn(mgmt_subnet=mgmt_subnet)
             results.append(("LOCAL", None, local_info))
 
             # Check all online machines
             machines = [m for m in self.ctx.runtime_config.values() if m.get("online")]
             for m in machines:
                 try:
-                    info = check_silvus_route(m["user"], m["ip"], mgmt_subnet)
+                    info = check_fn(m["user"], m["ip"], mgmt_subnet)
                     results.append((m["name"], m, info))
                 except Exception as e:
                     results.append(
@@ -497,29 +587,43 @@ class MonitorScreen(ModalScreen):
                                 "has_route": False,
                                 "interface": None,
                                 "silvus_iface": None,
+                                "dl_iface": None,
                                 "error": str(e),
                             },
                         )
                     )
             return results
 
+        data_subnet = (
+            "192.168.153.x" if radio_type == "doodlelabs" else "192.168.100.x"
+        )
+
         def on_done(results):
-            log.write(f"\n[bold]Silvus Management Route ({mgmt_subnet}):[/]")
+            log.write(f"\n[bold]{label} Route ({mgmt_subnet}):[/]")
             missing = []
+            local_no_iface = False
             for name, m, info in sorted(results, key=lambda x: x[0]):
-                iface = info.get("silvus_iface") or "—"
+                iface = (
+                    info.get("interface")
+                    or info.get("dl_iface")
+                    or info.get("silvus_iface")
+                    or "—"
+                )
+                has_iface = iface != "—"
                 if info.get("has_route"):
                     route = info.get("route_info", "OK")
                     log.write(
                         f"  [green]{name:12s}[/] iface={iface}  [green]ROUTE OK[/] ({route})"
                     )
-                elif info.get("silvus_iface"):
+                elif has_iface:
                     log.write(f"  [red]{name:12s}[/] iface={iface}  [red]NO ROUTE[/]")
                     missing.append((name, m, iface))
                 else:
                     log.write(
-                        f"  [dim]{name:12s}[/] [dim]No Silvus interface (no 192.168.100.x address)[/]"
+                        f"  [dim]{name:12s}[/] [dim]No {label.split()[0]} interface (no {data_subnet} address)[/]"
                     )
+                    if name == "LOCAL":
+                        local_no_iface = True
             if missing:
                 log.write("\n[bold yellow]Run these commands to add missing routes:[/]")
                 for name, m, iface in missing:
@@ -552,6 +656,45 @@ class MonitorScreen(ModalScreen):
                             f'    [cyan]  nmcli con modify "$conn" +ipv4.routes "{mgmt_subnet}"[/]'
                         )
                         log.write('    [cyan]  nmcli con up "$conn"[/]')
+            if local_no_iface:
+                # Show a template command for local even when the interface
+                # isn't present yet (USB unplugged, or not auto-configured).
+                log.write(
+                    "\n[bold yellow]Local has no "
+                    f"{data_subnet} interface.[/]"
+                )
+                if radio_type == "doodlelabs":
+                    log.write(
+                        "  [dim]Plug in the Doodle Labs radio via USB-ethernet, "
+                        "then find the interface name:[/]"
+                    )
+                else:
+                    log.write(
+                        "  [dim]Connect to the Silvus network, then find the "
+                        "interface name:[/]"
+                    )
+                log.write(
+                    f"    [cyan]ip -o addr show | grep '{data_subnet[:-1]}'[/]"
+                )
+                log.write(
+                    "  [dim]Then add the route (replace <iface> with what you "
+                    "found above):[/]"
+                )
+                log.write(
+                    f"    [cyan]sudo ip route add {mgmt_subnet} dev <iface>[/]"
+                )
+                log.write(
+                    "  [dim]For permanent route via NetworkManager:[/]"
+                )
+                log.write(
+                    f"    [cyan]conn=$(nmcli -f NAME,DEVICE con show "
+                    "| grep <iface> | awk '{print $1}')[/]"
+                )
+                log.write(
+                    f'    [cyan]nmcli con modify "$conn" +ipv4.routes '
+                    f'"{mgmt_subnet}"[/]'
+                )
+                log.write('    [cyan]nmcli con up "$conn"[/]')
 
         def bg():
             results = do_check()
@@ -560,8 +703,19 @@ class MonitorScreen(ModalScreen):
         threading.Thread(target=bg, daemon=True).start()
 
     def action_silvus_detail(self):
-        """Show Silvus RSSI link quality matrix and mesh routing topology."""
+        """Show radio RSSI link quality matrix and mesh routing topology.
+
+        Dispatches to Silvus or Doodle Labs based on which radio type is
+        configured in topology.yaml.
+        """
         log = self.query_one("#monitor_log", RichLog)
+        radio_type = get_active_radio_type(self.ctx.topo, self.ctx.radio_type_override)
+        if radio_type == "doodlelabs":
+            self._doodlelabs_detail()
+            return
+        if radio_type != "silvus":
+            log.write("[yellow]No radios defined in topology.[/]")
+            return
         sys_radios = self.ctx.topo.get("silvus_radios", {}).get("radios", {})
         if not sys_radios:
             log.write("[yellow]No Silvus radios defined in topology.[/]")
@@ -673,6 +827,133 @@ class MonitorScreen(ModalScreen):
             if all_err:
                 log.write(
                     f"\n[yellow]All radios unreachable — is the {mgmt_subnet} route set? (press F3)[/]"
+                )
+            else:
+                log.write(
+                    "\n[dim]Press 'z' to see which robot currently has each radio.[/]"
+                )
+
+        def bg():
+            result = do_query()
+            self.app.call_from_thread(on_done, result)
+
+        threading.Thread(target=bg, daemon=True).start()
+
+    def _doodlelabs_detail(self):
+        """Doodle Labs equivalent of action_silvus_detail — queries all configured
+        Doodle Labs radios directly via HTTPS and renders an RSSI matrix plus
+        batman-adv mesh routing."""
+        log = self.query_one("#monitor_log", RichLog)
+        dl_radios = self.ctx.topo.get("doodlelabs_radios", {}).get("radios", {})
+        if not dl_radios:
+            log.write("[yellow]No Doodle Labs radios defined in topology.[/]")
+            return
+        log.write("[dim]Querying Doodle Labs radios (direct HTTPS)...[/]")
+
+        def do_query():
+            return get_doodlelabs_radio_details(self.ctx.topo)
+
+        def on_done(details):
+            if not details:
+                log.write("[red]No radio data returned.[/]")
+                return
+
+            # Build bssid -> radio_name reverse map (batman peer ID is BSSID)
+            bssid_to_name = {}
+            for rname, info in details.items():
+                b = info.get("bssid")
+                if b:
+                    bssid_to_name[b.lower()] = rname
+
+            names = sorted(details.keys())
+            col_w = max(len(n) for n in names) + 2
+
+            # ---- RSSI Matrix (from sta_stats) ----
+            log.write("\n[bold]Doodle Labs RSSI Link Quality:[/]")
+            header = " " * (col_w + 2) + "".join(f"{n:>{col_w}}" for n in names)
+            log.write(f"  [dim]{header}[/]")
+
+            for src in names:
+                info = details[src]
+                if info.get("error"):
+                    log.write(
+                        f"  [red]{src:<{col_w}}[/]  [red](unreachable: {info['error'][:40]})[/]"
+                    )
+                    continue
+                row = f"  [cyan]{src:<{col_w}}[/]"
+                # sta_stats: list of {mac, rssi, mcs, ...} per direct peer
+                rssi_by_peer = {}
+                for p in info.get("sta_stats") or []:
+                    mac = (p.get("mac") or "").lower()
+                    rssi = p.get("rssi")
+                    if mac and rssi is not None:
+                        rssi_by_peer[mac] = rssi
+                # mesh_stats: list of {orig_address, tq, hop_status}
+                tq_by_peer = {}
+                for m in info.get("mesh_stats") or []:
+                    mac = (m.get("orig_address") or "").lower()
+                    tq = m.get("tq")
+                    if mac and tq is not None:
+                        tq_by_peer[mac] = tq
+
+                for dst in names:
+                    if src == dst:
+                        row += f"{'---':>{col_w}}"
+                        continue
+                    dst_bssid = (details[dst].get("bssid") or "").lower()
+                    val = rssi_by_peer.get(dst_bssid)
+                    if val is not None:
+                        if val > -60:
+                            cell = f"[green]{val}dBm[/]"
+                        elif val > -75:
+                            cell = f"[yellow]{val}dBm[/]"
+                        else:
+                            cell = f"[red]{val}dBm[/]"
+                        row += f"{cell:>{col_w}}"
+                    elif dst_bssid and dst_bssid in tq_by_peer:
+                        tq = tq_by_peer[dst_bssid]
+                        pct = int(tq * 100 / 255)
+                        color = (
+                            "green" if tq > 200 else "yellow" if tq > 128 else "red"
+                        )
+                        cell = f"[{color}]TQ{pct}%[/]"
+                        row += f"{cell:>{col_w}}"
+                    else:
+                        row += f"[dim]{'?':>{col_w}}[/]"
+                log.write(row)
+
+            # ---- Mesh Topology (batman-adv) ----
+            log.write("\n[bold]Mesh Routing (batman-adv, per radio):[/]")
+            for rname in names:
+                info = details[rname]
+                if info.get("error"):
+                    continue
+                bat_v = info.get("battery_v")
+                bat_s = f"  bat={bat_v:.2f}V" if bat_v is not None else ""
+                sig = info.get("signal")
+                sig_s = f"  signal={sig}dBm" if sig is not None else ""
+                mesh = info.get("mesh_stats") or []
+                if mesh:
+                    parts = []
+                    for m in mesh:
+                        mac = (m.get("orig_address") or "").lower()
+                        tq = m.get("tq")
+                        hop = m.get("hop_status", "")
+                        pct = int(tq * 100 / 255) if tq is not None else 0
+                        label = bssid_to_name.get(mac, mac)
+                        parts.append(f"{label}(TQ={pct}%, {hop})")
+                    tree_str = ", ".join(parts)
+                else:
+                    tree_str = "—"
+                log.write(
+                    f"  [cyan]{rname}[/]{bat_s}{sig_s}: [{tree_str}]"
+                )
+
+            all_err = all(d.get("error") for d in details.values())
+            if all_err:
+                log.write(
+                    "\n[yellow]All radios unreachable — check USB connection "
+                    "or 10.223.0.0/16 mesh route (press F3).[/]"
                 )
             else:
                 log.write(

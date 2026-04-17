@@ -102,15 +102,26 @@ class FleetContext:
 )
 @click.option("--topology", "-t", type=click.Path(exists=True), default=None)
 @click.option("--output-root", "-o", default="~/adt4_output", help="Remote output root")
+@click.option(
+    "--radio-type",
+    type=click.Choice(["auto", "silvus", "doodlelabs", "none"]),
+    default="auto",
+    help=(
+        "Radio type to monitor. 'auto' (default) infers from topology.yaml: "
+        "doodlelabs wins if both sections are populated. 'none' disables "
+        "radio monitoring entirely."
+    ),
+)
 @click.pass_context
-def cli(ctx, network, topology, output_root):
+def cli(ctx, network, topology, output_root, radio_type):
     """ADT4 Fleet Management Tool. Run without subcommand for interactive TUI."""
     ctx.ensure_object(dict)
     ctx.obj["network"] = network
     ctx.obj["topology"] = topology
     ctx.obj["output_root"] = output_root
+    ctx.obj["radio_type"] = radio_type
     if ctx.invoked_subcommand is None:
-        _launch_tui(network, topology, output_root)
+        _launch_tui(network, topology, output_root, radio_type)
 
 
 # --- status ---
