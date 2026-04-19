@@ -17,6 +17,9 @@ class TuiContext:
     active_network: str
     topology_path: str | None
     output_root: str
+    # User-selected radio type: 'silvus', 'doodlelabs', 'none', 'auto', or None.
+    # 'auto' / None means infer from topology (doodlelabs wins if both present).
+    radio_type_override: str | None = None
     runtime_config: dict[str, dict] = field(default_factory=dict)
     _deleted_machines: set[str] = field(default_factory=set)
     _local_ips: set[str] = field(default_factory=set)

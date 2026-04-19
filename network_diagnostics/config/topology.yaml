@@ -13,7 +13,7 @@ machines:
   russell: {role: base_station, desc: Aaron's laptop, addresses: {mit_wifi: 10.29.129.166, silvus: 192.168.100.101}}
   bonsai: {role: base_station, desc: RRG dev computer, addresses: {penn_wifi: 192.168.129.217}}
   willow: {role: base_station, desc: RRG base station, addresses: {mit_wifi: 10.31.172.204, silvus: 192.168.100.100}}
-  sequia: {role: base_station, desc: Sequia base station, addresses: {mit_wifi: 10.29.166.252, silvus: 192.168.100.105}}
+  sequoia: {role: base_station, desc: Sequoia base station, addresses: {mit_wifi: 10.29.166.252, silvus: 192.168.100.105}}
 silvus_radios:
   mgmt_subnet: 172.20.0.0/16
   api_endpoint: /cgi-bin/streamscape_api
@@ -26,6 +26,15 @@ silvus_radios:
     # radio_XXXXXX: { mgmt_ip: "172.20.x.x", node_id: XXXXXX }
   udp_telemetry:
     listen_port: 5100
+doodlelabs_radios:
+  # Doodle Labs Mesh Rider wearable radio
+  # API: JSON-RPC over HTTPS at /ubus (OpenWrt ubus)
+  # Default config IP: 192.168.153.1, mesh IP: 10.223.x.y/16
+  radios:
+    dl_wearable_1: {ip: 192.168.153.1, user: user, password: DoodleSmartRadio}
+    # To add the second radio, find its mesh IP via: ssh root@192.168.153.1 'batctl tg'
+    # Then: sudo ip route add 10.223.0.0/16 dev enx9c69d329c4cc
+    # dl_radio_2: {ip: "10.223.x.y", user: user, password: DoodleSmartRadio}
 zenoh:
   port: 7447
   connect_network: silvus
