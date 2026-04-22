@@ -1,0 +1,27 @@
+model: 
+  instance_model:
+    text_prompt: !reset
+      - ignore
+      - chair
+      - cone
+      - bag
+      - table
+      - tree
+      - vehicle
+      - bicycle
+      - door
+      - pole
+      - fence
+      - sign
+      - window
+      - bed
+      - box
+      - basket
+      - seating
+      - flag
+      - light
+      - trash
+      - clothes
+      - ball
+      - porta potty
+      - roadblock

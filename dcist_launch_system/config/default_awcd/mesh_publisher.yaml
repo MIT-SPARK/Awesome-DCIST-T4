@@ -1,0 +1,2 @@
+mesh_frame: map
+mesh_filepath: $<env ADT4_PRIOR_MAP>/hydra/backend/mesh.ply

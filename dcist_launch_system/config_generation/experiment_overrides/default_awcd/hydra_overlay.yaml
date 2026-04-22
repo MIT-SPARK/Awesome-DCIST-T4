@@ -1,0 +1,39 @@
+---
+active_window:
+  object_detector:
+    outlier_filter:
+      enabled: false
+  #   min_object_volume: -1
+  #   min_cluster_size: 1
+  tracker:
+    # track_by: voxels
+    bbox_type: aabb
+  object_extractor:
+    bbox_type: aabb
+    min_object_allocation_confidence: 0.3
+    min_object_reconstruction_confidence: 0.3
+    min_object_reconstruction_observations: 5
+  khronos_sinks:
+    - type: ActiveWindowTrackSaver
+      output_directory: $<env ADT4_OUTPUT_DIR>/track_debug
+      save_pointcloud: true
+frontend:
+  clear_object_meshes: false
+  traversability_places:
+    estimator: !reset
+      type: GradientTraversabilityEstimator
+      gradient_threshold: 0.5
+      height_above: 0.3
+      height_below: 1.0
+      min_confidence: 0.5
+      min_traversability: 0.1  # gradient below 0.45 is traversable
+      pessimistic: true
+      smoothing: true
+      sinks:
+        - type: TsdfGradientOccupancyPublisher
+          gradient_threshold: 0.5
+          min_confidence: 0.5
+          probabilistic: false
+          use_relative_height: true
+          filter_disjoint: true
+          add_robot_footprint: true
