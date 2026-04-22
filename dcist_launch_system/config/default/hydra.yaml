@@ -60,6 +60,16 @@ active_window:
       use_relative_height: true
       slice_height: 0.0
       num_slices: 1
+    - type: TsdfGradientOccupancyPublisher
+      gradient_threshold: 0.5
+      min_weight: 1.0e-6
+      min_confidence: 0.5
+      smoothing: true
+      probabilistic: false
+      use_relative_height: true
+      slice_height: -1.5
+      num_slices: 25
+      filter_disjoint: true
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
@@ -80,12 +90,20 @@ frontend:
     type: traversability
     layer: MESH_PLACES
     estimator:
-      type: HeightTraversabilityEstimator
-      height_below: 0
-      height_above: 0.5
-      min_confidence: 1.0
-      min_traversability: 1.0
+      # type: HeightTraversabilityEstimator
+      # height_below: 0
+      # height_above: 0.5
+      # min_confidence: 1.0
+      # min_traversability: 1.0
+      # pessimistic: true
+      type: GradientTraversabilityEstimator
+      gradient_threshold: 0.5
+      height_above: 0.3
+      height_below: 1.0
+      min_confidence: 0.5
+      min_traversability: 0.1 # gradient below 0.45 is traversable
       pessimistic: true
+      smoothing: true
     clustering:
       type: RegionGrowingTraversabilityClustering
       max_radius: 4.0

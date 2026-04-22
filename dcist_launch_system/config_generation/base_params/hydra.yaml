@@ -62,6 +62,15 @@ active_window:
       use_relative_height: true
       slice_height: 0.0
       num_slices: 1
+    - type: TsdfGradientOccupancyPublisher
+      gradient_threshold: 0.5
+      min_weight: 1.0e-6
+      min_confidence: 0.5
+      smoothing: true
+      probabilistic: false
+      use_relative_height: true
+      slice_height: -1.5
+      num_slices: 25
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
