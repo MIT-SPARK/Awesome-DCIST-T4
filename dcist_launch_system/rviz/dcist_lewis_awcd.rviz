@@ -9,10 +9,11 @@ Panels:
         - /Grid1
         - /TF1/Frames1
         - /Omniplanner Viz1/Topic1
-        - /Traversability Estimates1
-        - /Traversability Estimates1/Namespaces1
+        - /AWCD Graph1/Topic1
+        - /AWCD Mesh1/Topic1
+        - /AWCD Box 1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 786
+    Tree Height: 667
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -98,35 +99,35 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        lewis/base_link:
+          Value: true
+        lewis/dlio/lidar_sensor:
+          Value: true
+        lewis/dlio/microstrain_imu:
+          Value: true
+        lewis/lidar:
+          Value: true
+        lewis/lidar_sensor:
+          Value: true
+        lewis/microstrain_imu:
+          Value: true
+        lewis/odom:
+          Value: true
+        lewis_zed_camera_center:
+          Value: true
+        lewis_zed_camera_link:
+          Value: true
+        lewis_zed_left_camera_frame:
+          Value: true
+        lewis_zed_left_camera_optical_frame:
+          Value: true
+        lewis_zed_right_camera_frame:
+          Value: true
+        lewis_zed_right_camera_optical_frame:
+          Value: true
         map:
           Value: true
-        pascal/base_link:
-          Value: true
-        pascal/dlio/lidar_sensor:
-          Value: true
-        pascal/dlio/microstrain_imu:
-          Value: true
-        pascal/lidar:
-          Value: true
-        pascal/lidar_sensor:
-          Value: true
-        pascal/map:
-          Value: true
-        pascal/microstrain_imu:
-          Value: true
-        pascal/odom:
-          Value: true
-        pascal_zed_camera_center:
-          Value: true
-        pascal_zed_camera_link:
-          Value: true
-        pascal_zed_left_camera_frame:
-          Value: true
-        pascal_zed_left_camera_optical_frame:
-          Value: true
-        pascal_zed_right_camera_frame:
-          Value: true
-        pascal_zed_right_camera_optical_frame:
+        prior_map_frame:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -135,50 +136,45 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          pascal/map:
-            pascal/odom:
-              pascal/base_link:
-                pascal/dlio/lidar_sensor:
+          lewis/odom:
+            lewis/base_link:
+              lewis/dlio/lidar_sensor:
+                {}
+              lewis/dlio/microstrain_imu:
+                {}
+              lewis/lidar_sensor:
+                lewis/lidar:
                   {}
-                pascal/dlio/microstrain_imu:
-                  {}
-                pascal/lidar_sensor:
-                  pascal/lidar:
-                    {}
-                pascal/microstrain_imu:
-                  {}
-                pascal_zed_camera_link:
-                  pascal_zed_camera_center:
-                    pascal_zed_left_camera_frame:
-                      pascal_zed_left_camera_optical_frame:
-                        {}
-                    pascal_zed_right_camera_frame:
-                      pascal_zed_right_camera_optical_frame:
-                        {}
+              lewis/microstrain_imu:
+                {}
+              lewis_zed_camera_link:
+                lewis_zed_camera_center:
+                  lewis_zed_left_camera_frame:
+                    lewis_zed_left_camera_optical_frame:
+                      {}
+                  lewis_zed_right_camera_frame:
+                    lewis_zed_right_camera_optical_frame:
+                      {}
+            prior_map_frame:
+              {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: Scene Graph
       Namespaces:
-        layer2p97_edges: true
-        layer2p97_nodes: true
-        layer2p97_text: true
-        layer3p1_edges: true
-        layer3p1_nodes: true
-        layer3p1_region_growing_boundaries: true
-        layer3p1_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: hydra_visualizer/graph
-      Value: true
+      Value: false
     - Class: kimera_pgmo_rviz/MeshDisplay
       Cull Backfaces: true
       Enable Lighting: false
-      Enabled: true
+      Enabled: false
       Name: Mesh
       Toggle Visibility All: true
       Topic:
@@ -188,12 +184,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
-      Value: true
+      Value: false
       Visible:
         0: true
         Value: true
     - Class: rviz_default_plugins/Image
-      Enabled: false
+      Enabled: true
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -204,8 +200,8 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: semantic_overlay/image_raw
-      Value: false
+        Value: /lewis/semantic_overlay/image_raw
+      Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Omniplanner Viz
@@ -222,7 +218,12 @@ Visualization Manager:
       Enabled: true
       Name: Multi-Robot Scene Graph
       Namespaces:
-        {}
+        layer2p97_edges: true
+        layer2p97_nodes: true
+        layer2p97_text: true
+        layer2p98_edges: true
+        layer2p98_nodes: true
+        layer2p98_text: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -317,21 +318,76 @@ Visualization Manager:
       Use Timestamp: false
       Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Traversability Estimates
       Namespaces:
-        confidence: false
-        debug: false
-        state: false
-        traversability: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /pascal/hydra/traversability/layer
+        Value: /hamilton/hydra/traversability/layer
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: AWCD Graph
+      Namespaces:
+        layer2_bounding_boxes: true
+        layer2_nodes: true
+        layer2_text: true
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lewis/change_detector_visualizer/graph
       Value: true
+    - Class: kimera_pgmo_rviz/MeshDisplay
+      Cull Backfaces: true
+      Enable Lighting: false
+      Enabled: true
+      Name: AWCD Mesh
+      Toggle Visibility All: true
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lewis/change_detector_visualizer/prior_mesh
+      Value: true
+      Visible:
+        Value: true
+        robot0:
+          Value: true
+          dsg_mesh: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: "AWCD Box "
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lewis/change_detector_visualizer/changed_object_bounding_boxes
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: false
+      Name: AW Ever free slice
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /lewis/active_window_visualizer/ever_free_slice
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -378,25 +434,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 59.92799758911133
+      Distance: 49.02181625366211
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -2.566805601119995
-        Y: 9.69049072265625
-        Z: -8.79027271270752
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6953982710838318
-      Target Frame: <Fixed Frame>
+      Pitch: 0.7053979635238647
+      Target Frame: lewis/base_link
       Value: Orbit (rviz)
-      Yaw: 0.6853983402252197
+      Yaw: 2.8172240257263184
     Saved: ~
 Window Geometry:
   Displays:
@@ -412,7 +468,7 @@ Window Geometry:
     collapsed: false
   ManipulationApprovalPanel:
     collapsed: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000038e00000746fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c000003f80000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c010000045e000003440000016800fffffffb0000000a0049006d00610067006500000006bc000000ea0000002000ffffff0000000100000a770000046ffc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a005600690065007700730000000070000001dc0000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c0000000258000000e60000013a00fffffffb0000001a0044007300670053007400610074007300500061006e0065006c000000034a00000195000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000ef80000005efc0100000002fb0000000800540069006d0065010000000000000ef8000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000b600000074600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000002fb00000746fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c000003810000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c01000003e7000002e20000016800fffffffb0000000a0049006d00610067006501000006d3000000cf0000002000ffffff0000000100000a7700000746fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000005c000004e70000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c000000054d0000013a0000013a00fffffffb0000001a0044007300670053007400610074007300500061006e0065006c000000069100000111000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000ef80000005efc0100000002fb0000000800540069006d0065010000000000000ef8000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000bf30000074600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

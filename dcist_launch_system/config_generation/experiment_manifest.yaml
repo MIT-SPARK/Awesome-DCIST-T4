@@ -19,6 +19,8 @@ configs:
   classic: []
   prior_dsg: []
   relocalize: []
+  default_awcd: []
+  relocalize_awcd: []
   apollo_relocalize: [relocalize]
 # Variant names shown first in run-adt4 session selection
 important_variants:
@@ -93,3 +95,17 @@ experiments:
   spot_prior_dsg_heracles:
     launch_config: [plan_prior_heracles, spot_sim]
     config: [prior_dsg]
+
+  # awcd development experiments
+  spot_bag_awcd:
+    launch_config: [bag_map, spot_bag]
+    config: [default_awcd]
+  spot_bag_relocalize_awcd:
+    launch_config: [bag_relocalize, spot_bag]
+    config: [relocalize_awcd]
+  phoenix_bag_awcd:
+    launch_config: bag_map
+    config: [default_awcd]
+  phoenix_bag_relocalize_awcd:
+    launch_config: bag_relocalize
+    config: [relocalize_awcd]
