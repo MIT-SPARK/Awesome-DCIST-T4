@@ -1,0 +1,133 @@
+---
+map_frame: $<env ADT4_ROBOT_NAME>/odom
+backend:
+  publish_backend_tf: false
+  optimize_on_lc: false
+  pgmo:
+    add_initial_prior: false
+active_window:
+  khronos_sinks: !reset
+    - type: ActiveWindowVisualizer
+      slice_height_is_relative: true
+      num_slices: 5
+      marker_opacity: 10
+      slice_distance_multiplier: 3
+    - type: ActiveWindowChangeDetector
+      verbosity: 1
+      prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+      enable_icp_refinement: true
+      invert_roman_lc_transform: false
+      icp_crop_radius: 10.0
+      icp_num_threads: 2
+      icp_downsampling_resolution: 0.2
+      icp_max_correspondence_distance: 1.0
+      icp_min_inliers: 50
+      transformation_getter:
+        type: TFTransformationGetter
+        prior_frame_id: map
+        robot_frame_id: ""
+        tf_change_threshold_m: 0.05
+      awcd_sinks:
+        - type: ActiveWindowChangeDetectorVisualizer
+          bounding_box_line_width: 0.1
+          verbosity: 0
+          global_frame_name: prior_map_frame
+          plugins:
+            mesh:
+              use_color_adaptor: false
+          renderer:
+            layer_z_step: 2.0
+            collapse_layers: false
+            layers:
+              2:
+                z_offset_scale: 1.0
+                visualize: true
+                nodes:
+                  scale: 0.40
+                  color: {type: LabelColorAdapter}
+                  alpha: 0.8
+                  use_sphere: false
+                text:
+                  draw: true
+                  collapse: true
+                  adapter: {type: LabelIdTextAdapter}
+                  height: 0.5
+                  scale: 0.45
+                bounding_boxes: {draw: true, collapse: true, scale: 0.05, edge_scale: 0.05, alpha: 0.9, edge_break_ratio: 0.5}
+              4:
+                z_offset_scale: 3.0
+                visualize: true
+                nodes:
+                  scale: 0.6
+                  color:
+                    type: IdColorAdapter
+                    colormap: {palette: colorbrewer}
+                  alpha: 0.8
+                  use_sphere: false
+                text: {draw: true, height: 1.25, scale: 1.0}
+                edges: {scale: 0.1, alpha: 0.2}
+              2p*:
+                z_offset_scale: 0.0
+                visualize: true
+                nodes:
+                  scale: 0.1
+                  alpha: 1.0
+                  use_sphere: true
+                  color: {type: PartitionColorAdapter}
+                edges:
+                  scale: 0.1
+                  alpha: 1.0
+                  color: {type: ""}
+                text: {draw_layer: true, height: 0.9, scale: 0.8}
+              3p1:
+                z_offset_scale: 2.0
+                visualize: true
+                nodes:
+                  scale: 0.2
+                  color:
+                    type: UniformColorAdapter
+                    color: [0, 0, 0]
+                  alpha: 0.9
+                  use_sphere: true
+                text:
+                  draw: true
+                  adapter: {type: IdTextAdapter}
+                  height: 0.5
+                  scale: 0.45
+                edges:
+                  scale: 0.1
+                  alpha: 0.8
+                  color:
+                    type: UniformColorAdapter
+                    color: [0, 0, 0]
+            interlayer_edges:
+              - {from: 3*, to: 2p*, draw: false}
+              - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
+              - {from: 4, to: 3*, scale: 0.08, alpha: 0.5}
+            layer_plugins:
+              - layer: 3p1
+                plugins:
+                  - {type: RegionGrowingBoundaryPlugin}
+  sinks:
+    - type: TsdfGradientOccupancyPublisher
+      gradient_threshold: 0.5
+      min_weight: 1.0e-6
+      min_confidence: 0.5
+      smoothing: true
+      probabilistic: false
+      use_relative_height: true
+      slice_height: -1.5
+      num_slices: 25
+      filter_disjoint: true
+frontend:
+  traversability_places:
+    estimator: !reset
+      type: GradientTraversabilityEstimator
+      gradient_threshold: 0.5
+      height_above: 0.3
+      height_below: 1.0
+      min_confidence: 0.5
+      min_traversability: 0.1 # gradient below 0.45 is traversable
+      pessimistic: true
+      smoothing: true
+        
