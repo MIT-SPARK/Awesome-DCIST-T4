@@ -28,5 +28,7 @@ model:
       - trash
       - clothes
       - ball
+      - porta potty
+      - roadblock
     confidence_threshold: 0.3
     min_segmentation_size: 0

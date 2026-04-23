@@ -1,4 +1,8 @@
-active_window:  
+active_window: 
+  object_extractor: 
+    min_object_allocation_confidence: 0.3
+    min_object_reconstruction_confidence: 0.3
+    min_object_reconstruction_observations: 5
   sinks:
     - type: TsdfGradientOccupancyPublisher
       gradient_threshold: 0.5
