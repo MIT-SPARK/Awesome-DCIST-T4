@@ -48,6 +48,7 @@ class SessionInfo:
     sim_time: bool = False
     bag: Optional[pathlib.Path] = None
     bag_delay: float = 5.0
+    start_offset: float = 0.0
     trajectory: Optional[pathlib.Path] = None
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
@@ -215,6 +216,7 @@ def _make_bag_window(info: SessionInfo):
 
     bag_args = ["--filter-tf", "-k", f"'.*{info.robot_name}.*'"]
     bag_args += ["--delay", str(info.bag_delay)]
+    bag_args += ["--start-offset", str(info.start_offset)]
     bag_args += [f"-f '{x}'" for x in to_drop]
     if info.sim_time:
         bag_args.append("--clock")
@@ -289,6 +291,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 @click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
+@click.option("--start-offset", default=0.0, help="start offset for bag playback (in seconds)")
 @click.option(
     "--trajectory",
     "-t",
@@ -321,6 +324,7 @@ def main(
     show_tmux,
     bag,
     bag_delay,
+    start_offset,
     trajectory,
     trajectory_args,
     record,
@@ -364,6 +368,7 @@ def main(
         sim_time=sim_time,
         bag=_normalize_optional(bag),
         bag_delay=bag_delay,
+        start_offset=start_offset,
         trajectory=_normalize_optional(trajectory),
         record=record,
     )

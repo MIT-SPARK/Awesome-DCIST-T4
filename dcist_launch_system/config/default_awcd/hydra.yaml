@@ -41,13 +41,13 @@ active_window:
   object_extractor:
     type: MeshObjectExtractor
     verbosity: 0
-    min_object_allocation_confidence: 0.5
+    min_object_allocation_confidence: 0.3
     min_object_volume: 0.005
     max_object_volume: 100.0
     min_dynamic_displacement: 1
     only_extract_reconstructed_objects: true
-    min_object_reconstruction_confidence: 0.5
-    min_object_reconstruction_observations: 10
+    min_object_reconstruction_confidence: 0.3
+    min_object_reconstruction_observations: 5
     object_reconstruction_resolution: -0.05
     visualizer_classification: false
     projective_integrator:
