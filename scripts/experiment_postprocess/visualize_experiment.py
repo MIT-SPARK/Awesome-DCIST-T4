@@ -25,6 +25,21 @@ import numpy as np
 _THIS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS_DIR))
 import _bag_utils as bu  # noqa: E402
+import _scene_graph_utils as sgu  # noqa: E402
+
+
+# experiment_set -> clean scene graph filename (under --scene-graph-dir).
+# Anchor JSONs under --anchor-dir are named after the graph stem
+# (e.g. alpha_thurs_clean_2.json -> alpha_thurs_clean_2.json).
+SCENE_GRAPHS = {
+    "april_15_bravo": "bravo_wed_clean_bbox_corrected.json",
+    "april_16_alpha": "alpha_thurs_clean_2.json",
+    "april_17_alpha": "alpha_thurs_clean_2.json",
+}
+
+# (experiment_set, robot) pairs whose UTM trajectory CSV should be read from
+# `--hydra-dir` instead of `--fused-dir` (GPS was unusable for these runs).
+HYDRA_OVERRIDE = {("april_17_alpha", "hamilton")}
 
 
 # ---- CSV loading --------------------------------------------------------
@@ -78,22 +93,39 @@ def row_bags_for_robot(row: dict, robot_ns: str) -> list[Path]:
 
 
 def _gps_from_bag(bag_file: Path, robot_ns: str, t_lo: float, t_hi: float):
-    """Load (lat, lon, altitudes, times) filtered to [t_lo, t_hi] for one bag.
+    """Load (times, lat_lon_alts) filtered to [t_lo, t_hi] for one bag.
 
-    Uses robotdatapy.GPSData for convenience; returns numpy arrays.
+    Drops GPS readings with status < 0 (NO_FIX / stale frozen coordinates).
     """
-    from robotdatapy.data import GPSData
+    from mcap.reader import make_reader as _make_reader
+    from rclpy.serialization import deserialize_message
+    from rosidl_runtime_py.utilities import get_message
 
+    MsgType = get_message("sensor_msgs/msg/NavSatFix")
     topic = f"/{robot_ns}/fix"
-    bag_dir = bag_file.parent
+    start_ns = int(t_lo * 1e9)
+    end_ns = int(t_hi * 1e9)
+
+    times, llas = [], []
     try:
-        g = GPSData.from_bag(str(bag_dir), topic, time_tol=30.0)
+        with open(bag_file, "rb") as fh:
+            reader = _make_reader(fh, validate_crcs=False)
+            for _schema, channel, message in reader.iter_messages(
+                topics=[topic], start_time=start_ns, end_time=end_ns
+            ):
+                msg = deserialize_message(message.data, MsgType)
+                if msg.status.status < 0:
+                    continue
+                if not (np.isfinite(msg.latitude) and np.isfinite(msg.longitude)):
+                    continue
+                times.append(message.log_time * 1e-9)
+                llas.append([msg.latitude, msg.longitude, msg.altitude])
     except Exception as e:
-        print(f"    [gps] {bag_dir.name}: {e}", file=sys.stderr)
+        print(f"    [gps] {bag_file.name}: {e}", file=sys.stderr)
+
+    if not times:
         return np.array([]), np.zeros((0, 3))
-    g.rm_nans()
-    mask = (g.times >= t_lo) & (g.times <= t_hi)
-    return g.times[mask], g.lat_lon_alts[mask]
+    return np.array(times), np.array(llas)
 
 
 def _collect_gps_trajectory(bag_files: list[Path], robot_ns: str, t_lo: float, t_hi: float):
@@ -110,26 +142,182 @@ def _collect_gps_trajectory(bag_files: list[Path], robot_ns: str, t_lo: float, t
     return times[order], lla[order]
 
 
-def plot_trajectory(
+def _fused_csv_path(bag_file: Path, fused_dir: Path) -> Optional[Path]:
+    """Return path to precomputed fused trajectory CSV for this bag, or None."""
+    session = bag_file.parent.parent.name   # e.g. april_16_alpha_hamilton
+    bag_dir_name = bag_file.parent.name     # e.g. recorded_data
+    p = fused_dir / f"{session}__{bag_dir_name}.csv"
+    return p if p.exists() else None
+
+
+def _resolve_traj_csv(
+    bag_file: Path,
+    exp_set: str,
+    robot_ns: str,
+    fused_dir: Optional[Path],
+    hydra_dir: Optional[Path],
+) -> Optional[Path]:
+    """Pick UTM CSV path for (exp_set, robot), falling back to fused_dir."""
+    if (exp_set, robot_ns) in HYDRA_OVERRIDE and hydra_dir is not None:
+        p = _fused_csv_path(bag_file, hydra_dir)
+        if p is not None:
+            return p
+    if fused_dir is None:
+        return None
+    return _fused_csv_path(bag_file, fused_dir)
+
+
+def _collect_fused_trajectory(
+    bag_files: list[Path],
+    fused_dir: Optional[Path],
+    t_lo: float,
+    t_hi: float,
+    exp_set: str = "",
+    robot_ns: str = "",
+    hydra_dir: Optional[Path] = None,
+):
+    """Load fused GPS+odom trajectory from precomputed CSVs.
+
+    Positions in the CSV are UTM easting/northing (zone 18N, EPSG:32618 —
+    West Point dataset). Converts to lat/lon for plotting.
+    Returns (times, lat_arr, lon_arr); empty arrays if unavailable.
+    """
+    if fused_dir is None and hydra_dir is None:
+        return np.array([]), np.array([]), np.array([])
+
+    from pyproj import Transformer
+    from robotdatapy.data import PoseData
+    from robotdatapy.data.pose_data import KIMERA_MULTI_GT_CSV_OPTIONS
+
+    utm_to_wgs84 = Transformer.from_crs("EPSG:32618", "EPSG:4326", always_xy=True)
+
+    all_t, all_lat, all_lon = [], [], []
+    for bf in bag_files:
+        csv_path = _resolve_traj_csv(bf, exp_set, robot_ns, fused_dir, hydra_dir)
+        if csv_path is None:
+            continue
+        try:
+            pd_obj = PoseData.from_csv(
+                str(csv_path), csv_options=KIMERA_MULTI_GT_CSV_OPTIONS, time_tol=30.0
+            )
+        except Exception as e:
+            print(f"    [fused] {csv_path.name}: {e}", file=sys.stderr)
+            continue
+        mask = (pd_obj.times >= t_lo) & (pd_obj.times <= t_hi)
+        if not np.any(mask):
+            continue
+        poses = pd_obj.all_poses()[mask]
+        east = poses[:, 0, 3]
+        north = poses[:, 1, 3]
+        lon_arr, lat_arr = utm_to_wgs84.transform(east, north)
+        all_t.append(pd_obj.times[mask])
+        all_lat.append(lat_arr)
+        all_lon.append(lon_arr)
+
+    if not all_t:
+        return np.array([]), np.array([]), np.array([])
+    times = np.concatenate(all_t)
+    lats = np.concatenate(all_lat)
+    lons = np.concatenate(all_lon)
+    order = np.argsort(times)
+    return times[order], lats[order], lons[order]
+
+
+def _xy_from_map(xy_map, anchor, to_merc):
+    """Map-frame XY → (x, y) in basemap coords (Web Mercator) or lat/lon."""
+    if len(xy_map) == 0:
+        return np.array([]), np.array([])
+    lat, lon = sgu.project_to_latlon(xy_map, anchor)
+    if to_merc is None:
+        return np.asarray(lon), np.asarray(lat)
+    x, y = to_merc.transform(lon, lat)
+    return np.asarray(x), np.asarray(y)
+
+
+def _draw_overlay(ax, overlay: dict, to_merc, all_xy: list) -> None:
+    import matplotlib.patches as mpatches
+
+    graph = overlay["graph"]
+    anchor = overlay["anchor"]
+    mode = overlay.get("mode", "points")
+    label_names: dict = overlay.get("label_names", {}) or {}
+
+    def _lbl_text(lab: int) -> str:
+        return label_names.get(int(lab), f"class {int(lab)}")
+
+    # ---- traversability places (underlay) ----
+    pc = graph.get("place_centers")
+    if pc is not None and len(pc) > 0:
+        px, py = _xy_from_map(pc, anchor, to_merc)
+        ax.scatter(px, py, s=4, c="#6aa2ff", alpha=0.35, linewidths=0,
+                   zorder=1, label="traversability places")
+        all_xy.append(np.column_stack([px, py]))
+
+    centers = graph.get("object_centers")
+    if centers is None or len(centers) == 0:
+        return
+
+    cx_, cy_ = _xy_from_map(centers, anchor, to_merc)
+    labels = graph["object_labels"]
+    seen_in_legend: set[int] = set()
+
+    if mode == "points":
+        # Deterministic per-class color; one legend entry per class.
+        colors_arr = np.array([sgu.class_color(int(l)) for l in labels])
+        for lab in np.unique(labels):
+            m = labels == lab
+            lbl = None if int(lab) in seen_in_legend else _lbl_text(lab)
+            seen_in_legend.add(int(lab))
+            ax.scatter(cx_[m], cy_[m], s=30, c=colors_arr[m],
+                       edgecolor="white", linewidth=0.5, zorder=3, label=lbl)
+    else:  # bbox
+        dims = graph["object_dims"]
+        yaws = graph["object_yaws"]
+        for i in range(len(centers)):
+            lab = int(labels[i])
+            color = sgu.class_color(lab)
+            corners_map = sgu.bbox_corners(
+                centers[i, 0], centers[i, 1],
+                float(dims[i, 0]), float(dims[i, 1]), float(yaws[i]),
+            )
+            cx_poly, cy_poly = _xy_from_map(corners_map, anchor, to_merc)
+            poly = np.column_stack([cx_poly, cy_poly])
+            lbl = None if lab in seen_in_legend else _lbl_text(lab)
+            seen_in_legend.add(lab)
+            ax.add_patch(mpatches.Polygon(
+                poly, closed=True, fill=False, edgecolor=color, linewidth=1.4,
+                zorder=3, label=lbl,
+            ))
+        # Keep extents anchored on object centers too so axes fit the overlay
+        # even when no robot trajectory is drawn.
+        all_xy.append(np.column_stack([cx_, cy_]))
+
+    if mode == "points":
+        all_xy.append(np.column_stack([cx_, cy_]))
+
+
+def _plot_trajectory_inner(
     row: dict,
     output_path: Path,
-    use_basemap: bool = True,
-    t_hi_override: Optional[float] = None,
+    use_basemap: bool,
+    t_lo: float,
+    t_hi: float,
+    t_hi_override: Optional[float],
+    get_latlon,   # callable(robot_ns) -> (lat_arr, lon_arr) or empty arrays
+    label_suffix: str = "",
+    overlay: Optional[dict] = None,   # {"mode": "bbox"|"points", "graph": dict, "anchor": dict}
 ) -> None:
     import matplotlib.pyplot as plt
-
-    t_lo = float(row["start_time_unix"])
-    t_hi = t_hi_override if t_hi_override is not None else float(row["end_time_unix"])
-    robots = row_robots(row)
 
     fig, ax = plt.subplots(figsize=(10, 10))
     colors = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3"]
     plotted = False
     all_xy = []
 
+    to_merc = None
     if use_basemap:
         try:
-            import contextily as cx
+            import contextily as cx  # noqa: F401
             from pyproj import Transformer
 
             to_merc = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
@@ -137,29 +325,32 @@ def plot_trajectory(
             print("contextily/pyproj missing; falling back to plain lat/lon.", file=sys.stderr)
             use_basemap = False
 
-    for i, rns in enumerate(robots):
-        times, lla = _collect_gps_trajectory(row_bags_for_robot(row, rns), rns, t_lo, t_hi)
-        if len(times) < 2:
-            print(f"  {rns}: no GPS points in window", file=sys.stderr)
+    # Scene-graph underlay drawn before trajectories so paths sit on top.
+    if overlay is not None:
+        _draw_overlay(ax, overlay, to_merc if use_basemap else None, all_xy)
+
+    for i, rns in enumerate(row_robots(row)):
+        lat, lon = get_latlon(rns)
+        if len(lat) < 2:
+            print(f"  {rns}: no trajectory points in window", file=sys.stderr)
             continue
-        lat = lla[:, 0]
-        lon = lla[:, 1]
         if use_basemap:
             x, y = to_merc.transform(lon, lat)
         else:
             x, y = lon, lat
         color = colors[i % len(colors)]
-        ax.plot(x, y, "-", color=color, linewidth=2.0, label=rns, alpha=0.9)
-        ax.scatter(x[0], y[0], marker="o", s=80, color=color, edgecolor="white", zorder=5,
+        ax.plot(x, y, "-", color=color, linewidth=2.0, label=rns, alpha=0.9, zorder=6)
+        ax.scatter(x[0], y[0], marker="o", s=80, color=color, edgecolor="white", zorder=7,
                    label=f"{rns} start")
-        ax.scatter(x[-1], y[-1], marker="s", s=80, color=color, edgecolor="white", zorder=5,
+        ax.scatter(x[-1], y[-1], marker="s", s=80, color=color, edgecolor="white", zorder=7,
                    label=f"{rns} end")
         all_xy.append(np.column_stack([x, y]))
         plotted = True
 
-    if not plotted:
-        print("  no GPS data to plot; writing empty placeholder", file=sys.stderr)
-        ax.text(0.5, 0.5, "no GPS data in window", transform=ax.transAxes, ha="center")
+    # overlay-only plots (no robot trajectory data) should still render.
+    if not plotted and not all_xy:
+        print(f"  no trajectory data to plot{label_suffix}; writing placeholder", file=sys.stderr)
+        ax.text(0.5, 0.5, f"no trajectory data{label_suffix}", transform=ax.transAxes, ha="center")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_path, dpi=200)
         plt.close(fig)
@@ -189,13 +380,64 @@ def plot_trajectory(
     end_label = f"end {end_iso} UTC  ({dur:.0f} s)"
     if t_hi_override is None:
         end_label += f"  [{row['end_reason']}]"
-    ax.set_title(f"{row['experiment_id']}\n{end_label}")
+    ax.set_title(f"{row['experiment_id']}{label_suffix}\n{end_label}")
     ax.legend(loc="best", fontsize=9)
     ax.grid(True, linestyle=":", alpha=0.5)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"  wrote {output_path}")
+
+
+def plot_trajectory(
+    row: dict,
+    output_path: Path,
+    use_basemap: bool = True,
+    t_hi_override: Optional[float] = None,
+    fused_dir: Optional[Path] = None,
+    hydra_dir: Optional[Path] = None,
+    overlay: Optional[dict] = None,
+    raw_gps: bool = True,
+    fused: bool = True,
+    fused_suffix: str = "_fused",
+) -> None:
+    """Plot trajectory from raw GPS (status>=0 only) and/or fused, with optional overlay."""
+    t_lo = float(row["start_time_unix"])
+    t_hi = t_hi_override if t_hi_override is not None else float(row["end_time_unix"])
+    exp_set = row.get("experiment_set", "")
+
+    # --- raw GPS plot ---
+    if raw_gps:
+        def gps_latlon(rns):
+            _, lla = _collect_gps_trajectory(row_bags_for_robot(row, rns), rns, t_lo, t_hi)
+            if len(lla) < 2:
+                return np.array([]), np.array([])
+            return lla[:, 0], lla[:, 1]
+
+        _plot_trajectory_inner(
+            row, output_path, use_basemap, t_lo, t_hi, t_hi_override,
+            gps_latlon, overlay=overlay,
+        )
+
+    # --- fused plot (alongside raw GPS, not replacing it) ---
+    if fused and (fused_dir is not None or hydra_dir is not None):
+        fused_path = (
+            output_path
+            if not raw_gps
+            else output_path.with_name(output_path.stem + fused_suffix + output_path.suffix)
+        )
+
+        def fused_latlon(rns):
+            _, lat, lon = _collect_fused_trajectory(
+                row_bags_for_robot(row, rns), fused_dir, t_lo, t_hi,
+                exp_set=exp_set, robot_ns=rns, hydra_dir=hydra_dir,
+            )
+            return lat, lon
+
+        _plot_trajectory_inner(
+            row, fused_path, use_basemap, t_lo, t_hi, t_hi_override,
+            fused_latlon, label_suffix=" [fused]", overlay=overlay,
+        )
 
 
 # ---- video extraction ---------------------------------------------------
@@ -365,7 +607,43 @@ def extract_videos_for_robot(
 # ---- main ---------------------------------------------------------------
 
 
-def process_row(row: dict, out_root: Path, args) -> None:
+def _load_overlay(row: dict, args, cache: dict):
+    """Return (graph_dict, anchor_dict) for this row, or (None, None).
+
+    Cached per experiment_set so we parse the JSON once per run.
+    """
+    exp_set = row.get("experiment_set", "")
+    if exp_set not in SCENE_GRAPHS:
+        return None, None
+    if exp_set in cache:
+        return cache[exp_set]
+
+    graph = anchor = None
+    sg_dir = getattr(args, "scene_graph_dir", None)
+    anchor_dir = getattr(args, "anchor_dir", None)
+    if sg_dir is not None:
+        graph_path = sg_dir / SCENE_GRAPHS[exp_set]
+        if graph_path.exists():
+            try:
+                graph = sgu.load_graph_overlay(graph_path)
+            except Exception as e:
+                print(f"  [overlay] failed to load graph {graph_path}: {e}", file=sys.stderr)
+                graph = None
+        else:
+            print(f"  [overlay] missing scene graph JSON: {graph_path}", file=sys.stderr)
+    if anchor_dir is not None:
+        graph_name = SCENE_GRAPHS.get(exp_set, "")
+        anchor_key = Path(graph_name).stem if graph_name else exp_set
+        anchor = sgu.load_anchor(anchor_dir, anchor_key)
+        if anchor is None:
+            print(f"  [overlay] missing anchor {anchor_key!r} in {anchor_dir}",
+                  file=sys.stderr)
+
+    cache[exp_set] = (graph, anchor)
+    return graph, anchor
+
+
+def process_row(row: dict, out_root: Path, args, overlay_cache: dict) -> None:
     exp_id = row["experiment_id"]
     out_dir = out_root / exp_id
     print(f"\n=== {exp_id} ===")
@@ -378,16 +656,56 @@ def process_row(row: dict, out_root: Path, args) -> None:
     video_end = max(candidates) if candidates else current_end
 
     if not args.skip_trajectory:
-        # Main trajectory uses the stored (selected) end time.
-        plot_trajectory(row, out_dir / "trajectory.png", use_basemap=not args.no_basemap)
-        # One image per candidate end time.
+        fused_dir = getattr(args, "fused_dir", None)
+        hydra_dir = getattr(args, "hydra_dir", None)
+        draw_raw = not args.skip_raw_gps
+        # Main trajectory uses the stored (selected) end time. When raw GPS is
+        # on, plot_trajectory writes trajectory.png + trajectory_fused.png;
+        # when skipped, it writes only the fused variant to the given path.
+        main_path = (out_dir / "trajectory.png") if draw_raw else (out_dir / "trajectory_fused.png")
+        plot_trajectory(row, main_path,
+                        use_basemap=not args.no_basemap,
+                        fused_dir=fused_dir, hydra_dir=hydra_dir,
+                        raw_gps=draw_raw)
         for i, t_hi in enumerate(candidates):
+            cand_path = (
+                out_dir / f"trajectory_cand_{i:02d}.png" if draw_raw
+                else out_dir / f"trajectory_cand_{i:02d}_fused.png"
+            )
             plot_trajectory(
-                row,
-                out_dir / f"trajectory_cand_{i:02d}.png",
+                row, cand_path,
                 use_basemap=not args.no_basemap,
                 t_hi_override=t_hi,
+                fused_dir=fused_dir,
+                hydra_dir=hydra_dir,
+                raw_gps=draw_raw,
             )
+
+        # Scene-graph overlay plots (bbox + points), emitted on the fused
+        # trajectory only. Skipped when the experiment_set has no graph
+        # configured or no anchor JSON is available.
+        if not args.skip_scene_graph:
+            ov_graph, ov_anchor = _load_overlay(row, args, overlay_cache)
+            if ov_graph is not None and ov_anchor is not None:
+                # Prefer names embedded in the graph JSON; fall back to the
+                # global YAML only when the JSON has no labelspace.
+                label_names = ov_graph.get("label_names") or overlay_cache.get(
+                    "__label_names__", {}
+                )
+                for mode in ("bbox", "points"):
+                    overlay = {"mode": mode, "graph": ov_graph,
+                               "anchor": ov_anchor, "label_names": label_names}
+                    plot_trajectory(
+                        row,
+                        out_dir / f"trajectory_fused_sg_{mode}.png",
+                        use_basemap=not args.no_basemap,
+                        fused_dir=fused_dir,
+                        hydra_dir=hydra_dir,
+                        overlay=overlay,
+                        raw_gps=False,
+                        fused=True,
+                        fused_suffix="",
+                    )
 
     if not args.skip_video:
         for rns in row_robots(row):
@@ -415,6 +733,36 @@ def main() -> int:
                     help="skip satellite basemap (plot plain lat/lon)")
     ap.add_argument("--skip-trajectory", action="store_true")
     ap.add_argument("--skip-video", action="store_true")
+    ap.add_argument("--skip-raw-gps", action="store_true",
+                    help="skip the raw-GPS plots (trajectory.png, "
+                         "trajectory_cand_*.png) which scan /fix from the mcap")
+    ap.add_argument("--skip-scene-graph", action="store_true",
+                    help="skip the two scene-graph overlay plots")
+    ap.add_argument(
+        "--fused-dir", type=Path, default=None,
+        help="folder with precomputed fused trajectory CSVs; generates trajectory_fused.png alongside trajectory.png",
+    )
+    ap.add_argument(
+        "--hydra-dir", type=Path,
+        default=Path("/home/harel/data/west_point_2026/processed/hydra_merged"),
+        help="hydra-anchored CSV folder; used instead of --fused-dir for "
+             "(experiment_set, robot) pairs listed in HYDRA_OVERRIDE (e.g. "
+             "april_17_alpha hamilton).",
+    )
+    ap.add_argument(
+        "--scene-graph-dir", type=Path,
+        default=Path("/data/dcist/west_point_2026/clean_graphs"),
+        help="folder with clean spark_dsg JSON scene graphs",
+    )
+    ap.add_argument(
+        "--anchor-dir", type=Path,
+        default=Path("/home/harel/data/west_point_2026/processed/scene_graph_anchors"),
+        help="folder with <experiment_set>.json anchor files (run anchor_scene_graphs.py first)",
+    )
+    ap.add_argument(
+        "--labelspace-yaml", type=Path, default=None,
+        help="hydra label_space YAML for class names (default: ade20k_mit)",
+    )
     args = ap.parse_args()
 
     rows = load_master(args.master)
@@ -427,8 +775,14 @@ def main() -> int:
         if not selected:
             ap.error(f"experiment_id {args.experiment_id!r} not found in {args.master}")
 
+    overlay_cache: dict = {}
+    label_yaml = getattr(args, "labelspace_yaml", None)
+    if label_yaml is not None:
+        overlay_cache["__label_names__"] = sgu.load_label_names(label_yaml)
+    else:
+        overlay_cache["__label_names__"] = sgu.load_label_names()
     for row in selected:
-        process_row(row, args.output_root, args)
+        process_row(row, args.output_root, args, overlay_cache)
     return 0
 
 

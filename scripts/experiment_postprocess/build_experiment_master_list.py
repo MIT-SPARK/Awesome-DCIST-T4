@@ -163,6 +163,41 @@ def group_into_experiments(
     return out
 
 
+# ---- fused-trajectory path length helper --------------------------------
+
+
+def _load_fused_positions(
+    bag_dirs: list[Path], fused_dir: Path,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Load all UTM positions from precomputed fused CSVs for a robot's bag dirs.
+
+    Returns (times_sec, positions_xyz) sorted by time, covering the full session.
+    """
+    from robotdatapy.data import PoseData
+    from robotdatapy.data.pose_data import KIMERA_MULTI_GT_CSV_OPTIONS
+
+    all_t: list[np.ndarray] = []
+    all_pos: list[np.ndarray] = []
+    for bd in bag_dirs:
+        csv_path = fused_dir / f"{bd.parent.name}__{bd.name}.csv"
+        if not csv_path.exists():
+            continue
+        try:
+            pd_obj = PoseData.from_csv(str(csv_path), csv_options=KIMERA_MULTI_GT_CSV_OPTIONS, time_tol=30.0)
+            poses = pd_obj.all_poses()
+            all_t.append(pd_obj.times)
+            all_pos.append(poses[:, :3, 3])
+        except Exception as e:
+            print(f"    [fused] {csv_path.name}: {e}", file=sys.stderr)
+
+    if not all_t:
+        return np.array([]), np.zeros((0, 3))
+    times = np.concatenate(all_t)
+    positions = np.concatenate(all_pos, axis=0)
+    order = np.argsort(times)
+    return times[order], positions[order]
+
+
 # ---- odometry-based end detection ---------------------------------------
 
 
@@ -323,6 +358,7 @@ def assemble_session(
     stop_speed: float,
     stop_window: float,
     multiagent_window: float,
+    fused_dir: Optional[Path] = None,
 ) -> list[Experiment]:
     """Build Experiment records for one session.
 
@@ -368,6 +404,20 @@ def assemble_session(
 
     bag_end_overall = max(bu.bag_time_range(bd)[1] for bd in all_bag_dirs)
 
+    # When fused_dir is provided, load corrected positions once per robot for
+    # the full session — used for both stop detection and path length, avoiding
+    # repeated bag reads.
+    pos_by_robot: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    if fused_dir is not None:
+        t0_f = time_mod.time()
+        for rns, bds in bag_dirs_by_robot.items():
+            ft, fp = _load_fused_positions(bds, fused_dir)
+            if len(ft) >= 2:
+                pos_by_robot[rns] = (ft, fp)
+                print(f"  {rns}: loaded {len(ft)} fused poses in {time_mod.time()-t0_f:.1f}s")
+            else:
+                print(f"  {rns}: no fused CSV found, will fall back to odom", file=sys.stderr)
+
     starts_sorted = sorted(e.start_time for e in experiments)
 
     for i, exp in enumerate(experiments):
@@ -377,29 +427,30 @@ def assemble_session(
                 provisional_end = s
                 break
 
-        # Upper bound for the odom window — add a small buffer so we see the
-        # final stop clearly even when the next plan fires immediately after.
         odom_hi = (provisional_end if provisional_end is not None else bag_end_overall) + 30.0
 
-        # Load odom only for this experiment's window (chunk-index-aware fast path).
-        t0_odom = time_mod.time()
-        odom_for_exp: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+        # Build per-experiment position dict: fused if available, else load odom.
+        t0_load = time_mod.time()
+        pos_for_exp: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         for rns in exp.robots:
-            bds = bag_dirs_by_robot.get(rns, [])
-            if not bds:
-                print(f"    {rns}: no bag folder in session", file=sys.stderr)
-                odom_for_exp[rns] = (np.array([]), np.zeros((0, 3)))
-                continue
-            odom_for_exp[rns] = _load_odom_windowed(bds, rns, exp.start_time - 5.0, odom_hi)
-            n = len(odom_for_exp[rns][0])
-            print(f"    exp {i}: {rns}: {n} odom samples in {time_mod.time()-t0_odom:.1f}s")
+            if rns in pos_by_robot:
+                pos_for_exp[rns] = pos_by_robot[rns]
+            else:
+                bds = bag_dirs_by_robot.get(rns, [])
+                if not bds:
+                    print(f"    {rns}: no bag folder in session", file=sys.stderr)
+                    pos_for_exp[rns] = (np.array([]), np.zeros((0, 3)))
+                    continue
+                pos_for_exp[rns] = _load_odom_windowed(bds, rns, exp.start_time - 5.0, odom_hi)
+                n = len(pos_for_exp[rns][0])
+                print(f"    exp {i}: {rns}: {n} odom samples in {time_mod.time()-t0_load:.1f}s")
 
         end_time, end_reason, candidates = resolve_end_time(
             plan_start=exp.start_time,
             next_plan_start=provisional_end,
             bag_end=bag_end_overall,
             involved_robots=exp.robots,
-            odom_by_robot=odom_for_exp,
+            odom_by_robot=pos_for_exp,
             stop_speed=stop_speed,
             stop_window=stop_window,
         )
@@ -408,16 +459,19 @@ def assemble_session(
         exp.candidate_end_times = candidates
 
         for rns in exp.robots:
-            times, positions = odom_for_exp.get(rns, (np.array([]), np.zeros((0, 3))))
-            mask = (times >= exp.start_time) & (times <= exp.end_time)
-            pts = positions[mask]
-            dts = np.diff(times[mask]) if mask.any() else np.array([])
-            if len(pts) < 2:
+            times_pl, positions_pl = pos_for_exp.get(rns, (np.array([]), np.zeros((0, 3))))
+            mask_pl = (times_pl >= exp.start_time) & (times_pl <= exp.end_time)
+            times_pl = times_pl[mask_pl]
+            positions_pl = positions_pl[mask_pl]
+            if len(times_pl) < 2:
                 exp.path_length_m[rns] = 0.0
                 continue
-            segs = np.linalg.norm(np.diff(pts, axis=0), axis=1)
+            dts = np.diff(times_pl)
+            segs = np.linalg.norm(np.diff(positions_pl, axis=0), axis=1)
             keep = dts <= 1.0
             exp.path_length_m[rns] = float(segs[keep].sum())
+            src = "fused" if rns in pos_by_robot else "odom"
+            print(f"    exp {i}: {rns}: path_length={exp.path_length_m[rns]:.1f}m ({src})")
 
         win_events = [
             (rns, t, e) for (rns, t, e) in lease_events if exp.start_time <= t < exp.end_time
@@ -562,6 +616,13 @@ def main() -> int:
         action="store_true",
         help="do not merge with existing CSV (language_command/notes will be lost)",
     )
+    ap.add_argument(
+        "--fused-dir",
+        type=Path,
+        default=None,
+        help="Directory of precomputed fused/hydra trajectory CSVs; "
+             "when present, path lengths come from corrected global positions instead of raw odom.",
+    )
     args = ap.parse_args()
 
     output = args.output or (args.root / "experiments.csv")
@@ -580,7 +641,8 @@ def main() -> int:
         print(f"\n=== {session.name} "
               f"({'+'.join(sorted(session.robot_folders)) or 'no-robots'}) ===")
         experiments = assemble_session(
-            session, args.stop_speed, args.stop_window, args.multiagent_window
+            session, args.stop_speed, args.stop_window, args.multiagent_window,
+            fused_dir=args.fused_dir,
         )
         per_set_cols = _per_set_robot_columns(experiments)
         for c in per_set_cols:
