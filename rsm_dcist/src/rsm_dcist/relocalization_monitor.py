@@ -122,7 +122,7 @@ class RelocalizationMonitor:
 
         try:
             tf = self.tf_buffer.lookup_transform(
-                "map", self.gps_frame, rclpy.time.Time.from_msg(msg.header.stamp)
+                "map", self.gps_frame, rclpy.time.Time()
             )
         except tf2_ros.TransformException:
             self._report(rsm.Status.WARNING, "TF map->gps not available")
