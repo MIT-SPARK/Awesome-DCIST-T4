@@ -251,7 +251,7 @@ machines:
     addresses:
       mit_wifi: "10.29.141.193"
       silvus: "192.168.100.3"
-  sequia:
+  sequoia:
     role: base_station
     desc: "Base station"
     addresses:

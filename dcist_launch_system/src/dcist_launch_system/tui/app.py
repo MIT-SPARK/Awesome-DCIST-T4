@@ -276,7 +276,10 @@ class FleetApp(App):
 
 
 def _launch_tui(
-    network: str | None, topology_path: str | None, output_root: str
+    network: str | None,
+    topology_path: str | None,
+    output_root: str,
+    radio_type: str = "auto",
 ) -> None:
     """Build TuiContext and run FleetApp."""
     try:
@@ -304,6 +307,7 @@ def _launch_tui(
         active_network=active_network,
         topology_path=topology_path,
         output_root=output_root,
+        radio_type_override=radio_type,
         runtime_config=runtime_config,
         _local_ips=local_ips,
     )

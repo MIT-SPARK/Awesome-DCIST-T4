@@ -447,11 +447,21 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     return hashes
 
 
-def get_remote_status(user, ip, silvus_ips=None, platform_type=None):
+def get_remote_status(
+    user,
+    ip,
+    silvus_ips=None,
+    platform_type=None,
+    doodlelabs_ips=None,
+    doodlelabs_creds=None,
+):
     """Get system status from a remote machine.
 
     Returns dict with keys: tmux_sessions, ros2_procs, load, disk, radio.
     platform_type: if "spot", queries Spot robot battery via ROS 2 topic instead of sysfs.
+    silvus_ips: list of Silvus mgmt IPs to probe. If set, uses Silvus API.
+    doodlelabs_ips: list of Doodle Labs IPs. If set (and silvus_ips is not),
+        uses Doodle Labs HTTPS/ubus API instead.
     """
     # Spot robots don't expose battery via /sys/class/power_supply; query the ROS 2 topic.
     if platform_type == "spot":
@@ -531,7 +541,71 @@ else:
 """
         encoded = base64.b64encode(py_script.encode()).decode()
         args = " ".join(shlex.quote(ip) for ip in silvus_ips)
-        cmd += f"; echo '---SILVUS---'; echo '{encoded}' | base64 -d | python3 - {args}"
+        cmd += f"; echo '---RADIO---'; echo '{encoded}' | base64 -d | python3 - {args}"
+    elif doodlelabs_ips:
+        # Doodle Labs: HTTPS/ubus with session login. Formats as "Bat: X.XXV, Mesh: N"
+        py_script = """
+import urllib.request, json, ssl, sys
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+if len(sys.argv) < 3:
+    print('N/A'); sys.exit(0)
+user, password = sys.argv[1], sys.argv[2]
+ips = sys.argv[3:] or ['192.168.153.1']
+null_token = '00000000000000000000000000000000'
+def rpc(base, token, obj, method, args=None):
+    payload = json.dumps({'jsonrpc':'2.0','id':1,'method':'call',
+                          'params':[token, obj, method, args or {}]}).encode()
+    req = urllib.request.Request(base, data=payload,
+                                 headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req, timeout=2, context=ctx) as resp:
+        d = json.loads(resp.read())
+    r = d.get('result', [])
+    return (r[0], r[1]) if len(r) >= 2 else (-1, None)
+local_ip, token = None, None
+for ip in ips:
+    try:
+        code, ld = rpc(f'https://{ip}/ubus', null_token, 'session', 'login',
+                       {'username': user, 'password': password})
+        if code == 0 and ld:
+            local_ip, token = ip, ld['ubus_rpc_session']; break
+    except Exception:
+        pass
+if not local_ip:
+    print('N/A'); sys.exit(0)
+try:
+    base = f'https://{local_ip}/ubus'
+    # Battery voltage from pancake.txt (wearable only)
+    bat_str = '?'
+    code, data = rpc(base, token, 'file', 'exec',
+                     {'command':'cat','params':['/tmp/run/pancake.txt']})
+    if code == 0 and data and data.get('stdout'):
+        try:
+            p = json.loads(data['stdout'])
+            vin = p.get('VIN VOLTAGE', p.get('vin_voltage'))
+            if vin is not None:
+                bat_str = f'{float(vin)/20.2:.1f}V'
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+    # Mesh node count from linkstate
+    mesh = 0
+    code, data = rpc(base, token, 'file', 'read',
+                     {'path':'/tmp/linkstate_current.json','base64':False})
+    if code == 0 and data and data.get('data'):
+        try:
+            ls = json.loads(data['data'])
+            mesh = len(ls.get('mesh_stats', []))
+        except json.JSONDecodeError:
+            pass
+    print(f'Bat: {bat_str}, Mesh: {mesh}')
+except Exception:
+    print('API Error')
+"""
+        encoded = base64.b64encode(py_script.encode()).decode()
+        ruser, rpw = doodlelabs_creds or ("user", "DoodleSmartRadio")
+        args = " ".join(shlex.quote(a) for a in [ruser, rpw, *doodlelabs_ips])
+        cmd += f"; echo '---RADIO---'; echo '{encoded}' | base64 -d | python3 - {args}"
 
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
     if rc != 0 or not stdout:
@@ -594,7 +668,11 @@ else:
         "gpu": raw_gpu,
         "disk": (sections.get("DISK", ["N/A"])[0] or "N/A"),
         "battery": raw_bat,
-        "radio": (sections.get("SILVUS", ["N/A"])[0] or "N/A"),
+        "radio": (
+            sections.get("RADIO", [None])[0]
+            or sections.get("SILVUS", ["N/A"])[0]
+            or "N/A"
+        ),
     }
 
 
@@ -1334,7 +1412,7 @@ except Exception as e:
     import base64
 
     encoded = base64.b64encode(py_script.encode()).decode()
-    args = " ".join(silvus_mgmt_ips)
+    args = " ".join(shlex.quote(ip) for ip in silvus_mgmt_ips)
     cmd = f"echo '{encoded}' | base64 -d | python3 - {args}"
     rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=8)
     if rc != 0 or not stdout or stdout.strip() in ("N/A", ""):
@@ -1429,6 +1507,391 @@ def get_silvus_radio_details(topology):
             }
 
     return results
+
+
+# ---- Doodle Labs Mesh Rider radios (HTTPS JSON-RPC ubus API) ----
+#
+# Key differences from Silvus:
+#   - HTTPS (self-signed cert), not HTTP
+#   - OpenWrt ubus JSON-RPC at /ubus, not /cgi-bin/streamscape_api
+#   - Requires session login to get an auth token
+#   - Default creds: user / DoodleSmartRadio
+#   - Per-peer stats from /tmp/linkstate_current.json (file read)
+#   - Wearable battery/temp from /tmp/run/pancake.txt (VIN / 20.2 = volts)
+#   - Mesh uses batman-adv (TQ quality 0-255), not per-link RSSI
+#
+# Auto-detection: if topology has doodlelabs_radios, that wins. Otherwise
+# falls back to silvus_radios. Machines still live on the silvus data network
+# (192.168.100.x) for SSH/zenoh — only the radio monitoring protocol differs.
+
+
+def get_active_radio_type(topology, override=None):
+    """Return 'doodlelabs', 'silvus', or None.
+
+    If override is 'silvus', 'doodlelabs', or 'none', that wins. If override
+    is 'auto' or None, auto-detects from topology: Doodle Labs wins if both
+    sections are populated.
+
+    The CLI exposes this via `--radio-type` on the fleet-adt4 command.
+    """
+    if override and override != "auto":
+        if override == "none":
+            return None
+        if override in ("silvus", "doodlelabs"):
+            return override
+        # Unknown override — fall through to auto-detect
+    if topology.get("doodlelabs_radios", {}).get("radios"):
+        return "doodlelabs"
+    if topology.get("silvus_radios", {}).get("radios"):
+        return "silvus"
+    return None
+
+
+_DOODLELABS_QUERY_SCRIPT = """
+import urllib.request, json, ssl, sys
+
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+if len(sys.argv) < 3:
+    print('N/A'); sys.exit(0)
+user, password = sys.argv[1], sys.argv[2]
+ips = sys.argv[3:] or ['192.168.153.1']
+
+null_token = '00000000000000000000000000000000'
+
+def rpc(base, token, obj, method, args=None):
+    payload = json.dumps({'jsonrpc':'2.0','id':1,'method':'call',
+                          'params':[token, obj, method, args or {}]}).encode()
+    req = urllib.request.Request(base, data=payload,
+                                 headers={'Content-Type':'application/json'})
+    with urllib.request.urlopen(req, timeout=3, context=ctx) as resp:
+        d = json.loads(resp.read())
+    r = d.get('result', [])
+    return (r[0], r[1]) if len(r) >= 2 else (-1, None)
+
+local_ip, token = None, None
+for ip in ips:
+    try:
+        code, ld = rpc(f'https://{ip}/ubus', null_token, 'session', 'login',
+                       {'username': user, 'password': password})
+        if code == 0 and ld:
+            local_ip, token = ip, ld['ubus_rpc_session']; break
+    except Exception:
+        continue
+
+if not local_ip:
+    print('N/A'); sys.exit(0)
+
+try:
+    base = f'https://{local_ip}/ubus'
+    code, board = rpc(base, token, 'system', 'board', {})
+    hostname = (board or {}).get('hostname', '') if code == 0 else ''
+    code, iw = rpc(base, token, 'iwinfo', 'info', {'device':'wlan0'})
+    iw = iw or {}
+    signal = iw.get('signal'); noise = iw.get('noise')
+    bssid = iw.get('bssid', ''); bitrate = iw.get('bitrate')
+    mesh_nodes = neighbor_count = 0
+    code, data = rpc(base, token, 'file', 'read',
+                     {'path':'/tmp/linkstate_current.json','base64':False})
+    if code == 0 and data and data.get('data'):
+        try:
+            ls = json.loads(data['data'])
+            mesh_nodes = len(ls.get('mesh_stats', []))
+            neighbor_count = len(ls.get('sta_stats', []))
+        except json.JSONDecodeError:
+            pass
+    bat_v = temp = None
+    code, data = rpc(base, token, 'file', 'exec',
+                     {'command':'cat','params':['/tmp/run/pancake.txt']})
+    if code == 0 and data and data.get('stdout'):
+        try:
+            p = json.loads(data['stdout'])
+            vin = p.get('VIN VOLTAGE', p.get('vin_voltage'))
+            if vin is not None: bat_v = float(vin) / 20.2
+            t = p.get('Temperature', p.get('temperature'))
+            if t is not None: temp = float(t)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+    bat_s = f'{bat_v:.2f}' if bat_v is not None else '?'
+    sig_s = str(signal) if signal is not None else '?'
+    noise_s = str(noise) if noise is not None else '?'
+    br_s = str(bitrate) if bitrate is not None else '?'
+    temp_s = f'{temp:.0f}' if temp is not None else '?'
+    print(f'{bat_s}|{mesh_nodes}|{neighbor_count}|{sig_s}|{noise_s}|{br_s}|{bssid}|{hostname}|{temp_s}')
+except Exception as e:
+    print(f'ERR:{e}')
+"""
+
+
+def _doodlelabs_creds(topology):
+    """Return (user, password) using the first radio's creds from topology."""
+    radios = topology.get("doodlelabs_radios", {}).get("radios", {})
+    for r in radios.values():
+        return (r.get("user", "user"), r.get("password", "DoodleSmartRadio"))
+    return ("user", "DoodleSmartRadio")
+
+
+def get_doodlelabs_link_quality(user, ip, dl_ips=None, dl_creds=None):
+    """Query a machine's local Doodle Labs radio for link quality via SSH.
+
+    The remote machine runs a Python script that connects to its directly-
+    attached radio (default 192.168.153.1) via HTTPS/ubus. Returns dict with
+    battery_v, mesh_nodes, neighbor_count, signal, noise, bitrate, bssid,
+    hostname, temperature; or None on failure, {'error': ...} on auth error.
+    """
+    if not dl_ips:
+        dl_ips = ["192.168.153.1"]
+    radio_user, radio_pw = dl_creds or ("user", "DoodleSmartRadio")
+
+    encoded = base64.b64encode(_DOODLELABS_QUERY_SCRIPT.encode()).decode()
+    args = " ".join(shlex.quote(a) for a in [radio_user, radio_pw, *dl_ips])
+    cmd = f"echo '{encoded}' | base64 -d | python3 - {args}"
+
+    rc, stdout, _ = ssh_cmd(user, ip, cmd, timeout=10)
+    if rc != 0 or not stdout:
+        return None
+    line = stdout.strip()
+    if line in ("", "N/A"):
+        return None
+    if line.startswith("ERR:"):
+        return {"error": line}
+
+    parts = line.split("|")
+    if len(parts) < 6:
+        return {"raw": line}
+
+    def _v(s, cast=str):
+        if s in ("", "?", "N/A"):
+            return None
+        try:
+            return cast(s)
+        except (ValueError, TypeError):
+            return None
+
+    def _int(s):
+        # iwinfo returns these as JSON numbers; may arrive as int or float str.
+        return int(float(s))
+
+    return {
+        "battery_v": _v(parts[0], float),
+        "mesh_nodes": _v(parts[1], _int),
+        "neighbor_count": _v(parts[2], _int),
+        "signal": _v(parts[3], _int),
+        "noise": _v(parts[4], _int),
+        "bitrate": _v(parts[5], _int),
+        "bssid": parts[6] if len(parts) > 6 and parts[6] else None,
+        "hostname": parts[7] if len(parts) > 7 and parts[7] else None,
+        "temperature": _v(parts[8], float) if len(parts) > 8 else None,
+    }
+
+
+def get_doodlelabs_radio_details(topology):
+    """Query all Doodle Labs radios directly via HTTPS from the local machine.
+
+    Returns dict[radio_name -> info] with ip, hostname, firmware, bssid,
+    signal, noise, bitrate, battery_v, temperature, htmode, frequency,
+    channel, txpower, sta_stats, mesh_stats, error.
+    """
+    import ssl as _ssl
+    import urllib.request as _urlreq
+
+    radios = topology.get("doodlelabs_radios", {}).get("radios", {})
+    if not radios:
+        return {}
+
+    ctx = _ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = _ssl.CERT_NONE
+    null_token = "00000000000000000000000000000000"
+
+    def _rpc(base, token, obj, method, args=None):
+        payload = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "call",
+                "params": [token, obj, method, args or {}],
+            }
+        ).encode()
+        req = _urlreq.Request(
+            base,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        with _urlreq.urlopen(req, timeout=4, context=ctx) as resp:
+            d = json.loads(resp.read())
+        r = d.get("result", [])
+        return (r[0], r[1]) if len(r) >= 2 else (-1, None)
+
+    results = {}
+    for name, rcfg in radios.items():
+        ip = rcfg.get("ip")
+        if not ip:
+            continue
+        ruser = rcfg.get("user", "user")
+        rpw = rcfg.get("password", "DoodleSmartRadio")
+        base = f"https://{ip}/ubus"
+
+        info = {"ip": ip, "error": None}
+        try:
+            code, login = _rpc(
+                base,
+                null_token,
+                "session",
+                "login",
+                {"username": ruser, "password": rpw},
+            )
+            if code != 0 or not login:
+                info["error"] = "auth failed"
+                results[name] = info
+                continue
+            token = login["ubus_rpc_session"]
+
+            code, board = _rpc(base, token, "system", "board", {})
+            if code == 0 and board:
+                info["hostname"] = board.get("hostname")
+                info["model"] = board.get("model")
+                rel = board.get("release", {}) or {}
+                info["firmware"] = rel.get("description", rel.get("version"))
+
+            code, iw = _rpc(base, token, "iwinfo", "info", {"device": "wlan0"})
+            if code == 0 and iw:
+                info["bssid"] = (iw.get("bssid") or "").lower() or None
+                info["signal"] = iw.get("signal")
+                info["noise"] = iw.get("noise")
+                info["bitrate"] = iw.get("bitrate")
+                info["htmode"] = iw.get("htmode")
+                info["frequency"] = iw.get("frequency")
+                info["channel"] = iw.get("channel")
+                info["txpower"] = iw.get("txpower")
+
+            code, data = _rpc(
+                base,
+                token,
+                "file",
+                "read",
+                {"path": "/tmp/linkstate_current.json", "base64": False},
+            )
+            sta_stats = []
+            mesh_stats = []
+            if code == 0 and data and data.get("data"):
+                try:
+                    ls = json.loads(data["data"])
+                    sta_stats = ls.get("sta_stats", []) or []
+                    mesh_stats = ls.get("mesh_stats", []) or []
+                except json.JSONDecodeError:
+                    pass
+            info["sta_stats"] = sta_stats
+            info["mesh_stats"] = mesh_stats
+
+            code, data = _rpc(
+                base,
+                token,
+                "file",
+                "exec",
+                {"command": "cat", "params": ["/tmp/run/pancake.txt"]},
+            )
+            if code == 0 and data and data.get("stdout"):
+                try:
+                    p = json.loads(data["stdout"])
+                    vin = p.get("VIN VOLTAGE", p.get("vin_voltage"))
+                    if vin is not None:
+                        info["battery_v"] = float(vin) / 20.2
+                    t = p.get("Temperature", p.get("temperature"))
+                    if t is not None:
+                        info["temperature"] = float(t)
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    pass
+        except Exception as e:
+            info["error"] = str(e)
+
+        results[name] = info
+
+    return results
+
+
+def check_doodlelabs_route(
+    user=None,
+    ip=None,
+    mgmt_subnet="10.223.0.0/16",
+    local_subnet_pat="192.168.153.",
+):
+    """Check if a route to the Doodle Labs mesh subnet exists.
+
+    Each machine with a USB-attached Doodle Labs radio has a 192.168.153.x
+    address; the 10.223.0.0/16 mesh subnet must be routed via that interface
+    to reach non-directly-connected radios. If user/ip are None, checks
+    locally. Returns dict with has_route, interface (None if no 192.168.153.x
+    addr), route_info.
+    """
+    cmd = (
+        f"iface=$(ip -4 -o addr show | grep {shlex.quote(local_subnet_pat)} "
+        "| awk '{print $2}' | head -1); "
+        f"route=$(ip route show {shlex.quote(mgmt_subnet)} 2>/dev/null | head -1); "
+        'echo "$iface|$route"'
+    )
+    if user and ip:
+        rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
+    else:
+        try:
+            result = subprocess.run(
+                ["bash", "-c", cmd], capture_output=True, text=True, timeout=5
+            )
+            out = result.stdout.strip()
+            rc = result.returncode
+        except Exception:
+            return {"has_route": False, "interface": None, "dl_iface": None}
+
+    if rc != 0 or not out:
+        return {"has_route": False, "interface": None, "dl_iface": None}
+
+    parts = out.strip().split("|", 1)
+    iface = parts[0].strip() if parts[0].strip() else None
+    route_line = parts[1].strip() if len(parts) > 1 else ""
+    return {
+        "has_route": bool(route_line),
+        "interface": iface,
+        "dl_iface": iface,
+        "route_info": route_line if route_line else None,
+    }
+
+
+def add_doodlelabs_route(
+    user=None, ip=None, mgmt_subnet="10.223.0.0/16", interface=None
+):
+    """Add a route to the Doodle Labs mesh subnet via the USB-ethernet
+    interface. If user/ip are None, runs locally. Requires sudo.
+    Returns (success: bool, message: str)."""
+    if not interface:
+        info = check_doodlelabs_route(user, ip, mgmt_subnet)
+        interface = info.get("dl_iface")
+        if not interface:
+            return False, (
+                "No Doodle Labs interface found (no 192.168.153.x address). "
+                "Is the radio plugged in via USB-ethernet?"
+            )
+        if info["has_route"]:
+            return True, f"Route already exists: {info['route_info']}"
+
+    cmd = f"sudo ip route add {mgmt_subnet} dev {shlex.quote(interface)}"
+    if user and ip:
+        rc, _, err = ssh_cmd(user, ip, cmd, timeout=10)
+    else:
+        try:
+            result = subprocess.run(
+                ["bash", "-c", cmd], capture_output=True, text=True, timeout=10
+            )
+            rc, err = result.returncode, result.stderr.strip()
+        except Exception as e:
+            return False, str(e)
+
+    if rc == 0:
+        return True, f"Route added: {mgmt_subnet} dev {interface}"
+    if "File exists" in err:
+        return True, f"Route already exists on {interface}"
+    return False, f"Failed (rc={rc}): {err}"
 
 
 # ---- Bandwidth testing (iperf3) ----
