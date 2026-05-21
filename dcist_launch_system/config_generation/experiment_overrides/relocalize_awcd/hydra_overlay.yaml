@@ -25,7 +25,7 @@ active_window:
       transformation_getter:
         type: TFTransformationGetter
         prior_frame_id: map
-        robot_frame_id: ""
+        robot_frame_id: ''
         tf_change_threshold_m: 0.05
       awcd_sinks:
         - type: ActiveWindowChangeDetectorVisualizer
@@ -77,7 +77,7 @@ active_window:
                 edges:
                   scale: 0.1
                   alpha: 1.0
-                  color: {type: ""}
+                  color: {type: ''}
                 text: {draw_layer: true, height: 0.9, scale: 0.8}
               3p1:
                 z_offset_scale: 2.0
@@ -127,7 +127,6 @@ frontend:
       height_above: 0.3
       height_below: 1.0
       min_confidence: 0.5
-      min_traversability: 0.1 # gradient below 0.45 is traversable
+      min_traversability: 0.1  # gradient below 0.45 is traversable
       pessimistic: true
       smoothing: true
-        
