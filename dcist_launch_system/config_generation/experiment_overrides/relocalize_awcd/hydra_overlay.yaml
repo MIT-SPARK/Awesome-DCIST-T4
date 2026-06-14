@@ -6,6 +6,10 @@ backend:
   pgmo:
     add_initial_prior: false
 active_window:
+  tracker:
+    bbox_type: aabb
+  object_extractor:
+    bbox_type: aabb
   khronos_sinks: !reset
     - type: ActiveWindowVisualizer
       slice_height_is_relative: true
@@ -13,8 +17,10 @@ active_window:
       marker_opacity: 10
       slice_distance_multiplier: 3
     - type: ActiveWindowChangeDetector
-      verbosity: 1
+      verbosity: 3
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+      removal_vertex_free_ratio_threshold: 0.8
+      added_object_containment_threshold: 0.8
       enable_icp_refinement: true
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0
@@ -30,7 +36,7 @@ active_window:
       awcd_sinks:
         - type: ActiveWindowChangeDetectorVisualizer
           bounding_box_line_width: 0.1
-          verbosity: 0
+          verbosity: 1
           global_frame_name: prior_map_frame
           plugins:
             mesh:

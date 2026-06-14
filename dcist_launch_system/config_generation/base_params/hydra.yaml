@@ -21,10 +21,26 @@ active_window:
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   min_output_separation: 0.5
-  object_detector: {type: InstanceForwarding, min_cluster_size: 30, max_range: 10.0, min_range: 0.05, verbosity: 1}
-  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0}
+  object_detector:
+    type: InstanceForwarding
+    min_cluster_size: 30
+    min_object_volume: 0.01
+    max_range: 10.0
+    min_range: 0.05
+    instance_id: true
+    verbosity: 1
+  tracker:
+    type: MaxIouTracker
+    track_by: pixels
+    bbox_type: aabb
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
+    temporal_window: 3.0
+    min_num_observations: 10
+    verbosity: 0
   object_extractor:
     type: MeshObjectExtractor
+    bbox_type: aabb
     verbosity: 0
     min_object_allocation_confidence: 0.5
     min_object_volume: 0.005  # m^3

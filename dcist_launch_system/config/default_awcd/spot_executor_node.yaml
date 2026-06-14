@@ -24,3 +24,4 @@
     follower_lookahead: 2.1
     goal_tolerance: 2.8
     detector_model_path: $(env ADT4_WS)/weights/yoloe-26m-seg.pt
+    log_to_file: INFO
