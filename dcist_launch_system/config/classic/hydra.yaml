@@ -39,6 +39,7 @@ active_window:
     min_num_observations: 10
   object_extractor:
     type: MeshObjectExtractor
+    bbox_type: aabb
     verbosity: 0
     min_object_allocation_confidence: 0.5
     min_object_volume: 0.005
