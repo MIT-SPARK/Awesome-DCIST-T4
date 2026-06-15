@@ -21,6 +21,15 @@ active_window:
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_vertex_free_ratio_threshold: 0.8
       added_object_containment_threshold: 0.8
+      # Temporal EMA filter params for removed-object detection:
+      removal_ema_alpha: 0.2               # EMA smoothing factor (lower = smoother, slower)
+      removal_probability_threshold: 0.8   # Smoothed probability to declare removal
+      removal_min_frames_observed: 3       # Min frames before removal can be declared
+      # Temporal EMA filter params for newly-added-object detection:
+      added_ema_alpha: 0.5               # EMA smoothing factor
+      added_probability_threshold: 0.8   # Smoothed probability to declare newly-added
+      added_min_frames_observed: 3       # Min frames before a track can be declared added
+      added_prune_after_frames: 50       # Frames of no measurement before non-added tracks are pruned
       enable_icp_refinement: true
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0
@@ -37,6 +46,7 @@ active_window:
         - type: ActiveWindowChangeDetectorVisualizer
           bounding_box_line_width: 0.1
           verbosity: 1
+          min_draw_period_s: 0.5
           global_frame_name: prior_map_frame
           plugins:
             mesh:
