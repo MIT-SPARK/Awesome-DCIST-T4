@@ -244,8 +244,6 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        prior_map_frame:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -301,8 +299,6 @@ Visualization Manager:
                 hamilton/rear_right_upper_leg:
                   hamilton/rear_right_lower_leg:
                     {}
-            prior_map_frame:
-              {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray

@@ -127,8 +127,6 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        prior_map_frame:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -155,8 +153,6 @@ Visualization Manager:
                   lewis_zed_right_camera_frame:
                     lewis_zed_right_camera_optical_frame:
                       {}
-            prior_map_frame:
-              {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray

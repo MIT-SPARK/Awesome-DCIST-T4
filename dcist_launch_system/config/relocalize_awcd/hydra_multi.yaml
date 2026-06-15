@@ -20,7 +20,7 @@ robots:
     robot_id: 0
     rate: 10.0
     robot_name: $<var robot_name>
-    robot_frame: $<var robot_name>/odom
+    robot_frame: $<var robot_name>/pre_icp_odom
     inputs:
       dgraph:
         type: RosDGraphInput

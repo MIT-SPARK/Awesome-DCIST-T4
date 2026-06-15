@@ -85,11 +85,14 @@ active_window:
         robot_frame_id: ""
         tf_change_threshold_m: 0.05
       awcd_sinks:
+        - type: TfIcpPublisher
+          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
+          odom_frame: ""
         - type: ActiveWindowChangeDetectorVisualizer
           bounding_box_line_width: 0.1
           verbosity: 1
           min_draw_period_s: 0.5
-          global_frame_name: prior_map_frame
+          global_frame_name: map
           plugins:
             mesh:
               use_color_adaptor: false

@@ -22,14 +22,14 @@ active_window:
       removal_vertex_free_ratio_threshold: 0.8
       added_object_containment_threshold: 0.8
       # Temporal EMA filter params for removed-object detection:
-      removal_ema_alpha: 0.2               # EMA smoothing factor (lower = smoother, slower)
-      removal_probability_threshold: 0.8   # Smoothed probability to declare removal
-      removal_min_frames_observed: 3       # Min frames before removal can be declared
+      removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
+      removal_probability_threshold: 0.8  # Smoothed probability to declare removal
+      removal_min_frames_observed: 3  # Min frames before removal can be declared
       # Temporal EMA filter params for newly-added-object detection:
-      added_ema_alpha: 0.5               # EMA smoothing factor
-      added_probability_threshold: 0.8   # Smoothed probability to declare newly-added
-      added_min_frames_observed: 3       # Min frames before a track can be declared added
-      added_prune_after_frames: 50       # Frames of no measurement before non-added tracks are pruned
+      added_ema_alpha: 0.5  # EMA smoothing factor
+      added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
+      added_min_frames_observed: 3  # Min frames before a track can be declared added
+      added_prune_after_frames: 50  # Frames of no measurement before non-added tracks are pruned
       enable_icp_refinement: true
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0
@@ -43,11 +43,14 @@ active_window:
         robot_frame_id: ''
         tf_change_threshold_m: 0.05
       awcd_sinks:
+        - type: TfIcpPublisher
+          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
+          odom_frame: ''
         - type: ActiveWindowChangeDetectorVisualizer
           bounding_box_line_width: 0.1
           verbosity: 1
           min_draw_period_s: 0.5
-          global_frame_name: prior_map_frame
+          global_frame_name: map
           plugins:
             mesh:
               use_color_adaptor: false

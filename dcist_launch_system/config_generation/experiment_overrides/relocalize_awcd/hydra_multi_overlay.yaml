@@ -1,0 +1,7 @@
+---
+# Override robot_frame so hydra_multi publishes map → <robot>/pre_icp_odom instead of
+# map → <robot>/odom. The ICP delta (pre_icp_odom → odom) is then broadcast by
+# TfIcpPublisher (an ActiveWindowCDSink in AWCD).
+robots: !update
+  - {}  # UnitInterface (prior map) — unchanged
+  - robot_frame: $<var robot_name>/pre_icp_odom
