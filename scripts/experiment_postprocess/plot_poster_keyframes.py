@@ -88,7 +88,7 @@ ROOM_PLACE_IDS: dict[int, str] = {
 # all placeholders at the anchor origin, so we hand-place these instead.
 LANDMARKS: list[dict] = [
     {
-        "name": "Mr.X's car",
+        "name": "Closed Lot",
         "icon_hex": "1F697",   # 🚗 red car
         "xy_utm":   (578998.0, 4578532.0),    # NW corner of parking lot
         "label_offset_m": (-15.0, 0.0),        # further left of icon — clears robots
