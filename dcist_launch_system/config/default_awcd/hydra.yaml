@@ -62,16 +62,6 @@ active_window:
       use_relative_height: true
       slice_height: 0.25
       num_slices: 4
-    - type: TsdfGradientOccupancyPublisher
-      gradient_threshold: 0.5
-      min_weight: 1.0e-6
-      min_confidence: 0.5
-      smoothing: true
-      probabilistic: false
-      use_relative_height: true
-      slice_height: -1.5
-      num_slices: 25
-      filter_disjoint: true
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
@@ -100,6 +90,14 @@ frontend:
       min_traversability: 0.1
       pessimistic: true
       smoothing: true
+      sinks:
+        - type: TsdfGradientOccupancyPublisher
+          gradient_threshold: 0.5
+          min_confidence: 0.5
+          probabilistic: false
+          use_relative_height: true
+          filter_disjoint: true
+          add_robot_footprint: true
     clustering:
       type: RegionGrowingTraversabilityClustering
       max_radius: 4.0

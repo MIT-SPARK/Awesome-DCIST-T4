@@ -127,17 +127,6 @@ active_window:
               - layer: 3p1
                 plugins:
                   - {type: RegionGrowingBoundaryPlugin}
-  sinks:
-    - type: TsdfGradientOccupancyPublisher
-      gradient_threshold: 0.5
-      min_weight: 1.0e-6
-      min_confidence: 0.5
-      smoothing: true
-      probabilistic: false
-      use_relative_height: true
-      slice_height: -1.5
-      num_slices: 25
-      filter_disjoint: true
 frontend:
   traversability_places:
     estimator: !reset
@@ -149,3 +138,10 @@ frontend:
       min_traversability: 0.1  # gradient below 0.45 is traversable
       pessimistic: true
       smoothing: true
+      sinks:
+        - type: TsdfGradientOccupancyPublisher
+          gradient_threshold: 0.5
+          min_confidence: 0.5
+          probabilistic: false
+          use_relative_height: true
+          filter_disjoint: true
