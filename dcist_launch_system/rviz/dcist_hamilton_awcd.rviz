@@ -9,6 +9,7 @@ Panels:
         - /Grid1
         - /TF1/Frames1
         - /Omniplanner Viz1/Topic1
+        - /Traversability Estimates1
         - /Traversability Estimates1/Namespaces1
         - /AWCD Graph1/Topic1
         - /AWCD Mesh1/Topic1
@@ -214,6 +215,8 @@ Visualization Manager:
           Value: true
         hamilton/livox:
           Value: true
+        hamilton/map:
+          Value: true
         hamilton/odom:
           Value: true
         hamilton/rear_left_hip:
@@ -251,54 +254,55 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          hamilton/odom:
-            hamilton/body:
-              hamilton/base_link:
-                {}
-              hamilton/front_left_hip:
-                hamilton/front_left_upper_leg:
-                  hamilton/front_left_lower_leg:
-                    {}
-              hamilton/front_rail:
-                {}
-              hamilton/front_right_hip:
-                hamilton/front_right_upper_leg:
-                  hamilton/front_right_lower_leg:
-                    {}
-              hamilton/gps:
-                {}
-              hamilton/hand:
-                {}
-              hamilton/head:
-                hamilton/frontleft:
-                  hamilton/frontleft_fisheye:
-                    {}
-                  hamilton_zed_camera_link:
-                    hamilton_zed_camera_center:
-                      hamilton_zed_left_camera_frame:
-                        hamilton_zed_left_camera_optical_frame:
-                          {}
-                      hamilton_zed_right_camera_frame:
-                        hamilton_zed_right_camera_optical_frame:
-                          {}
-                hamilton/frontright:
-                  hamilton/frontright_fisheye:
-                    {}
-              hamilton/kinematic:
-                hamilton/gpe:
+          hamilton/map:
+            hamilton/odom:
+              hamilton/body:
+                hamilton/base_link:
                   {}
-              hamilton/livox:
-                {}
-              hamilton/rear_left_hip:
-                hamilton/rear_left_upper_leg:
-                  hamilton/rear_left_lower_leg:
+                hamilton/front_left_hip:
+                  hamilton/front_left_upper_leg:
+                    hamilton/front_left_lower_leg:
+                      {}
+                hamilton/front_rail:
+                  {}
+                hamilton/front_right_hip:
+                  hamilton/front_right_upper_leg:
+                    hamilton/front_right_lower_leg:
+                      {}
+                hamilton/gps:
+                  {}
+                hamilton/hand:
+                  {}
+                hamilton/head:
+                  hamilton/frontleft:
+                    hamilton/frontleft_fisheye:
+                      {}
+                    hamilton_zed_camera_link:
+                      hamilton_zed_camera_center:
+                        hamilton_zed_left_camera_frame:
+                          hamilton_zed_left_camera_optical_frame:
+                            {}
+                        hamilton_zed_right_camera_frame:
+                          hamilton_zed_right_camera_optical_frame:
+                            {}
+                  hamilton/frontright:
+                    hamilton/frontright_fisheye:
+                      {}
+                hamilton/kinematic:
+                  hamilton/gpe:
                     {}
-              hamilton/rear_rail:
-                {}
-              hamilton/rear_right_hip:
-                hamilton/rear_right_upper_leg:
-                  hamilton/rear_right_lower_leg:
-                    {}
+                hamilton/livox:
+                  {}
+                hamilton/rear_left_hip:
+                  hamilton/rear_left_upper_leg:
+                    hamilton/rear_left_lower_leg:
+                      {}
+                hamilton/rear_rail:
+                  {}
+                hamilton/rear_right_hip:
+                  hamilton/rear_right_upper_leg:
+                    hamilton/rear_right_lower_leg:
+                      {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
@@ -316,7 +320,7 @@ Visualization Manager:
     - Class: kimera_pgmo_rviz/MeshDisplay
       Cull Backfaces: true
       Enable Lighting: false
-      Enabled: false
+      Enabled: true
       Name: Mesh
       Toggle Visibility All: true
       Topic:
@@ -326,8 +330,10 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: hydra/backend/dsg_mesh
-      Value: false
-      Visible: true
+      Value: true
+      Visible:
+        0: true
+        Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
@@ -358,9 +364,7 @@ Visualization Manager:
       Enabled: true
       Name: Multi-Robot Scene Graph
       Namespaces:
-        layer2p98_edges: true
-        layer2p98_nodes: true
-        layer2p98_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -455,10 +459,13 @@ Visualization Manager:
       Use Timestamp: false
       Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: false
+      Enabled: true
       Name: Traversability Estimates
       Namespaces:
-        {}
+        confidence: false
+        debug: false
+        state: false
+        traversability: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -466,22 +473,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /hamilton/hydra/traversability/layer
-      Value: false
+      Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: AWCD Graph
       Namespaces:
-        interlayer_edges_3[1]_2: true
-        layer2_bounding_boxes: true
-        layer2_nodes: true
-        layer2_text: true
-        layer2p97_edges: true
-        layer2p97_nodes: true
-        layer2p97_text: true
-        layer3p1_edges: true
-        layer3p1_nodes: true
-        layer3p1_region_growing_boundaries: true
-        layer3p1_text: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -503,16 +500,12 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /hamilton/change_detector_visualizer/prior_mesh
       Value: true
-      Visible:
-        Value: true
-        robot0:
-          Value: true
-          dsg_mesh: true
+      Visible: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: "AWCD Box "
       Namespaces:
-        added_objects: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -533,6 +526,29 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /hamilton/active_window_visualizer/ever_free_slice
       Value: false
+    - Alpha: 0.699999988079071
+      Binary representation: false
+      Binary threshold: 100
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/hydra/tsdf_gradient/occupancy
+      Update Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/hydra/tsdf_gradient/occupancy_updates
+      Use Timestamp: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -597,7 +613,7 @@ Visualization Manager:
       Pitch: 0.4603981375694275
       Target Frame: hamilton/body
       Value: Orbit (rviz)
-      Yaw: 3.068578004837036
+      Yaw: 3.083578109741211
     Saved: ~
 Window Geometry:
   Displays:
