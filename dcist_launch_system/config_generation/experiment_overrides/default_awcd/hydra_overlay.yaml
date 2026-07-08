@@ -1,12 +1,20 @@
 ---
 active_window:
+  # object_detector:
+  #   min_object_volume: -1
+  #   min_cluster_size: 1
   tracker:
+    # track_by: voxels
     bbox_type: aabb
   object_extractor:
     bbox_type: aabb
     min_object_allocation_confidence: 0.3
     min_object_reconstruction_confidence: 0.3
     min_object_reconstruction_observations: 5
+  khronos_sinks:
+    - type: ActiveWindowTrackSaver
+      output_directory: $<env ADT4_OUTPUT_DIR>/track_debug
+      save_pointcloud: true
 frontend:
   clear_object_meshes: false
   traversability_places:

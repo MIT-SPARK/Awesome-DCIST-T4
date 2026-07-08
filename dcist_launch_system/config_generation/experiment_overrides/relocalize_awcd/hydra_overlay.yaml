@@ -16,6 +16,10 @@ active_window:
       num_slices: 5
       marker_opacity: 10
       slice_distance_multiplier: 3
+    - type: ActiveWindowTrackSaver
+      output_directory: $<env ADT4_OUTPUT_DIR>/track_debug
+      save_pointcloud: true
+      pointcloud_frame: robot
     - type: ActiveWindowChangeDetector
       verbosity: 3
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json

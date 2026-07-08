@@ -56,6 +56,9 @@ active_window:
       num_threads: 8
   khronos_sinks:
     - type: ActiveWindowVisualizer
+    - type: ActiveWindowTrackSaver
+      output_directory: $<env ADT4_OUTPUT_DIR>/track_debug
+      save_pointcloud: true
   sinks:
     - type: TsdfOccupancyPublisher
       min_distance: 0.25
