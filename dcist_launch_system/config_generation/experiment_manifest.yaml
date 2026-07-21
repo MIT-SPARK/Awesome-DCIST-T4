@@ -53,6 +53,8 @@ launch_configs:
     spot_prior_dsg_heracles_repair: [plan_prior_heracles_repair, sim_spot]
     base_station: [plan_prior, multi_status]
     base_station_heracles: [plan_prior_heracles, multi_status]
+    base_station_repair: [plan_prior_repair, multi_status]
+    base_station_heracles_repair: [plan_prior_heracles_repair, multi_status]
 
 # Configs build the set of rosparams that will be loaded
 configs:
@@ -100,6 +102,14 @@ experiments:
 
     base_station_heracles:
         launch_config: base_station_heracles
+        config: [default_params]
+
+    base_station_repair:
+        launch_config: base_station_repair
+        config: [default_params]
+
+    base_station_heracles_repair:
+        launch_config: base_station_heracles_repair
         config: [default_params]
 
     spot_bag:
