@@ -170,6 +170,7 @@ launch:
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
+        - {name: output_dir, value: $(var output_dir)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_executor_node.yaml, allow_substs: true}
       remap:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
@@ -245,7 +246,11 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/rviz_node.yaml, allow_substs: true}
 
   # Omniplanner
+  # Set launch_omniplanner:=true for original, launch_omniplanner_repair:=true for plan repair + constraints
   - arg: {name: launch_omniplanner, default: 'false'}
+  - arg: {name: launch_omniplanner_repair, default: 'false'}
+
+  # Original omniplanner (no plan repair / constraints)
   - pyenv_node:
       if: $(var launch_omniplanner)
       pkg: omniplanner_ros
@@ -259,6 +264,35 @@ launch:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/llm_response, to: rviz2_node/llm_response}
+
+  # Omniplanner with plan repair + runtime constraints (Jaeyoun)
+  - pyenv_node:
+      if: $(var launch_omniplanner_repair)
+      pkg: omniplanner_ros
+      exec: omniplanner_repair_node
+      name: omniplanner_node
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml, allow_substs: true}
+      remap:
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/llm_response, to: rviz2_node/llm_response}
+
+  # Goal manager (plan repair): only with repair mode
+  - pyenv_node:
+      if: $(var launch_omniplanner_repair)
+      pkg: omniplanner_ros
+      exec: goal_manager_node
+      name: goal_manager
+      pyenv: $(var spark_env)
+      remap:
+        - {from: ~/commanded_goal,    to: /$(var robot_name)/commanded_goal}
+        - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/multi_robot_pddl_constrained/pddl_goal}
+        - {from: ~/plan_visited_pois, to: /$(var robot_name)/omniplanner_node/plan_visited_pois}
+        - {from: ~/executor_pause,    to: /$(var robot_name)/spot_executor_node/pause}
+        - {from: ~/executor_resume,   to: /$(var robot_name)/spot_executor_node/resume}
 
   # Scene Graph Publisher
   - arg: {name: launch_scene_graph_publisher, default: 'false'}
