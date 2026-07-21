@@ -57,7 +57,7 @@ planners:
     plugin:
       type: Pddl
       domain_name: RegionObjectRearrangementDomain
-  multi_robot_pddl:
+  multi_robot_pddl_constrained:
     plugin:
-      type: MultiRobotPddl
+      type: MultiRobotPddlConstrained
       domain_name: RegionObjectRearrangementDomain_MultiRobot_FD_Explore

@@ -13,11 +13,13 @@ launch_configs:
     phoenix_real: []
 
     planning: []
+    planning_repair: []
 
     roman: []
     hydra: []
     prior_dsg: []
     heracles_prior_dsg: []
+    heracles_prior_dsg_repair: []
     hydra_multi: []
     transform_publishers: []
 
@@ -29,6 +31,8 @@ launch_configs:
     no_relocalize: [main, transform_publishers]
     plan_prior: [main, prior_dsg, planning]
     plan_prior_heracles: [main, heracles_prior_dsg, planning]
+    plan_prior_repair: [main, prior_dsg, planning_repair]
+    plan_prior_heracles_repair: [main, heracles_prior_dsg_repair, planning_repair]
 
     data_collection: [main, spot_real]
 
@@ -45,6 +49,8 @@ launch_configs:
 
     spot_prior_dsg: [plan_prior, sim_spot]
     spot_prior_dsg_heracles: [plan_prior_heracles, sim_spot]
+    spot_prior_dsg_repair: [plan_prior_repair, sim_spot]
+    spot_prior_dsg_heracles_repair: [plan_prior_heracles_repair, sim_spot]
     base_station: [plan_prior, multi_status]
     base_station_heracles: [plan_prior_heracles, multi_status]
 
@@ -78,6 +84,14 @@ experiments:
 
     spot_prior_dsg_heracles:
         launch_config: spot_prior_dsg_heracles
+        config: [spot_prior_dsg]
+
+    spot_prior_dsg_repair:
+        launch_config: spot_prior_dsg_repair
+        config: [spot_prior_dsg]
+
+    spot_prior_dsg_heracles_repair:
+        launch_config: spot_prior_dsg_heracles_repair
         config: [spot_prior_dsg]
 
     base_station:
