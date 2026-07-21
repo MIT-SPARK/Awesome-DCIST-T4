@@ -13,6 +13,8 @@ launch_configs:
   # planning and base station
   plan_prior: [main, prior_dsg, planning]
   plan_prior_heracles: [main, heracles_prior_dsg, planning]
+  plan_prior_repair: [main, prior_dsg, planning_repair]
+  plan_prior_heracles_repair: [main, heracles_prior_dsg_repair, planning_repair]
 # Configs build the set of rosparams that will be loaded
 configs:
   default: []
@@ -36,6 +38,12 @@ experiments:
     config: [default]
   base_station_heracles:
     launch_config: [plan_prior_heracles, multi_status]
+    config: [default]
+  base_station_repair:
+    launch_config: [plan_prior_repair, multi_status]
+    config: [default]
+  base_station_heracles_repair:
+    launch_config: [plan_prior_heracles_repair, multi_status]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
@@ -92,4 +100,10 @@ experiments:
     config: [prior_dsg]
   spot_prior_dsg_heracles:
     launch_config: [plan_prior_heracles, spot_sim]
+    config: [prior_dsg]
+  spot_prior_dsg_repair:
+    launch_config: [plan_prior_repair, spot_sim]
+    config: [prior_dsg]
+  spot_prior_dsg_heracles_repair:
+    launch_config: [plan_prior_heracles_repair, spot_sim]
     config: [prior_dsg]
