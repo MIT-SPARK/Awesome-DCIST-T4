@@ -8,5 +8,9 @@ windows:
     layout: tiled
     panes:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true ${ADT4_RVIZ_CONFIG:+rviz_config:=$ADT4_RVIZ_CONFIG}
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_omniplanner_repair:=true
+      # ADT4_EXECUTOR_ROBOT_NAME names the robot whose executor the goal manager
+      # pauses/resumes. Leave it unset when the executor runs in this session
+      # (spot_* configs); set it to the robot's name on a base station, where the
+      # executor lives in a different session under a different name.
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME executor_robot_name:=${ADT4_EXECUTOR_ROBOT_NAME:-$ADT4_ROBOT_NAME} launch_omniplanner_repair:=true
     #! - plan commander repl

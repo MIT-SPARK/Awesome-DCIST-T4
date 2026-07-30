@@ -315,6 +315,13 @@ launch:
   # Set launch_omniplanner:=true for original, launch_omniplanner_repair:=true for plan repair + constraints
   - arg: {name: launch_omniplanner, default: 'false'}
   - arg: {name: launch_omniplanner_repair, default: 'false'}
+  # Namespace of the spot_executor the goal manager pauses/resumes. Defaults to
+  # robot_name, which is correct when the executor runs in this same session
+  # (the spot_* configs). On a base station the planner and the executor live in
+  # different sessions under different names, so pass the robot's name here --
+  # otherwise pause/resume are published into a namespace with no executor in it
+  # and are silently dropped.
+  - arg: {name: executor_robot_name, default: $(var robot_name)}
 
   # Original omniplanner (no plan repair / constraints)
   - pyenv_node:
@@ -357,8 +364,8 @@ launch:
         - {from: ~/commanded_goal,    to: /$(var robot_name)/commanded_goal}
         - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/multi_robot_pddl_constrained/pddl_goal}
         - {from: ~/plan_visited_pois, to: /$(var robot_name)/omniplanner_node/plan_visited_pois}
-        - {from: ~/executor_pause,    to: /$(var robot_name)/spot_executor_node/pause}
-        - {from: ~/executor_resume,   to: /$(var robot_name)/spot_executor_node/resume}
+        - {from: ~/executor_pause,    to: /$(var executor_robot_name)/spot_executor_node/pause}
+        - {from: ~/executor_resume,   to: /$(var executor_robot_name)/spot_executor_node/resume}
 
   # Scene Graph Publisher
   - arg: {name: launch_scene_graph_publisher, default: 'false'}
