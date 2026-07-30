@@ -21,8 +21,10 @@ environment:
   ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
   HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_NEO4J_URI: neo4j://$ADT4_HERACLES_IP:$ADT4_HERACLES_PORT
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  HERACLES_AGENTS_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
