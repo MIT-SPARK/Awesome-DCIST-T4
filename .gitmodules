@@ -54,7 +54,7 @@
 	url = git@github.com:GoldenZephyr/heracles.git
 [submodule "heracles_agents"]
 	path = heracles_agents
-	url = git@github.com:GoldenZephyr/heracles_agents.git
+	url = git@github.com:robustrobotics/heracles_agents.git
 [submodule "gps"]
 	path = gps
 	url = git@github.com:fishberg/ros2_gps-dcist.git
