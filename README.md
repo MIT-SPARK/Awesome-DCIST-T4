@@ -251,6 +251,16 @@ when working with UTM coordinates to make the origin easier to use (with the app
 
 ## Example System Configurations
 
+### Manually setting up a prior map with Heracles
+
+To use Heracles for planning, you first have to set up the Heracles database with a prior scene graph. This looks like the following:
+```
+cd ${ADT4_WS}/src/awesome_dcist_t4
+source ${ADT4_ENV}/spark_env/bin/active
+python heracles/heracles/examples/load_scene_graph.py --scene_graph <prior_map_path>/hydra/backend/dsg.json
+```
+(eventually this will be automatically handled when you run the heracles base station launch config)
+
 ### Hydra with Bag
 
 If you want to see hydra running on real Spot data, get the bag from [here](https://drive.google.com/file/d/155iqaDarCb7-KN8P_rBOqmAnIBj08TmH/view?usp=sharing).
