@@ -10,8 +10,10 @@ environment:
   ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
   HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
   HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_NEO4J_URI: neo4j://$ADT4_HERACLES_IP:$ADT4_HERACLES_PORT
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  HERACLES_AGENTS_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
@@ -41,7 +43,7 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
       - "cd $ADT4_DLS_PKG/../dsg_updater/dsg_updater/examples && source $ADT4_ENV/spark_env/bin/activate && ./update_robot_holding_object_state.py"
-      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
+      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py --scene-graph $ADT4_PRIOR_MAP/hydra/backend/dsg.json"
   - window_name: planning
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
