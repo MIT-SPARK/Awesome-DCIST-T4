@@ -341,6 +341,20 @@ launch:
       remap:
         - {from: ~/dsg_out, to: hydra/backend/dsg}
 
+  # AWCD Visualizer (base station: draws changed-object bboxes from all robots into rviz)
+  - arg: {name: launch_awcd_visualizer, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_awcd_visualizer)
+      pkg: dcist_launch_system
+      exec: awcd_visualizer_node
+      name: awcd_visualizer
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_visualizer.yaml, allow_substs: true}
+      remap:
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
+
   # Prior Mesh Publisher
   - arg: {name: launch_mesh_publisher, default: 'false'}
   - node:

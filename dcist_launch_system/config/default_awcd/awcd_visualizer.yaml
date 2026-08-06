@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    target_frame: map
+    changes_topic: /awcd_changes
+    labelspace_filepath: $(find-pkg-share dcist_launch_system)/labelspaces/instance_seg.yaml
+    line_width: 0.1
+    text_scale: 0.4
+    show_labels: true
+    tf_fallback_identity: true

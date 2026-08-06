@@ -132,7 +132,7 @@ active_window:
                 plugins:
                   - {type: RegionGrowingBoundaryPlugin}
         - type: ActiveWindowChangeDetectorPublisher
-          topic: awcd_changes
+          topic: /awcd_changes
           robot_name: $<env ADT4_ROBOT_NAME>
           global_frame_name: map
 frontend:

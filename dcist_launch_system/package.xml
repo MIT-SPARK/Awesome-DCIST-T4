@@ -11,6 +11,8 @@
   <depend>python3-ruamel.yaml</depend> <!-- needed for spark_config -->
   <depend>tmux</depend>
   <exec_depend>xacro</exec_depend>
+  <exec_depend>khronos_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
