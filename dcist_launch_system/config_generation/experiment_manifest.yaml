@@ -10,6 +10,11 @@ launch_configs:
   no_relocalize: [main, transform_publishers]
   bag_map: [map, rviz]
   bag_relocalize: [relocalize, rviz, relocalize_viz]
+  # single-machine development: robot + base station co-located, skip zenoh router (base
+  # station starts the only one needed) and rviz (all visualization happens on base station)
+  main_no_zenoh: [core_no_zenoh, status]
+  relocalize_no_zenoh: [main_no_zenoh, hydra_multi, roman]
+  bag_relocalize_one_machine: [relocalize_no_zenoh, relocalize_viz]
   # planning and base station
   plan_prior: [main, prior_dsg, planning]
   plan_prior_heracles: [main, heracles_prior_dsg, planning]
@@ -102,6 +107,12 @@ experiments:
     config: [default_awcd]
   spot_bag_relocalize_awcd:
     launch_config: [bag_relocalize, spot_bag]
+    config: [relocalize_awcd]
+  spot_bag_relocalize_awcd_one_machine:
+    # Robot side of a single-machine base station + robot AWCD test: skips the zenoh router
+    # (base station's core window starts the only one needed) and rviz (visualization happens
+    # entirely on the base station's awcd_visualizer node).
+    launch_config: [bag_relocalize_one_machine, spot_bag]
     config: [relocalize_awcd]
   phoenix_bag_awcd:
     launch_config: bag_map
