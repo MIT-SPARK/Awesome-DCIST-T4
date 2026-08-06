@@ -1,6 +1,8 @@
 ---
 active_window:
-  # object_detector:
+  object_detector:
+    outlier_filter:
+      enabled: false
   #   min_object_volume: -1
   #   min_cluster_size: 1
   tracker:

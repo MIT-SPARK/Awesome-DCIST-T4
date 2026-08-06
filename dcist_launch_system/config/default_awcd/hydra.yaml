@@ -30,6 +30,8 @@ active_window:
     min_range: 0.05
     instance_id: true
     verbosity: 1
+    outlier_filter:
+      enabled: false
   tracker:
     type: MaxIouTracker
     track_by: pixels
