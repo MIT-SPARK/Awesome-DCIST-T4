@@ -56,6 +56,7 @@
 [submodule "heracles_agents"]
 	path = heracles_agents
 	url = git@github.com:GoldenZephyr/heracles_agents.git
+	branch = feature/plan-repair
 [submodule "gps"]
 	path = gps
 	url = git@github.com:fishberg/ros2_gps-dcist.git
