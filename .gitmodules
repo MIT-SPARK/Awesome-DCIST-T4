@@ -25,6 +25,7 @@
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
+	branch = feature/plan-repair-preemption
 [submodule "roman"]
 	path = roman
 	url = git@github.com:mit-acl/ROMAN.git
