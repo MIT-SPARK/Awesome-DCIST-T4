@@ -13,6 +13,8 @@ Panels:
         - /Traversability Estimates1/Namespaces1
         - /AWCD Graph1/Topic1
         - /AWCD Mesh1/Topic1
+        - /MarkerArray1
+        - /MarkerArray2
       Splitter Ratio: 0.5
     Tree Height: 696
   - Class: rviz_common/Selection
@@ -215,9 +217,9 @@ Visualization Manager:
           Value: true
         hamilton/livox:
           Value: true
-        hamilton/map:
-          Value: true
         hamilton/odom:
+          Value: true
+        hamilton/pre_icp_odom:
           Value: true
         hamilton/rear_left_hip:
           Value: true
@@ -254,7 +256,7 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          hamilton/map:
+          hamilton/pre_icp_odom:
             hamilton/odom:
               hamilton/body:
                 hamilton/base_link:
@@ -306,17 +308,27 @@ Visualization Manager:
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
+      Enabled: true
       Name: Scene Graph
       Namespaces:
-        {}
+        interlayer_edges_3[1]_2: true
+        layer2_bounding_boxes: true
+        layer2_nodes: true
+        layer2_text: true
+        layer2p97_edges: true
+        layer2p97_nodes: true
+        layer2p97_text: true
+        layer3p1_edges: true
+        layer3p1_nodes: true
+        layer3p1_region_growing_boundaries: true
+        layer3p1_text: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: hydra_visualizer/graph
-      Value: false
+      Value: true
     - Class: kimera_pgmo_rviz/MeshDisplay
       Cull Backfaces: true
       Enable Lighting: false
@@ -364,7 +376,12 @@ Visualization Manager:
       Enabled: true
       Name: Multi-Robot Scene Graph
       Namespaces:
-        {}
+        layer2p97_edges: true
+        layer2p97_nodes: true
+        layer2p97_text: true
+        layer2p98_edges: true
+        layer2p98_nodes: true
+        layer2p98_text: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -459,13 +476,10 @@ Visualization Manager:
       Use Timestamp: false
       Value: false
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Traversability Estimates
       Namespaces:
-        confidence: false
-        debug: false
-        state: false
-        traversability: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -473,12 +487,22 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /hamilton/hydra/traversability/layer
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: AWCD Graph
       Namespaces:
-        {}
+        interlayer_edges_3[1]_2: true
+        layer2_bounding_boxes: true
+        layer2_nodes: true
+        layer2_text: true
+        layer2p97_edges: true
+        layer2p97_nodes: true
+        layer2p97_text: true
+        layer3p1_edges: true
+        layer3p1_nodes: true
+        layer3p1_region_growing_boundaries: true
+        layer3p1_text: true
       Topic:
         Depth: 5
         Durability Policy: Transient Local
@@ -500,12 +524,16 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /hamilton/change_detector_visualizer/prior_mesh
       Value: true
-      Visible: true
+      Visible:
+        Value: true
+        robot0:
+          Value: true
+          dsg_mesh: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: "AWCD Box "
       Namespaces:
-        {}
+        added_objects: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -532,7 +560,7 @@ Visualization Manager:
       Class: rviz_default_plugins/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic:
         Depth: 5
@@ -548,7 +576,31 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /hamilton/hydra/tsdf_gradient/occupancy_updates
       Use Timestamp: false
-      Value: true
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/active_window_visualizer/tracking/voxels
+      Value: false
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hamilton/active_window_visualizer/tracking/bounding_box
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -595,7 +647,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 26.484779357910156
+      Distance: 58.28104782104492
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -610,10 +662,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4603981375694275
+      Pitch: 0.8703974485397339
       Target Frame: hamilton/body
       Value: Orbit (rviz)
-      Yaw: 3.083578109741211
+      Yaw: 1.918589472770691
     Saved: ~
 Window Geometry:
   Displays:
@@ -629,7 +681,7 @@ Window Geometry:
     collapsed: false
   ManipulationApprovalPanel:
     collapsed: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000039900000784fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c0000039e0000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c0100000404000002350000016800fffffffb0000000a0049006d00610067006501000006430000019d0000002000ffffff0000000100000a7700000784fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000005c000004f50000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c000000055b0000013a0000013200fffffffb0000001a0044007300670053007400610074007300500061006e0065006c000000069f00000141000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000f000000005efc0100000002fb0000000800540069006d0065010000000000000f00000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000b5d0000078400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000038e00000784fc020000000afb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c0000039e0000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c0100000404000002350000016800fffffffb0000000a0049006d00610067006501000006430000019d0000002000ffffff0000000100000a7700000784fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000005c000004f50000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c000000055b0000013a0000013200fffffffb0000001a0044007300670053007400610074007300500061006e0065006c000000069f00000141000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000f000000005efc0100000002fb0000000800540069006d0065010000000000000f00000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000b680000078400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -639,5 +691,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 3840
-  X: 0
+  X: 3840
   Y: 0

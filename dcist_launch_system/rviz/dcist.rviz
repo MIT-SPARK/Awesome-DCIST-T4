@@ -175,6 +175,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: hydra_visualizer/graph
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: AWCD Changes
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: awcd_visualizer/changed_objects
+      Value: true
     - Class: kimera_pgmo_rviz/MeshDisplay
       Cull Backfaces: true
       Enable Lighting: false
