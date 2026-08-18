@@ -30,6 +30,8 @@ active_window:
     min_range: 0.05
     instance_id: true
     verbosity: 1
+    outlier_filter:
+      enabled: false
   tracker:
     type: MaxIouTracker
     track_by: pixels
@@ -76,6 +78,12 @@ active_window:
       added_probability_threshold: 0.8
       added_min_frames_observed: 3
       added_prune_after_frames: 50
+      enable_added_object_merging: true
+      merge_bbox_iou_threshold: 0.2
+      merge_centroid_distance_threshold: 0.5
+      merge_min_semantic_cosine_sim: 0.7
+      reassociate_every_frame: false
+      bbox_merge_type: weighted_average
       enable_icp_refinement: true
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0

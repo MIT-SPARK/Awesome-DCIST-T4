@@ -6,6 +6,9 @@ backend:
   pgmo:
     add_initial_prior: false
 active_window:
+  object_detector:
+    outlier_filter:
+      enabled: false
   tracker:
     bbox_type: aabb
   object_extractor:
@@ -32,8 +35,16 @@ active_window:
       # Temporal EMA filter params for newly-added-object detection:
       added_ema_alpha: 0.5  # EMA smoothing factor
       added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
-      added_min_frames_observed: 3  # Min frames before a track can be declared added
+      added_min_frames_observed: 20  # Min frames before a track can be declared added
       added_prune_after_frames: 50  # Frames of no measurement before non-added tracks are pruned
+      # Track-to-object association: fold tracks that look like the same physical object into
+      # one persistent AddedObject before the added-object gate is applied.
+      enable_added_object_merging: true
+      merge_bbox_iou_threshold: 0.2  # 3D bbox IoU above which a track matches an object (<=0 disables)
+      merge_centroid_distance_threshold: 0.5  # [m] centroid distance below which a track matches an object (<=0 disables)
+      merge_min_semantic_cosine_sim: 0.7  # Min feature cosine sim required to match (AND'd with geometry)
+      reassociate_every_frame: false  # Sticky by default: a track keeps its first association
+      bbox_merge_type: weighted_average  # 'union' (grow to enclose) or 'weighted_average' (confidence-blended)
       enable_icp_refinement: true
       invert_roman_lc_transform: false
       icp_crop_radius: 10.0

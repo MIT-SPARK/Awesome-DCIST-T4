@@ -7,9 +7,11 @@ to the global `khronos_msgs/AwcdChanges` topic that every robot's
 bounding-box wireframes + text labels into RViz -- the base-station equivalent of
 `ActiveWindowChangeDetectorVisualizer` (khronos_ros), which only runs on-robot.
 
-Reports from all robots are accumulated into an `AwcdChangeStore` (see awcd_change_store.py)
-keyed by (robot_name, kind, obj_id) rather than rendered directly from the latest message, so
-the node retains per-robot provenance for future cross-robot filtering/merging.
+Reports from all robots are kept as a latest-message-per-robot snapshot in an `AwcdChangeStore`
+(see awcd_change_store.py), keyed by (robot_name, kind) rather than rendered directly inline, so
+the node retains per-robot provenance for future cross-robot filtering/merging -- but each robot's
+message fully replaces that robot's previous one, since the robot already publishes its complete,
+refined change set every time.
 """
 
 import time
@@ -17,18 +19,22 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import rclpy
-import spark_dsg
 import tf2_ros
 import yaml
 from geometry_msgs.msg import Point
 from hydra_ros import DsgSubscriber
+from khronos_msgs.msg import AwcdChanges
 from rclpy.node import Node
 from rclpy.time import Time
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
 
-from dcist_launch_system.awcd_change_store import ADDED, REMOVED, AwcdChangeStore, ChangeRecord
-from khronos_msgs.msg import AwcdChanges
+from dcist_launch_system.awcd_change_store import (
+    ADDED,
+    REMOVED,
+    AwcdChangeStore,
+    ChangeRecord,
+)
 
 RED = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
 GREEN = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
@@ -40,9 +46,13 @@ def _load_labelspace(filepath: str) -> Dict[int, str]:
     try:
         with open(filepath, "r") as f:
             data = yaml.safe_load(f)
-        return {int(entry["label"]): entry["name"] for entry in data.get("label_names", [])}
+        return {
+            int(entry["label"]): entry["name"] for entry in data.get("label_names", [])
+        }
     except (OSError, yaml.YAMLError, KeyError, TypeError) as exc:
-        raise RuntimeError(f"Failed to load labelspace from '{filepath}': {exc}") from exc
+        raise RuntimeError(
+            f"Failed to load labelspace from '{filepath}': {exc}"
+        ) from exc
 
 
 def _bbox_line_list_points(dimensions: np.ndarray) -> List[Point]:
@@ -58,18 +68,30 @@ def _bbox_line_list_points(dimensions: np.ndarray) -> List[Point]:
 
     zero = np.zeros(3)
     return [
-        p(zero), p(dx),
-        p(zero), p(dy),
-        p(dx), p(dx + dy),
-        p(dy), p(dx + dy),
-        p(dz), p(dx + dz),
-        p(dz), p(dy + dz),
-        p(dx + dz), p(dx + dy + dz),
-        p(dy + dz), p(dx + dy + dz),
-        p(zero), p(dz),
-        p(dx), p(dx + dz),
-        p(dy), p(dy + dz),
-        p(dx + dy), p(dx + dy + dz),
+        p(zero),
+        p(dx),
+        p(zero),
+        p(dy),
+        p(dx),
+        p(dx + dy),
+        p(dy),
+        p(dx + dy),
+        p(dz),
+        p(dx + dz),
+        p(dz),
+        p(dy + dz),
+        p(dx + dz),
+        p(dx + dy + dz),
+        p(dy + dz),
+        p(dx + dy + dz),
+        p(zero),
+        p(dz),
+        p(dx),
+        p(dx + dz),
+        p(dy),
+        p(dy + dz),
+        p(dx + dy),
+        p(dx + dy + dz),
     ]
 
 
@@ -85,11 +107,21 @@ class AwcdVisualizerNode(Node):
         self.declare_parameter("show_labels", True)
         self.declare_parameter("tf_fallback_identity", True)
 
-        self.target_frame = self.get_parameter("target_frame").get_parameter_value().string_value
-        changes_topic = self.get_parameter("changes_topic").get_parameter_value().string_value
-        self.line_width = self.get_parameter("line_width").get_parameter_value().double_value
-        self.text_scale = self.get_parameter("text_scale").get_parameter_value().double_value
-        self.show_labels = self.get_parameter("show_labels").get_parameter_value().bool_value
+        self.target_frame = (
+            self.get_parameter("target_frame").get_parameter_value().string_value
+        )
+        changes_topic = (
+            self.get_parameter("changes_topic").get_parameter_value().string_value
+        )
+        self.line_width = (
+            self.get_parameter("line_width").get_parameter_value().double_value
+        )
+        self.text_scale = (
+            self.get_parameter("text_scale").get_parameter_value().double_value
+        )
+        self.show_labels = (
+            self.get_parameter("show_labels").get_parameter_value().bool_value
+        )
         self.tf_fallback_identity = (
             self.get_parameter("tf_fallback_identity").get_parameter_value().bool_value
         )
@@ -100,6 +132,9 @@ class AwcdVisualizerNode(Node):
 
         self.graph = None
         self.store = AwcdChangeStore()
+        # Latest raw message per robot, so we can re-ingest (rebuild removed records) once the
+        # prior DSG arrives, without waiting for the robot's next (change-gated) publish.
+        self._latest_msgs: Dict[str, AwcdChanges] = {}
         # Marker ids emitted for each (robot_name, marker_ns) in the previous publish, so we can
         # emit DELETEs for ids that dropped out -- python equivalent of MarkerTracker::clearPrevious.
         self._prev_marker_ids: Dict[Tuple[str, str], set] = {}
@@ -115,13 +150,20 @@ class AwcdVisualizerNode(Node):
 
     def _on_dsg(self, header, graph):
         self.graph = graph
+        # Removed-object records need the prior DSG to resolve bboxes; re-ingest every cached
+        # message now so removed objects appear immediately instead of waiting for the next
+        # change-gated publish from each robot.
+        for msg in self._latest_msgs.values():
+            self._ingest(msg)
 
     def _lookup_prior_T_msg(self, msg_frame_id: str):
         """Return 4x4 transform target_frame_T_msg_frame, or identity + warn on TF failure."""
         if msg_frame_id == self.target_frame:
             return np.eye(4)
         try:
-            tf = self.tf_buffer.lookup_transform(self.target_frame, msg_frame_id, Time())
+            tf = self.tf_buffer.lookup_transform(
+                self.target_frame, msg_frame_id, Time()
+            )
         except tf2_ros.TransformException as exc:
             if not self.tf_fallback_identity:
                 return None
@@ -137,6 +179,10 @@ class AwcdVisualizerNode(Node):
         return _quat_trans_to_matrix(q.x, q.y, q.z, q.w, t.x, t.y, t.z)
 
     def _on_changes(self, msg: AwcdChanges):
+        self._latest_msgs[msg.robot_name] = msg
+        self._ingest(msg)
+
+    def _ingest(self, msg: AwcdChanges):
         transform = self._lookup_prior_T_msg(msg.header.frame_id)
         if transform is None:
             return
@@ -146,8 +192,10 @@ class AwcdVisualizerNode(Node):
         # so this never depends on graph availability.
         added_records = self._build_added_records(msg, transform)
 
-        if removed_records is not None:
-            self.store.update(msg.robot_name, REMOVED, removed_records)
+        # The message is authoritative for this robot -- always replace both slices, including
+        # with an empty removed list when the prior DSG isn't available yet, so no stale removed
+        # objects from an earlier message linger indefinitely.
+        self.store.update(msg.robot_name, REMOVED, removed_records)
         self.store.update(msg.robot_name, ADDED, added_records)
 
         self._publish_markers()
@@ -156,11 +204,10 @@ class AwcdVisualizerNode(Node):
         if self.graph is None:
             self.get_logger().warn(
                 "No prior DSG received yet; skipping removed objects from this message "
-                f"(robot={msg.robot_name}). The robot republishes its full history, so these "
-                "will be picked up once the prior DSG arrives.",
+                f"(robot={msg.robot_name}). These will be rebuilt once the prior DSG arrives.",
                 throttle_duration_sec=5.0,
             )
-            return None
+            return []
 
         now_ns = time.time_ns()
         records = []
@@ -183,7 +230,9 @@ class AwcdVisualizerNode(Node):
                 )
                 continue
 
-            center = _transform_point(transform, np.array(bbox.world_P_center, dtype=float))
+            center = _transform_point(
+                transform, np.array(bbox.world_P_center, dtype=float)
+            )
             dims = np.array(bbox.dimensions, dtype=float)
             semantic_label = getattr(attrs, "semantic_label", -1)
             records.append(
@@ -196,7 +245,9 @@ class AwcdVisualizerNode(Node):
                     dimensions=dims,
                     orientation=np.array([0.0, 0.0, 0.0, 1.0]),
                     semantic_label=int(semantic_label),
-                    confidence=1.0,
+                    confidence=float(info.confidence),
+                    change_confidence=float(info.change_confidence),
+                    num_frames_observed=int(info.num_frames_observed),
                     last_seen_ns=now_ns,
                 )
             )
@@ -207,7 +258,8 @@ class AwcdVisualizerNode(Node):
         records = []
         for info in msg.added_objects:
             center = _transform_point(
-                transform, np.array([info.bbox_center.x, info.bbox_center.y, info.bbox_center.z])
+                transform,
+                np.array([info.bbox_center.x, info.bbox_center.y, info.bbox_center.z]),
             )
             dims = np.array(
                 [info.bbox_dimensions.x, info.bbox_dimensions.y, info.bbox_dimensions.z]
@@ -231,6 +283,8 @@ class AwcdVisualizerNode(Node):
                     orientation=orientation,
                     semantic_label=int(info.semantic_label),
                     confidence=float(info.confidence),
+                    change_confidence=float(info.change_confidence),
+                    num_frames_observed=int(info.num_frames_observed),
                     last_seen_ns=now_ns,
                 )
             )
@@ -240,8 +294,13 @@ class AwcdVisualizerNode(Node):
         if record.semantic_label < 0:
             label_name = "unknown"
         else:
-            label_name = self.labelspace.get(record.semantic_label, f"label_{record.semantic_label}")
-        return f"{record.robot_name} | {record.kind} {record.obj_id} | {label_name} ({record.confidence:.2f})"
+            label_name = self.labelspace.get(
+                record.semantic_label, f"label_{record.semantic_label}"
+            )
+        return (
+            f"{record.robot_name} | {record.kind} {record.obj_id} | {label_name} | "
+            f"cc={record.change_confidence:.2f} n={record.num_frames_observed}"
+        )
 
     def _publish_markers(self):
         array = MarkerArray()
@@ -291,7 +350,11 @@ class AwcdVisualizerNode(Node):
                         text.pose.position = Point(
                             x=float(record.center[0]),
                             y=float(record.center[1]),
-                            z=float(record.center[2] + record.dimensions[2] / 2.0 + self.text_scale),
+                            z=float(
+                                record.center[2]
+                                + record.dimensions[2] / 2.0
+                                + self.text_scale
+                            ),
                         )
                         text.text = self._label_text(record)
                         array.markers.append(text)
