@@ -2,7 +2,12 @@
 
 import numpy as np
 
-from dcist_launch_system.awcd_change_store import ADDED, REMOVED, AwcdChangeStore, ChangeRecord
+from dcist_launch_system.awcd_change_store import (
+    ADDED,
+    REMOVED,
+    AwcdChangeStore,
+    ChangeRecord,
+)
 
 
 def _record(robot_name, kind, obj_id, stamp_ns=100, last_seen_ns=1000):
@@ -16,6 +21,8 @@ def _record(robot_name, kind, obj_id, stamp_ns=100, last_seen_ns=1000):
         orientation=np.array([0.0, 0.0, 0.0, 1.0]),
         semantic_label=1,
         confidence=0.9,
+        change_confidence=0.75,
+        num_frames_observed=5,
         last_seen_ns=last_seen_ns,
     )
 
@@ -29,20 +36,31 @@ class TestAwcdChangeStore:
         assert len(records) == 1
         assert records[0].obj_id == 1
 
-    def test_update_preserves_first_observation_stamp(self):
+    def test_update_replaces_slice_wholesale(self):
         store = AwcdChangeStore()
         store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1, stamp_ns=100)])
-        # Republish with a different (later) stamp -- the latched first-observation time
-        # must not change.
+        # Republish with a different stamp -- the message is authoritative, so the new stamp
+        # must win (no latching/preservation across messages).
         store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1, stamp_ns=999)])
 
         records = store.records("hamilton", ADDED)
         assert len(records) == 1
-        assert records[0].stamp_ns == 100
+        assert records[0].stamp_ns == 999
+
+    def test_empty_update_clears_slice(self):
+        store = AwcdChangeStore()
+        store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1)])
+        store.update("hamilton", ADDED, [])
+
+        assert store.records("hamilton", ADDED) == []
 
     def test_update_drops_ids_no_longer_reported(self):
         store = AwcdChangeStore()
-        store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1), _record("hamilton", ADDED, 2)])
+        store.update(
+            "hamilton",
+            ADDED,
+            [_record("hamilton", ADDED, 1), _record("hamilton", ADDED, 2)],
+        )
         store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1)])
 
         ids = {r.obj_id for r in store.records("hamilton", ADDED)}
@@ -54,7 +72,10 @@ class TestAwcdChangeStore:
         store.update("lewis", ADDED, [_record("lewis", ADDED, 5)])
 
         assert len(store.records(kind=ADDED)) == 2
-        assert {r.robot_name for r in store.records(kind=ADDED)} == {"hamilton", "lewis"}
+        assert {r.robot_name for r in store.records(kind=ADDED)} == {
+            "hamilton",
+            "lewis",
+        }
         assert store.robots() == ["hamilton", "lewis"]
 
     def test_added_and_removed_do_not_collide_on_same_id(self):
