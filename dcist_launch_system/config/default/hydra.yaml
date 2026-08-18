@@ -29,7 +29,6 @@ active_window:
     min_object_volume: 0.01
     max_range: 10.0
     min_range: 0.05
-    instance_id: true
     verbosity: 1
   tracker:
     type: MaxIouTracker
@@ -37,7 +36,6 @@ active_window:
     bbox_type: aabb
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
-    temporal_window: 3.0
     min_num_observations: 10
     verbosity: 0
   object_extractor:

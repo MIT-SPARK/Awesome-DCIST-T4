@@ -5,12 +5,13 @@ map_frame: $<env ADT4_ROBOT_NAME>/odom
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
+labelspace: {type: from_msg}
 input:
   type: RosInput
   max_receiver_queue_size: 1
   inputs:
     camera:
-      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
+      receiver: {type: InstanceImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
         min_range: 0.2
@@ -28,7 +29,6 @@ active_window:
     min_object_volume: 0.01
     max_range: 10.0
     min_range: 0.05
-    instance_id: true
     verbosity: 1
     outlier_filter:
       enabled: false
@@ -38,7 +38,6 @@ active_window:
     bbox_type: aabb
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
-    temporal_window: 3.0
     min_num_observations: 10
     verbosity: 0
   object_extractor:
@@ -76,7 +75,7 @@ active_window:
       removal_min_frames_observed: 3
       added_ema_alpha: 0.5
       added_probability_threshold: 0.8
-      added_min_frames_observed: 3
+      added_min_frames_observed: 20
       added_prune_after_frames: 50
       enable_added_object_merging: true
       merge_bbox_iou_threshold: 0.2
