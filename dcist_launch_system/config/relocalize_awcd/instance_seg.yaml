@@ -9,10 +9,7 @@ model:
       - bag
       - table
       - tree
-      - car
-      - van
-      - truck
-      - bus
+      - vehicle
       - bicycle
       - door
       - pole

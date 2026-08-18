@@ -1,8 +1,6 @@
-model:
+model: 
   instance_model:
-    type: yoloe
-    model_name: yoloe-26m-seg.pt
-    text_prompt:
+    text_prompt: !reset
       - ignore
       - chair
       - cone
@@ -27,5 +25,3 @@ model:
       - ball
       - porta potty
       - roadblock
-    confidence_threshold: 0.3
-    min_segmentation_size: 0
