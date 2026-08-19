@@ -19,9 +19,6 @@
 [submodule "hydra"]
 	path = hydra
 	url = git@github.com:MIT-SPARK/Hydra.git
-[submodule "hydra_ros"]
-	path = hydra_ros
-	url = git@github.com:MIT-SPARK/Hydra-ROS.git
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
