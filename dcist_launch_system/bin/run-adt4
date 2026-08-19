@@ -209,7 +209,7 @@ def _make_record_window(info: SessionInfo):
 
 
 def _make_bag_window(info: SessionInfo):
-    to_drop = [".*leg.*", ".*foot.*", ".*rail.*"]
+    to_drop = [".*leg.*", ".*foot.*", ".*rail.*", ".*map.*"]
     if info.trajectory:
         to_drop.append(".*odom.*")
 
