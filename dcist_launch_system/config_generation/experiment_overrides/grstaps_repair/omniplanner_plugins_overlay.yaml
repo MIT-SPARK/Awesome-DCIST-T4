@@ -1,0 +1,33 @@
+---
+# GRSTAPS-X wired into the plan-repair flow.
+#
+# goal_format: constrained_pddl makes the plugin subscribe ConstrainedPddlGoalMsg
+# on grstaps_planner/pddl_goal, which is what the goal manager forwards (see
+# planner_goal_topic in planning_repair_grstaps.yaml). The heracles repair agent
+# is unchanged: it publishes to commanded_goal and never names a planner.
+#
+# Self-contained rather than a delta on the grstaps overlay -- config inheritance
+# resolves only leaf keys, so a parent config contributes no override files.
+#
+# Paths come from the ADT4_GRSTAPS_* / ADT4_GUROBI_* environment variables
+# (see GrstapsDomain), so nothing machine-specific belongs here.
+planners:
+  grstaps_planner:
+    plugin:
+      type: Grstaps
+      run_mode: native
+      goal_format: constrained_pddl
+      # The ITAGS entry point, so `before` constraints become precedence pairs.
+      # On the pddl entry an instruction-level ordering between two unrelated
+      # targets cannot be encoded at all -- a PDDL goal is a conjunction of
+      # end-state facts with no notion of sequence.
+      entry: itags
+      # hilbert is declared `simulated-spot` in the shared robot registry, which
+      # maps to the `spot` species: ground + sensor, no manipulator. Relocation
+      # tasks demand a manipulator, so with only hilbert in the fleet ITAGS
+      # correctly finds no allocation and the goal fails.
+      #
+      # Overriding here rather than editing the registry keeps every other
+      # experiment seeing hilbert as it really is.
+      robot_species:
+        hilbert: spot_arm

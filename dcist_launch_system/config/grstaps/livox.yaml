@@ -1,0 +1,8 @@
+/**:
+  ros__parameters:
+    xfer_format: 0
+    multi_topic: 0
+    data_src: 0
+    publish_freq: 10.0
+    output_data_type: 0
+    cmdline_input_bd_code: livox0000000001
