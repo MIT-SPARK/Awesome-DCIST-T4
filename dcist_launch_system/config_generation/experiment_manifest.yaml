@@ -15,6 +15,9 @@ launch_configs:
   plan_prior_heracles: [main, heracles_prior_dsg, planning]
   plan_prior_repair: [main, prior_dsg, planning_repair]
   plan_prior_heracles_repair: [main, heracles_prior_dsg_repair, planning_repair]
+  # Same repair flow, but the goal manager forwards to the GRSTAPS-X plugin.
+  plan_prior_repair_grstaps: [main, prior_dsg, planning_repair_grstaps]
+  plan_prior_heracles_repair_grstaps: [main, heracles_prior_dsg_repair_grstaps, planning_repair_grstaps]
 # Configs build the set of rosparams that will be loaded
 configs:
   default: []
@@ -25,6 +28,12 @@ configs:
   relocalize: []
   apollo_relocalize: [relocalize]
   indoor_regions: [indoor, regions]
+  grstaps: [prior_dsg]
+  # Same planner, but listening for the repair flow's ConstrainedPddlGoalMsg
+  # instead of a plain point list. Kept as its own config rather than inheriting
+  # grstaps: resolve_override_dirs only collects leaf keys, so a non-leaf parent
+  # contributes no overrides and the overlay has to stand alone anyway.
+  grstaps_repair: [prior_dsg]
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
@@ -104,6 +113,18 @@ experiments:
     config: [classic]
 
   # development — offline/simulation experiments
+  spot_grstaps:
+    launch_config: [plan_prior, spot_sim]
+    config: [grstaps]
+  spot_grstaps_repair:
+    launch_config: [plan_prior_repair_grstaps, spot_sim]
+    config: [grstaps_repair]
+  spot_grstaps_heracles_repair:
+    launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
+    config: [grstaps_repair]
+  base_station_grstaps_heracles_repair:
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status]
+    config: [grstaps_repair]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
     config: [prior_dsg]
