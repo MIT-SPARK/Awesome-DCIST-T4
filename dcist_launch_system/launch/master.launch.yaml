@@ -341,6 +341,19 @@ launch:
   # and are silently dropped.
   - arg: {name: executor_robot_name, default: $(var robot_name)}
 
+  # Which planner plugin the goal manager forwards a goal to, as the plugin's
+  # subscription path under omniplanner_node. The goal manager only decides
+  # whether a replan is needed; it is indifferent to who does the planning, so
+  # pointing this at a different plugin is all it takes to repair against a
+  # different planner. Must name a plugin that subscribes ConstrainedPddlGoalMsg.
+  - arg: {name: planner_goal_topic, default: multi_robot_pddl_constrained/pddl_goal}
+
+  # Where the chosen planner publishes its schedule, if it produces one. Plugin
+  # *subscriptions* are namespaced under the plugin name by omniplanner_node,
+  # but publications a plugin creates itself are not -- same as
+  # plan_visited_pois above -- so this is unprefixed.
+  - arg: {name: planner_schedule_topic, default: task_schedule}
+
   # Original omniplanner (no plan repair / constraints)
   - pyenv_node:
       if: $(var launch_omniplanner)
@@ -380,7 +393,7 @@ launch:
       pyenv: $(var spark_env)
       remap:
         - {from: ~/commanded_goal,    to: /$(var robot_name)/commanded_goal}
-        - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/multi_robot_pddl_constrained/pddl_goal}
+        - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/$(var planner_goal_topic)}
         # Published per robot in the plan, so on a base station it is the robot's name.
         - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
         # A goal the planner rejects: resume the executor it paused.
@@ -388,6 +401,10 @@ launch:
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
         - {from: ~/operator_display,  to: rviz2_node/llm_response}
         - {from: ~/operator_alert,    to: /$(var robot_name)/plan_repair/alert}
+
+        # Temporal planners publish a schedule alongside the plan; planners
+        # that do not simply never publish here and the horizon check stays inert.
+        - {from: ~/plan_schedule,     to: /$(var robot_name)/omniplanner_node/$(var planner_schedule_topic)}
         - {from: ~/executor_pause,    to: /$(var executor_robot_name)/spot_executor_node/pause}
         - {from: ~/executor_resume,   to: /$(var executor_robot_name)/spot_executor_node/resume}
 

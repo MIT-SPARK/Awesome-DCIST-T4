@@ -1,0 +1,36 @@
+/**:
+  ros__parameters:
+    debug: 1
+    save:
+      mask: 3103
+      device: 4
+    device: /dev/gps0
+    frame_id: $(var robot_name)/gps
+    rate: 1.0
+    nav_rate: 1
+    dynamic_model: portable
+    fix_mode: auto
+    enable_ppp: false
+    dr_limit: 0
+    tmode3: 0
+    sv_in:
+      reset: false
+      min_dur: 300
+      acc_lim: 3.0
+    uart1:
+      baudrate: 19200
+      in: 32
+      out: 0
+    gnss:
+      glonass: true
+      beidou: false
+      qzss: true
+    dgnss_mode: 3
+    inf:
+      all: true
+    publish:
+      all: true
+      aid:
+        hui: false
+      nav:
+        posecef: false
