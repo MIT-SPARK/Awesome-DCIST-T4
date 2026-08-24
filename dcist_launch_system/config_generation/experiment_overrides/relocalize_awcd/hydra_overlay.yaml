@@ -24,7 +24,7 @@ active_window:
       save_pointcloud: true
       pointcloud_frame: robot
     - type: ActiveWindowChangeDetector
-      verbosity: 3
+      verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_vertex_free_ratio_threshold: 0.8
       added_object_containment_threshold: 0.8
@@ -46,11 +46,19 @@ active_window:
       reassociate_every_frame: false  # Sticky by default: a track keeps its first association
       bbox_merge_type: weighted_average  # 'union' (grow to enclose) or 'weighted_average' (confidence-blended)
       enable_icp_refinement: true
-      invert_roman_lc_transform: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
       icp_downsampling_resolution: 0.2
       icp_max_correspondence_distance: 1.0
+      icp_max_iterations: 50  # small_gicp default (20) + its 1mm/0.1deg step-size tolerance rarely
+                               # settles for noisy TSDF-mesh registration even with a good fit 
+  #                              small_gicp's own default (20) combined with
+  #  *        its tight default convergence tolerance (1mm translation / 0.1 deg rotation step size,
+  #  *        see TerminationCriteria) rarely settles for noisy TSDF-mesh-to-mesh registration even
+  #  *        when the fit is otherwise good (high inlier count) — raise this before loosening
+  #  *        max_correspondence_distance if registration reports converged=false with plenty of
+  #  *        inliers.
+                               
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
