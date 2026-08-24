@@ -79,6 +79,7 @@ launch:
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
         # hard-coded top level name to avoid extra $(var robot_name)_zed topic
         - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
+        - {from: labelspace, to: /$(var robot_name)/labelspace}
 
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
@@ -95,10 +96,10 @@ launch:
         - {from: ~/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
         - {from: ~/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
         - {from: ~/status, to: ros_system_monitor/hydra/status}
+        - {from: ~/labelspace, to: labelspace}
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/labelspaces/$(var labelspace_name).yaml
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
@@ -339,6 +340,20 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml, allow_substs: true}
       remap:
         - {from: ~/dsg_out, to: hydra/backend/dsg}
+
+  # AWCD Visualizer (base station: draws changed-object bboxes from all robots into rviz)
+  - arg: {name: launch_awcd_visualizer, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_awcd_visualizer)
+      pkg: dcist_launch_system
+      exec: awcd_visualizer_node
+      name: awcd_visualizer
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_visualizer.yaml, allow_substs: true}
+      remap:
+        - {from: ~/dsg_in, to: hydra/backend/dsg}
 
   # Prior Mesh Publisher
   - arg: {name: launch_mesh_publisher, default: 'false'}
