@@ -5,12 +5,13 @@ map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
 map_window: {type: spatial, max_radius_m: 14.0}
+labelspace: {type: from_msg}
 input:
   type: RosInput
   max_receiver_queue_size: 1
   inputs:
     camera:
-      receiver: {type: ClosedSetImageReceiver, queue_size: 30}
+      receiver: {type: InstanceImageReceiver, queue_size: 30}
       sensor:
         type: camera_info
         min_range: 0.2

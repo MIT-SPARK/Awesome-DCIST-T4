@@ -1,3 +1,4 @@
+---
 networks:
   mit_wifi:
     subnet: 10.29.0.0/16
@@ -95,9 +96,7 @@ ssh:
   base_station_user: rrg
   robot_user: swarm
 fleet_defaults:
-  spot_platforms:
-  - smaug
-  - topaz
+  spot_platforms: [smaug, topaz]
   sessions:
     mapping:
       spot: spot-default
