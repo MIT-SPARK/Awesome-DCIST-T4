@@ -1,0 +1,15 @@
+---
+map_window: {type: spatial, max_radius_m: 8.0}
+input:
+  sensor:
+    max_range: 5.0
+active_window:
+  volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: true}
+  type: ActiveWindow
+  min_output_separation: 0.5
+  object_detector: {max_range: 5.0}
+frontend:
+  traversability_places:
+    clustering: {max_radius: 2.0}
+backend:
+  min_mesh_separation_s: 1.0
