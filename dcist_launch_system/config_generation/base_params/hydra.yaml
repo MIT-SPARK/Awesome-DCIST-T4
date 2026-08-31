@@ -14,37 +14,21 @@ input:
   max_receiver_queue_size: 1
   inputs:
     camera:
-      receiver: {type: InstanceImageReceiver, queue_size: 30}
+      receiver: {type: InstanceImageReceiver, verbosity: 1, queue_size: 30, filters: [{type: InvalidDepthFilter, max_invalid_ratio: 0.3}]}
       sensor: {type: camera_info, min_range: 0.2, max_range: 10.0, extrinsics: {type: ros}}
 active_window:
   type: ActiveWindow
+  min_output_separation: 0.5
   volumetric_map: {voxels_per_side: 16, voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
-  min_output_separation: 0.5
-  object_detector: {type: InstanceForwarding, min_cluster_size: 30, max_range: 10.0, min_range: 0.05, verbosity: 1}
+  object_detector: {type: InstanceForwarding, min_cluster_size: 30, max_range: 10.0, min_range: 0.05, verbosity: 1, instance_filter: {type: CategoryFilter}}
   tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0}
-  object_extractor:
-    type: MeshObjectExtractor
-    verbosity: 0
-    min_object_allocation_confidence: 0.5
-    min_object_volume: 0.005  # m^3
-    max_object_volume: 100.0  # m^3
-    min_dynamic_displacement: 1  # m
-    only_extract_reconstructed_objects: true
-    min_object_reconstruction_confidence: 0.5
-    min_object_reconstruction_observations: 10
-    object_reconstruction_resolution: -0.05  # Positive: voxel size in meters.
-    visualizer_classification: false
-    projective_integrator:
-      num_threads: 8
+  object_extractor: {type: MeshObjectExtractor, projective_integrator: {num_threads: 8}, object_reconstruction_resolution: -0.05}
   khronos_sinks:
     - type: ActiveWindowVisualizer
   sinks:
-    - type: TsdfOccupancyPublisher
-      min_distance: 0.25
-      use_relative_height: true
-      slice_height: 0.25
-      num_slices: 4
+    - {type: ReconstructionVisualizer}
+    - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false
@@ -60,17 +44,8 @@ frontend:
   traversability_places:
     type: traversability
     layer: MESH_PLACES
-    estimator:
-      type: HeightTraversabilityEstimator
-      height_below: 0
-      height_above: 0.5
-      min_confidence: 1.0
-      min_traversability: 1.0
-      pessimistic: true
-    clustering:
-      type: RegionGrowingTraversabilityClustering
-      max_radius: 4.0
-      num_orientation_bins: 20
+    estimator: {type: HeightTraversabilityEstimator, height_below: 0, height_above: 0.5, min_confidence: 1.0, min_traversability: 1.0, pessimistic: true}
+    clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0, num_orientation_bins: 20}
     sinks:
       - type: TraversabilityVisualizer
 backend:
@@ -85,12 +60,7 @@ backend:
   optimize_on_lc: true
   update_functors:
     agents: {type: UpdateAgentsFunctor}
-    objects:
-      type: GenericUpdateFunctor
-      verbosity: 0
-      layer: OBJECTS
-      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}
-      merge_proposer: {strategy: {type: Pairwise}}
+    objects: {type: GenericUpdateFunctor, layer: OBJECTS, node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}, merge_proposer: {strategy: {type: Pairwise}}}
     traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}
   pgmo:
     run_mode: FULL

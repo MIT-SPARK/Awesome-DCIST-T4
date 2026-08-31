@@ -34,7 +34,7 @@ renderer:
       visualize: true
       nodes: {scale: 0.2, color: {type: UniformColorAdapter, color: [0, 0, 0]}, alpha: 0.9, use_sphere: true}
       text: {draw: true, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
-      edges: {scale: 0.1, alpha: 0.8, color: {type: UniformColorAdapter, color: [0, 0, 0]}}
+      edges: {scale: 0.1, alpha: 0.8}
   interlayer_edges:
     - {from: 3*, to: 2p*, draw: false}
     - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
