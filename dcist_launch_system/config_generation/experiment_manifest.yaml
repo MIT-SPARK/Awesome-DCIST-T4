@@ -17,6 +17,7 @@ launch_configs:
 configs:
   default: []
   classic: []
+  indoor: []
   prior_dsg: []
   relocalize: []
   apollo_relocalize: [relocalize]
@@ -50,7 +51,7 @@ experiments:
     config: [default]
   spot_bag:
     launch_config: [bag_map, spot_bag]
-    config: [default]
+    config: [default, indoor]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize]

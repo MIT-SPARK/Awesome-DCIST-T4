@@ -75,7 +75,7 @@ backend:
   serialize_dsg_mesh: false
   min_dsg_separation_s: 1
   publish_mesh: true
-  min_mesh_separation_s: 1
+  min_mesh_separation_s: 10
   add_places_to_deformation_graph: false
   optimize_on_lc: false
   update_functors:
