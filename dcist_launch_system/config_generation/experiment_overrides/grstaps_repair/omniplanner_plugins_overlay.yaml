@@ -31,3 +31,12 @@ planners:
       # experiment seeing hilbert as it really is.
       robot_species:
         hilbert: spot_arm
+      # An inspection is a joint task, and its default coalition is a ground
+      # robot plus a UAV. This fleet has no UAV, so that team can never be
+      # fielded and every inspection goal would fail to allocate. Two ground
+      # robots is what the Spots here can actually provide. Huskies are left
+      # out of GRSTAPS-X plans entirely (UNPLANNABLE_ROBOT_TYPES): the phoenix
+      # executor ignores plan ordering, so a partner would wait on one forever.
+      inspect_requirement:
+        ground: 2
+        sensor: 2
