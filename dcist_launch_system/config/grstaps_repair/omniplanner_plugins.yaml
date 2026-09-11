@@ -73,3 +73,6 @@ planners:
       entry: itags
       robot_species:
         hilbert: spot_arm
+      inspect_requirement:
+        ground: 2
+        sensor: 2
