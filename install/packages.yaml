@@ -4,6 +4,10 @@ repositories:
     type: git
     url: https://github.com/MIT-SPARK/pose_graph_tools.git
     version: ros2
+  small_gicp:  # added by Nathan for Khronos
+    type: git
+    url: https://github.com/koide3/small_gicp.git
+    version: master
   spark_config:  # added by Nathan for ros_system_monitor
     type: git
     url: https://github.com/MIT-SPARK/Spark-Config.git
