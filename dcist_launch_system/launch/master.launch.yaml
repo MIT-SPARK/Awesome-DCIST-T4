@@ -385,6 +385,8 @@ launch:
         # name, /<robot>/spot_executor_node/...) to pause for the next goal.
         - {from: ~/plan_visited_pois, to: /$(var robot_name)/omniplanner_node/plan_visited_pois_all}
         - {from: ~/plan_robots, to: /$(var robot_name)/omniplanner_node/plan_robots}
+        # Fleet-wide coverage from planners that report it.
+        - {from: ~/plan_coverage, to: /$(var robot_name)/omniplanner_node/plan_covered_pois}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed, to: /$(var robot_name)/omniplanner_node/plan_failed}
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
