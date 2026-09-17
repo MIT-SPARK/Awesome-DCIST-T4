@@ -396,6 +396,9 @@ launch:
         - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/$(var planner_goal_topic)}
         # Published per robot in the plan, so on a base station it is the robot's name.
         - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
+        # Fleet-wide coverage from planners that report it: the per-robot topic
+        # above carries only this robot's share of a multi-robot plan.
+        - {from: ~/plan_coverage,     to: /$(var robot_name)/omniplanner_node/plan_covered_pois}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed,    to: /$(var robot_name)/omniplanner_node/plan_failed}
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
