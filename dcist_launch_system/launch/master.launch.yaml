@@ -81,6 +81,22 @@ launch:
         - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
         - {from: labelspace, to: /$(var robot_name)/labelspace}
 
+  # CLIP Features
+  - arg: {name: launch_clip_features, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_clip_features)
+      pkg: semantic_inference_ros
+      exec: image_embedding_node
+      name: image_embedding_node
+      namespace: $(var camera)
+      pyenv: $(env HOME)/.semantic_inference/env
+      param:
+        - name: config
+          value: '{model: {model_name: ViT-L/14}, worker: {min_separation_s: 0.1}}'
+          type: str
+      remap:
+        - {from: color/image_raw, to: rgb/image_rect_color}
+
   # Hydra
   - arg: {name: launch_hydra, default: 'false'}
   - node:
@@ -95,6 +111,8 @@ launch:
         - {from: ~/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
         - {from: ~/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
         - {from: ~/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
+        - {from: ~/input/camera/semantic/feature, to: $(var camera)/semantic/feature}
+        - {from: ~/regions/embed, to: $(var camera)/semantic/embed}
         - {from: ~/status, to: ros_system_monitor/hydra/status}
         - {from: ~/labelspace, to: labelspace}
       args: >-
@@ -224,7 +242,6 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/spot_twist_node.yaml, allow_substs: true}
 
-
   # Spot state publisher
   - arg: {name: launch_spot_state_publisher, default: 'false'}
   - let: {name: robot_color, value: $(if $(eval '"$(var robot_name)" == "hamilton"') yellow purple)}
@@ -298,7 +315,7 @@ launch:
 
   # Rviz
   - arg: {name: launch_rviz, default: 'false'}
-  - arg: {name: rviz_config, default: '$(find-pkg-share dcist_launch_system)/rviz/dcist.rviz'}
+  - arg: {name: rviz_config, default: $(find-pkg-share dcist_launch_system)/rviz/dcist.rviz}
   - node:
       if: $(var launch_rviz)
       pkg: rviz2
