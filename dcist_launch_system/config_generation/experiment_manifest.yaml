@@ -19,6 +19,7 @@ configs:
   classic: []
   indoor: []
   prior_dsg: []
+  regions: []
   relocalize: []
   apollo_relocalize: [relocalize]
 # Variant names shown first in run-adt4 session selection
@@ -58,6 +59,9 @@ experiments:
   spot_no_relocalize:
     launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]
+  spot_regions:
+    launch_config: [core, status, hydra_regions, rviz, spot_bag]
+    config: [regions]
 
   # phoenix — require Phoenix hardware or bag playback
   phoenix:
