@@ -17,11 +17,12 @@ input:
         extrinsics: {type: ros}
       receiver:
         type: ImageReceiver
+        verbosity: 1
         semantics_type: instance
         use_exact: true
         queue_size: 30
         filters:
-          - {type: InvalidDepthFilter, max_invalid_ratio: 0.3}
+          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
