@@ -81,4 +81,4 @@ renderer:
         - {type: RegionGrowingBoundaryPlugin, fill_boundaries: true, fill_alpha: 0.3}
     - layer: 3p1
       plugins:
-        - {type: RegionGrowingBoundaryPlugin, fill_boundaries: true, fill_alpha: 0.3}
+        - {type: RegionGrowingBoundaryPlugin, use_node_color: true, fill_boundaries: true, fill_alpha: 0.3}
