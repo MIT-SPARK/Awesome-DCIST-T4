@@ -36,7 +36,7 @@ active_window:
     min_range: 0.05
     verbosity: 1
     instance_filter: {type: CategoryFilter}
-  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0}
+  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, bbox_type: raabb}
   object_extractor:
     type: MeshObjectExtractor
     projective_integrator: {num_threads: 8}
