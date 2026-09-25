@@ -80,7 +80,9 @@ frontend:
     sinks:
       - type: TraversabilityVisualizer
   keyframe_selector:
-    feature_selector: {type: average, max_range_difference_m: 0.5}
+    type: KeyframeSelector
+    max_range_difference_m: 0.5
+    feature_selector: {type: average}
 backend:
   type: BackendModule
   publish_backend_tf: true

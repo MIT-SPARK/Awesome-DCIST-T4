@@ -92,7 +92,7 @@ launch:
       pyenv: $(env HOME)/.semantic_inference/env
       param:
         - name: config
-          value: '{model: {model_name: ViT-L/14}, worker: {min_separation_s: 0.1}}'
+          value: '{model: {model_name: ViT-L/14}}'
           type: str
       remap:
         - {from: color/image_raw, to: rgb/image_rect_color}
