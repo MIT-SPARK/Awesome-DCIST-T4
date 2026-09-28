@@ -47,6 +47,9 @@ experiments:
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, apollo_relocalize]
+  spot_regions:
+    launch_config: [main, roman, hydra_regions, spot_real, sensors]
+    config: [regions]
   spot_data_collection:
     launch_config: [main, spot_real, sensors]
     config: [default]
@@ -56,12 +59,12 @@ experiments:
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize]
+  spot_bag_regions:
+    launch_config: [main, roman, hydra_regions, rviz, spot_bag]
+    config: [regions]
   spot_no_relocalize:
     launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]
-  spot_regions:
-    launch_config: [core, status, hydra_regions, rviz, spot_bag]
-    config: [regions]
 
   # phoenix — require Phoenix hardware or bag playback
   phoenix:
