@@ -4,7 +4,7 @@ config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
-map_window: {type: spatial, max_radius_m: 8.0}
+map_window: {type: spatial, max_radius_m: 10.0}
 labelspace: {type: from_msg}
 input:
   type: RosInput
@@ -76,7 +76,7 @@ frontend:
       min_traversability: 0.25
       pessimistic: true
       smoothing: true
-    clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 2.0}
+    clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 1.0}
     sinks:
       - type: TraversabilityVisualizer
   keyframe_selector:
