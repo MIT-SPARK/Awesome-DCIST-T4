@@ -69,11 +69,11 @@ frontend:
     layer: MESH_PLACES
     estimator:
       type: GradientTraversabilityEstimator
-      gradient_threshold: 0.5
+      gradient_threshold: 0.8
       height_below: 1.0
       height_above: 0.5
       min_confidence: 0.5
-      min_traversability: 0.1
+      min_traversability: 0.25
       pessimistic: true
       smoothing: true
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}

@@ -1,0 +1,7 @@
+---
+backend:
+  update_functors:
+    regions:
+      clustering:
+        queries:
+          prompts: [hallway, conference room, lounge, study area, kitchenette, office, lab]

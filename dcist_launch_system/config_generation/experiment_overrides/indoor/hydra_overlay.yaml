@@ -1,17 +1,7 @@
 ---
-map_window: {type: spatial, max_radius_m: 8.0}
-input:
-  inputs:
-    camera:
-      sensor:
-        max_range: 5.0
+map_window: {type: spatial, max_radius_m: 10.0}
+input: {inputs: {camera: {sensor: {max_range: 5.0}}}}
 active_window:
-  volumetric_map:
-    voxel_size: 0.1
-  object_detector:
-    max_range: 5.0
+  object_detector: {max_range: 5.0}
 frontend:
-  traversability_places:
-    clustering: {max_radius: 2.0}
-backend:
-  min_mesh_separation_s: 1.0
+  traversability_places: {clustering: {max_radius: 1.0}}
