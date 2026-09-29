@@ -4,10 +4,7 @@ on:
   merge_group:
     types: [checks_requested]
   pull_request:
-    branches:
-      - main
-      - develop
-
+    branches: [main, develop]
 jobs:
   Lint:
     runs-on: ubuntu-latest

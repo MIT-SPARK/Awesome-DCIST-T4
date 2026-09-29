@@ -17,9 +17,12 @@ launch_configs:
 configs:
   default: []
   classic: []
+  indoor: []
   prior_dsg: []
+  regions: []
   relocalize: []
   apollo_relocalize: [relocalize]
+  indoor_regions: [indoor, regions]
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
@@ -45,15 +48,21 @@ experiments:
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, apollo_relocalize]
+  spot_regions:
+    launch_config: [main, roman, hydra_regions, spot_real, sensors]
+    config: [regions, indoor_regions]
   spot_data_collection:
     launch_config: [main, spot_real, sensors]
     config: [default]
   spot_bag:
     launch_config: [bag_map, spot_bag]
-    config: [default]
+    config: [default, indoor]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize]
+  spot_bag_regions:
+    launch_config: [main, roman, hydra_regions, rviz, spot_bag]
+    config: [regions, indoor_regions]
   spot_no_relocalize:
     launch_config: [no_relocalize, spot_real, sensors]
     config: [relocalize]

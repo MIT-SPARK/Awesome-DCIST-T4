@@ -1,0 +1,9 @@
+---
+backend:
+  update_functors:
+    regions:
+      clustering:
+        max_delta: 0.015
+        top_k: 3
+        queries:
+          prompts: !replace [hallway, conference room, lounge, study area, kitchenette, office, lab]

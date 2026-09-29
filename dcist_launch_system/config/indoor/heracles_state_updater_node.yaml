@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    heracles_ip: $(env ADT4_HERACLES_IP)
+    heracles_port: $(env ADT4_HERACLES_PORT)
+    map_frame: map
+    robot_name: $(var robot_name)
+    publish_rate: 1.0

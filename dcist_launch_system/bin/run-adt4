@@ -48,6 +48,8 @@ class SessionInfo:
     sim_time: bool = False
     bag: Optional[pathlib.Path] = None
     bag_delay: float = 5.0
+    bag_start: Optional[float] = None
+    bag_rate: Optional[float] = None
     trajectory: Optional[pathlib.Path] = None
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
@@ -219,6 +221,12 @@ def _make_bag_window(info: SessionInfo):
     if info.sim_time:
         bag_args.append("--clock")
 
+    if info.bag_start:
+        bag_args += ["--start-offset", f"{info.bag_start}"]
+
+    if info.bag_rate:
+        bag_args += ["--rate", f"{info.bag_rate}"]
+
     window_config = {
         "layout": "tiled",
         "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
@@ -289,6 +297,8 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 @click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
+@click.option("--bag-start", type=float, help="bag start offset")
+@click.option("--bag-rate", type=float, help="bag playback rate")
 @click.option(
     "--trajectory",
     "-t",
@@ -321,6 +331,8 @@ def main(
     show_tmux,
     bag,
     bag_delay,
+    bag_start,
+    bag_rate,
     trajectory,
     trajectory_args,
     record,
@@ -364,6 +376,8 @@ def main(
         sim_time=sim_time,
         bag=_normalize_optional(bag),
         bag_delay=bag_delay,
+        bag_start=bag_start,
+        bag_rate=bag_rate,
         trajectory=_normalize_optional(trajectory),
         record=record,
     )

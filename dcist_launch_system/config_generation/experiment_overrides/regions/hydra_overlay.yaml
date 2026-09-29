@@ -1,0 +1,22 @@
+---
+input: {inputs: {camera: {receiver: {with_feature: true}}}}
+frontend:
+  keyframe_selector: {type: KeyframeSelector, max_range_difference_m: 0.5, feature_selector: {type: average}}
+backend:
+  update_functors:
+    regions:
+      type: OpenVocabRegionsUpdateFunctor
+      source_layer: MESH_PLACES
+      clustering:
+        type: AgglomerativeIBClustering
+        verbosity: 1
+        max_delta: 0.02
+        score_threshold: 0.21
+        top_k: 2
+        cumulative: true
+        null_task_preprune: true
+        queries:
+          type: RosEmbeddingGroup
+          ns: ~/regions
+          verbosity: 1
+          prompts: [parking lot, building, intersection, field, bridge, road]

@@ -1,0 +1,10 @@
+---
+renderer:
+  layers:
+    3p1:
+      nodes: {color: {type: ParentColorAdapter, colormap: {palette: {type: colorbrewer}}}}
+      text: {draw: false}
+  layer_plugins: !replace
+    - layer: 3p1
+      plugins:
+        - {type: RegionGrowingBoundaryPlugin, use_node_color: true, fill_boundaries: true, fill_alpha: 0.3}
