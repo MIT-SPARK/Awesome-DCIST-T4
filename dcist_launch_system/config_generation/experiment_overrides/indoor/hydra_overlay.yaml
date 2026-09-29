@@ -4,4 +4,4 @@ input: {inputs: {camera: {sensor: {max_range: 5.0}}}}
 active_window:
   object_detector: {max_range: 5.0}
 frontend:
-  traversability_places: {clustering: {max_radius: 1.0}}
+  traversability_places: {clustering: {max_radius: 1.5}}

@@ -65,7 +65,7 @@ renderer:
         adapter: {type: IdTextAdapter}
         height: 0.5
         scale: 0.45
-      edges: {scale: 0.1, alpha: 0.8}
+      edges: {scale: 0.06, alpha: 0.5}
   interlayer_edges:
     - {from: 3*, to: 2p*, draw: false}
     - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
