@@ -48,7 +48,7 @@ experiments:
     config: [default]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
-    config: [relocalize, apollo_relocalize]
+    config: [relocalize, apollo_relocalize, relocalize_awcd]
   spot_regions:
     launch_config: [main, roman, hydra_regions, spot_real, sensors]
     config: [regions, indoor_regions]
@@ -60,7 +60,7 @@ experiments:
     config: [default, indoor]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
-    config: [relocalize]
+    config: [relocalize, relocalize_awcd]
   spot_bag_regions:
     launch_config: [main, roman, hydra_regions, rviz, spot_bag]
     config: [regions, indoor_regions]
@@ -74,7 +74,7 @@ experiments:
     config: [default]
   phoenix_relocalize:
     launch_config: [relocalize, phoenix_real, sensors]
-    config: [relocalize]
+    config: [relocalize, relocalize_awcd]
   phoenix_data_collection:
     launch_config: [main, phoenix_real, sensors]
     config: [default]
@@ -83,7 +83,7 @@ experiments:
     config: [default]
   phoenix_bag_relocalize:
     launch_config: bag_relocalize
-    config: [relocalize]
+    config: [relocalize, relocalize_awcd]
   phoenix_no_relocalize:
     launch_config: [no_relocalize, sensors]
     config: [relocalize]
@@ -103,11 +103,3 @@ experiments:
   spot_prior_dsg_heracles:
     launch_config: [plan_prior_heracles, spot_sim]
     config: [prior_dsg]
-
-  # awcd development experiments
-  spot_bag_relocalize_awcd:
-    launch_config: [bag_relocalize, spot_bag]
-    config: [relocalize_awcd]
-  phoenix_bag_relocalize_awcd:
-    launch_config: bag_relocalize
-    config: [relocalize_awcd]
