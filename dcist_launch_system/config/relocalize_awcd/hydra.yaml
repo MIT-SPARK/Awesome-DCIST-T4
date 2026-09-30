@@ -36,9 +36,7 @@ active_window:
     min_range: 0.05
     verbosity: 1
     instance_filter: {type: CategoryFilter}
-    outlier_filter:
-      enabled: false
-  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, preassociate_by_id: true, bbox_type: aabb}
+  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, preassociate_by_id: true}
   object_extractor:
     type: MeshObjectExtractor
     projective_integrator: {num_threads: 8}
@@ -46,17 +44,8 @@ active_window:
     min_object_allocation_confidence: 0.3
     min_object_reconstruction_confidence: 0.3
     min_object_reconstruction_observations: 5
-    bbox_type: aabb
   khronos_sinks:
-    - type: ActiveWindowVisualizer
-      slice_height_is_relative: true
-      num_slices: 5
-      marker_opacity: 10
-      slice_distance_multiplier: 3
-    - type: ActiveWindowTrackSaver
-      output_directory: $<env ADT4_OUTPUT_DIR>/track_debug
-      save_pointcloud: true
-      pointcloud_frame: robot
+    - {type: ActiveWindowVisualizer}
     - type: ActiveWindowChangeDetector
       verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
@@ -91,87 +80,6 @@ active_window:
         - type: TfIcpPublisher
           pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
           odom_frame: ""
-        - type: ActiveWindowChangeDetectorVisualizer
-          bounding_box_line_width: 0.1
-          verbosity: 1
-          min_draw_period_s: 0.5
-          global_frame_name: map
-          plugins:
-            mesh:
-              use_color_adaptor: false
-          renderer:
-            layer_z_step: 2.0
-            collapse_layers: false
-            layers:
-              2:
-                z_offset_scale: 1.0
-                visualize: true
-                nodes:
-                  scale: 0.40
-                  color: {type: LabelColorAdapter}
-                  alpha: 0.8
-                  use_sphere: false
-                text:
-                  draw: true
-                  collapse: true
-                  adapter: {type: LabelIdTextAdapter}
-                  height: 0.5
-                  scale: 0.45
-                bounding_boxes: {draw: true, collapse: true, scale: 0.05, edge_scale: 0.05, alpha: 0.9, edge_break_ratio: 0.5}
-              4:
-                z_offset_scale: 3.0
-                visualize: true
-                nodes:
-                  scale: 0.6
-                  color:
-                    type: IdColorAdapter
-                    colormap: {palette: colorbrewer}
-                  alpha: 0.8
-                  use_sphere: false
-                text: {draw: true, height: 1.25, scale: 1.0}
-                edges: {scale: 0.1, alpha: 0.2}
-              2p*:
-                z_offset_scale: 0.0
-                visualize: true
-                nodes:
-                  scale: 0.1
-                  alpha: 1.0
-                  use_sphere: true
-                  color: {type: PartitionColorAdapter}
-                edges:
-                  scale: 0.1
-                  alpha: 1.0
-                  color: {type: ""}
-                text: {draw_layer: true, height: 0.9, scale: 0.8}
-              3p1:
-                z_offset_scale: 2.0
-                visualize: true
-                nodes:
-                  scale: 0.2
-                  color:
-                    type: UniformColorAdapter
-                    color: [0, 0, 0]
-                  alpha: 0.9
-                  use_sphere: true
-                text:
-                  draw: true
-                  adapter: {type: IdTextAdapter}
-                  height: 0.5
-                  scale: 0.45
-                edges:
-                  scale: 0.1
-                  alpha: 0.8
-                  color:
-                    type: UniformColorAdapter
-                    color: [0, 0, 0]
-            interlayer_edges:
-              - {from: 3*, to: 2p*, draw: false}
-              - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
-              - {from: 4, to: 3*, scale: 0.08, alpha: 0.5}
-            layer_plugins:
-              - layer: 3p1
-                plugins:
-                  - {type: RegionGrowingBoundaryPlugin}
         - type: ActiveWindowChangeDetectorPublisher
           topic: /awcd_changes
           robot_name: $<env ADT4_ROBOT_NAME>
@@ -202,20 +110,15 @@ frontend:
     layer: MESH_PLACES
     estimator:
       type: GradientTraversabilityEstimator
-      gradient_threshold: 0.5
-      height_above: 0.3
+      gradient_threshold: 0.8
       height_below: 1.0
+      height_above: 0.3
       min_confidence: 0.5
-      min_traversability: 0.1
+      min_traversability: 0.25
       pessimistic: true
       smoothing: true
       sinks:
-        - type: TsdfGradientOccupancyPublisher
-          gradient_threshold: 0.5
-          min_confidence: 0.5
-          probabilistic: false
-          use_relative_height: true
-          filter_disjoint: true
+        - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
     sinks:
       - type: TraversabilityVisualizer
