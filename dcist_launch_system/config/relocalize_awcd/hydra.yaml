@@ -43,6 +43,9 @@ active_window:
     type: MeshObjectExtractor
     projective_integrator: {num_threads: 8}
     object_reconstruction_resolution: -0.05
+    min_object_allocation_confidence: 0.3
+    min_object_reconstruction_confidence: 0.3
+    min_object_reconstruction_observations: 5
     bbox_type: aabb
   khronos_sinks:
     - type: ActiveWindowVisualizer

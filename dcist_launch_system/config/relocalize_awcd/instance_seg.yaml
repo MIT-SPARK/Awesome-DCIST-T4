@@ -4,13 +4,16 @@ model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
     text_prompt:
-      - ignore
+      - person
       - chair
       - cone
       - bag
       - table
       - tree
-      - vehicle
+      - car
+      - van
+      - truck
+      - bus
       - bicycle
       - door
       - pole
