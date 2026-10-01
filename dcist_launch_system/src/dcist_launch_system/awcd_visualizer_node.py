@@ -20,7 +20,6 @@ from typing import Dict, List, Tuple
 import numpy as np
 import rclpy
 import tf2_ros
-import yaml
 from geometry_msgs.msg import Point
 from hydra_ros import DsgSubscriber
 from khronos_msgs.msg import AwcdChanges
