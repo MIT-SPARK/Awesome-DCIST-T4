@@ -8,3 +8,8 @@
     # Resolved relative to heracles.resources (or put an absolute path)
     object_labelspace: ade20k_mit_label_space.yaml
     region_labelspace: b45_label_space.yaml
+    # Load the prior map into Neo4j before the first publish, so Neo4j is the
+    # only map and the JSON just fills it. Wipes the database, so it is off
+    # unless ADT4_NEO4J_SEED=true; the heracles repair sessions turn it on.
+    seed_on_start: $(env ADT4_NEO4J_SEED false)
+    seed_dsg_path: $(env ADT4_PRIOR_MAP '')/hydra/backend/dsg.json
