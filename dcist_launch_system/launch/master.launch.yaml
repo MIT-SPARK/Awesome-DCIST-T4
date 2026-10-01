@@ -38,28 +38,6 @@ launch:
         - {name: frame_id, value: $(var robot_name)/livox}
         - {name: user_config_path, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/livox.yaml}
 
-  # Efficient-ViT
-  - arg: {name: launch_semantic_inference, default: 'false'}
-  - node:
-      if: $(var launch_semantic_inference)
-      pkg: semantic_inference_ros
-      exec: closed_set_node
-      namespace: $(var camera)
-      name: semantic_inference
-      remap:
-        - {from: color/image_raw, to: rgb/image_rect_color}
-        # hard-coded top level namespace because of extra camera node namespace
-        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/semantic_inference/status}
-        # hard-coded top level name to avoid extra $(var robot_name)_zed topic
-        - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
-      args: >
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/models/$(var semantic_inference_model_name).yaml
-        --config-utilities-file $(find-pkg-share semantic_inference_ros)/config/label_groupings/$(var labelspace_name).yaml@output/recolor
-        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share semantic_inference_ros)/config/distinct_150_colors.csv}}}
-        --config-utilities-yaml {segmenter: {model: {model_file: $(var semantic_inference_model_name).onnx}}}
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/semantic_inference.yaml
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/semantic_inference_overrides.yaml
-
   # Instance Segmentation
   - arg: {name: launch_instance_segmentation, default: 'false'}
   - pyenv_node:
@@ -346,17 +324,31 @@ launch:
 
   # Scene Graph Publisher
   - arg: {name: launch_scene_graph_publisher, default: 'false'}
-  - pyenv_node:
+  - node:
       if: $(var launch_scene_graph_publisher)
-      pkg: dcist_launch_system
-      exec: prior_dsg_publisher_node
+      pkg: hydra_ros
+      exec: dsg_file_publisher
       name: prior_dsg_publisher
-      pyenv: $(var spark_env)
+      args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/prior_dsg_publisher.yaml, allow_substs: true}
       remap:
-        - {from: ~/dsg_out, to: hydra/backend/dsg}
+        - {from: dsg, to: hydra/backend/dsg}
+
+  # Prior Mesh Publisher
+  - arg: {name: launch_mesh_publisher, default: 'false'}
+  - node:
+      if: $(var launch_mesh_publisher)
+      pkg: kimera_pgmo_ros
+      exec: mesh_publisher_node
+      name: mesh_publisher
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: mesh, to: hydra/backend/dsg_mesh}
+      args: >
+        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
+        --config-utilities-yaml {mesh_frame: map, mesh_filepath: $(env ADT4_PRIOR_MAP)/hydra/backend/mesh.ply}
 
   # AWCD Visualizer (base station: draws changed-object bboxes from all robots into rviz)
   - arg: {name: launch_awcd_visualizer, default: 'false'}
@@ -372,21 +364,6 @@ launch:
       remap:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
 
-  # Prior Mesh Publisher
-  - arg: {name: launch_mesh_publisher, default: 'false'}
-  - node:
-      if: $(var launch_mesh_publisher)
-      pkg: kimera_pgmo_ros
-      exec: mesh_publisher_node
-      name: mesh_publisher
-      param:
-        - {name: use_sim_time, value: $(var sim_time)}
-      remap:
-        - {from: mesh, to: hydra/backend/dsg_mesh}
-      args: >
-        --config-utilities-var robot_name=$(var robot_name)
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/mesh_publisher.yaml
-        --config-utilities-yaml {glog_level: 0, glog_verbosity: 1}
 
   # DSG Saver
   - arg: {name: launch_dsg_saver, default: 'false'}
@@ -398,7 +375,7 @@ launch:
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/dsg_saver_node.yaml, allow_substs: true}
+        - {name: dsg_save_dir, value: $(env ADT4_OUTPUT_DIR)}
       remap:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
