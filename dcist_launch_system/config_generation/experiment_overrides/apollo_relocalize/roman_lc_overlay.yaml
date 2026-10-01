@@ -1,4 +1,0 @@
----
-submap_max_size: 50
-cosine_min: 0.3
-submap_descriptor_thresh: 0.0
