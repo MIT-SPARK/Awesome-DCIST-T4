@@ -1,9 +1,10 @@
+invalid_ids: [0]
 model:
   instance_model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
     text_prompt:
-      - ignore
+      - person
       - chair
       - cone
       - bag
