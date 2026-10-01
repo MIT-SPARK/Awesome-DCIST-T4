@@ -1,0 +1,4 @@
+---
+robots: !update
+  - {}  # Prior map unit interface should be unchanged
+  - robot_frame: $<var robot_name>/pre_icp_odom  # Override robot_frame so hydra_multi publishes map_T_<robot>/pre_icp_odom

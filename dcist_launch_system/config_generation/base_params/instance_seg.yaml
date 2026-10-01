@@ -30,5 +30,6 @@ model:
       - trash
       - clothes
       - ball
+      - roadblock
     confidence_threshold: 0.3
     min_segmentation_size: 0
