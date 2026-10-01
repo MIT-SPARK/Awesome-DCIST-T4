@@ -40,21 +40,6 @@ RED = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
 GREEN = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
 
 
-def _load_labelspace(filepath: str) -> Dict[int, str]:
-    if not filepath:
-        return {}
-    try:
-        with open(filepath, "r") as f:
-            data = yaml.safe_load(f)
-        return {
-            int(entry["label"]): entry["name"] for entry in data.get("label_names", [])
-        }
-    except (OSError, yaml.YAMLError, KeyError, TypeError) as exc:
-        raise RuntimeError(
-            f"Failed to load labelspace from '{filepath}': {exc}"
-        ) from exc
-
-
 def _bbox_line_list_points(dimensions: np.ndarray) -> List[Point]:
     """12-edge / 24-point axis-aligned wireframe, mirroring khronos_ros setBoundingBox()."""
     base = -dimensions / 2.0
@@ -100,8 +85,6 @@ class AwcdVisualizerNode(Node):
         super().__init__("awcd_visualizer")
 
         self.declare_parameter("target_frame", "map")
-        self.declare_parameter("changes_topic", "/awcd_changes")
-        self.declare_parameter("labelspace_filepath", "")
         self.declare_parameter("line_width", 0.1)
         self.declare_parameter("text_scale", 0.4)
         self.declare_parameter("show_labels", True)
@@ -109,9 +92,6 @@ class AwcdVisualizerNode(Node):
 
         self.target_frame = (
             self.get_parameter("target_frame").get_parameter_value().string_value
-        )
-        changes_topic = (
-            self.get_parameter("changes_topic").get_parameter_value().string_value
         )
         self.line_width = (
             self.get_parameter("line_width").get_parameter_value().double_value
@@ -125,10 +105,8 @@ class AwcdVisualizerNode(Node):
         self.tf_fallback_identity = (
             self.get_parameter("tf_fallback_identity").get_parameter_value().bool_value
         )
-        labelspace_filepath = (
-            self.get_parameter("labelspace_filepath").get_parameter_value().string_value
-        )
-        self.labelspace = _load_labelspace(labelspace_filepath)
+        # TODO(nathan) get this from ROS
+        self.labelspace = {}
 
         self.graph = None
         self.store = AwcdChangeStore()
@@ -144,7 +122,7 @@ class AwcdVisualizerNode(Node):
 
         self.dsg_sub = DsgSubscriber(self, "~/dsg_in", self._on_dsg)
         self.changes_sub = self.create_subscription(
-            AwcdChanges, changes_topic, self._on_changes, 10
+            AwcdChanges, "/awcd_changes", self._on_changes, 10
         )
         self.marker_pub = self.create_publisher(MarkerArray, "~/changed_objects", 10)
 
