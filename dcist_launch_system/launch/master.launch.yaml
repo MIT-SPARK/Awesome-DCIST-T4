@@ -370,6 +370,9 @@ launch:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
         - {from: ~/dsg_in, to: hydra/backend/dsg}
         - {from: ~/llm_response, to: rviz2_node/llm_response}
+        # Scene changes as applied to the map; a change that invalidates the
+        # plan becomes ~/replan_request, which the goal manager acts on.
+        - {from: ~/scene_changes, to: /scene_graph/changes_applied}
 
   # Goal manager (plan repair): only with repair mode
   - pyenv_node:
@@ -385,6 +388,8 @@ launch:
         - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed,    to: /$(var robot_name)/omniplanner_node/plan_failed}
+        # The plan no longer fits the world (scene changed, pick failed): replan.
+        - {from: ~/replan_request,    to: /$(var robot_name)/omniplanner_node/replan_request}
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
         - {from: ~/operator_display,  to: rviz2_node/llm_response}
         - {from: ~/operator_alert,    to: /$(var robot_name)/plan_repair/alert}
@@ -520,6 +525,27 @@ launch:
         # is the robot's name, not the base station's.
         - from: ~/update_holding_state
           to: /$(var executor_robot_name)/update_holding_state
+        # This robot's own placements, announced alongside observed changes.
+        - from: ~/scene_changes_applied
+          to: /scene_graph/changes_applied
+
+  # Scene change writer: observed changes (e.g. change detection) into Neo4j.
+  # Perception publishes SceneChangeMsg on /scene_graph/changes; the writer
+  # applies them and republishes them on /scene_graph/changes_applied with the
+  # map_version that contains them.
+  - arg: {name: launch_scene_change_writer, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_scene_change_writer)
+      pkg: heracles_ros
+      exec: scene_change_writer_node
+      name: scene_change_writer
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_publisher_node.yaml, allow_substs: true}
+      remap:
+        - {from: ~/scene_changes, to: /scene_graph/changes}
+        - {from: ~/scene_changes_applied, to: /scene_graph/changes_applied}
 
   # gps
   - arg: {name: launch_gps, default: 'false'}
