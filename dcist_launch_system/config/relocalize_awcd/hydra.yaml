@@ -31,15 +31,16 @@ active_window:
     min_range: 0.05
     verbosity: 1
     outlier_filter:
-      enabled: false
+      enabled: true
   tracker:
-    type: MaxIouTracker
-    track_by: pixels
-    bbox_type: aabb
-    min_semantic_iou: 0.25
-    min_cross_iou: 0.1
+    type: HybridTracker
     min_num_observations: 10
     verbosity: 0
+    track_by: voxels
+    voxel_size: 0.1
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
+    bbox_type: aabb
   object_extractor:
     type: MeshObjectExtractor
     bbox_type: aabb
@@ -84,7 +85,7 @@ active_window:
       reassociate_every_frame: false
       bbox_merge_type: weighted_average
       enable_icp_refinement: true
-      icp_crop_radius: 10.0
+      icp_crop_radius: 15.0
       icp_num_threads: 2
       icp_downsampling_resolution: 0.2
       icp_max_correspondence_distance: 1.0

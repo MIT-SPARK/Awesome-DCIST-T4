@@ -9,7 +9,21 @@ active_window:
   object_detector:
     outlier_filter:
       enabled: false
-  tracker:
+  tracker: !reset
+    # HybridTracker: trusts BoxMOT's id first (immune to pose drift while the id holds, and
+    # already gets last_bounding_box/last_points populated correctly via the inherited
+    # MaxIoUTracker::updateTrack), and falls back to MaxIoUTracker-style geometric (voxel)
+    # association only for tracks/clusters BoxMOT loses the id for this frame (occlusion,
+    # brief leaving-frame, 2D-tracker association failure). Verified against a real bag on
+    # default_awcd, including a confirmed re-entry-after-occlusion recovery -- see
+    # boxmot_integration_plan.md.
+    type: HybridTracker
+    min_num_observations: 10
+    verbosity: 5
+    track_by: voxels
+    voxel_size: 0.1
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
     bbox_type: aabb
   object_extractor:
     bbox_type: aabb

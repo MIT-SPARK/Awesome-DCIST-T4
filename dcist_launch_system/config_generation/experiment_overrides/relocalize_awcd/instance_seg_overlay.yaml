@@ -1,4 +1,26 @@
-model: 
+---
+model:
+  # Deployed default: BotSort + camera-motion compensation, ReID off (VRAM budget). Retuned
+  # against the deployed detector's own confidence floor (instance_model.confidence_threshold:
+  # 0.3) using scripts/replay_instance_tracker.py -- BotSort's stock thresholds (0.5/0.1/0.6)
+  # are stricter than that floor and would raise the dropped-detection rate, not lower it. See
+  # boxmot_integration_plan.md for the measured before/after and the full ours-vs-DAAAM
+  # comparison.
+  instance_tracker:
+    type: boxmot
+    tracker_type: botsort
+    with_reid: false
+    track_buffer: 30
+    frame_rate: 30
+    per_class: false
+    tracker_args:
+      use_cmc: true
+      cmc_method: sof  # sparse optical flow; DAAAM's ECC default is far more expensive
+      track_high_thresh: 0.3  # = the detector's own confidence floor: let every detection in
+      track_low_thresh: 0.15  # never triggers today (nothing scores below 0.3); headroom if
+                                # confidence_threshold is ever lowered
+      new_track_thresh: 0.35  # slightly above the floor: avoid spawning tracks from the
+                                # noisiest edge of the confidence distribution
   instance_model:
     text_prompt: !reset
       - ignore

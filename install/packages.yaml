@@ -8,6 +8,10 @@ repositories:
     type: git
     url: https://github.com/MIT-SPARK/Spark-Config.git
     version: main
+  small_gicp:  # added for khronos ICP refinement
+    type: git
+    url: https://github.com/koide3/small_gicp.git
+    version: master
   spatial_hash:  # added by Nathan for Hydra
     type: git
     url: https://github.com/MIT-SPARK/Spatial-Hash.git

@@ -102,6 +102,13 @@ if [ "$install_spark" = true ]; then
         pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
     fi
     pip install -r install/spark_requirements.txt
+
+    # boxmot (instance_seg tracking, see khronos ExternalTracker): installed with --no-deps
+    # because its declared dependencies (numpy>=2.2, latest torch/opencv/pandas) would otherwise
+    # silently override the pins in spark_requirements.txt above. Its actual runtime deps for the
+    # ByteTrack/OcSort trackers we use (filterpy, lapx, rich) are already installed by that file.
+    pip install --no-deps boxmot==22.0.0
+
     pip install -e ./semantic_inference/semantic_inference
 
     # install fast-downward

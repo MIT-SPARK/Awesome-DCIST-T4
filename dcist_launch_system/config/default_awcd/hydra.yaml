@@ -33,17 +33,18 @@ active_window:
     outlier_filter:
       enabled: false
   tracker:
-    type: MaxIouTracker
-    track_by: pixels
-    bbox_type: aabb
+    type: HybridTracker
+    min_num_observations: 10
+    verbosity: 5
+    track_by: voxels
+    voxel_size: 0.1
     min_semantic_iou: 0.25
     min_cross_iou: 0.1
-    min_num_observations: 10
-    verbosity: 0
+    bbox_type: aabb
   object_extractor:
     type: MeshObjectExtractor
     bbox_type: aabb
-    verbosity: 0
+    verbosity: 5
     min_object_allocation_confidence: 0.3
     min_object_volume: 0.005
     max_object_volume: 100.0
@@ -66,6 +67,7 @@ active_window:
       use_relative_height: true
       slice_height: 0.25
       num_slices: 4
+  verbosity: 5
 frontend:
   type: GraphBuilder
   enable_mesh_objects: false

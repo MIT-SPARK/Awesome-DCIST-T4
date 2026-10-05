@@ -1,15 +1,39 @@
 ---
 active_window:
+  # Verbosity bump (debug-only, default_awcd only) to investigate why few ExternalTracker
+  # tracks reach the OBJECTS layer -- surfaces MeshObjectExtractor's per-track
+  # CLOG(5) "Dropping ..." reasons and ActiveWindow's own frame-loop CLOG lines. Revert once
+  # the failure mode is understood; see the plan for this investigation.
+  verbosity: 5
   object_detector:
     outlier_filter:
       enabled: false
   #   min_object_volume: -1
   #   min_cluster_size: 1
-  tracker:
-    # track_by: voxels
+  tracker: !reset
+    # BoxMOT (via semantic_inference's instance_tracker) now assigns temporally-consistent
+    # instance ids upstream, so association is exact-id-match instead of pixel/voxel IoU
+    # re-projection -- see boxmot_integration_plan.md at the repo root.
+    #
+    # HybridTracker (not ExternalTracker/ExternalTrackerWithBox): trusts BoxMOT's id first
+    # (immune to pose drift while the id holds, and already gets last_bounding_box/last_points
+    # populated correctly via the inherited MaxIoUTracker::updateTrack -- no bolt-on fix
+    # needed), and falls back to MaxIoUTracker-style geometric (voxel) association only for
+    # tracks/clusters BoxMOT loses the id for this frame (occlusion, brief leaving-frame,
+    # 2D-tracker association failure) -- ExternalTracker/ExternalTrackerWithBox have no such
+    # fallback and just mint a new track when that happens. See boxmot_integration_plan.md.
+    type: HybridTracker
+    min_num_observations: 10
+    verbosity: 5
+    track_by: voxels  # geometric-fallback representation; less pose-drift-sensitive than the
+                      # pixel-reprojection IoU that was the original motivation for BoxMOT
+    voxel_size: 0.1   # revisit once we have real data on how coarse this can be
+    min_semantic_iou: 0.25
+    min_cross_iou: 0.1
     bbox_type: aabb
   object_extractor:
     bbox_type: aabb
+    verbosity: 5
     min_object_allocation_confidence: 0.3
     min_object_reconstruction_confidence: 0.3
     min_object_reconstruction_observations: 5

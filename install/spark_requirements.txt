@@ -18,3 +18,12 @@ pydantic_settings
 boto3
 textual
 textual-dev
+
+# Runtime deps of BoxMOT's ByteTrack/OcSort trackers (instance_seg tracking).
+# boxmot itself is installed separately with --no-deps in python_setup.bash: its declared
+# dependencies (numpy>=2.2, latest torch/opencv/pandas) would otherwise silently override the
+# pins above. filterpy/lapx/rich are the only imports ByteTrack/OcSort actually exercise beyond
+# torch/opencv, which are already pinned/pulled in elsewhere in this file.
+filterpy<2.0.0,>=1.4.5
+lapx<1.0.0,>=0.5.5
+rich
