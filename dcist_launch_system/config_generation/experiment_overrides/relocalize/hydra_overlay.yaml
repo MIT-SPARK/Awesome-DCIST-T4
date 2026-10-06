@@ -1,5 +1,5 @@
 ---
-map_frame: $<env ADT4_ROBOT_NAME>/odom
+map_frame: $<var robot_name>/odom
 backend:
   publish_backend_tf: false
   optimize_on_lc: false

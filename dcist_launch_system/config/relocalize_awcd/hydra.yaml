@@ -1,9 +1,9 @@
 paths: [khronos, khronos_ros]
 robot_id: 0
 config_verbosity: 1
-map_frame: $<env ADT4_ROBOT_NAME>/odom
-odom_frame: $<env ADT4_ROBOT_NAME>/odom
-robot_frame: $<env ADT4_ROBOT_NAME>/base_link
+map_frame: $<var robot_name>/odom
+odom_frame: $<var robot_name>/odom
+robot_frame: $<var robot_name>/base_link
 map_window: {type: spatial, max_radius_m: 12.0}
 labelspace: {type: from_msg}
 input:
@@ -78,9 +78,9 @@ active_window:
         type: TFTransformationGetter
       awcd_sinks:
         - type: TfIcpPublisher
-          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
+          pre_icp_odom_frame: $<var robot_name>/pre_icp_odom
         - type: ActiveWindowChangeDetectorPublisher
-          robot_name: $<env ADT4_ROBOT_NAME>
+          robot_name: $<var robot_name>
           global_frame_name: map
         - type: ActiveWindowChangeDetectorVisualizer
           verbosity: 1
