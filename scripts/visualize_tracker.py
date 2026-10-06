@@ -4,9 +4,7 @@ from dataclasses import dataclass, field
 
 import click
 import hydra_python as hydra
-import ianvs
 import numpy as np
-import semantic_inference.models as models
 import spark_config as sc
 import torch
 from hydra_python.dataloaders.rosbag_dataloader import (
@@ -14,6 +12,9 @@ from hydra_python.dataloaders.rosbag_dataloader import (
     load_trajectory_from_bag,
 )
 from hydra_python.trajectory import Trajectory
+
+import ianvs
+import semantic_inference.models as models
 from ianvs.bag_reader import BagReader
 
 
@@ -78,9 +79,11 @@ def run(
     model = models.InstanceSegmenter(model_config.model)
     hydra.set_glog_level(0, 0)
     hydra.init_config_context(args)
-    with BagReader(bag_path) as bag, ianvs.init_node_handle(
-        "hydra"
-    ), hydra.external_plugins("hydra_ros"):
+    with (
+        BagReader(bag_path) as bag,
+        ianvs.init_node_handle("hydra"),
+        hydra.external_plugins("hydra_ros"),
+    ):
         if trajectory_path is None:
             trajectory_path = bag_path / "poses.csv"
 
@@ -122,8 +125,8 @@ def run(
             # Convert to int32 to match 32SC1 encoding expected by cv_bridge
             instances = ret.instances.astype(np.int32)
             # if self.config.visualize_semantic_img:
-                # category_names = model.category_names
-                # color_img = get_semantic_overlay_img(model.category_names, ret, rgb)
+            # category_names = model.category_names
+            # color_img = get_semantic_overlay_img(model.category_names, ret, rgb)
 
             q_xyzw = pose.rotation.as_quat()
             q_wxyz = [q_xyzw[i] for i in [3, 0, 1, 2]]
