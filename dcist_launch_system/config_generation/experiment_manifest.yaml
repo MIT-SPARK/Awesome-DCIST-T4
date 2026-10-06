@@ -24,6 +24,7 @@ configs:
   relocalize_awcd: [relocalize]
   apollo_relocalize: [relocalize]
   indoor_regions: [indoor, regions]
+  default_awcd: []
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
@@ -61,6 +62,9 @@ experiments:
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
+  spot_bag_awcd:
+    launch_config: [bag_map, spot_bag]
+    config: [default_awcd]
   spot_bag_regions:
     launch_config: [main, roman, hydra_regions, rviz, spot_bag]
     config: [regions, indoor_regions]
