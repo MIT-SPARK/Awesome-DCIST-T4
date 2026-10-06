@@ -266,7 +266,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
         contents["windows"].append(_make_record_window(info))
 
     if info.zenoh:
-        contents["windows"].append(_make_zenoh_window())
+        contents["windows"] = [_make_zenoh_window()] + contents["windows"]
 
     contents = yaml.dump(contents, width=300)
     fout.write(contents)
