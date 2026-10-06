@@ -1,5 +1,18 @@
 invalid_ids: [0]
 model:
+  instance_tracker:
+    type: boxmot
+    tracker_type: botsort
+    with_reid: false
+    track_buffer: 30
+    frame_rate: 30
+    per_class: false
+    tracker_args:
+      use_cmc: true
+      cmc_method: sof
+      track_high_thresh: 0.3
+      track_low_thresh: 0.15
+      new_track_thresh: 0.35
   instance_model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
@@ -29,6 +42,5 @@ model:
       - trash
       - clothes
       - ball
-      - roadblock
     confidence_threshold: 0.3
     min_segmentation_size: 0
