@@ -404,7 +404,6 @@ launch:
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
         - {from: ~/operator_display,  to: rviz2_node/llm_response}
         - {from: ~/operator_alert,    to: /$(var robot_name)/plan_repair/alert}
-
         # Temporal planners publish a schedule alongside the plan; planners
         # that do not simply never publish here and the horizon check stays inert.
         - {from: ~/plan_schedule,     to: /$(var robot_name)/omniplanner_node/$(var planner_schedule_topic)}
