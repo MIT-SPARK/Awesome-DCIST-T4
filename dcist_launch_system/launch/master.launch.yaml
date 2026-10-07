@@ -385,6 +385,9 @@ launch:
         - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed,    to: /$(var robot_name)/omniplanner_node/plan_failed}
+        # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
+        - {from: ~/operator_display,  to: rviz2_node/llm_response}
+        - {from: ~/operator_alert,    to: /$(var robot_name)/plan_repair/alert}
         - {from: ~/executor_pause,    to: /$(var executor_robot_name)/spot_executor_node/pause}
         - {from: ~/executor_resume,   to: /$(var executor_robot_name)/spot_executor_node/resume}
 
