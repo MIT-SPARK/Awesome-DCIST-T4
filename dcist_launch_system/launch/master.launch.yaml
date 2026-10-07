@@ -381,7 +381,8 @@ launch:
       remap:
         - {from: ~/commanded_goal,    to: /$(var robot_name)/commanded_goal}
         - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/multi_robot_pddl_constrained/pddl_goal}
-        - {from: ~/plan_visited_pois, to: /$(var robot_name)/omniplanner_node/plan_visited_pois}
+        # Published per robot in the plan, so on a base station it is the robot's name.
+        - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed,    to: /$(var robot_name)/omniplanner_node/plan_failed}
         - {from: ~/executor_pause,    to: /$(var executor_robot_name)/spot_executor_node/pause}
@@ -498,8 +499,10 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_state_updater_node.yaml, allow_substs: true}
       remap:
+        # The executor calls this in its own namespace: on a base station that
+        # is the robot's name, not the base station's.
         - from: ~/update_holding_state
-          to: /$(var robot_name)/update_holding_state
+          to: /$(var executor_robot_name)/update_holding_state
 
   # gps
   - arg: {name: launch_gps, default: 'false'}
