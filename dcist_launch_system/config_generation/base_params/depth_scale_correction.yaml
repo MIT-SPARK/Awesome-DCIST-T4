@@ -1,0 +1,26 @@
+---
+# depth_scale_correction_node (ZED depth bias, calibrated online from the ground; see the
+# depth_processing_ros package README). ground_frame is set in master.launch.yaml.
+/**:
+  ros__parameters:
+    # calibration window: this many seconds of usable frames (robot standing, flat ground in view)
+    calibration_duration_s: 30.0
+    frame_period_s: 0.5
+    # give up and use fallback_a/b if no calibration is accepted by then
+    max_calibration_time_s: 300.0
+    min_camera_height_m: 0.4
+    # hold depth back until calibrated (true: pass raw depth through meanwhile)
+    publish_before_calibrated: true
+    # set both to skip calibration and use a known correction (1/z = a/z_zed + b)
+    fixed_a: .nan
+    fixed_b: .nan
+    fallback_a: 1.0
+    fallback_b: 0.0
+    # ground pixels used for the fit
+    min_z: 1.0
+    max_z: 8.0
+    pixel_step: 4
+    tf_timeout_s: 0.1
+    # reliable subscriptions (large images are often dropped best-effort)
+    reliable_input: true
+    ground_frame: $(var robot_name)/gpe
