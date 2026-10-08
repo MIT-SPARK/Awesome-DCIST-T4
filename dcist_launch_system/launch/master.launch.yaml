@@ -175,11 +175,25 @@ launch:
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
+  # ROMAN reads ZED depth corrected online from the ground (depth_processing_ros; needs
+  # <robot_name>/gpe in TF), published as <camera>/depth_corrected/*.
+  - arg: {name: launch_depth_correction, default: 'false'}
+  - node:
+      if: $(var launch_depth_correction)
+      pkg: depth_processing_ros
+      exec: depth_scale_correction_node
+      namespace: $(var camera)
+      name: depth_scale_correction
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/depth_scale_correction.yaml, allow_substs: true}}
+      remap:
+        - {from: ~/node_status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
   - group:
       - set_remap: {from: color/camera_info, to: $(var camera)/rgb/camera_info}
       - set_remap: {from: color/image_raw, to: $(var camera)/rgb/image_rect_color}
-      - set_remap: {from: depth/camera_info, to: $(var camera)/depth/camera_info}
-      - set_remap: {from: depth/image_raw, to: $(var camera)/depth/depth_registered}
+      - set_remap: {from: depth/camera_info, to: $(var camera)/depth_corrected/camera_info}
+      - set_remap: {from: depth/image_raw, to: $(var camera)/depth_corrected/depth_registered}
       - set_remap: {from: tf, to: /tf}
       - set_remap: {from: tf_static, to: /tf_static}
       - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
