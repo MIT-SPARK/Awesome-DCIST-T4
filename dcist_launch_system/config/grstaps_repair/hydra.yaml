@@ -41,6 +41,9 @@ active_window:
     type: MeshObjectExtractor
     projective_integrator: {num_threads: 8}
     object_reconstruction_resolution: -0.05
+    min_object_allocation_confidence: 0.3
+    min_object_reconstruction_confidence: 0.3
+    min_object_reconstruction_observations: 5
   khronos_sinks:
     - {type: ActiveWindowVisualizer}
   sinks:
@@ -71,11 +74,13 @@ frontend:
       type: GradientTraversabilityEstimator
       gradient_threshold: 0.8
       height_below: 1.0
-      height_above: 0.5
+      height_above: 0.3
       min_confidence: 0.5
       min_traversability: 0.25
       pessimistic: true
       smoothing: true
+      sinks:
+        - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
     sinks:
       - type: TraversabilityVisualizer
