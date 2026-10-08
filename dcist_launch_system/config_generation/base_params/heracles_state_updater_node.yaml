@@ -4,5 +4,7 @@
     heracles_ip: $(env ADT4_HERACLES_IP)
     heracles_port: $(env ADT4_HERACLES_PORT)
     map_frame: map
-    robot_name: $(var executor_robot_name)  # the robot it tracks, also on a base station
+    # Every Spot whose pose and holding state go into the database (the spots in
+    # omniplanner_plugins.yaml). Ones without a TF today are skipped.
+    robot_names: [euclid, hamilton, apollo, hilbert]
     publish_rate: 1.0

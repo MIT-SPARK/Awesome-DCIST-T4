@@ -333,14 +333,6 @@ launch:
   # Set launch_omniplanner:=true for original, launch_omniplanner_repair:=true for plan repair + constraints
   - arg: {name: launch_omniplanner, default: 'false'}
   - arg: {name: launch_omniplanner_repair, default: 'false'}
-  # Namespace of the spot_executor the goal manager pauses/resumes. Defaults to
-  # robot_name, which is correct when the executor runs in this same session
-  # (the spot_* configs). On a base station the planner and the executor live in
-  # different sessions under different names, so pass the robot's name here --
-  # otherwise pause/resume are published into a namespace with no executor in it
-  # and are silently dropped.
-  - arg: {name: executor_robot_name, default: $(var robot_name)}
-
   # Original omniplanner (no plan repair / constraints)
   - pyenv_node:
       if: $(var launch_omniplanner)
@@ -381,15 +373,15 @@ launch:
       remap:
         - {from: ~/commanded_goal,    to: /$(var robot_name)/commanded_goal}
         - {from: ~/planner_goal,      to: /$(var robot_name)/omniplanner_node/multi_robot_pddl_constrained/pddl_goal}
-        # Published per robot in the plan, so on a base station it is the robot's name.
-        - {from: ~/plan_visited_pois, to: /$(var executor_robot_name)/omniplanner_node/plan_visited_pois}
+        # What the running plan covers, and which robots' executors (addressed by
+        # name, /<robot>/spot_executor_node/...) to pause for the next goal.
+        - {from: ~/plan_visited_pois, to: /$(var robot_name)/omniplanner_node/plan_visited_pois_all}
+        - {from: ~/plan_robots,       to: /$(var robot_name)/omniplanner_node/plan_robots}
         # A goal the planner rejects: resume the executor it paused.
         - {from: ~/planner_failed,    to: /$(var robot_name)/omniplanner_node/plan_failed}
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
         - {from: ~/operator_display,  to: rviz2_node/llm_response}
         - {from: ~/operator_alert,    to: /$(var robot_name)/plan_repair/alert}
-        - {from: ~/executor_pause,    to: /$(var executor_robot_name)/spot_executor_node/pause}
-        - {from: ~/executor_resume,   to: /$(var executor_robot_name)/spot_executor_node/resume}
 
   # Scene Graph Publisher
   - arg: {name: launch_scene_graph_publisher, default: 'false'}
@@ -515,11 +507,6 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_state_updater_node.yaml, allow_substs: true}
-      remap:
-        # The executor calls this in its own namespace: on a base station that
-        # is the robot's name, not the base station's.
-        - from: ~/update_holding_state
-          to: /$(var executor_robot_name)/update_holding_state
 
   # gps
   - arg: {name: launch_gps, default: 'false'}
