@@ -54,6 +54,7 @@ class SessionInfo:
     trajectory: Optional[pathlib.Path] = None
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
+    zenoh: bool = True
 
     @property
     def platform_type(self) -> PlatformType:
@@ -246,6 +247,15 @@ def _make_bag_window(info: SessionInfo):
     return window_config
 
 
+def _make_zenoh_window():
+    return {
+        "layout": "tiled",
+        "panes": ["ros2 run rmw_zenoh_cpp rmw_zenohd"],
+        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "window_name": "zenoh",
+    }
+
+
 def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False):
     with session_path.open("r") as fin:
         contents = yaml.safe_load(fin.read())
@@ -255,6 +265,9 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 
     if info.record:
         contents["windows"].append(_make_record_window(info))
+
+    if info.zenoh:
+        contents["windows"] = [_make_zenoh_window()] + contents["windows"]
 
     contents = yaml.dump(contents, width=300)
     fout.write(contents)
@@ -318,6 +331,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     default=None,
     help="custom rviz config file (overrides default dcist.rviz)",
 )
+@click.option("--zenoh/--no-zenoh", default=True, help="start zenoh router")
 def main(
     session_path,
     tmuxp_args,
@@ -338,6 +352,7 @@ def main(
     trajectory_args,
     record,
     rviz_config,
+    zenoh,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -381,6 +396,7 @@ def main(
         bag_rate=bag_rate,
         trajectory=_normalize_optional(trajectory),
         record=record,
+        zenoh=zenoh,
     )
     if trajectory_args:
         info.trajectory_args = trajectory_args.split(" ")

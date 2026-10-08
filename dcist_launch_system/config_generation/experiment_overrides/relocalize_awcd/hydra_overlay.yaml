@@ -1,0 +1,44 @@
+---
+active_window:
+  khronos_sinks:
+    - type: ActiveWindowChangeDetector
+      verbosity: 1
+      prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+      removal_vertex_free_ratio_threshold: 0.8
+      added_object_containment_threshold: 0.8
+      # Temporal EMA filter params for removed-object detection:
+      removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
+      removal_probability_threshold: 0.8  # Smoothed probability to declare removal
+      removal_min_frames_observed: 3  # Min frames before removal can be declared
+      # Temporal EMA filter params for newly-added-object detection:
+      added_ema_alpha: 0.5  # EMA smoothing factor
+      added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
+      added_min_frames_observed: 20  # Min frames before a track can be declared added
+      added_prune_after_frames: 50  # Frames of no measurement before non-added tracks are pruned
+      # Track-to-object association: fold tracks together that look like the same physical object
+      enable_added_object_merging: true
+      merge_bbox_iou_threshold: 0.2  # 3D bbox IoU above which a track matches an object (<=0 disables)
+      merge_centroid_distance_threshold: 0.5  # [m] centroid distance below which a track matches an object (<=0 disables)
+      merge_min_semantic_cosine_sim: 0.7  # Min feature cosine sim required to match (AND'd with geometry)
+      reassociate_every_frame: false  # Sticky by default: a track keeps its first association
+      bbox_merge_type: weighted_average  # 'union' (grow to enclose) or 'weighted_average' (confidence-blended)
+      enable_icp_refinement: true
+      icp_crop_radius: 10.0
+      icp_num_threads: 2
+      icp_downsampling_resolution: 0.2
+      icp_max_correspondence_distance: 1.0
+      icp_max_iterations: 50  # default of 20 doesn't work well for mesh vertices (according to Claude)
+      icp_min_inliers: 50
+      transformation_getter:
+        type: TFTransformationGetter
+        prior_frame_id: map
+        robot_frame_id: ''
+        tf_change_threshold_m: 0.05
+      awcd_sinks:
+        - type: TfIcpPublisher
+          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
+          odom_frame: ''
+        - type: ActiveWindowChangeDetectorPublisher
+          topic: /awcd_changes
+          robot_name: $<env ADT4_ROBOT_NAME>
+          global_frame_name: map
