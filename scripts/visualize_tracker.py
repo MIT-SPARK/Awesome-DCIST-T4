@@ -14,8 +14,8 @@ from hydra_python.dataloaders.rosbag_dataloader import (
 from hydra_python.trajectory import Trajectory
 
 import ianvs
-import semantic_inference.models as models
 from ianvs.bag_reader import BagReader
+from semantic_inference import models
 
 
 def _repair_args(values, flag):
@@ -34,6 +34,15 @@ def _convert_start_time(bag_start_s: float | None):
     return int(bag_start_s * 1.0e9)
 
 
+def _config_path(config_name: str):
+    dls_path = pathlib.Path(__file__).absolute().parent.parent / "dcist_launch_system"
+    to_return = dls_path / "config" / config_name
+    if not to_return.exists():
+        raise ValueError(f"config {config_name} does not exist!")
+
+    return to_return
+
+
 @dataclass
 class ModelConfig(sc.Config):
     """Configuration for ClipPublisherNode."""
@@ -45,8 +54,20 @@ class ModelConfig(sc.Config):
     invalid_ids: list[int] = field(default_factory=list)
 
 
+def _norm_opt(opt_path):
+    if opt_path is None:
+        return None
+
+    return pathlib.Path(opt_path).expanduser().absolute()
+
+
+CSV_HEADERS = ["#timestamp_kf", "x", "y", "z", "qx", "qy", "qz", "qw"]
+
+
 @click.command()
 @click.argument("bag_path", type=click.Path(exists=True))
+@click.option("--name", "-n", default="hamilton")
+@click.option("--config", default="default")
 @click.option("--trajectory-path", "-t", type=click.Path(exists=True))
 @click.option("--max-steps", "-m", default=None, type=int)
 @click.option("--min-separation-s", "-s", default=0.0, type=float)
@@ -54,10 +75,10 @@ class ModelConfig(sc.Config):
 @click.option("--config-utilities-files", "-f", multiple=True)
 @click.option("--config-utilities-yaml", "-c", multiple=True)
 @click.option("--config-utilities-var", "-v", multiple=True)
-@click.option("--instance-segmentation-config", type=click.Path(exists=True))
-@click.option("--name", "-n", default="hamilton")
 def run(
     bag_path,
+    name,
+    config,
     trajectory_path,
     max_steps,
     min_separation_s,
@@ -65,18 +86,21 @@ def run(
     config_utilities_files,
     config_utilities_yaml,
     config_utilities_var,
-    instance_segmentation_config,
-    name,
 ):
     bag_path = pathlib.Path(bag_path).expanduser().absolute()
+    trajectory_path = _norm_opt(trajectory_path)
+
+    instance_segmentation_config = _config_path(config) / "instance_seg.yaml"
+    model_config = sc.Config.load(ModelConfig, instance_segmentation_config)
+    model = models.InstanceSegmenter(model_config.model)
+
+    args = ["-f", str(_config_path(config) / "hydra.yaml")]
     args = _repair_args(config_utilities_files, "-f")
     args += _repair_args(config_utilities_yaml, "-c")
     args += _repair_args(config_utilities_var, "-v")
     args += ["-c", "{app_plugins: [{type: ConfigServerPlugin}, {type: SpinPlugin}]}"]
     args += ["-c", "{verbosity: 1}"]
 
-    model_config = sc.Config.load(ModelConfig, instance_segmentation_config)
-    model = models.InstanceSegmenter(model_config.model)
     hydra.set_glog_level(0, 0)
     hydra.init_config_context(args)
     with (
@@ -91,9 +115,11 @@ def run(
             trajectory = load_trajectory_from_bag(
                 bag, f"{name}/odom", f"{name}/body", progress=True
             )
-            trajectory.to_csv(trajectory_path)
+            trajectory.to_csv(trajectory_path, colnames=CSV_HEADERS)
         else:
-            trajectory = Trajectory.from_csv(trajectory_path)
+            trajectory = Trajectory.from_csv(
+                trajectory_path, time_col=CSV_HEADERS[0], pose_cols=CSV_HEADERS[1:]
+            )
 
         dataloader = RosbagDataLoader(
             bag,
@@ -109,7 +135,7 @@ def run(
         last_stamp: int | None = None
         threshold_ns = int(min_separation_s * 1.0e9)
         camera = hydra.make_camera(**dataloader.intrinsics)
-        pipeline = hydra.ReconstructionPipeline(camera)
+        pipeline = hydra.HydraPipeline(camera)
         for stamp, pose, images in dataloader:
             if max_steps and frame_idx >= max_steps:
                 break
@@ -119,24 +145,17 @@ def run(
 
             rgb = images[0][..., ::-1]
             depth = images[1]
+
             with torch.no_grad():
                 ret = model.segment(rgb, is_rgb_order=True)
 
-            # Convert to int32 to match 32SC1 encoding expected by cv_bridge
             instances = ret.instances.astype(np.int32)
-            # if self.config.visualize_semantic_img:
-            # category_names = model.category_names
-            # color_img = get_semantic_overlay_img(model.category_names, ret, rgb)
 
             q_xyzw = pose.rotation.as_quat()
             q_wxyz = [q_xyzw[i] for i in [3, 0, 1, 2]]
             pipeline.step(stamp, q_wxyz, pose.translation, rgb, depth, instances)
             last_stamp = stamp
             frame_idx += 1
-
-            click.pause("Press any key to continue to next frame...")
-
-        click.pause("Press any key to exit...")
 
 
 if __name__ == "__main__":
