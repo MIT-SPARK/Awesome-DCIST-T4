@@ -95,7 +95,7 @@ def run(
     model = models.InstanceSegmenter(model_config.model)
 
     args = ["-f", str(_config_path(config) / "hydra.yaml")]
-    args = _repair_args(config_utilities_files, "-f")
+    args += _repair_args(config_utilities_files, "-f")
     args += _repair_args(config_utilities_yaml, "-c")
     args += _repair_args(config_utilities_var, "-v")
     args += ["-c", "{app_plugins: [{type: ConfigServerPlugin}, {type: SpinPlugin}]}"]
@@ -106,7 +106,7 @@ def run(
     with (
         BagReader(bag_path) as bag,
         ianvs.init_node_handle("hydra"),
-        hydra.external_plugins("hydra_ros"),
+        hydra.external_plugins("hydra_ros", "khronos", "khronos_ros"),
     ):
         if trajectory_path is None:
             trajectory_path = bag_path / "poses.csv"
