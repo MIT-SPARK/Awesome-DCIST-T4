@@ -186,7 +186,7 @@ launch:
       name: depth_scale_correction
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/depth_scale_correction.yaml, allow_substs: true}}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/depth_scale_correction.yaml, allow_substs: true}
       remap:
         - {from: ~/node_status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
   - group:

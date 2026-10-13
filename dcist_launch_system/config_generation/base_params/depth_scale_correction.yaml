@@ -1,6 +1,6 @@
 ---
 # depth_scale_correction_node (ZED depth bias, calibrated online from the ground; see the
-# depth_processing_ros package README). ground_frame is set in master.launch.yaml.
+# depth_processing_ros package README). Loaded with allow_substs, so $(var ...) works here.
 /**:
   ros__parameters:
     # calibration window: this many seconds of usable frames (robot standing, flat ground in view)
