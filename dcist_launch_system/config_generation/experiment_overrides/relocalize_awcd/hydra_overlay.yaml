@@ -1,27 +1,48 @@
 ---
+# Tracking matches default_awcd/hydra_overlay.yaml (BoxMOT ids + voxel-IoU fallback).
+input:
+  inputs:
+    camera:
+      sensor:
+        max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
 active_window:
+  object_detector:
+    max_range: 7.0  # don't let far, depth-biased pixels join object clusters
+    outlier_filter:
+      enabled: false
+  tracker:
+    preassociate_by_id: true  # BoxMOT ids first, voxel-IoU fallback for unmatched clusters
+    track_by: voxels  # default is pixels
+    voxel_size: 0.1
+    min_semantic_iou: 0.1
+    accumulate_voxels: true  # accumulate all observations' voxels into Track::accumulated_* (association unchanged)
+    min_voxel_hits: 15  # observations a voxel needs to count in the accumulated bbox/footprint
+    merge_tracks: true  # merge fragment tracks of one object (needs accumulate_voxels); older id survives
+    merge_containment_threshold: 0.25  # fraction of the smaller track's confirmed voxels inside the other
+    merge_distance_factor: 2.0  # max center distance, in multiples of the larger track radius
+  frame_data_buffer:
+    max_buffer_size: 600
+    store_every_n_frames: 1
+  # vote_filter:
+  #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   khronos_sinks:
     - type: ActiveWindowChangeDetector
       verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
-      removal_vertex_free_ratio_threshold: 0.8
-      added_object_containment_threshold: 0.8
       # Temporal EMA filter params for removed-object detection:
       removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
       removal_probability_threshold: 0.8  # Smoothed probability to declare removal
-      removal_min_frames_observed: 3  # Min frames before removal can be declared
+      removal_min_frames_observed: 5  # Min frames before removal can be declared
+      removal_min_in_bounds_fraction: 0.5  # cheap pre-filter: object voxels in allocated blocks
+      removal_min_observed_fraction: 0.5  # object voxels actually observed (tracking last_observed != 0)
+      removal_score_weighting: vertices  # 'vertices' (one vote per mesh vertex) or 'voxels' (one per object voxel)
+      collect_debug_voxels: true  # per-voxel free/occupied/unknown lists for change_detection/voxels
       # Temporal EMA filter params for newly-added-object detection:
-      added_ema_alpha: 0.5  # EMA smoothing factor
+      added_ema_alpha: 0.2  # EMA smoothing factor
       added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
       added_min_frames_observed: 20  # Min frames before a track can be declared added
-      added_prune_after_frames: 50  # Frames of no measurement before non-added tracks are pruned
-      # Track-to-object association: fold tracks together that look like the same physical object
-      enable_added_object_merging: true
-      merge_bbox_iou_threshold: 0.2  # 3D bbox IoU above which a track matches an object (<=0 disables)
-      merge_centroid_distance_threshold: 0.5  # [m] centroid distance below which a track matches an object (<=0 disables)
-      merge_min_semantic_cosine_sim: 0.7  # Min feature cosine sim required to match (AND'd with geometry)
-      reassociate_every_frame: false  # Sticky by default: a track keeps its first association
-      bbox_merge_type: weighted_average  # 'union' (grow to enclose) or 'weighted_average' (confidence-blended)
+      added_prune_after_frames: 100  # Frames of no measurement before non-added tracks are pruned
+      # ICP configs
       enable_icp_refinement: true
       icp_crop_radius: 10.0
       icp_num_threads: 2
@@ -47,6 +68,11 @@ active_window:
           global_frame_name: map
           bounding_box_line_width: 0.1
           min_draw_period_s: 0.5
+          draw_graph: true  # set false to skip the renderer config below
+          draw_mesh: true
+          draw_status: true  # gray/red candidate boxes + score labels on change_detection/status
+          draw_status_voxels: true  # candidate voxels on change_detection/voxels
+          label_text_scale: 0.3
           mesh: {}  # MeshPlugin::Config; no `coloring` = use the prior mesh's own vertex colors
           renderer:
             graph: {layer_z_step: 2.0, collapse_layers: false}

@@ -4,7 +4,7 @@ config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
-map_window: {type: spatial, max_radius_m: 14.0}
+map_window: {type: spatial, max_radius_m: 10.0}
 labelspace: {type: from_msg}
 input:
   type: RosInput
@@ -13,7 +13,7 @@ input:
       sensor:
         type: camera_info
         min_range: 0.2
-        max_range: 10.0
+        max_range: 7.0
         extrinsics: {type: ros}
       receiver:
         type: ImageReceiver
@@ -32,13 +32,13 @@ active_window:
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
-    max_range: 10.0
+    max_range: 7.0
     min_range: 0.05
     verbosity: 1
     instance_filter: {type: CategoryFilter}
     outlier_filter:
       enabled: false
-  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, preassociate_by_id: false}
+  tracker: {type: MaxIouTracker, track_by: voxels, min_semantic_iou: 0.1, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, preassociate_by_id: true, voxel_size: 0.1, accumulate_voxels: true, min_voxel_hits: 15, merge_tracks: true, merge_containment_threshold: 0.2, merge_distance_factor: 2.0}
   object_extractor:
     type: MeshObjectExtractor
     projective_integrator: {num_threads: 8}
@@ -46,16 +46,21 @@ active_window:
     min_object_allocation_confidence: 0.3
     min_object_reconstruction_confidence: 0.3
     min_object_reconstruction_observations: 5
+    max_object_volume: 20.0
+    bbox_type: aabb
   khronos_sinks:
     - {type: ActiveWindowVisualizer}
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
   verbosity: 0
+  frame_data_buffer:
+    max_buffer_size: 600
+    store_every_n_frames: 1
 frontend:
   type: GraphBuilder
   serialize_dsg_mesh: false
-  clear_object_meshes: true
+  clear_object_meshes: false
   enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5}
   mesh_compression: {resolution: 0.005}
