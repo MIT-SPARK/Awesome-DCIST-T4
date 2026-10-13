@@ -7,8 +7,7 @@ model:
     kernel_size: 5  # each pass shrinks masks by (kernel_size - 1) / 2 = 2 px
     passes: 1  # number of erosion passes
   # Pure MaxIoU baseline: no 2D tracking upstream; per-frame index ids, no detections dropped.
-  # Uncomment (and drop the `{}` above) to replace the BoxMOT tracker from base_params/instance_seg.yaml.
-  # instance_tracker: !reset
-  #   type: "null"
+  # Uncomment to skip the BoxMOT tracker from base_params/instance_seg.yaml (never created or run).
+  # use_instance_tracker: false
   instance_model:
     confidence_threshold: 0.25

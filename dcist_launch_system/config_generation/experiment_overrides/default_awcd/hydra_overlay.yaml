@@ -27,6 +27,7 @@ active_window:
     preassociate_by_id: true  # BoxMOT ids first, voxel-IoU fallback for unmatched clusters
     track_by: voxels  # default is pixels
     voxel_size: 0.1
+    min_num_observations: 30
     min_semantic_iou: 0.1
     accumulate_voxels: true  # accumulate all observations' voxels into Track::accumulated_* (association unchanged)
     min_voxel_hits: 15  # observations a voxel needs to count in the accumulated bbox/footprint
@@ -43,9 +44,17 @@ active_window:
     max_buffer_size: 600
     store_every_n_frames: 1
     # store_every_n_frames: 2  # same 300-frame memory, ~2x time span (needs FrameDataBuffer fix)
-  object_extractor:
+  # object_extractor:
+  #   max_object_volume: 20.0  # cars/trucks exceed the default 4 m^3
+  #   bbox_type: aabb         # rotated box hugs diagonally parked vehicles
+  object_extractor: !reset  # objects from the tracker's accumulated voxels (no reconstruction)
+    type: AccumulatedObjectExtractor
+    min_object_allocation_confidence: 0.5
     max_object_volume: 20.0  # cars/trucks exceed the default 4 m^3
-    bbox_type: aabb         # rotated box hugs diagonally parked vehicles
+  live_accumulated_bounding_box: true
+  khronos_sinks: !reset  # replaces the base list (lists append), so keep the base visualizer here
+    - type: ActiveWindowVisualizer
+      track_label_min_observations: 30  # = tracker min_num_observations above
   # vote_filter:
   #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   # khronos_sinks:
