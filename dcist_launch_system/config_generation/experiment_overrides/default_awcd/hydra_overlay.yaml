@@ -2,11 +2,11 @@ input:
   inputs:
     camera:
       sensor:
-        max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
+        # max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
 active_window:
-  verbosity: 0
+  # verbosity: 0
   object_detector:
-    max_range: 7.0  # don't let far, depth-biased pixels join object clusters
+    # max_range: 7.0  # don't let far, depth-biased pixels join object clusters
     outlier_filter:
       enabled: false
   #   min_object_volume: -1
@@ -50,7 +50,7 @@ active_window:
   object_extractor: !reset  # objects from the tracker's accumulated voxels (no reconstruction)
     type: AccumulatedObjectExtractor
     min_object_allocation_confidence: 0.5
-    max_object_volume: 20.0  # cars/trucks exceed the default 4 m^3
+    max_object_volume: 40.0  # cars/trucks exceed the default 4 m^3
   live_accumulated_bounding_box: true
   khronos_sinks: !reset  # replaces the base list (lists append), so keep the base visualizer here
     - type: ActiveWindowVisualizer
@@ -64,4 +64,4 @@ active_window:
 
 frontend:
   clear_object_meshes: false
-map_window: {type: spatial, max_radius_m: 10.0}
+# map_window: {type: spatial, max_radius_m: 10.0}

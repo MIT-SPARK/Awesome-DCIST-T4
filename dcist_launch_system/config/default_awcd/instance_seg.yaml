@@ -13,6 +13,12 @@ model:
       track_high_thresh: 0.3
       track_low_thresh: 0.15
       new_track_thresh: 0.35
+  use_refinement: true
+  refinement:
+    dilate_masks: true
+    erode_only: true
+    kernel_size: 5
+    passes: 1
   instance_model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
@@ -44,9 +50,3 @@ model:
       - ball
     confidence_threshold: 0.25
     min_segmentation_size: 0
-  use_refinement: true
-  refinement:
-    dilate_masks: true
-    erode_only: true
-    kernel_size: 5
-    passes: 1
