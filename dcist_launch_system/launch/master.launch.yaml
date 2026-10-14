@@ -107,7 +107,8 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
-        - {from: ~/input/camera/depth_registered/image_rect, to: $(var camera)/depth/depth_registered}
+        # ZED depth scale-corrected by depth_scale_correction (launched with ROMAN, see below)
+        - {from: ~/input/camera/depth_registered/image_rect, to: $(var camera)/depth_corrected/depth_registered}
         - {from: ~/input/camera/rgb/image_raw, to: $(var camera)/rgb/image_rect_color}
         - {from: ~/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
         - {from: ~/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
@@ -175,7 +176,7 @@ launch:
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
-  # ROMAN reads ZED depth corrected online from the ground (depth_processing_ros; needs
+  # ROMAN and Hydra read ZED depth corrected online from the ground (depth_processing_ros; needs
   # <robot_name>/gpe in TF), published as <camera>/depth_corrected/*.
   - arg: {name: launch_depth_correction, default: 'false'}
   - node:
