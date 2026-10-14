@@ -1,0 +1,10 @@
+---
+# ROMAN MapperParams (roman_map node config_path); unspecified fields keep ROMAN's defaults.
+# Aggregate depth into point clouds (attached to submaps and saved in the map) for loop-closure ICP.
+store_aggregated_pcds: true
+pcd_max_depth: 5.0  # m; depth ICP worked best at 3-5 m (2026-10 West Point tests)
+pcd_voxel_size_m: 0.05  # per aggregation window; submaps are re-voxelized at icp_voxel_size
+pcd_dist_thresh_m: 0.2
+pcd_ang_thresh_deg: 20.0
+pcd_window_num_scans: 20
+pcd_window_overlap: 0.5
