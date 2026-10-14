@@ -1,5 +1,5 @@
 ---
-# Tracking matches default_awcd/hydra_overlay.yaml (BoxMOT ids + voxel-IoU fallback).
+# Tracking: BoxMOT ids + voxel-IoU fallback, accumulated track geometry and fragment merging.
 input:
   inputs:
     camera:
@@ -8,21 +8,8 @@ input:
 active_window:
   object_detector:
     max_range: 7.0  # don't let far, depth-biased pixels join object clusters
-    outlier_filter:
-      enabled: false
   tracker:
-    preassociate_by_id: true  # BoxMOT ids first, voxel-IoU fallback for unmatched clusters
-    track_by: voxels  # default is pixels
-    voxel_size: 0.1
-    min_semantic_iou: 0.1
-    accumulate_voxels: true  # accumulate all observations' voxels into Track::accumulated_* (association unchanged)
-    min_voxel_hits: 15  # observations a voxel needs to count in the accumulated bbox/footprint
-    merge_tracks: true  # merge fragment tracks of one object (needs accumulate_voxels); older id survives
     merge_containment_threshold: 0.25  # fraction of the smaller track's confirmed voxels inside the other
-    merge_distance_factor: 2.0  # max center distance, in multiples of the larger track radius
-  frame_data_buffer:
-    max_buffer_size: 600
-    store_every_n_frames: 1
   # vote_filter:
   #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   khronos_sinks:
@@ -52,60 +39,15 @@ active_window:
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
-        prior_frame_id: map
-        robot_frame_id: ''
-        tf_change_threshold_m: 0.05
       awcd_sinks:
         - type: TfIcpPublisher
           pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
-          odom_frame: ''
         - type: ActiveWindowChangeDetectorPublisher
-          topic: /awcd_changes
           robot_name: $<env ADT4_ROBOT_NAME>
-          global_frame_name: map
+          global_frame_name: map  # default is the GlobalInfo map frame (<robot>/odom in relocalize)
         - type: ActiveWindowChangeDetectorVisualizer
           verbosity: 1
           global_frame_name: map
-          bounding_box_line_width: 0.1
           min_draw_period_s: 0.5
-          draw_graph: true  # set false to skip the renderer config below
+          draw_graph: false  # prior mesh only; drawing the graph needs a `renderer:` config
           draw_mesh: true
-          draw_status: true  # gray/red candidate boxes + score labels on change_detection/status
-          draw_status_voxels: true  # candidate voxels on change_detection/voxels
-          label_text_scale: 0.3
-          mesh: {}  # MeshPlugin::Config; no `coloring` = use the prior mesh's own vertex colors
-          renderer:
-            graph: {layer_z_step: 2.0, collapse_layers: false}
-            layers:
-              2:
-                z_offset_scale: 1.0
-                visualize: true
-                nodes: {scale: 0.40, color: {type: LabelColorAdapter}, alpha: 0.8, use_sphere: false}
-                text: {draw: true, collapse: true, adapter: {type: LabelIdTextAdapter}, height: 0.5, scale: 0.45}
-                bounding_boxes: {draw: true, collapse: true, scale: 0.05, edge_scale: 0.05, alpha: 0.9, edge_break_ratio: 0.5}
-              4:
-                z_offset_scale: 3.0
-                visualize: true
-                nodes: {scale: 0.6, color: {type: IdColorAdapter, colormap: {palette: {type: colorbrewer}}}, alpha: 0.8, use_sphere: false}
-                text: {draw: true, height: 1.25, scale: 1.0}
-                edges: {scale: 0.1, alpha: 0.2}
-              2p*:
-                z_offset_scale: 0.0
-                visualize: true
-                nodes: {scale: 0.1, alpha: 1.0, use_sphere: true, color: {type: PartitionColorAdapter}}
-                edges: {scale: 0.1, alpha: 1.0}
-                text: {draw_layer: true, height: 0.9, scale: 0.8}
-              3p1:
-                z_offset_scale: 2.0
-                visualize: true
-                nodes: {scale: 0.2, color: {type: UniformColorAdapter, color: [0, 0, 0]}, alpha: 0.9, use_sphere: true}
-                text: {draw: true, adapter: {type: IdTextAdapter}, height: 0.5, scale: 0.45}
-                edges: {scale: 0.1, alpha: 0.8, color: {type: UniformEdgeColorAdapter, color: [0, 0, 0]}}
-            interlayer_edges:
-              - {from: 3*, to: 2p*, draw: false}
-              - {from: 3*, to: 2, use_child_color: true, scale: 0.08, alpha: 0.5}
-              - {from: 4, to: 3*, scale: 0.08, alpha: 0.5}
-            layer_plugins:
-              - layer: 3p1
-                plugins:
-                  - {type: RegionGrowingBoundaryPlugin}
