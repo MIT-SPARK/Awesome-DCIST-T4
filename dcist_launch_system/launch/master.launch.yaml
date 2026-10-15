@@ -13,15 +13,27 @@ launch:
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
-  - include:
+  - group:
       if: $(var launch_zed)
-      file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
-      arg:
-        - {name: namespace, value: $(var robot_name)}
-        - {name: camera_model, value: zed2i}
-        - {name: camera_name, value: $(var camera)}
-        - {name: publish_tf, value: 'false'}
-        - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
+      children:
+        # zed_wrapper >= 5.1 renamed its image topics; map them back to the
+        # pre-5.1 names so the stack and old bags see one set of topics.
+        # Remaps for names an older driver doesn't publish are no-ops.
+        - set_remap: {from: ~/rgb/color/rect/image, to: ~/rgb/image_rect_color}
+        - set_remap: {from: ~/rgb/color/raw/image, to: ~/rgb_raw/image_raw_color}
+        - set_remap: {from: ~/left/color/rect/image, to: ~/left/image_rect_color}
+        - set_remap: {from: ~/left/color/raw/image, to: ~/left_raw/image_raw_color}
+        - set_remap: {from: ~/right/color/rect/image, to: ~/right/image_rect_color}
+        - set_remap: {from: ~/right/color/raw/image, to: ~/right_raw/image_raw_color}
+        - set_remap: {from: ~/left/gray/rect/image, to: ~/left_gray/image_rect_gray}
+        - include:
+            file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
+            arg:
+              - {name: namespace, value: $(var robot_name)}
+              - {name: camera_model, value: zed2i}
+              - {name: camera_name, value: $(var camera)}
+              - {name: publish_tf, value: 'false'}
+              - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
