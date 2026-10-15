@@ -71,9 +71,10 @@ if [ "$install_roman" = true ]; then
     mkdir -p $ADT4_WS/weights
     pushd $ADT4_WS/weights
     gdown 'https://drive.google.com/uc?id=1m1sjY4ihXBU1fZXdQ-Xdj-mDltW-2Rqv'
-    MODEL_FILE="yolov7.pt"
+    # YOLOv8 detector ROMAN uses (via ultralytics) to filter out e.g. people
+    MODEL_FILE="yolov8m.pt"
     if [ ! -f "$MODEL_FILE" ]; then
-	wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/$MODEL_FILE
+	wget https://github.com/ultralytics/assets/releases/download/v8.3.0/$MODEL_FILE
     else
         echo "$MODEL_FILE already exists, skipping download."
     fi

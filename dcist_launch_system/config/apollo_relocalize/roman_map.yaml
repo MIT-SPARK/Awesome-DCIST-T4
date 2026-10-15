@@ -7,3 +7,7 @@
     visualize: true
     viz_min_viz_dt: 0.25
     output_roman_map: $(var output_dir)/roman/1.roman_map.pkl
+    config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_mapper.yaml
+    submap_config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_lc.yaml
+    submap_num_segments: 40
+    submap_overlapping_segments: 20

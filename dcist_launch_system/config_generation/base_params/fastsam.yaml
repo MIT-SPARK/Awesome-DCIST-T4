@@ -1,6 +1,6 @@
 ---
 weights_path: $ADT4_WS/weights/FastSAM-x.pt
-yolo_weights_path: $ADT4_WS/weights/yolov7.pt
+yolo_weights_path: $ADT4_WS/weights/yolov8m.pt
 imgsz: [256, 256]
 device: cuda
 mask_downsample_factor: 8
@@ -15,6 +15,6 @@ keep_labels: []
 plane_filter_params: [3.0, 1.0, 0.2]
 semantics: dino
 yolo_imgsz: [256, 256]
-depth_scale: 1000.0
+depth_scale: 1.0  # ZED depth is 32FC1 in meters
 max_depth: 10.0
 frame_descriptor: dino-gem
