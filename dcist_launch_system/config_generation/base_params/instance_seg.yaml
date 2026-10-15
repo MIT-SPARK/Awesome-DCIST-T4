@@ -1,6 +1,25 @@
 ---
 invalid_ids: [0]
 model:
+  instance_tracker:
+    type: boxmot
+    tracker_type: botsort
+    with_reid: false
+    track_buffer: 30
+    frame_rate: 30
+    per_class: false
+    tracker_args:
+      use_cmc: true
+      cmc_method: sof  # sparse optical flow; DAAAM's ECC default is far more expensive
+      track_high_thresh: 0.3
+      track_low_thresh: 0.15
+      new_track_thresh: 0.35
+  use_refinement: true
+  refinement:
+    dilate_masks: true  # enables the morphology step
+    erode_only: true  # skip dilation
+    kernel_size: 5
+    passes: 1  # number of erosion passes
   instance_model:
     type: yoloe
     model_name: yoloe-26m-seg.pt
@@ -30,6 +49,5 @@ model:
       - trash
       - clothes
       - ball
-      - roadblock
     confidence_threshold: 0.3
     min_segmentation_size: 0

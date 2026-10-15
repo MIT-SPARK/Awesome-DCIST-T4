@@ -53,7 +53,7 @@ experiments:
   # spot configs — require Spot hardware or bag playback
   spot:
     launch_config: [map, spot_real, sensors]
-    config: [default]
+    config: [default, indoor]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, apollo_relocalize, relocalize_awcd]
