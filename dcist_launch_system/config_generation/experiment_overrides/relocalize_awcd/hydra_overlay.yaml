@@ -1,27 +1,35 @@
 ---
+# Tracking: BoxMOT ids + voxel-IoU fallback, accumulated track geometry and fragment merging.
+input:
+  inputs:
+    camera:
+      sensor:
+        max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
 active_window:
+  object_detector:
+    max_range: 7.0  # don't let far, depth-biased pixels join object clusters
+  tracker:
+    merge_containment_threshold: 0.25  # fraction of the smaller track's confirmed voxels inside the other
+  # vote_filter:
+  #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   khronos_sinks:
     - type: ActiveWindowChangeDetector
       verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
-      removal_vertex_free_ratio_threshold: 0.8
-      added_object_containment_threshold: 0.8
       # Temporal EMA filter params for removed-object detection:
       removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
       removal_probability_threshold: 0.8  # Smoothed probability to declare removal
-      removal_min_frames_observed: 3  # Min frames before removal can be declared
+      removal_min_frames_observed: 5  # Min frames before removal can be declared
+      removal_min_in_bounds_fraction: 0.5  # cheap pre-filter: object voxels in allocated blocks
+      removal_min_observed_fraction: 0.5  # object voxels actually observed (tracking last_observed != 0)
+      removal_score_weighting: vertices  # 'vertices' (one vote per mesh vertex) or 'voxels' (one per object voxel)
+      collect_debug_voxels: true  # per-voxel free/occupied/unknown lists for change_detection/voxels
       # Temporal EMA filter params for newly-added-object detection:
-      added_ema_alpha: 0.5  # EMA smoothing factor
+      added_ema_alpha: 0.2  # EMA smoothing factor
       added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
       added_min_frames_observed: 20  # Min frames before a track can be declared added
-      added_prune_after_frames: 50  # Frames of no measurement before non-added tracks are pruned
-      # Track-to-object association: fold tracks together that look like the same physical object
-      enable_added_object_merging: true
-      merge_bbox_iou_threshold: 0.2  # 3D bbox IoU above which a track matches an object (<=0 disables)
-      merge_centroid_distance_threshold: 0.5  # [m] centroid distance below which a track matches an object (<=0 disables)
-      merge_min_semantic_cosine_sim: 0.7  # Min feature cosine sim required to match (AND'd with geometry)
-      reassociate_every_frame: false  # Sticky by default: a track keeps its first association
-      bbox_merge_type: weighted_average  # 'union' (grow to enclose) or 'weighted_average' (confidence-blended)
+      added_prune_after_frames: 100  # Frames of no measurement before non-added tracks are pruned
+      # ICP configs
       enable_icp_refinement: true
       icp_crop_radius: 10.0
       icp_num_threads: 2
@@ -31,14 +39,15 @@ active_window:
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
-        prior_frame_id: map
-        robot_frame_id: ''
-        tf_change_threshold_m: 0.05
       awcd_sinks:
         - type: TfIcpPublisher
           pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
-          odom_frame: ''
         - type: ActiveWindowChangeDetectorPublisher
-          topic: /awcd_changes
           robot_name: $<env ADT4_ROBOT_NAME>
+          global_frame_name: map  # default is the GlobalInfo map frame (<robot>/odom in relocalize)
+        - type: ActiveWindowChangeDetectorVisualizer
+          verbosity: 1
           global_frame_name: map
+          min_draw_period_s: 0.5
+          draw_graph: false  # prior mesh only; drawing the graph needs a `renderer:` config
+          draw_mesh: true

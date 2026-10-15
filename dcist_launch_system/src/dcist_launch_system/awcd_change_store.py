@@ -40,7 +40,7 @@ class ChangeRecord:
     )
     center: np.ndarray  # (3,) float64, already transformed into the render/target frame
     dimensions: np.ndarray  # (3,) float64
-    orientation: np.ndarray  # (4,) float64 xyzw quaternion (not currently rendered)
+    orientation: np.ndarray  # (4,) float64 xyzw quaternion, in the target frame
     semantic_label: int
     confidence: float  # tracking-quality (added-only); not currently rendered
     change_confidence: (

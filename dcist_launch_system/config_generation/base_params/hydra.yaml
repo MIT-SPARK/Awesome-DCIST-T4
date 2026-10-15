@@ -28,23 +28,34 @@ active_window:
   volumetric_map: {voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
   object_detector: {type: InstanceForwarding, min_cluster_size: 30, max_range: 10.0, min_range: 0.05, verbosity: 1, instance_filter: {type: CategoryFilter}}
-  tracker: {type: MaxIouTracker, track_by: pixels, min_semantic_iou: 0.25, min_cross_iou: 0.1, min_num_observations: 10, verbosity: 0, preassociate_by_id: true}
-  object_extractor:
-    type: MeshObjectExtractor
-    projective_integrator: {num_threads: 8}
-    object_reconstruction_resolution: -0.05
-    min_object_allocation_confidence: 0.3
-    min_object_reconstruction_confidence: 0.3
-    min_object_reconstruction_observations: 5
+  tracker:
+    type: MaxIouTracker
+    track_by: voxels
+    min_semantic_iou: 0.1
+    min_cross_iou: 0.1
+    min_num_observations: 30
+    verbosity: 0
+    preassociate_by_id: true
+    voxel_size: 0.1
+    accumulate_voxels: true,
+    min_voxel_hits: 15
+    merge_tracks: true
+    merge_containment_threshold: 0.2
+    merge_distance_factor: 2.0
+  object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 40.0}
   khronos_sinks:
-    - {type: ActiveWindowVisualizer}
+    - {type: ActiveWindowVisualizer, track_label_min_observations: 30}
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
+  frame_data_buffer:
+    max_buffer_size: 600
+    store_every_n_frames: 1
+  live_accumulated_bounding_box: true
 frontend:
   type: GraphBuilder
   serialize_dsg_mesh: false
-  clear_object_meshes: true
+  clear_object_meshes: false
   enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5}
   mesh_compression: {resolution: 0.005}

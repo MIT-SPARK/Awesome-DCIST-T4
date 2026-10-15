@@ -40,7 +40,10 @@ GREEN = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
 
 
 def _bbox_line_list_points(dimensions: np.ndarray) -> List[Point]:
-    """12-edge / 24-point axis-aligned wireframe, mirroring khronos_ros setBoundingBox()."""
+    """12-edge / 24-point wireframe in the box frame, mirroring khronos_ros setBoundingBox().
+
+    The marker pose carries the box center and orientation.
+    """
     base = -dimensions / 2.0
     dx = np.array([dimensions[0], 0.0, 0.0])
     dy = np.array([0.0, dimensions[1], 0.0])
@@ -211,6 +214,13 @@ class AwcdVisualizerNode(Node):
                 transform, np.array(bbox.world_P_center, dtype=float)
             )
             dims = np.array(bbox.dimensions, dtype=float)
+            # RAABB/OBB boxes carry a rotation; AABB boxes are axis-aligned in the prior frame.
+            world_R_center = (
+                np.array(bbox.world_R_center, dtype=float)
+                if bbox.has_rotation()
+                else np.eye(3)
+            )
+            orientation = _rotmat_to_quat(transform[:3, :3] @ world_R_center)
             semantic_label = getattr(attrs, "semantic_label", -1)
             records.append(
                 ChangeRecord(
@@ -220,7 +230,7 @@ class AwcdVisualizerNode(Node):
                     stamp_ns=Time.from_msg(info.stamp).nanoseconds,
                     center=center,
                     dimensions=dims,
-                    orientation=np.array([0.0, 0.0, 0.0, 1.0]),
+                    orientation=orientation,
                     semantic_label=int(semantic_label),
                     confidence=float(info.confidence),
                     change_confidence=float(info.change_confidence),
@@ -241,14 +251,13 @@ class AwcdVisualizerNode(Node):
             dims = np.array(
                 [info.bbox_dimensions.x, info.bbox_dimensions.y, info.bbox_dimensions.z]
             )
-            orientation = np.array(
-                [
-                    info.bbox_orientation.x,
-                    info.bbox_orientation.y,
-                    info.bbox_orientation.z,
-                    info.bbox_orientation.w,
-                ]
+            msg_R_center = _quat_to_rotmat(
+                info.bbox_orientation.x,
+                info.bbox_orientation.y,
+                info.bbox_orientation.z,
+                info.bbox_orientation.w,
             )
+            orientation = _rotmat_to_quat(transform[:3, :3] @ msg_R_center)
             records.append(
                 ChangeRecord(
                     robot_name=msg.robot_name,
@@ -303,7 +312,10 @@ class AwcdVisualizerNode(Node):
                     box.ns = box_ns
                     box.id = marker_id
                     box.scale.x = self.line_width
-                    box.pose.orientation.w = 1.0
+                    box.pose.orientation.x = float(record.orientation[0])
+                    box.pose.orientation.y = float(record.orientation[1])
+                    box.pose.orientation.z = float(record.orientation[2])
+                    box.pose.orientation.w = float(record.orientation[3])
                     box.pose.position = Point(
                         x=float(record.center[0]),
                         y=float(record.center[1]),
@@ -378,6 +390,37 @@ def _quat_to_rotmat(x, y, z, w) -> np.ndarray:
             [xz - wy, yz + wx, 1.0 - (xx + yy)],
         ]
     )
+
+
+def _rotmat_to_quat(rot: np.ndarray) -> np.ndarray:
+    """Rotation matrix to quaternion [x, y, z, w]."""
+    trace = rot[0, 0] + rot[1, 1] + rot[2, 2]
+    if trace > 0.0:
+        s = 2.0 * np.sqrt(trace + 1.0)
+        w = 0.25 * s
+        x = (rot[2, 1] - rot[1, 2]) / s
+        y = (rot[0, 2] - rot[2, 0]) / s
+        z = (rot[1, 0] - rot[0, 1]) / s
+    elif rot[0, 0] > rot[1, 1] and rot[0, 0] > rot[2, 2]:
+        s = 2.0 * np.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2])
+        w = (rot[2, 1] - rot[1, 2]) / s
+        x = 0.25 * s
+        y = (rot[0, 1] + rot[1, 0]) / s
+        z = (rot[0, 2] + rot[2, 0]) / s
+    elif rot[1, 1] > rot[2, 2]:
+        s = 2.0 * np.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2])
+        w = (rot[0, 2] - rot[2, 0]) / s
+        x = (rot[0, 1] + rot[1, 0]) / s
+        y = 0.25 * s
+        z = (rot[1, 2] + rot[2, 1]) / s
+    else:
+        s = 2.0 * np.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1])
+        w = (rot[1, 0] - rot[0, 1]) / s
+        x = (rot[0, 2] + rot[2, 0]) / s
+        y = (rot[1, 2] + rot[2, 1]) / s
+        z = 0.25 * s
+    quat = np.array([x, y, z, w])
+    return quat / np.linalg.norm(quat)
 
 
 def _transform_point(mat: np.ndarray, point: np.ndarray) -> np.ndarray:
