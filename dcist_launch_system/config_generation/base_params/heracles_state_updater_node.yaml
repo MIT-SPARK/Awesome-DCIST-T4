@@ -4,7 +4,6 @@
     heracles_ip: $(env ADT4_HERACLES_IP)
     heracles_port: $(env ADT4_HERACLES_PORT)
     map_frame: map
-    # Every Spot whose pose and holding state go into the database (the spots in
-    # omniplanner_plugins.yaml). Ones without a TF today are skipped.
-    robot_names: [euclid, hamilton, apollo, hilbert]
+    # Track the same robots the planner plans for.
+    robots_config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml
     publish_rate: 1.0
