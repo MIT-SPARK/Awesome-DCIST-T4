@@ -17,3 +17,10 @@ use_object_bottom_middle: false
 submap_descriptor: stacked_frame_descriptors
 frame_descriptor_dist: 5.0
 submap_descriptor_thresh: 0.7
+# loop-closure refinement: point-to-plane ICP on the submaps' depth point clouds
+icp_on_submap_pcds: true
+icp_voxel_size: 0.1
+icp_correspondence_distances: [1.0, 0.5, 0.25, 0.1]
+icp_min_fitness: 0.2
+icp_max_translation: 1.5
+icp_max_rotation_deg: 10.0
