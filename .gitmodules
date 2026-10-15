@@ -58,3 +58,6 @@
 [submodule "dsg_updater"]
 	path = dsg_updater
 	url = git@github.com:toyat522/dsg_updater.git
+[submodule "depth_processing_ros"]
+	path = depth_processing_ros
+	url = git@github.com:mbpeterson70/depth_processing_ros.git
