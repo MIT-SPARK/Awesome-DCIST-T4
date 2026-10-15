@@ -1,3 +1,4 @@
+---
 paths: [khronos, khronos_ros]
 robot_id: 0
 config_verbosity: 1
@@ -38,7 +39,8 @@ active_window:
     instance_filter: {type: CategoryFilter}
     outlier_filter:
       enabled: false
-  tracker: {type: MaxIouTracker, track_by: voxels, min_semantic_iou: 0.1, min_cross_iou: 0.1, min_num_observations: 30, verbosity: 0, preassociate_by_id: true, voxel_size: 0.1, accumulate_voxels: true, min_voxel_hits: 15, merge_tracks: true, merge_containment_threshold: 0.2, merge_distance_factor: 2.0}
+  tracker: {type: MaxIouTracker, track_by: voxels, min_semantic_iou: 0.1, min_cross_iou: 0.1, min_num_observations: 30, verbosity: 0, preassociate_by_id: true, voxel_size: 0.1, accumulate_voxels: true,
+    min_voxel_hits: 15, merge_tracks: true, merge_containment_threshold: 0.2, merge_distance_factor: 2.0}
   object_extractor:
     type: AccumulatedObjectExtractor
     min_object_allocation_confidence: 0.5
