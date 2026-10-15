@@ -22,6 +22,7 @@
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
+	branch = feature/plan-repair-preemption
 [submodule "roman"]
 	path = roman
 	url = git@github.com:mit-acl/ROMAN.git
@@ -45,7 +46,7 @@
 	url = git@github.com:MultyXu/dsg_analyzer.git
 [submodule "heracles"]
 	path = heracles
-	url = git@github.com:GoldenZephyr/heracles.git
+	url = git@github.com:robustrobotics/heracles.git
 [submodule "heracles_agents"]
 	path = heracles_agents
 	url = git@github.com:robustrobotics/heracles_agents.git
