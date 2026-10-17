@@ -76,6 +76,8 @@ active_window:
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
+      start_enabled: false
+      controller: {type: RosChangeDetectionController}
       awcd_sinks:
         - type: TfIcpPublisher
           pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
