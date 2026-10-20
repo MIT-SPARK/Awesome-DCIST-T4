@@ -64,6 +64,7 @@ setup(
             "record_topics = dcist_launch_system.record_topics:main",
             "static_tf_from_json = dcist_launch_system.static_tf_from_json:main",
             "tf_relay_node = dcist_launch_system.tf_relay_node:main",
+            "tf_network_node = dcist_launch_system.tf_network_node:main",
             "run_offline_fusion = dcist_launch_system.run_offline_fusion:main",
         ],
     },

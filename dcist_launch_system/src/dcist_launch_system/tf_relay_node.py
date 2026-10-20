@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Relay per-robot TF (/<robot>/tf, /<robot>/tf_static) onto this node's namespace.
+"""Relay every robot's network TF (/<robot>/network/tf) onto this node's namespace.
 
 Run on the base station (namespaced by its own robot name) so that nodes reading
-/<base_station>/tf see the frames of every robot.
+/<base_station>/tf see the frames of every robot. Robots publish the reduced-rate
+/<robot>/network/tf with tf_network_node.
 """
 
 import re
@@ -13,7 +14,7 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from tf2_msgs.msg import TFMessage
 
 TF_TYPE = "tf2_msgs/msg/TFMessage"
-TOPIC_REGEX = re.compile(r"^/(?:([^/]+)/)?(tf|tf_static)$")
+TOPIC_REGEX = re.compile(r"^/([^/]+)/network/(tf|tf_static)$")
 
 DYNAMIC_QOS = QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)
 STATIC_QOS = QoSProfile(
@@ -27,16 +28,13 @@ class TfRelay(Node):
     def __init__(self):
         super().__init__("tf_relay")
 
-        # Empty list means relay every /<robot>/tf topic that shows up
+        # Empty list means relay every /<robot>/network/tf topic that shows up
         self.declare_parameter("robots", [""])
-        self.declare_parameter("relay_global_tf", False)
         self.declare_parameter("discovery_period_s", 1.0)
 
         robots = self.get_parameter("robots").get_parameter_value().string_array_value
         self.robots = set(x for x in robots if x)
-        self.relay_global_tf = (
-            self.get_parameter("relay_global_tf").get_parameter_value().bool_value
-        )
+        self.own_name = self.get_namespace().strip("/")
         period = (
             self.get_parameter("discovery_period_s").get_parameter_value().double_value
         )
@@ -71,8 +69,8 @@ class TfRelay(Node):
             return False
 
         robot = match.group(1)
-        if robot is None:
-            return self.relay_global_tf
+        if robot == self.own_name:
+            return False
 
         return not self.robots or robot in self.robots
 

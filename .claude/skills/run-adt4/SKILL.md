@@ -76,9 +76,10 @@ Rules:
 - **Sessions with `spot_real`, `phoenix_real`, or `sensors` drive real hardware.** Before
   launching one, confirm with the user and name the robot. Bag, `prior_dsg` (spot_sim) and
   base-station sessions are safe to run without asking.
-- TF is namespaced by default (`ADT4_NAMESPACE_TF`): every node uses `/<robot>/tf`. Only the
-  base-station sessions merge all robots onto `/<base>/tf` (the `tf_relay` window). Run the base
-  station with `-n <base_station_name>`.
+- TF is namespaced by default (`ADT4_NAMESPACE_TF`): every node uses `/<robot>/tf`. Robot
+  sessions republish it at 10 Hz on `/<robot>/network/tf` (the `tf_network` window). Only
+  base-station sessions merge every robot's `network/tf` onto `/<base>/tf` (the `tf_relay`
+  window). Run the base station with `-n <base_station_name>`.
 
 ## Step 3: Dry run, then launch
 

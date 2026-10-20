@@ -605,8 +605,24 @@ launch:
         - {from: /tf, to: $(var tf_topic)}
         - {from: /tf_static, to: $(var tf_static_topic)}
 
-  # TF relay (base station: merges /<robot>/tf from every robot onto /<robot_name>/tf)
-  # Deliberately no /tf remaps: its inputs are already explicit /<robot>/tf topics
+  # TF network publisher (robots: republishes /<robot_name>/tf at a reduced rate on
+  # /<robot_name>/network/tf, which is all the base station subscribes to)
+  - arg: {name: launch_tf_network, default: 'false'}
+  - arg: {name: tf_network_rate_hz, default: '10.0'}
+  - node:
+      if: $(var launch_tf_network)
+      pkg: dcist_launch_system
+      exec: tf_network_node
+      name: tf_network
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {name: rate_hz, value: $(var tf_network_rate_hz)}
+      remap:  # follow the robot's TF wherever namespace_tf put it
+        - {from: tf, to: $(var tf_topic)}
+        - {from: tf_static, to: $(var tf_static_topic)}
+
+  # TF relay (base station: merges /<robot>/network/tf from every robot onto /<robot_name>/tf)
+  # Deliberately no /tf remaps: its inputs and outputs are explicit namespaced topics
   - arg: {name: launch_tf_relay, default: 'false'}
   - node:
       if: $(var launch_tf_relay)
