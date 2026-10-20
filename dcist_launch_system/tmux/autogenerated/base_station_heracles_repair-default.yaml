@@ -2,6 +2,7 @@ nodes_to_monitor:
   dsg_saver: {}
   omniplanner: {}
   nlu_rviz_instruction_panel: {}
+  tf_relay: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -14,7 +15,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_NAMESPACE_TF: $ADT4_NAMESPACE_TF
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: base_station_heracles_repair-default

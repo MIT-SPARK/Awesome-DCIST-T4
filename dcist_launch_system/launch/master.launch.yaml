@@ -631,6 +631,8 @@ launch:
       name: tf_relay
       param:
         - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 
   # gps
   - arg: {name: launch_gps, default: 'false'}

@@ -1,4 +1,6 @@
 ---
+nodes_to_monitor:
+  tf_relay: {}
 windows:
   - window_name: tf_relay
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
