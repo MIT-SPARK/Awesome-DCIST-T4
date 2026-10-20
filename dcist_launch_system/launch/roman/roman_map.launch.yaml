@@ -2,6 +2,7 @@
 launch:
   - arg: {name: conf_name}
   - arg: {name: pyenv_path}
+  - arg: {name: camera}
   - arg: {name: output_dir}
   - pyenv_node:
       pkg: roman_ros2
@@ -11,3 +12,9 @@ launch:
       param:
         - from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/roman_map.yaml
           allow_substs: true
+      remap:
+        - {from: color/camera_info, to: $(var camera)/rgb/camera_info}
+        - {from: color/image_raw, to: $(var camera)/rgb/image_rect_color}
+        - {from: depth/camera_info, to: $(var camera)/depth_corrected/camera_info}
+        - {from: depth/image_raw, to: $(var camera)/depth_corrected/depth_registered}
+        - {from: roman/roman_map/status, to: ros_system_monitor/node_diagnostic_collector}

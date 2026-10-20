@@ -1,6 +1,7 @@
 nodes_to_monitor:
   omniplanner: {}
   nlu_rviz_instruction_panel: {}
+  tf_relay: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -12,7 +13,8 @@ environment:
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {nlu_rviz_instruction_panel: {}, omniplanner: {}}}"
+  ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: base_station_heracles-default
@@ -49,3 +51,7 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]
+  - window_name: tf_relay
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true]

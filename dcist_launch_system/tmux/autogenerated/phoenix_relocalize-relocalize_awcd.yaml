@@ -1,4 +1,5 @@
 nodes_to_monitor:
+  tf_network: {}
   hydra:
     external_monitor: {type: JsonMonitor}
   hydra_multi:
@@ -25,7 +26,8 @@ environment:
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, tx_rx_monitor: {}}}"
+  ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, tf_network: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: relocalize_awcd
   logging_key: phoenix_relocalize-relocalize_awcd
@@ -44,6 +46,10 @@ windows:
     panes:
       - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true
+  - window_name: tf_network
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_network:=true]
   - window_name: hydra_multi
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

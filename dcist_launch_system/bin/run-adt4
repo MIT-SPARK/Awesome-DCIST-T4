@@ -27,6 +27,7 @@ ADT4_VARS = [
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
     "ADT4_RVIZ_CONFIG",
+    "ADT4_TF_NETWORK_MODE",
 ]
 
 
@@ -212,12 +213,43 @@ def _make_record_window(info: SessionInfo):
     return window_config
 
 
+def _tf_remap_args(info: SessionInfo):
+    # ADT4 namespaces all TF by robot (see master.launch.yaml)
+    ns = f"/{info.robot_name}"
+    return ["-r", f"/tf:={ns}/tf", "-r", f"/tf_static:={ns}/tf_static"]
+
+
+def _bag_tf_args(info: SessionInfo):
+    """Point ianvs at the bag's TF topics: /<robot>/tf in newer bags, /tf in older ones."""
+    bag_dir = info.bag if info.bag.is_dir() else info.bag.parent
+    try:
+        with (bag_dir / "metadata.yaml").open("r") as fin:
+            metadata = yaml.safe_load(fin)["rosbag2_bagfile_information"]
+        counts = {
+            x["topic_metadata"]["name"]: x["message_count"]
+            for x in metadata["topics_with_message_count"]
+        }
+    except (OSError, KeyError, TypeError, yaml.YAMLError):
+        click.secho(f"Could not read bag metadata in '{bag_dir}'", fg="yellow")
+        return []
+
+    ns = f"/{info.robot_name}"
+    args = []
+    if counts.get(f"{ns}/tf", 0) > 0:
+        args += ["--tf-topic", f"{ns}/tf"]
+    if counts.get(f"{ns}/tf_static", 0) > 0:
+        args += ["--tf-static-topic", f"{ns}/tf_static"]
+
+    return args
+
+
 def _make_bag_window(info: SessionInfo):
     to_drop = [".*leg.*", ".*foot.*", ".*rail.*", ".*map.*"]
     if info.trajectory:
         to_drop.append(".*odom.*")
 
     bag_args = ["--filter-tf", "-k", f"'.*{info.robot_name}.*'"]
+    bag_args += _bag_tf_args(info)
     bag_args += ["--delay", str(info.bag_delay)]
     bag_args += [f"-f '{x}'" for x in to_drop]
     if info.sim_time:
@@ -228,6 +260,9 @@ def _make_bag_window(info: SessionInfo):
 
     if info.bag_rate:
         bag_args += ["--rate", f"{info.bag_rate}"]
+
+    # play_rosbag republishes (filtered) TF from its wrapper node, which these remaps move
+    bag_args += ["--ros-args"] + _tf_remap_args(info)
 
     window_config = {
         "layout": "tiled",
@@ -241,7 +276,7 @@ def _make_bag_window(info: SessionInfo):
         cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{info.trajectory}"]
         cmd += ["--parent", f"{info.robot_name}/odom", "--child", child_frame]
         cmd += info.trajectory_args
-        cmd += ["--ros-args", "-p", "use_sim_time:=true"]
+        cmd += ["--ros-args", "-p", "use_sim_time:=true"] + _tf_remap_args(info)
         window_config["panes"].append(" ".join(cmd))
 
     return window_config
@@ -336,6 +371,11 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     help="custom rviz config file (overrides default dcist.rviz)",
 )
 @click.option("--zenoh/--no-zenoh", default=True, help="start zenoh router")
+@click.option(
+    "--forward-all-tf",
+    is_flag=True,
+    help="send the robot's whole TF tree to the base station (default: only map_T_robot)",
+)
 def main(
     session_path,
     tmuxp_args,
@@ -358,6 +398,7 @@ def main(
     record,
     rviz_config,
     zenoh,
+    forward_all_tf,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -374,6 +415,7 @@ def main(
     env["ADT4_ROBOT_NAME"] = robot_name
     env["ADT4_PLATFORM_ID"] = platform_id
     env["ADT4_SIM_TIME"] = "true" if sim_time else "false"
+    env["ADT4_TF_NETWORK_MODE"] = "all" if forward_all_tf else "frames"
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
     if prior_map:
         env["ADT4_PRIOR_MAP"] = str(prior_map)
