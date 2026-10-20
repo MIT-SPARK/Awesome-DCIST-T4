@@ -13,7 +13,7 @@ from rclpy.node import Node
 from ros_system_monitor_msgs.msg import NodeInfoMsg
 from tf2_msgs.msg import TFMessage
 
-from dcist_launch_system.tf_relay_node import DYNAMIC_QOS, STATIC_QOS
+from dcist_launch_system.tf_relay_node import DYNAMIC_QOS, STATIC_QOS, STATIC_SUB_QOS
 
 
 class TfNetwork(Node):
@@ -38,7 +38,7 @@ class TfNetwork(Node):
         )
         self.create_subscription(TFMessage, "tf", self.tf_callback, DYNAMIC_QOS)
         self.create_subscription(
-            TFMessage, "tf_static", self.static_callback, STATIC_QOS
+            TFMessage, "tf_static", self.static_callback, STATIC_SUB_QOS
         )
         self.timer = self.create_timer(1.0 / rate_hz, self.flush)
 
