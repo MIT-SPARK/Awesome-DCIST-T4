@@ -6,14 +6,14 @@ config_verbosity: 1
 map_frame: $<env ADT4_ROBOT_NAME>/map
 odom_frame: $<env ADT4_ROBOT_NAME>/odom
 robot_frame: $<env ADT4_ROBOT_NAME>/base_link
-map_window: {type: spatial, max_radius_m: 14.0}
+map_window: {type: spatial, max_radius_m: 10.0}
 labelspace: {type: from_msg}
 # modules
 input:
   type: RosInput
   inputs:
     camera:
-      sensor: {type: camera_info, min_range: 0.2, max_range: 10.0, extrinsics: {type: ros}}
+      sensor: {type: camera_info, min_range: 0.2, max_range: 7.0, extrinsics: {type: ros}}
       receiver:
         type: ImageReceiver
         verbosity: 1
@@ -33,7 +33,7 @@ active_window:
     track_by: voxels
     min_semantic_iou: 0.1
     min_cross_iou: 0.1
-    min_num_observations: 30
+    min_num_observations: 15
     verbosity: 0
     preassociate_by_id: true
     voxel_size: 0.1
@@ -42,9 +42,9 @@ active_window:
     merge_tracks: true
     merge_containment_threshold: 0.2
     merge_distance_factor: 2.0
-  object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 40.0}
+  object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:
-    - {type: ActiveWindowVisualizer, track_label_min_observations: 30}
+    - {type: ActiveWindowVisualizer, track_label_min_observations: 15}
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
