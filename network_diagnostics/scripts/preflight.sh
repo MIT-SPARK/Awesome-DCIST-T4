@@ -61,14 +61,14 @@ echo -e "${BOLD}1. Network Interfaces${NC}"
 
 detect_active_network() {
     python3 -c "
-import yaml, subprocess
+import ipaddress, re, subprocess, yaml
 with open('${TOPOLOGY}') as f:
     data = yaml.safe_load(f)
 ip_out = subprocess.check_output(['ip', 'addr', 'show'], text=True)
 found = []
 for netname, info in data.get('networks', {}).items():
-    prefix = info['subnet'].rsplit('.', 1)[0].rsplit('.', 1)[0]
-    if f'inet {prefix}.' in ip_out or f'inet {prefix}/' in ip_out:
+    subnet = ipaddress.ip_network(info['subnet'], strict=False)
+    if any(ipaddress.ip_address(ip) in subnet for ip in re.findall(r'inet (\\d+\\.\\d+\\.\\d+\\.\\d+)', ip_out)):
         found.append(netname)
 print(' '.join(found))
 "
