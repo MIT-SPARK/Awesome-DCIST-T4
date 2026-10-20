@@ -3,4 +3,6 @@ windows:
   - window_name: transform_publishers
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map, ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom]
+    panes:  # tf_static follows ADT4_NAMESPACE_TF (see master.launch.yaml)
+      - ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map --ros-args -r /tf_static:=$([[ $ADT4_NAMESPACE_TF == false ]] && echo /tf_static || echo /$ADT4_ROBOT_NAME/tf_static)
+      - ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom --ros-args -r /tf_static:=$([[ $ADT4_NAMESPACE_TF == false ]] && echo /tf_static || echo /$ADT4_ROBOT_NAME/tf_static)

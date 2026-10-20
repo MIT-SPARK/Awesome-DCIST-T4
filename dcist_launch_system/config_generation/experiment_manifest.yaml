@@ -38,16 +38,16 @@ important_variants:
 experiments:
   # base station — these run on the base station only (no robot hardware needed)
   base_station:
-    launch_config: [plan_prior, multi_status]
+    launch_config: [plan_prior, multi_status, tf_relay]
     config: [default]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay]
     config: [default]
   base_station_repair:
-    launch_config: [plan_prior_repair, multi_status]
+    launch_config: [plan_prior_repair, multi_status, tf_relay]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback

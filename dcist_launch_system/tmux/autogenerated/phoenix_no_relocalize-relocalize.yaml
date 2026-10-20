@@ -15,6 +15,7 @@ environment:
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
+  ADT4_NAMESPACE_TF: $ADT4_NAMESPACE_TF
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: relocalize
@@ -37,7 +38,9 @@ windows:
   - window_name: transform_publishers
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map, ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom]
+    panes:
+      - "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 map $ADT4_ROBOT_NAME/map --ros-args -r /tf_static:=$([[ $ADT4_NAMESPACE_TF == false ]] && echo /tf_static || echo /$ADT4_ROBOT_NAME/tf_static)"
+      - "ros2 run tf2_ros static_transform_publisher 0 0 0 0 0 0 $ADT4_ROBOT_NAME/map $ADT4_ROBOT_NAME/odom --ros-args -r /tf_static:=$([[ $ADT4_NAMESPACE_TF == false ]] && echo /tf_static || echo /$ADT4_ROBOT_NAME/tf_static)"
   - window_name: sensors
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

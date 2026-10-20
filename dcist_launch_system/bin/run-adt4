@@ -27,6 +27,7 @@ ADT4_VARS = [
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
     "ADT4_RVIZ_CONFIG",
+    "ADT4_NAMESPACE_TF",
 ]
 
 
@@ -54,6 +55,7 @@ class SessionInfo:
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
     zenoh: bool = True
+    namespace_tf: bool = False
 
     @property
     def platform_type(self) -> PlatformType:
@@ -211,6 +213,14 @@ def _make_record_window(info: SessionInfo):
     return window_config
 
 
+def _tf_remap_args(info: SessionInfo):
+    if not info.namespace_tf:
+        return []
+
+    ns = f"/{info.robot_name}"
+    return ["-r", f"/tf:={ns}/tf", "-r", f"/tf_static:={ns}/tf_static"]
+
+
 def _make_bag_window(info: SessionInfo):
     to_drop = [".*leg.*", ".*foot.*", ".*rail.*", ".*map.*"]
     if info.trajectory:
@@ -228,6 +238,11 @@ def _make_bag_window(info: SessionInfo):
     if info.bag_rate:
         bag_args += ["--rate", f"{info.bag_rate}"]
 
+    # play_rosbag republishes (filtered) TF from its wrapper node, which these remaps move
+    tf_remaps = _tf_remap_args(info)
+    if tf_remaps:
+        bag_args += ["--ros-args"] + tf_remaps
+
     window_config = {
         "layout": "tiled",
         "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
@@ -240,7 +255,7 @@ def _make_bag_window(info: SessionInfo):
         cmd = ["ros2", "run", "ianvs", "csv_to_tf", f"{info.trajectory}"]
         cmd += ["--parent", f"{info.robot_name}/odom", "--child", child_frame]
         cmd += info.trajectory_args
-        cmd += ["--ros-args", "-p", "use_sim_time:=true"]
+        cmd += ["--ros-args", "-p", "use_sim_time:=true"] + _tf_remap_args(info)
         window_config["panes"].append(" ".join(cmd))
 
     return window_config
@@ -331,6 +346,12 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     help="custom rviz config file (overrides default dcist.rviz)",
 )
 @click.option("--zenoh/--no-zenoh", default=True, help="start zenoh router")
+@click.option(
+    "--namespace-tf/--no-namespace-tf",
+    default=True,
+    envvar="ADT4_NAMESPACE_TF",
+    help="use /<robot_name>/tf instead of /tf (also remaps bag playback)",
+)
 def main(
     session_path,
     tmuxp_args,
@@ -352,6 +373,7 @@ def main(
     record,
     rviz_config,
     zenoh,
+    namespace_tf,
 ):
     robot_name = robot_name or input("robot name to use? ")
     platform_id = platform_id or input("robot platform ID? ")
@@ -368,6 +390,7 @@ def main(
     env["ADT4_ROBOT_NAME"] = robot_name
     env["ADT4_PLATFORM_ID"] = platform_id
     env["ADT4_SIM_TIME"] = "true" if sim_time else "false"
+    env["ADT4_NAMESPACE_TF"] = "true" if namespace_tf else "false"
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
     if prior_map:
         env["ADT4_PRIOR_MAP"] = str(prior_map)
@@ -396,6 +419,7 @@ def main(
         trajectory=_normalize_optional(trajectory),
         record=record,
         zenoh=zenoh,
+        namespace_tf=namespace_tf,
     )
     if trajectory_args:
         info.trajectory_args = trajectory_args.split(" ")
