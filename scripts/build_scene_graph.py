@@ -64,6 +64,23 @@ def _norm_opt(opt_path):
 CSV_HEADERS = ["#timestamp_kf", "x", "y", "z", "qx", "qy", "qz", "qw"]
 
 
+def _build_labelspace(model_config, model):
+    # categories are [unknown] + [extra non-model labels] + [model labels]
+    num_names = len(model.category_names)
+    offset = model_config.category_offset
+    invalid = [x + offset for x in model_config.invalid_ids]
+
+    label_name_map = {idx + offset: n for idx, n in enumerate(model.category_names)}
+    label_name_map[0] = "unknown"
+
+    labelspace = hydra.labelspace()
+    labelspace.invalid_labels = invalid
+    labelspace.object_labels = [
+        x for x in range(offset, num_names + offset) if x not in set(invalid)
+    ]
+    labelspace.label_names = label_name_map
+
+
 @click.command()
 @click.argument("bag_path", type=click.Path(exists=True))
 @click.option("--name", "-n", default="hamilton")
