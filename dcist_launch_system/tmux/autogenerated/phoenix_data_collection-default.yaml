@@ -1,4 +1,5 @@
 nodes_to_monitor:
+  tf_network: {}
   gps_monitor:
     external_monitor: {type: GpsMonitor}
   ntrip_monitor:
@@ -16,7 +17,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_NAMESPACE_TF: $ADT4_NAMESPACE_TF
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, tx_rx_monitor: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, tf_network: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: phoenix_data_collection-default

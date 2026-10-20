@@ -620,6 +620,7 @@ launch:
       remap:  # follow the robot's TF wherever namespace_tf put it
         - {from: tf, to: $(var tf_topic)}
         - {from: tf_static, to: $(var tf_static_topic)}
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 
   # TF relay (base station: merges /<robot>/network/tf from every robot onto /<robot_name>/tf)
   # Deliberately no /tf remaps: its inputs and outputs are explicit namespaced topics

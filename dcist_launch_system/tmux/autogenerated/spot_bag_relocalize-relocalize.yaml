@@ -1,4 +1,5 @@
 nodes_to_monitor:
+  tf_network: {}
   hydra:
     external_monitor: {type: JsonMonitor}
   hydra_multi:
@@ -23,7 +24,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_NAMESPACE_TF: $ADT4_NAMESPACE_TF
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, nlu_rviz_manipulation_panel: {}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, nlu_rviz_manipulation_panel: {}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, tf_network: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: relocalize
   logging_key: spot_bag_relocalize-relocalize
