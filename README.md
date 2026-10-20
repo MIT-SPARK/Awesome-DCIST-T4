@@ -126,7 +126,6 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_ROBOT\_NAME                 | Robot name (e.g. "spot")                                          |
 | ADT4\_DLS\_PKG                    | Path to dicst\_launch\_system package                             |
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
-| ADT4\_NAMESPACE\_TF              | Publish TF on /<robot>/tf instead of /tf? (default: true)         |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
 | ADT4\_HERACLES\_AGENTS\_PATH      | Path to heracles\_agents package                                  |
