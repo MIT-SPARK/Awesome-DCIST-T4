@@ -1,0 +1,6 @@
+/**:
+  ros__parameters:
+    rate_hz: 10.0
+    reference_frame: map
+    frames: [base_link, map]
+    stale_after_s: 2.0

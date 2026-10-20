@@ -66,6 +66,7 @@ Pass everything on the command line so nothing prompts (Claude can't answer prom
 | `-t CSV [--trajectory-args "..."]` | override bag odometry with a trajectory |
 | `-r [NAME]` | record a bag (topics from `recording/<NAME>_topics.txt`, default by platform) |
 | `--rviz-config PATH` | custom rviz config |
+| `--forward-all-tf` | robot sends its whole TF tree to the base station (default: only `map → <robot>/base_link` and `map → <robot>/map`) |
 | `-y` | skip the "settings correct?" confirm. Only after showing the user the settings |
 | `--tmuxp-args "-d"` | **required for Claude**: start detached (no TTY to attach to) |
 
@@ -76,7 +77,9 @@ Rules:
   launching one, confirm with the user and name the robot. Bag, `prior_dsg` (spot_sim) and
   base-station sessions are safe to run without asking.
 - TF is always namespaced: every node uses `/<robot>/tf`, and bag playback is remapped to match. Robot
-  sessions republish it at 10 Hz on `/<robot>/network/tf` (the `tf_network` window). Only
+  sessions send `map → <robot>/base_link` and `map → <robot>/map` at 10 Hz on
+  `/<robot>/network/tf` (the `tf_network` window, frames set in `tf_network.yaml`), or the whole
+  tree with `--forward-all-tf`. Only
   base-station sessions merge every robot's `network/tf` onto `/<base>/tf` (the `tf_relay`
   window). Run the base station with `-n <base_station_name>`.
 
