@@ -45,7 +45,7 @@ active_window:
     verbosity: 0
     preassociate_by_id: true
     voxel_size: 0.1
-    accumulate_voxels: true,
+    accumulate_voxels: true
     min_voxel_hits: 15
     merge_tracks: true
     merge_containment_threshold: 0.25
