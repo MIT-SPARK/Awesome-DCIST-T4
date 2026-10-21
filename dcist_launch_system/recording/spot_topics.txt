@@ -1,5 +1,5 @@
-/tf
-/tf_static
+/${ADT4_ROBOT_NAME}/tf
+/${ADT4_ROBOT_NAME}/tf_static
 /${ADT4_ROBOT_NAME}/joint_states
 /${ADT4_ROBOT_NAME}/odom
 /${ADT4_ROBOT_NAME}/rtcm
