@@ -26,6 +26,8 @@ configs:
   relocalize_awcd: [relocalize]
   apollo_relocalize: [relocalize]
   indoor_regions: [indoor, regions]
+  trav_geom: []
+  trav_sem: [trav_geom]
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
@@ -54,6 +56,9 @@ experiments:
   spot:
     launch_config: [map, spot_real, sensors]
     config: [default, indoor]
+  spot_trav:
+    launch_config: [map, spot_real, sensors, traversability_segmentation]
+    config: [trav_geom, trav_sem]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, apollo_relocalize, relocalize_awcd]
@@ -66,6 +71,9 @@ experiments:
   spot_bag:
     launch_config: [bag_map, spot_bag]
     config: [default, indoor]
+  spot_bag_trav:
+    launch_config: [bag_map, spot_bag, traversability_segmentation]
+    config: [trav_geom, trav_sem]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]

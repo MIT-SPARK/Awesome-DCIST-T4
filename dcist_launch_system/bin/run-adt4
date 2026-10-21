@@ -50,6 +50,7 @@ class SessionInfo:
     bag_delay: float = 5.0
     bag_start: Optional[float] = None
     bag_rate: Optional[float] = None
+    bag_duration: Optional[float] = None
     trajectory: Optional[pathlib.Path] = None
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
@@ -228,6 +229,9 @@ def _make_bag_window(info: SessionInfo):
     if info.bag_rate:
         bag_args += ["--rate", f"{info.bag_rate}"]
 
+    if info.bag_duration:
+        bag_args += ["--playback-duration", f"{info.bag_duration}"]
+
     window_config = {
         "layout": "tiled",
         "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
@@ -312,6 +316,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
 @click.option("--bag-start", type=float, help="bag start offset")
 @click.option("--bag-rate", type=float, help="bag playback rate")
+@click.option("--bag-duration", type=float, help="bag playback duration [s]")
 @click.option(
     "--trajectory",
     "-t",
@@ -347,6 +352,7 @@ def main(
     bag_delay,
     bag_start,
     bag_rate,
+    bag_duration,
     trajectory,
     trajectory_args,
     record,
@@ -393,6 +399,7 @@ def main(
         bag_delay=bag_delay,
         bag_start=bag_start,
         bag_rate=bag_rate,
+        bag_duration=bag_duration,
         trajectory=_normalize_optional(trajectory),
         record=record,
         zenoh=zenoh,

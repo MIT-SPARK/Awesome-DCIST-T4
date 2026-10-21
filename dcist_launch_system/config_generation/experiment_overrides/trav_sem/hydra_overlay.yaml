@@ -1,0 +1,19 @@
+# Fuses GA-Nav 6-group labels (0 background, 1 smooth, 2 rough, 3 bumpy, 4 forbidden,
+# 5 obstacle) into the geometric traversability. MIN fusion: semantics can only lower it.
+frontend:
+  traversability_places:
+    persistent_processing: !reset
+      - type: ProjectiveSemanticTraversabilityIntegrator
+        input_image: traversability
+        fusion_mode: MIN
+        num_threads: 4
+        prior:
+          type: LabelTablePrior
+          label_traversability: {1: 1.0, 2: 0.9, 3: 0.7, 4: 0.05, 5: 0.0}
+          ignore_unknown_labels: true
+        # must match the estimator thresholds
+        classification: {min_confidence: 0.5, min_traversability: 0.25, pessimistic: true}
+        stats_path: $<env ADT4_OUTPUT_DIR>/semantic_traversability/stats.csv
+      - type: RobotFootprintTraversability
+        bbox_min: [-0.55, -0.25]
+        bbox_max: [0.55, 0.25]

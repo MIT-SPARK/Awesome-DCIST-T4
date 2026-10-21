@@ -1,0 +1,3 @@
+# Geometric traversability baseline for the GA-Nav A/B. GA-Nav is still received
+# (and run) so that both variants see the same sync and compute load.
+input: {inputs: {camera: {receiver: {with_traversability: true}}}}

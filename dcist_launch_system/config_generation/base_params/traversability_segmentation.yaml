@@ -1,0 +1,29 @@
+---
+# GA-Nav 6-group traversability segmentation (semantic_inference closed_set_node).
+# The model is exported by semantic_inference/exporting/export_ganav.py (gannav branch)
+# with a fixed input size, so images are resized to it and the labels are restored to
+# the original resolution.
+# Groups: 0 background, 1 smooth, 2 rough, 3 bumpy, 4 forbidden, 5 obstacle
+segmenter:
+  model:
+    model_file: ganav_rugd_group6.onnx
+    color:
+      mean: [0.485, 0.456, 0.406]
+      stddev: [0.229, 0.224, 0.225]
+image_resizer:
+  width: 640
+  height: 360
+output:
+  recolor:
+    groups:
+      - {name: background, labels: [0]}
+      - {name: smooth, labels: [1]}
+      - {name: rough, labels: [2]}
+      - {name: bumpy, labels: [3]}
+      - {name: forbidden, labels: [4]}
+      - {name: obstacle, labels: [5]}
+worker:
+  # hydra synchronizes depth, instance labels and traversability exactly, so every
+  # frame dropped here is dropped by hydra as well.
+  max_queue_size: 10
+  image_separation_s: 0.0
