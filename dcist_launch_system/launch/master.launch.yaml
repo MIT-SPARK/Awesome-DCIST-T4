@@ -416,17 +416,17 @@ launch:
       remap:
         - {from: ~/dsg_out, to: hydra/backend/dsg}
 
-  # AWCD Visualizer (base station: draws changed-object bboxes from all robots into rviz)
-  - arg: {name: launch_awcd_visualizer, default: 'false'}
+  # AWCD base station (merges changed objects from all robots; optionally draws them into rviz)
+  - arg: {name: launch_awcd_base_station, default: 'false'}
   - pyenv_node:
-      if: $(var launch_awcd_visualizer)
+      if: $(var launch_awcd_base_station)
       pkg: dcist_launch_system
-      exec: awcd_visualizer_node
-      name: awcd_visualizer
+      exec: awcd_base_station_node
+      name: awcd_base_station
       pyenv: $(var spark_env)
       param:
         - {name: use_sim_time, value: $(var sim_time)}
-        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_visualizer.yaml, allow_substs: true}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_base_station.yaml, allow_substs: true}
       remap:
         - {from: ~/dsg_in, to: hydra/backend/dsg}
 
