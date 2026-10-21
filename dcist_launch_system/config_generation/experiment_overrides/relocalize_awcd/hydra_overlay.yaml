@@ -5,7 +5,14 @@ input:
     camera:
       sensor:
         max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
+      receiver:
+        # ZED +inf depth = no return (beyond its max depth, e.g. sky): don't drop frames that are mostly +inf
+        filters: !replace
+          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
 active_window:
+  projective_integrator:
+    # carve free space up to the sensor max_range along +inf (no return) depth pixels
+    interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
     max_range: 7.0  # don't let far, depth-biased pixels join object clusters
   tracker:
