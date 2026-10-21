@@ -18,5 +18,3 @@ launch:
         - {from: depth/camera_info, to: $(var camera)/depth_corrected/camera_info}
         - {from: depth/image_raw, to: $(var camera)/depth_corrected/depth_registered}
         - {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
-        - {from: roman/roman_map/status, to: ros_system_monitor/node_diagnostic_collector}
-        - {from: roman/roman_lc/status, to: ros_system_monitor/node_diagnostic_collector}
