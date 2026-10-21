@@ -238,7 +238,6 @@ launch:
         - {name: pyenv_path, value: $(var roman_env)}
         - {name: output_dir, value: $(var output_dir)}
         - {name: use_sim_time, value: $(var sim_time)}
-        - {name: camera, value: $(var camera)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
@@ -539,7 +538,6 @@ launch:
   # /<robot_name>/network/tf, which is all the base station subscribes to). By default it only
   # forwards the frames in tf_network.yaml; ADT4_TF_NETWORK_MODE=all forwards the whole tree
   - arg: {name: launch_tf_network, default: 'false'}
-  - arg: {name: tf_network_mode, default: $(eval '"all" if "$(env ADT4_TF_NETWORK_MODE frames)" == "all" else "frames"')}
   - node:
       if: $(var launch_tf_network)
       pkg: dcist_launch_system
@@ -548,7 +546,6 @@ launch:
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/tf_network.yaml, allow_substs: true}
-        - {name: mode, value: $(var tf_network_mode)}
       remap:
         - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
 

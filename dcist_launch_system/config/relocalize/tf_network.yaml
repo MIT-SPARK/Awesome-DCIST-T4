@@ -1,5 +1,6 @@
 /**:
   ros__parameters:
+    mode: $(env ADT4_TF_NETWORK_MODE frames)
     rate_hz: 10.0
     reference_frame: map
     frames: [base_link, map]
