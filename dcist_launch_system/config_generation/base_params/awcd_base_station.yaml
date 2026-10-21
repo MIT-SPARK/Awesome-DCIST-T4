@@ -1,0 +1,12 @@
+---
+/**:
+  ros__parameters:
+    target_frame: map
+    tf_fallback_identity: true
+    require_same_label: true  # only merge added objects across robots if labels match (unknown matches any)
+    merge_containment_threshold: 0.5  # min world-AABB overlap / smaller box volume to merge across robots
+    visualization:
+      enabled: true  # RViz markers: per robot on ~/changed_objects, merged on ~/reconciled_objects
+      line_width: 0.1
+      text_scale: 0.4
+      show_labels: true

@@ -1,132 +1,116 @@
 #!/usr/bin/env python3
-"""Base-station visualizer for Active Window Change Detector (AWCD) reports.
+"""Base-station node for Active Window Change Detector (AWCD) reports.
 
-Subscribes to the base station's own prior DSG (published by prior_dsg_publisher_node) and
-to the global `khronos_msgs/AwcdChanges` topic that every robot's
-`ActiveWindowChangeDetectorPublisher` publishes to, and draws red (removed) / green (added)
-bounding-box wireframes + text labels into RViz -- the base-station equivalent of
-`ActiveWindowChangeDetectorVisualizer` (khronos_ros), which only runs on-robot.
+Subscribes to the base station's own prior DSG (published by prior_dsg_publisher_node) and to the
+global `khronos_msgs/AwcdChanges` topic that every robot's `ActiveWindowChangeDetectorPublisher`
+publishes to. It keeps the change memory in an `AwcdChangeStore` (awcd_change_store.py): each
+robot's latest change set, transformed into `target_frame`, plus the cross-robot reconciled changes.
 
-Reports from all robots are kept as a latest-message-per-robot snapshot in an `AwcdChangeStore`
-(see awcd_change_store.py), keyed by (robot_name, kind) rather than rendered directly inline, so
-the node retains per-robot provenance for future cross-robot filtering/merging -- but each robot's
-message fully replaces that robot's previous one, since the robot already publishes its complete,
-refined change set every time.
+After every robot message, the store is handed to the node's outputs:
+- `ReconciledChangesPublisher`: sends the reconciled changes downstream. Today this is a latched
+  `AwcdChanges` (robot_name "reconciled") on `~/reconciled_changes`; other downstream protocols are
+  added as further outputs with a `call(store)` method.
+- `AwcdVisualizer` (awcd_visualizer.py, `visualization.enabled`): RViz markers for the operator.
 """
 
 import time
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import numpy as np
 import rclpy
 import tf2_ros
 from geometry_msgs.msg import Point
 from hydra_ros import DsgSubscriber
-from khronos_msgs.msg import AwcdChanges
+from khronos_msgs.msg import AwcdChanges, ChangedObjectInfo
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from std_msgs.msg import ColorRGBA
-from visualization_msgs.msg import Marker, MarkerArray
 
 from dcist_launch_system.awcd_change_store import (
     ADDED,
+    RECONCILED,
     REMOVED,
     AwcdChangeStore,
     ChangeRecord,
+    ReconcileConfig,
 )
-
-RED = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
-GREEN = ColorRGBA(r=0.0, g=1.0, b=0.0, a=1.0)
+from dcist_launch_system.awcd_visualizer import AwcdVisualizer
 
 
-def _bbox_line_list_points(dimensions: np.ndarray) -> List[Point]:
-    """12-edge / 24-point wireframe in the box frame, mirroring khronos_ros setBoundingBox().
+class ReconciledChangesPublisher:
+    """Downstream output: publishes the reconciled changes whenever their membership changes."""
 
-    The marker pose carries the box center and orientation.
-    """
-    base = -dimensions / 2.0
-    dx = np.array([dimensions[0], 0.0, 0.0])
-    dy = np.array([0.0, dimensions[1], 0.0])
-    dz = np.array([0.0, 0.0, dimensions[2]])
+    def __init__(self, node: Node, frame_id: str):
+        self.frame_id = frame_id
+        self.clock = node.get_clock()
+        latched = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=ReliabilityPolicy.RELIABLE,
+        )
+        self.pub = node.create_publisher(AwcdChanges, "~/reconciled_changes", latched)
+        # (kind, id, members) of the last published message, for change-only publishing.
+        self._last_key = None
 
-    def p(offset: np.ndarray) -> Point:
-        v = base + offset
-        return Point(x=float(v[0]), y=float(v[1]), z=float(v[2]))
+    def call(self, store: AwcdChangeStore):
+        records = store.reconciled()
+        key = sorted(
+            (r.kind, r.obj_id, tuple((m.namespace, m.obj_id) for m in r.members))
+            for r in records
+        )
+        if key == self._last_key:
+            return
+        self._last_key = key
 
-    zero = np.zeros(3)
-    return [
-        p(zero),
-        p(dx),
-        p(zero),
-        p(dy),
-        p(dx),
-        p(dx + dy),
-        p(dy),
-        p(dx + dy),
-        p(dz),
-        p(dx + dz),
-        p(dz),
-        p(dy + dz),
-        p(dx + dz),
-        p(dx + dy + dz),
-        p(dy + dz),
-        p(dx + dy + dz),
-        p(zero),
-        p(dz),
-        p(dx),
-        p(dx + dz),
-        p(dy),
-        p(dy + dz),
-        p(dx + dy),
-        p(dx + dy + dz),
-    ]
+        msg = AwcdChanges()
+        msg.header.stamp = self.clock.now().to_msg()
+        msg.header.frame_id = self.frame_id
+        msg.robot_name = RECONCILED
+        for record in records:
+            info = _make_changed_object_info(record)
+            if record.kind == REMOVED:
+                msg.removed_objects.append(info)
+            else:
+                msg.added_objects.append(info)
+        self.pub.publish(msg)
 
 
-class AwcdVisualizerNode(Node):
+class AwcdBaseStationNode(Node):
     def __init__(self):
-        super().__init__("awcd_visualizer")
+        super().__init__("awcd_base_station")
 
-        self.declare_parameter("target_frame", "map")
-        self.declare_parameter("line_width", 0.1)
-        self.declare_parameter("text_scale", 0.4)
-        self.declare_parameter("show_labels", True)
-        self.declare_parameter("tf_fallback_identity", True)
-
-        self.target_frame = (
-            self.get_parameter("target_frame").get_parameter_value().string_value
+        self.target_frame = self.declare_parameter("target_frame", "map").value
+        self.tf_fallback_identity = self.declare_parameter(
+            "tf_fallback_identity", True
+        ).value
+        self.store = AwcdChangeStore(
+            ReconcileConfig(
+                require_same_label=self.declare_parameter(
+                    "require_same_label", True
+                ).value,
+                merge_containment_threshold=self.declare_parameter(
+                    "merge_containment_threshold", 0.5
+                ).value,
+            )
         )
-        self.line_width = (
-            self.get_parameter("line_width").get_parameter_value().double_value
-        )
-        self.text_scale = (
-            self.get_parameter("text_scale").get_parameter_value().double_value
-        )
-        self.show_labels = (
-            self.get_parameter("show_labels").get_parameter_value().bool_value
-        )
-        self.tf_fallback_identity = (
-            self.get_parameter("tf_fallback_identity").get_parameter_value().bool_value
-        )
-        # TODO(nathan) get this from ROS
-        self.labelspace = {}
 
         self.graph = None
-        self.store = AwcdChangeStore()
         # Latest raw message per robot, so we can re-ingest (rebuild removed records) once the
         # prior DSG arrives, without waiting for the robot's next (change-gated) publish.
         self._latest_msgs: Dict[str, AwcdChanges] = {}
-        # Marker ids emitted for each (robot_name, marker_ns) in the previous publish, so we can
-        # emit DELETEs for ids that dropped out -- python equivalent of MarkerTracker::clearPrevious.
-        self._prev_marker_ids: Dict[Tuple[str, str], set] = {}
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
+
+        # Everything that consumes the change memory; each has a call(store) method.
+        self.outputs = [ReconciledChangesPublisher(self, self.target_frame)]
+        if self.declare_parameter("visualization.enabled", True).value:
+            self.outputs.append(AwcdVisualizer(self, self.target_frame))
 
         self.dsg_sub = DsgSubscriber(self, "~/dsg_in", self._on_dsg)
         self.changes_sub = self.create_subscription(
             AwcdChanges, "/awcd_changes", self._on_changes, 10
         )
-        self.marker_pub = self.create_publisher(MarkerArray, "~/changed_objects", 10)
 
     def _on_dsg(self, header, graph):
         self.graph = graph
@@ -177,8 +161,10 @@ class AwcdVisualizerNode(Node):
         # objects from an earlier message linger indefinitely.
         self.store.update(msg.robot_name, REMOVED, removed_records)
         self.store.update(msg.robot_name, ADDED, added_records)
+        self.store.reconcile()
 
-        self._publish_markers()
+        for output in self.outputs:
+            output.call(self.store)
 
     def _build_removed_records(self, msg: AwcdChanges, transform: np.ndarray):
         if self.graph is None:
@@ -224,7 +210,7 @@ class AwcdVisualizerNode(Node):
             semantic_label = getattr(attrs, "semantic_label", -1)
             records.append(
                 ChangeRecord(
-                    robot_name=msg.robot_name,
+                    namespace=msg.robot_name,
                     kind=REMOVED,
                     obj_id=int(info.id),
                     stamp_ns=Time.from_msg(info.stamp).nanoseconds,
@@ -260,7 +246,7 @@ class AwcdVisualizerNode(Node):
             orientation = _rotmat_to_quat(transform[:3, :3] @ msg_R_center)
             records.append(
                 ChangeRecord(
-                    robot_name=msg.robot_name,
+                    namespace=msg.robot_name,
                     kind=ADDED,
                     obj_id=int(info.id),
                     stamp_ns=Time.from_msg(info.stamp).nanoseconds,
@@ -276,95 +262,29 @@ class AwcdVisualizerNode(Node):
             )
         return records
 
-    def _label_text(self, record: ChangeRecord) -> str:
-        if record.semantic_label < 0:
-            label_name = "unknown"
-        else:
-            label_name = self.labelspace.get(
-                record.semantic_label, f"label_{record.semantic_label}"
-            )
-        return (
-            f"{record.robot_name} | {record.kind} {record.obj_id} | {label_name} | "
-            f"cc={record.change_confidence:.2f} n={record.num_frames_observed}"
-        )
 
-    def _publish_markers(self):
-        array = MarkerArray()
-        cur_ids: Dict[Tuple[str, str], set] = {}
-        zero_stamp = Time().to_msg()
-
-        for robot_name in self.store.robots():
-            for kind, color in ((REMOVED, RED), (ADDED, GREEN)):
-                records = self.store.records(robot_name, kind)
-                box_ns = f"{robot_name}/{kind}_objects"
-                label_ns = f"{robot_name}/{kind}_labels"
-                box_ids = set()
-                label_ids = set()
-
-                for record in records:
-                    marker_id = int(record.obj_id & 0x7FFFFFFF)
-                    box_ids.add(marker_id)
-
-                    box = Marker()
-                    box.header.frame_id = self.target_frame
-                    box.header.stamp = zero_stamp
-                    box.type = Marker.LINE_LIST
-                    box.ns = box_ns
-                    box.id = marker_id
-                    box.scale.x = self.line_width
-                    box.pose.orientation.x = float(record.orientation[0])
-                    box.pose.orientation.y = float(record.orientation[1])
-                    box.pose.orientation.z = float(record.orientation[2])
-                    box.pose.orientation.w = float(record.orientation[3])
-                    box.pose.position = Point(
-                        x=float(record.center[0]),
-                        y=float(record.center[1]),
-                        z=float(record.center[2]),
-                    )
-                    box.color = color
-                    box.points = _bbox_line_list_points(record.dimensions)
-                    array.markers.append(box)
-
-                    if self.show_labels:
-                        label_ids.add(marker_id)
-                        text = Marker()
-                        text.header.frame_id = self.target_frame
-                        text.header.stamp = zero_stamp
-                        text.type = Marker.TEXT_VIEW_FACING
-                        text.ns = label_ns
-                        text.id = marker_id
-                        text.scale.z = self.text_scale
-                        text.color = color
-                        text.pose.orientation.w = 1.0
-                        text.pose.position = Point(
-                            x=float(record.center[0]),
-                            y=float(record.center[1]),
-                            z=float(
-                                record.center[2]
-                                + record.dimensions[2] / 2.0
-                                + self.text_scale
-                            ),
-                        )
-                        text.text = self._label_text(record)
-                        array.markers.append(text)
-
-                cur_ids[(robot_name, box_ns)] = box_ids
-                cur_ids[(robot_name, label_ns)] = label_ids
-
-        # Delete markers whose ids were present last publish but are gone now.
-        for key, prev_ids in self._prev_marker_ids.items():
-            robot_name, ns = key
-            for stale_id in prev_ids - cur_ids.get(key, set()):
-                delete_marker = Marker()
-                delete_marker.header.frame_id = self.target_frame
-                delete_marker.header.stamp = zero_stamp
-                delete_marker.ns = ns
-                delete_marker.id = stale_id
-                delete_marker.action = Marker.DELETE
-                array.markers.append(delete_marker)
-
-        self._prev_marker_ids = cur_ids
-        self.marker_pub.publish(array)
+def _make_changed_object_info(record: ChangeRecord) -> ChangedObjectInfo:
+    """Fill a ChangedObjectInfo, with the bbox for both kinds (all in the target frame)."""
+    info = ChangedObjectInfo()
+    info.id = int(record.obj_id)
+    info.stamp = Time(nanoseconds=int(record.stamp_ns)).to_msg()
+    info.change_confidence = float(record.change_confidence)
+    info.num_frames_observed = int(record.num_frames_observed)
+    center = Point(
+        x=float(record.center[0]), y=float(record.center[1]), z=float(record.center[2])
+    )
+    info.centroid = center
+    info.bbox_center = center
+    info.bbox_dimensions.x = float(record.dimensions[0])
+    info.bbox_dimensions.y = float(record.dimensions[1])
+    info.bbox_dimensions.z = float(record.dimensions[2])
+    info.bbox_orientation.x = float(record.orientation[0])
+    info.bbox_orientation.y = float(record.orientation[1])
+    info.bbox_orientation.z = float(record.orientation[2])
+    info.bbox_orientation.w = float(record.orientation[3])
+    info.semantic_label = int(record.semantic_label)
+    info.confidence = float(record.confidence)
+    return info
 
 
 def _quat_trans_to_matrix(x, y, z, w, tx, ty, tz) -> np.ndarray:
@@ -429,7 +349,7 @@ def _transform_point(mat: np.ndarray, point: np.ndarray) -> np.ndarray:
 
 def main(args=None):
     rclpy.init(args=args)
-    node = AwcdVisualizerNode()
+    node = AwcdBaseStationNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
