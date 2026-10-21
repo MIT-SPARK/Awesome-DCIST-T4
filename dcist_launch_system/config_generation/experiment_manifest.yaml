@@ -4,11 +4,14 @@ launch_configs:
   # core groupings
   main: [core, status]
   map: [main, hydra, roman]
+  # hydra with the GA-Nav traversability front end launched alongside it
+  map_trav: [main, hydra_trav, roman]
   relocalize: [main, hydra_multi, roman]
   # development groupings
   map_old: [main, hydra_old, roman]
   no_relocalize: [main, transform_publishers]
   bag_map: [map, rviz]
+  bag_map_trav: [map_trav, rviz]
   bag_relocalize: [relocalize, rviz, relocalize_viz]
   # planning and base station
   plan_prior: [main, prior_dsg, planning]
@@ -57,7 +60,7 @@ experiments:
     launch_config: [map, spot_real, sensors]
     config: [default, indoor]
   spot_trav:
-    launch_config: [map, spot_real, sensors, traversability_segmentation]
+    launch_config: [map_trav, spot_real, sensors]
     config: [trav_geom, trav_sem]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
@@ -72,7 +75,7 @@ experiments:
     launch_config: [bag_map, spot_bag]
     config: [default, indoor]
   spot_bag_trav:
-    launch_config: [bag_map, spot_bag, traversability_segmentation]
+    launch_config: [bag_map_trav, spot_bag]
     config: [trav_geom, trav_sem]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
