@@ -4,8 +4,6 @@ nodes_to_monitor:
     external_monitor: {type: JsonMonitor}
   semantic_inference:
     external_monitor: {type: JsonMonitor}
-  traversability_segmentation:
-    external_monitor: {type: JsonMonitor}
   depth_correction: {}
   fastsam: {}
   roman_map: {}
@@ -25,7 +23,7 @@ environment:
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, nlu_rviz_manipulation_panel: {}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, traversability_segmentation: {external_monitor: {type: JsonMonitor}}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, dsg_saver: {}, fastsam: {}, hydra: {external_monitor: {type: JsonMonitor}}, nlu_rviz_instruction_panel: {}, nlu_rviz_manipulation_panel: {}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: trav_sem
   logging_key: spot_bag_trav-trav_sem
