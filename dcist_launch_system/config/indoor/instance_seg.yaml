@@ -45,7 +45,7 @@ model:
       - seating
       - flag
       - light
-      - trash
+      - trash can
       - clothes
       - ball
     confidence_threshold: 0.3

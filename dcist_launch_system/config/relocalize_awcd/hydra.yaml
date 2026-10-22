@@ -13,7 +13,7 @@ input:
       sensor:
         type: camera_info
         min_range: 0.2
-        max_range: 7.0
+        max_range: 5.0
         extrinsics: {type: ros}
       receiver:
         type: ImageReceiver
@@ -33,7 +33,7 @@ active_window:
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
-    max_range: 7.0
+    max_range: 5.0
     min_range: 0.05
     verbosity: 1
     instance_filter: {type: CategoryFilter}
@@ -49,7 +49,7 @@ active_window:
     accumulate_voxels: true
     min_voxel_hits: 15
     merge_tracks: true
-    merge_containment_threshold: 0.25
+    merge_containment_threshold: 0.35
     merge_distance_factor: 2.0
   object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:
@@ -58,7 +58,7 @@ active_window:
       verbosity: 1
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_ema_alpha: 0.2
-      removal_probability_threshold: 0.8
+      removal_probability_threshold: 0.7
       removal_min_frames_observed: 5
       removal_min_in_bounds_fraction: 0.5
       removal_min_observed_fraction: 0.5
@@ -68,6 +68,8 @@ active_window:
       added_probability_threshold: 0.8
       added_min_frames_observed: 20
       added_prune_after_frames: 100
+      added_detection_method: mesh
+      added_mesh_collision_radius: 0
       enable_icp_refinement: true
       icp_crop_radius: 10.0
       icp_num_threads: 2
