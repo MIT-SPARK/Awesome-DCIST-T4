@@ -16,7 +16,7 @@ active_window:
   object_detector:
     max_range: 7.0  # don't let far, depth-biased pixels join object clusters
   tracker:
-    merge_containment_threshold: 0.25  # fraction of the smaller track's confirmed voxels inside the other
+    merge_containment_threshold: 0.35  # fraction of the smaller track's confirmed voxels inside the other
   # vote_filter:
   #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   khronos_sinks:
@@ -25,7 +25,7 @@ active_window:
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       # Temporal EMA filter params for removed-object detection:
       removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
-      removal_probability_threshold: 0.8  # Smoothed probability to declare removal
+      removal_probability_threshold: 0.7  # Smoothed probability to declare removal
       removal_min_frames_observed: 5  # Min frames before removal can be declared
       removal_min_in_bounds_fraction: 0.5  # cheap pre-filter: object voxels in allocated blocks
       removal_min_observed_fraction: 0.5  # object voxels actually observed (tracking last_observed != 0)
@@ -36,6 +36,8 @@ active_window:
       added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
       added_min_frames_observed: 20  # Min frames before a track can be declared added
       added_prune_after_frames: 100  # Frames of no measurement before non-added tracks are pruned
+      added_detection_method: mesh  # graph: 2D footprint in prior places; mesh: 3D vs prior mesh
+      added_mesh_collision_radius: 0  # mesh: voxels of tolerance around prior mesh surfaces
       # ICP configs
       enable_icp_refinement: true
       icp_crop_radius: 10.0
