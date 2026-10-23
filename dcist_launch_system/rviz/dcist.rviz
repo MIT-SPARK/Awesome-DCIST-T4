@@ -9,7 +9,7 @@ Panels:
         - /Mesh1/Topic1
         - /Omniplanner Viz1/Topic1
         - /Traversability Estimates1
-      Splitter Ratio: 0.5
+      Splitter Ratio: 0.4988986849784851
     Tree Height: 482
   - Class: rviz_common/Selection
     Name: Selection
@@ -84,6 +84,83 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
+        hamilton/base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hamilton/body:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_left_hip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_left_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_left_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hamilton/front_right_hip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_right_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/front_right_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_left_hip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_left_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_left_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_rail:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        hamilton/rear_right_hip:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_right_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hamilton/rear_right_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
       Mass Properties:
         Inertia: false
         Mass: false
@@ -137,9 +214,9 @@ Visualization Manager:
           Value: true
         hamilton/livox:
           Value: true
-        hamilton/odom:
+        hamilton/map:
           Value: true
-        hamilton/pre_icp_odom:
+        hamilton/odom:
           Value: true
         hamilton/rear_left_hip:
           Value: true
@@ -176,7 +253,7 @@ Visualization Manager:
       Show Names: false
       Tree:
         map:
-          hamilton/pre_icp_odom:
+          hamilton/map:
             hamilton/odom:
               hamilton/body:
                 hamilton/base_link:
@@ -502,29 +579,31 @@ Visualization Manager:
         Value: /hamilton/change_detector_visualizer/change_detection/voxels
       Value: false
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
+      Enabled: true
       Name: Track Acc Box
       Namespaces:
-        {}
+        boxes: true
+        labels: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /hamilton/active_window_visualizer/tracking/accumulated_bounding_box
-      Value: false
+      Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: false
+      Enabled: true
       Name: Track Acc Voxel
       Namespaces:
-        {}
+        confirmed: true
+        unconfirmed: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /hamilton/active_window_visualizer/tracking/accumulated_voxels
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -571,25 +650,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 47.29813003540039
+      Distance: 54.73565673828125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.1358652114868164
-        Y: -0.3920741081237793
-        Z: -0.4941102862358093
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3967169225215912
+      Pitch: 0.7803981900215149
       Target Frame: hamilton/body
       Value: Orbit (rviz)
-      Yaw: 1.6877336502075195
+      Yaw: 0.7853981852531433
     Saved: ~
 Window Geometry:
   ChangeDetectionPanel:
@@ -607,7 +686,7 @@ Window Geometry:
     collapsed: false
   ManipulationApprovalPanel:
     collapsed: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000038e00000784fc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c000002c80000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c010000032e000001740000016800fffffffb0000000a0049006d00610067006501000004ac000002230000002000fffffffb00000028004300680061006e006700650044006500740065006300740069006f006e00500061006e0065006c01000006d900000107000000fe00ffffff0000000100000a7700000784fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000005c000005740000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c00000005da000001320000013200fffffffb0000001a0044007300670053007400610074007300500061006e0065006c0000000716000000ca000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000f000000005efc0100000002fb0000000800540069006d0065010000000000000f00000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000b680000078400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000038e00000784fc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000009200fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000005c000002c80000014000fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb000000200049006e0073007400720075006300740069006f006e00500061006e0065006c010000032e000001740000016800fffffffb0000000a0049006d00610067006501000004ac000002230000002000fffffffb00000028004300680061006e006700650044006500740065006300740069006f006e00500061006e0065006c01000006d900000107000000e300ffffff0000000100000a7700000784fc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000005c000005840000010000fffffffb00000032004d0061006e006900700075006c006100740069006f006e0041007000700072006f00760061006c00500061006e0065006c00000005ea000001320000013200fffffffb0000001a0044007300670053007400610074007300500061006e0065006c0000000726000000ba000000ba00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000f000000005efc0100000002fb0000000800540069006d0065010000000000000f00000003d100fffffffb0000000800540069006d0065010000000000000450000000000000000000000b680000078400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

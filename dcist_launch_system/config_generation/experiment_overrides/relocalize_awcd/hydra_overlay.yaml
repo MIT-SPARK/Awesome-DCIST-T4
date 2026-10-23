@@ -4,7 +4,7 @@ input:
   inputs:
     camera:
       sensor:
-        max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
+        max_range: 5.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
       receiver:
         # ZED +inf depth = no return (beyond its max depth, e.g. sky): don't drop frames that are mostly +inf
         filters: !replace
@@ -14,7 +14,7 @@ active_window:
     # carve free space up to the sensor max_range along +inf (no return) depth pixels
     interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
-    max_range: 7.0  # don't let far, depth-biased pixels join object clusters
+    max_range: 5.0  # don't let far, depth-biased pixels join object clusters
   tracker:
     merge_containment_threshold: 0.35  # fraction of the smaller track's confirmed voxels inside the other
   # vote_filter:
@@ -62,3 +62,5 @@ active_window:
           min_draw_period_s: 0.5
           draw_graph: false  # prior mesh only; drawing the graph needs a `renderer:` config
           draw_mesh: true
+    - type: ActiveWindowTrackSaver
+      output_directory: $<env ADT4_OUTPUT_DIR>
