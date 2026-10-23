@@ -745,7 +745,8 @@ print("OK")
 
 _ZENOH_TEMPLATE = (
     pathlib.Path(__file__).resolve().parent.parent.parent
-    / "config"
+    / "config_generation"
+    / "fleet_helper"
     / "zenoh_router_template.json5"
 )
 
@@ -1099,7 +1100,8 @@ def compute_robot_readiness(nodes):
 _RVIZ_TOPICS_CONFIG = (
     pathlib.Path(__file__).resolve().parents[3]
     / "dcist_launch_system"
-    / "config"
+    / "config_generation"
+    / "fleet_helper"
     / "rviz_topics.yaml"
 )
 

@@ -46,6 +46,7 @@ class SessionInfo:
     output_path: pathlib.Path
     platform_id: str = ""
     sim_time: bool = False
+    session_name: str | None = None
     bag: Optional[pathlib.Path] = None
     bag_delay: float = 5.0
     bag_start: Optional[float] = None
@@ -268,6 +269,9 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     if info.zenoh:
         contents["windows"] = [_make_zenoh_window()] + contents["windows"]
 
+    if info.session_name:
+        contents["session_name"] = info.session_name
+
     contents = yaml.dump(contents, width=300)
     fout.write(contents)
     fout.flush()
@@ -307,6 +311,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 @click.option("--yes", "-y", is_flag=True, help="skip env variable check")
 @click.option("--force", "-f", is_flag=True, help="clear output if it exists")
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
+@click.option("--tmuxp-session-name", help="name to use instead of adt4_system")
 @click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
 @click.option("--bag", default=None, type=click.Path(exists=True), help="bag to run")
 @click.option("--bag-delay", default=5.0, help="bag playback delay")
@@ -342,6 +347,7 @@ def main(
     yes,
     force,
     dry_run,
+    tmuxp_session_name,
     show_tmux,
     bag,
     bag_delay,
@@ -389,6 +395,7 @@ def main(
         output_dir,
         platform_id=platform_id,
         sim_time=sim_time,
+        session_name=tmuxp_session_name,
         bag=_normalize_optional(bag),
         bag_delay=bag_delay,
         bag_start=bag_start,
