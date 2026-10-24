@@ -62,7 +62,6 @@ frontend:
   graph_connector:
     layers:
       - {parent_layer: MESH_PLACES, child_layers: [layer: OBJECTS]}
-  # accumulative object tracking has merge capability, so skip the frontend merging
   graph_updater:
     mark_active: false
     # layer_updates:
