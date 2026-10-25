@@ -64,21 +64,22 @@ def _norm_opt(opt_path):
 CSV_HEADERS = ["#timestamp_kf", "x", "y", "z", "qx", "qy", "qz", "qw"]
 
 
-def _build_labelspace(model_config, model):
+def _build_labelspace(model, invalid_ids):
     # categories are [unknown] + [extra non-model labels] + [model labels]
     num_names = len(model.category_names)
-    offset = model_config.category_offset
-    invalid = [x + offset for x in model_config.invalid_ids]
+    offset = model.config.category_offset
+    invalid = set([x + offset for x in invalid_ids])
 
     label_name_map = {idx + offset: n for idx, n in enumerate(model.category_names)}
     label_name_map[0] = "unknown"
 
-    labelspace = hydra.labelspace()
+    labelspace = hydra.Labelspace()
     labelspace.invalid_labels = invalid
-    labelspace.object_labels = [
-        x for x in range(offset, num_names + offset) if x not in set(invalid)
-    ]
+    labelspace.object_labels = set(
+        [x for x in range(offset, num_names + offset) if x not in invalid]
+    )
     labelspace.label_names = label_name_map
+    return labelspace
 
 
 @click.command()
@@ -110,6 +111,7 @@ def run(
     instance_segmentation_config = _config_path(config) / "instance_seg.yaml"
     model_config = sc.Config.load(ModelConfig, instance_segmentation_config)
     model = models.InstanceSegmenter(model_config.model)
+    labelspace = _build_labelspace(model, model_config.invalid_ids)
 
     args = ["-f", str(_config_path(config) / "hydra.yaml")]
     args += _repair_args(config_utilities_files, "-f")
@@ -153,7 +155,7 @@ def run(
         last_stamp: int | None = None
         threshold_ns = int(min_separation_s * 1.0e9)
         camera = hydra.make_camera(**dataloader.intrinsics)
-        pipeline = hydra.HydraPipeline(camera)
+        pipeline = hydra.HydraPipeline(camera, labelspace)
         for stamp, pose, images in dataloader:
             if max_steps and frame_idx >= max_steps:
                 break
