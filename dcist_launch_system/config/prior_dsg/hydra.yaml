@@ -74,6 +74,9 @@ frontend:
           - {layer: OBJECTS}
   graph_updater:
     mark_active: false
+    layer_updates:
+      OBJECTS:
+        prefix: O
   traversability_places:
     type: traversability
     layer: MESH_PLACES
