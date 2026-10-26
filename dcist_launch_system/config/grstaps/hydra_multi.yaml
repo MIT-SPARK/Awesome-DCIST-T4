@@ -12,7 +12,7 @@ robots:
         force_robot_id: true
       dgraph:
         type: FileDGraphInput
-        dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.dgrf
+        dgrf_path: $<env ADT4_PRIOR_MAP>/hydra/backend/deformation_graph.json
         include_priors: true
         fix_as_prior: true
         prior_variance: 1.0e-6
@@ -34,7 +34,7 @@ backend:
   optimize_on_lc: true
   enable_node_merging: true
   external_loop_closures:
-    max_time_difference: 1.0
+    max_time_difference: 0.0
   update_functors:
     agents: {type: UpdateAgentsFunctor}
   initial_align:
