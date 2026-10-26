@@ -24,3 +24,7 @@ repositories:
     type: git
     url: https://github.com/Box-Robotics/ros2_numpy.git
     version: jazzy
+  grstapsx:  # GRSTAPS-X task allocation for omniplanner's grstaps_planner
+    type: git
+    url: https://github.com/jinwoop/grstapsx.git
+    version: feature/colcon

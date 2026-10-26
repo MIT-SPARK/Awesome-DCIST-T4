@@ -69,3 +69,6 @@ planners:
     plugin:
       type: Grstaps
       run_mode: native
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm

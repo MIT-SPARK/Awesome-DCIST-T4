@@ -7,3 +7,7 @@ planners:
     plugin:
       type: Grstaps
       run_mode: native
+      # Every Spot in this fleet carries an arm (see the grstaps_repair overlay).
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm

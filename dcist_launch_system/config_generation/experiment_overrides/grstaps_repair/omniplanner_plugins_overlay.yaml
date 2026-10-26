@@ -22,15 +22,15 @@ planners:
       # targets cannot be encoded at all -- a PDDL goal is a conjunction of
       # end-state facts with no notion of sequence.
       entry: itags
-      # hilbert is declared `simulated-spot` in the shared robot registry, which
-      # maps to the `spot` species: ground + sensor, no manipulator. Relocation
-      # tasks demand a manipulator, so with only hilbert in the fleet ITAGS
-      # correctly finds no allocation and the goal fails.
-      #
-      # Overriding here rather than editing the registry keeps every other
-      # experiment seeing hilbert as it really is.
-      robot_species:
-        hilbert: spot_arm
+      # Every Spot in this fleet carries an arm, but the shared robot registry
+      # declares them `spot` / `simulated-spot`, which map to the armless
+      # `spot` species; relocation would then find no robot to give it to.
+      # Overriding by type here, rather than editing the registry, keeps every
+      # other experiment reading the registry as it is. A Spot without an arm
+      # would need `robot_species: {<name>: spot}`.
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm
       # An inspection is a joint task, and its default coalition is a ground
       # robot plus a UAV. This fleet has no UAV, so that team can never be
       # fielded and every inspection goal would fail to allocate. Two ground

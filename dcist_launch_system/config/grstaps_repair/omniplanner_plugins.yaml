@@ -71,8 +71,9 @@ planners:
       run_mode: native
       goal_format: constrained_pddl
       entry: itags
-      robot_species:
-        hilbert: spot_arm
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm
       inspect_requirement:
         ground: 2
         sensor: 2
