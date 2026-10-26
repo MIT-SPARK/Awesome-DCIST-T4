@@ -85,6 +85,7 @@ def _build_labelspace(model, invalid_ids):
 @click.command()
 @click.argument("bag_path", type=click.Path(exists=True))
 @click.option("--name", "-n", default="hamilton")
+@click.option("--output", "-o", type=click.Path())
 @click.option("--config", default="default")
 @click.option("--trajectory-path", "-t", type=click.Path(exists=True))
 @click.option("--max-steps", "-m", default=None, type=int)
@@ -96,6 +97,7 @@ def _build_labelspace(model, invalid_ids):
 def run(
     bag_path,
     name,
+    output,
     config,
     trajectory_path,
     max_steps,
@@ -147,7 +149,7 @@ def run(
             trajectory=trajectory,
             other_topics=[f"/{name}/{name}_zed/depth/depth_registered"],
             body_frame=f"{name}/body",
-            progress=False,
+            progress=True,
             start_time_ns=_convert_start_time(bag_start_s),
         )
 
@@ -176,6 +178,12 @@ def run(
             pipeline.step(stamp, q_wxyz, pose.translation, rgb, depth, instances)
             last_stamp = stamp
             frame_idx += 1
+
+        pipeline.stop()
+        if output is not None:
+            pipeline.save(output)
+
+        pipeline.reset()
 
 
 if __name__ == "__main__":
