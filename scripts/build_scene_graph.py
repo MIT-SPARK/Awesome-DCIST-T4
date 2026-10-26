@@ -88,6 +88,7 @@ def _build_labelspace(model, invalid_ids):
 @click.option("--output", "-o", type=click.Path())
 @click.option("--config", default="default")
 @click.option("--trajectory-path", "-t", type=click.Path(exists=True))
+@click.option("--trajectory-origin", nargs=3, type=float)
 @click.option("--max-steps", "-m", default=None, type=int)
 @click.option("--min-separation-s", "-s", default=0.0, type=float)
 @click.option("--bag-start-s", default=None, type=float)
@@ -100,6 +101,7 @@ def run(
     output,
     config,
     trajectory_path,
+    trajectory_origin,
     max_steps,
     min_separation_s,
     bag_start_s,
