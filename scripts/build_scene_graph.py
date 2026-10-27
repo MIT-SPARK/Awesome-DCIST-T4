@@ -95,6 +95,7 @@ def _build_labelspace(model, invalid_ids):
 @click.option("--config-utilities-files", "-f", multiple=True)
 @click.option("--config-utilities-yaml", "-c", multiple=True)
 @click.option("--config-utilities-var", "-v", multiple=True)
+@click.option("--parallel/--no-parallel", default=True)
 def run(
     bag_path,
     name,
@@ -108,6 +109,7 @@ def run(
     config_utilities_files,
     config_utilities_yaml,
     config_utilities_var,
+    parallel,
 ):
     bag_path = pathlib.Path(bag_path).expanduser().absolute()
     trajectory_path = _norm_opt(trajectory_path)
@@ -124,7 +126,7 @@ def run(
     args += _repair_args(config_utilities_yaml, "-c")
     args += _repair_args(config_utilities_var, "-v")
     args += ["-c", "{app_plugins: [{type: ConfigServerPlugin}, {type: SpinPlugin}]}"]
-    args += ["-c", "{verbosity: 1}"]
+    args += ["-c", "{verbosity: 0, active_window: {verbosity: 3}}"]
     args += ["-v", f"robot_name={name}"]
 
     hydra.set_glog_level(0, 0)
@@ -153,7 +155,7 @@ def run(
             trajectory=trajectory,
             other_topics=[f"/{name}/{name}_zed/depth/depth_registered"],
             body_frame=f"{name}/body",
-            progress=True,
+            progress=False,
             start_time_ns=_convert_start_time(bag_start_s),
         )
 
@@ -161,8 +163,11 @@ def run(
         last_stamp: int | None = None
         threshold_ns = int(min_separation_s * 1.0e9)
         camera = hydra.make_camera(**dataloader.intrinsics)
-        pipeline = hydra.HydraPipeline(camera, labelspace)
-        # pipeline.start()
+        pipeline = hydra.HydraPipeline(camera, labelspace, show_config=False)
+        if parallel:
+            click.secho("Starting pipeline!", fg="green")
+            pipeline.start()
+
         for stamp, pose, images in dataloader:
             if max_steps and frame_idx >= max_steps:
                 break
