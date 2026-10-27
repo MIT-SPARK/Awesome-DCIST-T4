@@ -40,6 +40,21 @@ launch:
         - {name: frame_id, value: $(var robot_name)/livox}
         - {name: user_config_path, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/livox.yaml}
 
+  # GA-Nav traversability segmentation (consumed by hydra as the traversability image)
+  - arg: {name: launch_traversability_segmentation, default: 'false'}
+  - node:
+      if: $(var launch_traversability_segmentation)
+      pkg: semantic_inference_ros
+      exec: closed_set_node
+      namespace: $(var camera)/ganav
+      name: traversability_segmentation
+      remap:
+        - {from: color/image_raw, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/traversability_segmentation/status}
+      args: >
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/traversability_segmentation.yaml
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/config/ganav_group6_colors.csv}}}
+
   # Instance Segmentation
   - arg: {name: launch_instance_segmentation, default: 'false'}
   - pyenv_node:
@@ -93,6 +108,7 @@ launch:
         - {from: ~/input/camera/rgb/camera_info, to: $(var camera)/rgb/camera_info}
         - {from: ~/input/camera/semantic/image_raw, to: $(var camera)/semantic/image_raw}
         - {from: ~/input/camera/semantic/feature, to: $(var camera)/semantic/feature}
+        - {from: ~/input/camera/traversability/image_raw, to: $(var camera)/ganav/semantic/image_raw}
         - {from: ~/regions/embed, to: $(var camera)/semantic/embed}
         - {from: ~/status, to: ros_system_monitor/hydra/status}
         - {from: ~/labelspace, to: labelspace}
