@@ -79,9 +79,6 @@ frontend:
     layer_updates:
       OBJECTS:
         prefix: O
-        matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
-        merger: {type: EarliestAttributeMerger}
-    mark_active: false
   traversability_places:
     type: traversability
     layer: MESH_PLACES

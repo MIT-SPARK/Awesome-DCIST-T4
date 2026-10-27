@@ -47,14 +47,12 @@ active_window:
     voxel_size: 0.1
     accumulate_voxels: true
     min_voxel_hits: 15
-    merge_tracks: false
+    merge_tracks: true
     merge_containment_threshold: 0.35
     merge_distance_factor: 2.0
-  object_extractor: {type: MeshObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0, object_reconstruction_resolution: 0.1, bbox_type: aabb}
+  object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:
     - {type: ActiveWindowVisualizer, track_label_min_observations: 15}
-    - type: ActiveWindowTrackSaver
-      output_directory: $<env ADT4_OUTPUT_DIR>
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
@@ -79,9 +77,6 @@ frontend:
     layer_updates:
       OBJECTS:
         prefix: O
-        matcher: {type: IoUNodeMatcher, min_same_iou: 0.2, min_cross_iou: 0.5}
-        merger: {type: EarliestAttributeMerger}
-    mark_active: false
   traversability_places:
     type: traversability
     layer: MESH_PLACES
