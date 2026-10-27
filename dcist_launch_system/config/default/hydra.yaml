@@ -22,7 +22,8 @@ input:
         use_exact: true
         queue_size: 30
         filters:
-          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
+          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
+        with_traversability: false
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
@@ -111,7 +112,7 @@ backend:
     objects:
       type: GenericUpdateFunctor
       layer: OBJECTS
-      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.3, min_cross_iou: 0.5}
+      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}
       merge_proposer:
         strategy: {type: Pairwise}
     traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}

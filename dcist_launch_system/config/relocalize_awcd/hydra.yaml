@@ -154,7 +154,7 @@ backend:
     objects:
       type: GenericUpdateFunctor
       layer: OBJECTS
-      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.3, min_cross_iou: 0.5}
+      node_matcher: {type: IoUNodeMatcher, min_same_iou: 0.1, min_cross_iou: 0.3}
       merge_proposer:
         strategy: {type: Pairwise}
     traversability: {type: UpdateRegionGrowingTraversabilityFunctor, layer: MESH_PLACES}

@@ -15,10 +15,6 @@ active_window:
     interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
     max_range: 5.0  # don't let far, depth-biased pixels join object clusters
-  tracker:
-    merge_containment_threshold: 0.35  # fraction of the smaller track's confirmed voxels inside the other
-  # vote_filter:
-  #   enabled: false  # prune depth-smeared observations at inactivity (see ObservationVoteFilter)
   khronos_sinks:
     - type: ActiveWindowChangeDetector
       verbosity: 1
