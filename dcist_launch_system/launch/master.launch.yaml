@@ -80,7 +80,7 @@ launch:
         - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/traversability_segmentation/status}
       args: >
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/traversability_segmentation.yaml
-        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/config/ganav_group6_colors.csv}}}
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/resource/ganav_group6_colors.csv}}}
 
   # CLIP Features
   - arg: {name: launch_clip_features, default: 'false'}
