@@ -212,35 +212,6 @@ def _make_record_window(info: SessionInfo):
     return window_config
 
 
-def _get_bag_topics(bag_path: pathlib.Path):
-    metadata_path = bag_path / "metadata.yaml"
-    if not metadata_path.exists():
-        return set()
-
-    with metadata_path.open("r") as fin:
-        metadata = yaml.safe_load(fin.read())
-
-    info = metadata.get("rosbag2_bagfile_information", {})
-    topics = info.get("topics_with_message_count", [])
-    return {x["topic_metadata"]["name"] for x in topics}
-
-
-def _get_tf_remaps(info: SessionInfo):
-    topics = _get_bag_topics(info.bag)
-    ns_tf = f"/{info.robot_name}/tf"
-    if "/tf" in topics or ns_tf not in topics:
-        return []
-
-    click.secho(f"Bag has namespaced TF ('{ns_tf}'), remapping to global TF", fg="yellow")
-    # route dynamic TF through the --filter-tf subscriber (/bag_wrapper/_tf) so frame
-    # filters still apply; static TF is only filtered when recorded as /tf_static
-    remaps = [f"-m '{ns_tf}:=/bag_wrapper/_tf'"]
-    if f"{ns_tf}_static" in topics:
-        remaps.append(f"-m '{ns_tf}_static:=/tf_static'")
-
-    return remaps
-
-
 def _make_bag_window(info: SessionInfo):
     to_drop = [".*leg.*", ".*foot.*", ".*rail.*", ".*map.*"]
     if info.trajectory:
@@ -249,7 +220,6 @@ def _make_bag_window(info: SessionInfo):
     bag_args = ["--filter-tf", "-k", f"'.*{info.robot_name}.*'"]
     bag_args += ["--delay", str(info.bag_delay)]
     bag_args += [f"-f '{x}'" for x in to_drop]
-    bag_args += _get_tf_remaps(info)
     if info.sim_time:
         bag_args.append("--clock")
 
