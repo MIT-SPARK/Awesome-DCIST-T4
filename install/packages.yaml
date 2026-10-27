@@ -26,5 +26,5 @@ repositories:
     version: jazzy
   grstapsx:  # GRSTAPS-X task allocation for omniplanner's grstaps_planner
     type: git
-    url: https://github.com/jinwoop/grstapsx.git
+    url: git@github.com:jinwoop/grstapsx.git  # private: needs an SSH key with access
     version: feature/colcon
