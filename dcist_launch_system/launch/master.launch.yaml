@@ -8,8 +8,12 @@ launch:
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
-  # Semantic traversability frontend (GA-Nav + Hydra traversability image input)
-  - arg: {name: semantic_frontend, default: $(env ADT4_SEMANTIC_FRONTEND false)}
+  # Semantic traversability frontend: follows with_traversability in the hydra config
+  # (input/inputs/camera/receiver), which also launches GA-Nav when true.
+  - let:
+      name: semantic_frontend
+      value: >-
+        $(eval "__import__('yaml').safe_load(open('$(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml')).get('input', {}).get('inputs', {}).get('camera', {}).get('receiver', {}).get('with_traversability', False)")
 
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
@@ -64,7 +68,7 @@ launch:
         - {from: labelspace, to: /$(var robot_name)/labelspace}
 
   # GA-Nav traversability segmentation (consumed by hydra as the traversability image),
-  # launched alongside instance segmentation when the semantic frontend is enabled
+  # launched alongside instance segmentation when the hydra config has with_traversability
   - node:
       if: $(if $(var launch_instance_segmentation) $(var semantic_frontend) false)
       pkg: semantic_inference_ros
@@ -117,7 +121,6 @@ launch:
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
-        --config-utilities-yaml {input: {inputs: {camera: {receiver: {with_traversability: $(var semantic_frontend)}}}}}
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
