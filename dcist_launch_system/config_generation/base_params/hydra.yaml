@@ -22,6 +22,8 @@ input:
         queue_size: 30
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
+        # Semantic traversability frontend toggle: true also launches GA-Nav
+        with_traversability: false
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
@@ -84,8 +86,7 @@ frontend:
       sinks:
         - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
-    # No-op unless the semantic frontend is enabled (ADT4_SEMANTIC_FRONTEND=true), which
-    # launches GA-Nav and sets the camera receiver's with_traversability in master.launch.yaml.
+    # No-op unless input/inputs/camera/receiver/with_traversability is true.
     persistent_processing:
       - type: ProjectiveSemanticTraversabilityIntegrator
         max_range: 3.0
