@@ -116,6 +116,8 @@ def run(
     model_config = sc.Config.load(ModelConfig, instance_segmentation_config)
     model = models.InstanceSegmenter(model_config.model)
     labelspace = _build_labelspace(model, model_config.invalid_ids)
+    model = model.to(models.default_device())
+    model.eval()
 
     args = ["-f", str(_config_path(config) / "hydra.yaml")]
     args += _repair_args(config_utilities_files, "-f")
@@ -160,6 +162,7 @@ def run(
         threshold_ns = int(min_separation_s * 1.0e9)
         camera = hydra.make_camera(**dataloader.intrinsics)
         pipeline = hydra.HydraPipeline(camera, labelspace)
+        # pipeline.start()
         for stamp, pose, images in dataloader:
             if max_steps and frame_idx >= max_steps:
                 break
@@ -169,7 +172,6 @@ def run(
 
             rgb = images[0][..., ::-1]
             depth = images[1]
-
             with torch.no_grad():
                 ret = model.segment(rgb, is_rgb_order=True)
 
