@@ -8,6 +8,8 @@ launch:
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
+  # Semantic traversability frontend (GA-Nav + Hydra traversability image input)
+  - arg: {name: semantic_frontend, default: $(env ADT4_SEMANTIC_FRONTEND false)}
 
   # TF is namespaced by robot: everything in this file uses /<robot_name>/tf and
   # /<robot_name>/tf_static (see the global set_remaps below the zed driver)
@@ -54,21 +56,6 @@ launch:
         - {name: frame_id, value: $(var robot_name)/livox}
         - {name: user_config_path, value: $(find-pkg-share dcist_launch_system)/platforms/$(var platform_id)/livox.yaml}
 
-  # GA-Nav traversability segmentation (consumed by hydra as the traversability image)
-  - arg: {name: launch_traversability_segmentation, default: 'false'}
-  - node:
-      if: $(var launch_traversability_segmentation)
-      pkg: semantic_inference_ros
-      exec: closed_set_node
-      namespace: $(var camera)/ganav
-      name: traversability_segmentation
-      remap:
-        - {from: color/image_raw, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
-        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/traversability_segmentation/status}
-      args: >
-        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/traversability_segmentation.yaml
-        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/config/ganav_group6_colors.csv}}}
-
   # Instance Segmentation
   - arg: {name: launch_instance_segmentation, default: 'false'}
   - pyenv_node:
@@ -89,6 +76,21 @@ launch:
         # hard-coded top level name to avoid extra $(var robot_name)_zed topic
         - {from: semantic_overlay/image_raw, to: /$(var robot_name)/semantic_overlay/image_raw}
         - {from: labelspace, to: /$(var robot_name)/labelspace}
+
+  # GA-Nav traversability segmentation (consumed by hydra as the traversability image),
+  # launched alongside instance segmentation when the semantic frontend is enabled
+  - node:
+      if: $(if $(var launch_instance_segmentation) $(var semantic_frontend) false)
+      pkg: semantic_inference_ros
+      exec: closed_set_node
+      namespace: $(var camera)/ganav
+      name: traversability_segmentation
+      remap:
+        - {from: color/image_raw, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
+        - {from: ~/status, to: /$(var robot_name)/ros_system_monitor/traversability_segmentation/status}
+      args: >
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/traversability_segmentation.yaml
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/config/ganav_group6_colors.csv}}}
 
   # CLIP Features
   - arg: {name: launch_clip_features, default: 'false'}
@@ -129,6 +131,7 @@ launch:
       args: >-
         --config-utilities-var robot_name=$(var robot_name)
         --config-utilities-file $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/hydra.yaml
+        --config-utilities-yaml {input: {inputs: {camera: {receiver: {with_traversability: $(var semantic_frontend)}}}}}
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
         --config-utilities-yaml {log_path: $(var output_dir)/hydra, output: {use_timestamp: false, overwrite: true}}
 
