@@ -22,16 +22,16 @@ launch:
     - set_remap: {from: /tf_static, to: $(var tf_static_topic)}
     # zed_wrapper 5.x renamed rgb/image_rect_color -> rgb/color/rect/image; remap back to the old
     # name. Camera info (rgb/camera_info) and image_transport topics are derived from this name.
-      - set_remap: {from: /$(var robot_name)/$(var camera)/rgb/color/rect/image, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
-      - include:
-          if: $(var launch_zed)
-          file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
-          arg:
-            - {name: namespace, value: $(var robot_name)}
-            - {name: camera_model, value: zed2i}
-            - {name: camera_name, value: $(var camera)}
-            - {name: publish_tf, value: 'false'}
-            - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
+    - set_remap: {from: /$(var robot_name)/$(var camera)/rgb/color/rect/image, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
+    - include:
+        if: $(var launch_zed)
+        file: $(find-pkg-share zed_wrapper)/launch/zed_camera.launch.py
+        arg:
+          - {name: namespace, value: $(var robot_name)}
+          - {name: camera_model, value: zed2i}
+          - {name: camera_name, value: $(var camera)}
+          - {name: publish_tf, value: 'false'}
+          - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
 
   # Namespace TF for every node below. NOTE: launch_ros SetRemap appends in place to a list that
   # scoped groups share, so after these any set_remap inside a group leaks to every later node.
