@@ -1,4 +1,5 @@
 nodes_to_monitor:
+  tf_network: {}
   spot_executor: {}
   gps_monitor:
     external_monitor: {type: GpsMonitor}
@@ -16,7 +17,8 @@ environment:
   HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, spot_executor: {}, tx_rx_monitor: {}}}"
+  ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, spot_executor: {}, tf_network: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: spot_data_collection-default
@@ -35,6 +37,10 @@ windows:
     panes:
       - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true
+  - window_name: tf_network
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_network:=true]
   - window_name: real_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled

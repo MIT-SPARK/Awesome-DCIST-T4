@@ -8,9 +8,18 @@ launch:
   - let: {name: camera, value: $(var robot_name)_zed}
   - let: {name: platform_id, value: $(env ADT4_PLATFORM_ID topaz)}
   - let: {name: output_dir, value: $(env ADT4_OUTPUT_DIR)}
+
+  # TF is namespaced by robot: everything in this file uses /<robot_name>/tf and
+  # /<robot_name>/tf_static (see the global set_remaps below the zed driver)
+  - let: {name: tf_topic, value: /$(var robot_name)/tf}
+  - let: {name: tf_static_topic, value: /$(var robot_name)/tf_static}
+
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
   - group:
+    # these set_remaps stay scoped to the group because no remaps exist yet at the top level
+    - set_remap: {from: /tf, to: $(var tf_topic)}
+    - set_remap: {from: /tf_static, to: $(var tf_static_topic)}
     # zed_wrapper 5.x renamed rgb/image_rect_color -> rgb/color/rect/image; remap back to the old
     # name. Camera info (rgb/camera_info) and image_transport topics are derived from this name.
       - set_remap: {from: /$(var robot_name)/$(var camera)/rgb/color/rect/image, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
@@ -23,6 +32,12 @@ launch:
             - {name: camera_name, value: $(var camera)}
             - {name: publish_tf, value: 'false'}
             - {name: ros_params_override_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/zed_overrides.yaml}
+
+  # Namespace TF for every node below. NOTE: launch_ros SetRemap appends in place to a list that
+  # scoped groups share, so after these any set_remap inside a group leaks to every later node.
+  # Below this point, put remaps on the node (or the node in an included file), never set_remap.
+  - set_remap: {from: /tf, to: $(var tf_topic)}
+  - set_remap: {from: /tf_static, to: $(var tf_static_topic)}
 
   # Force robot name prefix for everything!
   - push_ros_namespace: {namespace: $(var robot_name)}
@@ -185,43 +200,36 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/depth_scale_correction.yaml, allow_substs: true}
       remap:
         - {from: ~/node_status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
-  - group:
-      - set_remap: {from: color/camera_info, to: $(var camera)/rgb/camera_info}
-      - set_remap: {from: color/image_raw, to: $(var camera)/rgb/image_rect_color}
-      - set_remap: {from: depth/camera_info, to: $(var camera)/depth_corrected/camera_info}
-      - set_remap: {from: depth/image_raw, to: $(var camera)/depth_corrected/depth_registered}
-      - set_remap: {from: tf, to: /tf}
-      - set_remap: {from: tf_static, to: /tf_static}
-      - set_remap: {from: roman/fastsam/status, to: ros_system_monitor/node_diagnostic_collector}
-      - set_remap: {from: roman/roman_map/status, to: ros_system_monitor/node_diagnostic_collector}
-      - set_remap: {from: roman/roman_lc/status, to: ros_system_monitor/node_diagnostic_collector}
 
-      # FastSAM
-      - include:
-          if: $(var launch_fastsam)
-          file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
-          arg:
-            - {name: conf_name, value: $(var conf_name)}
-            - {name: pyenv_path, value: $(var roman_env)}
+  # ROMAN (the camera and status remaps are on the nodes in launch/roman/)
+  # FastSAM
+  - include:
+      if: $(var launch_fastsam)
+      file: $(find-pkg-share dcist_launch_system)/launch/roman/fastsam.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+        - {name: pyenv_path, value: $(var roman_env)}
+        - {name: camera, value: $(var camera)}
 
-      # ROMAN: Mapping
-      - include:
-          if: $(var launch_roman_map)
-          file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
-          arg:
-            - {name: conf_name, value: $(var conf_name)}
-            - {name: pyenv_path, value: $(var roman_env)}
-            - {name: output_dir, value: $(var output_dir)}
+  # ROMAN: Mapping
+  - include:
+      if: $(var launch_roman_map)
+      file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_map.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+        - {name: pyenv_path, value: $(var roman_env)}
+        - {name: output_dir, value: $(var output_dir)}
+        - {name: camera, value: $(var camera)}
 
-      # ROMAN: Loop Closures
-      - include:
-          if: $(var launch_roman_lc)
-          file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_lc.launch.yaml
-          arg:
-            - {name: conf_name, value: $(var conf_name)}
-            - {name: pyenv_path, value: $(var roman_env)}
-            - {name: output_dir, value: $(var output_dir)}
-            - {name: use_sim_time, value: $(var sim_time)}
+  # ROMAN: Loop Closures
+  - include:
+      if: $(var launch_roman_lc)
+      file: $(find-pkg-share dcist_launch_system)/launch/roman/roman_lc.launch.yaml
+      arg:
+        - {name: conf_name, value: $(var conf_name)}
+        - {name: pyenv_path, value: $(var roman_env)}
+        - {name: output_dir, value: $(var output_dir)}
+        - {name: use_sim_time, value: $(var sim_time)}
 
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
@@ -515,6 +523,34 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/heracles_state_updater_node.yaml, allow_substs: true}
 
+  # TF network publisher (robots: republishes /<robot_name>/tf at a reduced rate on
+  # /<robot_name>/network/tf, which is all the base station subscribes to). By default it only
+  # forwards the frames in tf_network.yaml; ADT4_TF_NETWORK_MODE=all forwards the whole tree
+  - arg: {name: launch_tf_network, default: 'false'}
+  - node:
+      if: $(var launch_tf_network)
+      pkg: dcist_launch_system
+      exec: tf_network_node
+      name: tf_network
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/tf_network.yaml, allow_substs: true}
+      remap:
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+
+  # TF relay (base station: merges /<robot>/network/tf from every robot onto /<robot_name>/tf)
+  # (the global /tf remap does not touch it: its inputs and outputs are explicit namespaced topics)
+  - arg: {name: launch_tf_relay, default: 'false'}
+  - node:
+      if: $(var launch_tf_relay)
+      pkg: dcist_launch_system
+      exec: tf_relay_node
+      name: tf_relay
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/node_status, to: ros_system_monitor/node_diagnostic_collector}
+
   # gps
   - arg: {name: launch_gps, default: 'false'}
   - node:
@@ -533,23 +569,23 @@ launch:
 
   # ntrip
   - arg: {name: launch_ntrip, default: 'false'}
-  - group:
-      - set_remap: {from: ublox_gps_node/fix, to: fix}
-      - set_remap: {from: /rtcm, to: rtcm}
-      - node:
-          if: $(var launch_ntrip)
-          pkg: ntrip_client
-          exec: ntrip_ros.py
-          name: ntrip_client
-          param:
-            - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ntrip.yaml, allow_substs: true}
+  - node:
+      if: $(var launch_ntrip)
+      pkg: ntrip_client
+      exec: ntrip_ros.py
+      name: ntrip_client
+      param:
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/ntrip.yaml, allow_substs: true}
+      remap:
+        - {from: ublox_gps_node/fix, to: fix}
+        - {from: /rtcm, to: rtcm}
 
   # tx_rx
   - arg: {name: launch_tx_rx, default: 'false'}
-  - group:
-      - set_remap: {from: tx_rx/status, to: ros_system_monitor/node_diagnostic_collector}
-      - node:
-          if: $(var launch_tx_rx)
-          pkg: tx_rx_monitor_dcist
-          exec: tx_rx_monitor_node
-          name: tx_rx_monitor_node
+  - node:
+      if: $(var launch_tx_rx)
+      pkg: tx_rx_monitor_dcist
+      exec: tx_rx_monitor_node
+      name: tx_rx_monitor_node
+      remap:
+        - {from: tx_rx/status, to: ros_system_monitor/node_diagnostic_collector}

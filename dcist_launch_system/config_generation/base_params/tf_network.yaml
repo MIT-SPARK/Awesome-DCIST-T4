@@ -1,0 +1,12 @@
+---
+/**:
+  ros__parameters:
+    # mode: "frames" only forwards reference_frame -> <robot>/<frame> for each of frames (what
+    # the base station looks up); "all" forwards the whole tree (run-adt4 --forward-all-tf)
+    mode: $(env ADT4_TF_NETWORK_MODE frames)
+    rate_hz: 10.0
+    reference_frame: map
+    # frames without a "/" are relative to the robot (base_link -> <robot>/base_link).
+    # base_link: omniplanner and heracles robot poses. map: the robot's live scene graph in rviz
+    frames: [base_link, map]
+    stale_after_s: 2.0
