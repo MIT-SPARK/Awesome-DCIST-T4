@@ -59,6 +59,8 @@ setup(
             "awcd_visualizer_node = dcist_launch_system.awcd_visualizer_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
             "record_topics = dcist_launch_system.record_topics:main",
+            "tf_relay_node = dcist_launch_system.tf_relay_node:main",
+            "tf_network_node = dcist_launch_system.tf_network_node:main",
         ],
     },
 )
