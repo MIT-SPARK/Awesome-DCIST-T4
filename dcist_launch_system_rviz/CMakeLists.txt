@@ -6,6 +6,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(dcist_launch_system_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rviz_common REQUIRED)
@@ -22,7 +23,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(${PROJECT_NAME} Qt5::Widgets)
-ament_target_dependencies(${PROJECT_NAME} pluginlib rclcpp rviz_common std_msgs std_srvs)
+ament_target_dependencies(${PROJECT_NAME} dcist_launch_system_msgs pluginlib rclcpp rviz_common std_msgs std_srvs)
 
 install(TARGETS ${PROJECT_NAME}
         EXPORT export_${PROJECT_NAME}

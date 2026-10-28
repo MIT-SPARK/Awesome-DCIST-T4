@@ -20,15 +20,17 @@ the node's outputs:
 import dataclasses
 import threading
 import time
-from typing import Dict
+from typing import Dict, Set
 
 import numpy as np
 import rclpy
 import spark_dsg
 import tf2_ros
+from dcist_launch_system_msgs.srv import ClearRobots
 from geometry_msgs.msg import Point
 from hydra_ros import DsgSubscriber
 from khronos_msgs.msg import AwcdChanges, ChangedObjectInfo
+from rclpy._rclpy_pybind11 import RCLError
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -119,6 +121,7 @@ class AwcdBaseStationNode(Node):
         self._lock = threading.Lock()
         self._latest_msgs: Dict[str, AwcdChanges] = {}
         self._latest_graph = None
+        self._robots_to_clear = set()
         self._pending = threading.Event()
         self._stopped = threading.Event()
         # Worker-only state: the prior DSG in use, its objects' signature, and the message each
@@ -136,8 +139,19 @@ class AwcdBaseStationNode(Node):
             self.outputs.append(AwcdVisualizer(self, self.target_frame))
 
         self.dsg_sub = DsgSubscriber(self, "~/dsg_in", self._on_dsg)
+        # Robots publish latched, so a cleared or reconnecting robot's last message is replayed.
         self.changes_sub = self.create_subscription(
-            AwcdChanges, "/awcd_changes", self._on_changes, 10
+            AwcdChanges,
+            "/awcd_changes",
+            self._on_changes,
+            QoSProfile(
+                depth=10,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                reliability=ReliabilityPolicy.RELIABLE,
+            ),
+        )
+        self.clear_srv = self.create_service(
+            ClearRobots, "~/clear_robots", self._on_clear_robots
         )
         self._worker = threading.Thread(target=self._run, daemon=True)
         self._worker.start()
@@ -197,6 +211,24 @@ class AwcdBaseStationNode(Node):
             self._latest_msgs[msg.robot_name] = msg
         self._pending.set()
 
+    def _on_clear_robots(self, request, response):
+        """Drop the cached changes of `robot_names` (all robots if empty), e.g. of an offline robot.
+
+        Only the latest messages are forgotten here; the worker drops the store slices, so a
+        message arriving after the clear is still ingested.
+        """
+        with self._lock:
+            robots = set(request.robot_names) or set(self._latest_msgs)
+            cached = sorted(r for r in robots if self._latest_msgs.pop(r, None))
+            self._robots_to_clear |= robots
+        self._pending.set()
+        response.success = True
+        response.message = (
+            f"cleared {', '.join(cached)}" if cached else "no cached changes"
+        )
+        self.get_logger().info(f"clear_robots {sorted(robots)}: {response.message}")
+        return response
+
     def _run(self):
         """Merge on the newest snapshot until stopped; reruns at once if something arrived."""
         while not self._stopped.is_set():
@@ -206,15 +238,20 @@ class AwcdBaseStationNode(Node):
                 self._pending.clear()
                 msgs = dict(self._latest_msgs)
                 graph = self._latest_graph
+                clears, self._robots_to_clear = self._robots_to_clear, set()
             if self._stopped.is_set():
                 return
             try:
-                self._merge(msgs, graph)
+                self._merge(msgs, graph, clears)
             except Exception as exc:  # keep the worker alive on a bad message
                 self.get_logger().error(f"AWCD merge failed: {exc!r}")
 
-    def _merge(self, msgs: Dict[str, AwcdChanges], graph):
-        changed = False
+    def _merge(self, msgs: Dict[str, AwcdChanges], graph, clears: Set[str]):
+        # Clear before ingesting, so a robot's message that arrived after its clear still counts.
+        for robot in clears:
+            self.store.drop_robot(robot)
+            self._ingested_msgs.pop(robot, None)
+        changed = bool(clears)
         if graph is not self.graph:
             # The prior publisher repeats the same file; only a different prior counts as a change.
             self.graph = graph
@@ -509,6 +546,9 @@ def main(args=None):
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
         pass
+    except RCLError:
+        if rclpy.ok():  # otherwise spin raced the signal handler's shutdown
+            raise
     finally:
         node.destroy_node()
         rclpy.try_shutdown()

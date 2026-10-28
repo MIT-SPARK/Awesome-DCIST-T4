@@ -1,0 +1,5 @@
+# Drops the cached AWCD changes of these robots at the base station; empty = all robots.
+string[] robot_names
+---
+bool success
+string message

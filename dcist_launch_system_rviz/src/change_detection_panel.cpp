@@ -9,6 +9,7 @@ namespace dcist_launch_system_rviz {
 namespace {
 
 const std::string kStartSuffix = "/change_detection/start";
+const std::string kClearSuffix = "/awcd_base_station/clear_robots";
 const QString kAll = "All";
 
 }  // namespace
@@ -31,6 +32,8 @@ ChangeDetectionPanel::ChangeDetectionPanel(QWidget* parent) : Panel(parent) {
   button_layout->addWidget(stop_button);
   button_layout->addWidget(reset_button);
   button_layout->addWidget(reset_start_button);
+  auto* clear_button = new QPushButton("Clear Base Station");
+  clear_button->setToolTip("Drop the selected robot(s)' cached changes at the AWCD base station");
 
   status_label_ = new QLabel("No robots found.");
   status_label_->setTextFormat(Qt::RichText);
@@ -40,6 +43,7 @@ ChangeDetectionPanel::ChangeDetectionPanel(QWidget* parent) : Panel(parent) {
   auto* layout = new QVBoxLayout;
   layout->addLayout(robot_layout);
   layout->addLayout(button_layout);
+  layout->addWidget(clear_button);
   layout->addWidget(status_label_);
   layout->addWidget(result_label_);
   setLayout(layout);
@@ -49,6 +53,7 @@ ChangeDetectionPanel::ChangeDetectionPanel(QWidget* parent) : Panel(parent) {
   connect(stop_button, &QPushButton::clicked, this, &ChangeDetectionPanel::onStop);
   connect(reset_button, &QPushButton::clicked, this, &ChangeDetectionPanel::onReset);
   connect(reset_start_button, &QPushButton::clicked, this, &ChangeDetectionPanel::onResetAndStart);
+  connect(clear_button, &QPushButton::clicked, this, &ChangeDetectionPanel::onClearBaseStation);
 
   discovery_timer_ = new QTimer(this);
   connect(discovery_timer_, &QTimer::timeout, this, &ChangeDetectionPanel::discoverRobots);
@@ -66,6 +71,12 @@ void ChangeDetectionPanel::discoverRobots() {
   }
 
   for (const auto& [service, types] : node_->get_service_names_and_types()) {
+    if (service != clear_service_ && service.size() >= kClearSuffix.size() &&
+        !service.compare(service.size() - kClearSuffix.size(), kClearSuffix.size(), kClearSuffix)) {
+      clear_service_ = service;
+      clear_client_ = node_->create_client<ClearRobots>(service);
+      continue;
+    }
     if (service.size() <= kStartSuffix.size() ||
         service.compare(service.size() - kStartSuffix.size(), kStartSuffix.size(), kStartSuffix)) {
       continue;
@@ -91,13 +102,13 @@ void ChangeDetectionPanel::addRobot(const QString& name, const std::string& ns) 
   for (const auto& command : {"start", "stop", "reset"}) {
     robot.clients[command] = node_->create_client<Trigger>(ns + "/" + command);
   }
-  robot.state_sub = node_->create_subscription<std_msgs::msg::Bool>(
-      ns + "/enabled",
+  robot.state_sub = node_->create_subscription<std_msgs::msg::String>(
+      ns + "/state",
       rclcpp::QoS(1).transient_local().reliable(),
-      [this, name](const std_msgs::msg::Bool::SharedPtr msg) {
-        const bool enabled = msg->data;
-        postToGui([this, name, enabled]() {
-          robots_[name].enabled = enabled;
+      [this, name](const std_msgs::msg::String::SharedPtr msg) {
+        const auto state = msg->data;
+        postToGui([this, name, state]() {
+          robots_[name].state = state;
           updateStatus();
         });
       });
@@ -155,6 +166,25 @@ void ChangeDetectionPanel::send(const QString& robot_name,
       });
 }
 
+void ChangeDetectionPanel::onClearBaseStation() {
+  if (!clear_client_ || !clear_client_->service_is_ready()) {
+    setResult("Clear base station: service not available");
+    return;
+  }
+  // Empty = all robots, including ones the base station knows but this panel never discovered.
+  auto request = std::make_shared<ClearRobots::Request>();
+  const auto selected = robot_box_->currentText();
+  if (selected != kAll) {
+    request->robot_names.push_back(selected.toStdString());
+  }
+  clear_client_->async_send_request(
+      request, [this, selected](rclcpp::Client<ClearRobots>::SharedFuture future) {
+        const auto text = "Clear base station (" + selected +
+                          "): " + QString::fromStdString(future.get()->message);
+        postToGui([this, text]() { setResult(text); });
+      });
+}
+
 void ChangeDetectionPanel::postToGui(std::function<void()> fn) {
   QMetaObject::invokeMethod(this, std::move(fn), Qt::QueuedConnection);
 }
@@ -169,9 +199,15 @@ void ChangeDetectionPanel::updateStatus() {
   QString text;
   for (const auto& [name, robot] : robots_) {
     QString state = "<span style='color:gray'>? unknown</span>";
-    if (robot.enabled) {
-      state = *robot.enabled ? "<span style='color:green'>&#9679; running</span>"
-                             : "<span style='color:gray'>&#9675; stopped</span>";
+    if (robot.state == "running") {
+      state = "<span style='color:green'>&#9679; running</span>";
+    } else if (robot.state == "paused") {
+      state = "<span style='color:orange'>&#10074;&#10074; paused</span>";
+    } else if (robot.state == "reset") {
+      state = "<span style='color:gray'>&#9675; reset</span>";
+    } else if (robot.state) {
+      state = "<span style='color:gray'>? " + QString::fromStdString(*robot.state).toHtmlEscaped() +
+              "</span>";
     }
     text += "<b>" + name.toHtmlEscaped() + "</b>&nbsp;&nbsp;" + state + "<br>";
   }
