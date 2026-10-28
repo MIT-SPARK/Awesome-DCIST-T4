@@ -23,7 +23,6 @@ input:
         queue_size: 30
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
-        with_traversability: false
         with_feature: true
 active_window:
   type: ActiveWindow
