@@ -126,7 +126,7 @@ def run(
     args += _repair_args(config_utilities_yaml, "-c")
     args += _repair_args(config_utilities_var, "-v")
     args += ["-c", "{app_plugins: [{type: ConfigServerPlugin}, {type: SpinPlugin}]}"]
-    args += ["-c", "{verbosity: 0, active_window: {verbosity: 3}}"]
+    args += ["-c", "{verbosity: 0}"]
     args += ["-v", f"robot_name={name}"]
 
     hydra.set_glog_level(0, 0)
@@ -155,7 +155,7 @@ def run(
             trajectory=trajectory,
             other_topics=[f"/{name}/{name}_zed/depth/depth_registered"],
             body_frame=f"{name}/body",
-            progress=False,
+            progress=True,
             start_time_ns=_convert_start_time(bag_start_s),
         )
 
