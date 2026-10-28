@@ -4,6 +4,13 @@
     tf_fallback_identity: true
     require_same_label: true
     merge_containment_threshold: 0.5
+    filters: [prior_object_overlap, label_drop]
+    prior_object_overlap:
+      type: PriorObjectOverlapFilter
+      max_overlap_ratio: 0.4
+      require_same_label: true
+    label_drop:
+      type: LabelDropFilter
     visualization:
       enabled: true
       line_width: 0.1

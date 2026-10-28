@@ -28,7 +28,7 @@ active_window:
   type: ActiveWindow
   min_output_separation: 0.5
   volumetric_map: {voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
-  projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}}
+  projective_integrator: {semantic_integrator: {type: SingleLabelIntegrator}, interpolation_method: {type: adaptive, inf_is_free_space: true}}
   object_detector: {type: InstanceForwarding, min_cluster_size: 30, max_range: 7.0, min_range: 0.05, verbosity: 1, instance_filter: {type: CategoryFilter}}
   tracker:
     type: MaxIouTracker

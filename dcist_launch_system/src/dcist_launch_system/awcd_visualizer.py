@@ -4,7 +4,7 @@ Draws red (removed) / green (added) bounding-box wireframes + text labels -- the
 equivalent of `ActiveWindowChangeDetectorVisualizer` (khronos_ros), which only runs on-robot. Two
 latched topics give the operator two granularities:
 - `~/changed_objects`: each robot's own reports (marker namespaces `<robot>/<kind>_objects`).
-- `~/reconciled_objects`: the cross-robot merged changes (`reconciled/<kind>_objects`).
+- `~/reconciled_objects`: the merged changes (`reconciled/<kind>_objects`).
 """
 
 from typing import Dict, List

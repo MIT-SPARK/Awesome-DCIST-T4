@@ -34,6 +34,7 @@ active_window:
       added_prune_after_frames: 100  # Frames of no measurement before non-added tracks are pruned
       added_detection_method: mesh  # graph: 2D footprint in prior places; mesh: 3D vs prior mesh
       added_mesh_collision_radius: 0  # mesh: voxels of tolerance around prior mesh surfaces
+      global_added_object_deform: false  # false: freeze added objects at their last local pose in the prior
       # ICP configs
       enable_icp_refinement: true
       icp_crop_radius: 10.0

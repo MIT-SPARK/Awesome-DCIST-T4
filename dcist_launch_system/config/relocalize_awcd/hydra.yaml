@@ -71,6 +71,7 @@ active_window:
       added_prune_after_frames: 100
       added_detection_method: mesh
       added_mesh_collision_radius: 0
+      global_added_object_deform: false
       enable_icp_refinement: true
       icp_crop_radius: 10.0
       icp_num_threads: 2

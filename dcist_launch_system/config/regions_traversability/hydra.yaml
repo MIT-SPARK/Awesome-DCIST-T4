@@ -32,6 +32,7 @@ active_window:
   volumetric_map: {voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
+    interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
