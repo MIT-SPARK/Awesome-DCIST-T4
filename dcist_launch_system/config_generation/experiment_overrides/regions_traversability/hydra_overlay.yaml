@@ -1,5 +1,5 @@
 ---
-input: {inputs: {camera: {receiver: {with_feature: true}}}}
+input: {inputs: {camera: {receiver: {with_feature: true, with_traversability: true}}}}
 frontend:
   keyframe_selector: {type: KeyframeSelector, max_range_difference_m: 0.5, feature_selector: {type: average}}
 backend:
