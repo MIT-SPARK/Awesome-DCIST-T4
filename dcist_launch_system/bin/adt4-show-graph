@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+import pathlib
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import click
+import yaml
+
+
+def _ws_path():
+    return pathlib.Path(__file__).absolute().parent.parent
+
+
+def _make_tf_command(name: str) -> str:
+    cmd = [
+        "ros2",
+        "run",
+        "tf2_ros",
+        "static_transform_publisher",
+        "--frame-id",
+        "map",
+        "--child-frame-id",
+        f"{name}/map",
+    ]
+    return " ".join(cmd)
+
+
+def _make_visualizer_command(graph, name: str, config: str = "default") -> str:
+    cmd = [
+        "ros2",
+        "run",
+        "hydra_visualizer",
+        "hydra_visualizer_node",
+        "--config-utilities-var",
+        f"robot_name={name}",
+        "--config-utilities-file",
+        str(_ws_path() / "config" / config / "hydra_visualizer.yaml"),
+        "--config-utilities-yaml",
+        f"'{{graph: {{type: GraphFromFile, frame_id: {name}/map, filepath: {graph}}}}}'",
+        "--config-utilities-yaml",
+        "'{plugins: {mesh: {type: MeshPlugin}}}'",
+    ]
+    return " ".join(cmd)
+
+
+def _make_rviz_command(rviz_config) -> str:
+    default = _ws_path() / "rviz" / "graph_viewer.rviz"
+    cmd = ["rviz2", "-d", rviz_config or default]
+    return " ".join([str(x) for x in cmd])
+
+
+def _write_session_to_file(
+    fout,
+    graph,
+    name: str,
+    config: str = "default",
+    rviz_config=None,
+    use_zenoh: bool = True,
+) -> None:
+    panes = []
+    if use_zenoh:
+        panes.append("ros2 run rmw_zenoh_cpp rmw_zenohd")
+
+    panes.append(_make_visualizer_command(graph, name, config=config))
+    panes.append(_make_tf_command(name))
+    panes.append(_make_rviz_command(rviz_config))
+
+    fout.write(
+        yaml.dump(
+            {
+                "session_name": "adt4_show_graph",
+                "options": {"default-command": "/bin/zsh"},
+                "windows": [
+                    {
+                        "window_name": "main",
+                        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+                        "layout": "tiled",
+                        "panes": panes,
+                    }
+                ],
+            },
+            width=300,
+        )
+    )
+    fout.flush()
+
+
+def _normalize_optional(opt_path: str | None):
+    return pathlib.Path(opt_path).expanduser().absolute() if opt_path else None
+
+
+@click.command()
+@click.argument("prior_map", type=click.Path(exists=True))
+@click.option("--robot-name", "-n", envvar="ADT4_ROBOT_NAME", help="robot name to use")
+@click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
+@click.option("--config", "-c", default="default", help="visualizer config flavor")
+@click.option("--rviz-config", type=click.Path(exists=True), help="custom rviz config")
+@click.option("--zenoh/--no-zenoh", default=True, help="start zenoh router")
+def main(prior_map, robot_name, show_tmux, config, rviz_config, zenoh):
+    robot_name = robot_name or input("robot name to use? ")
+    prior_map = pathlib.Path(prior_map).expanduser().absolute()
+    rviz_config = _normalize_optional(rviz_config)
+
+    with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
+        _write_session_to_file(
+            fout,
+            prior_map / "hydra" / "backend" / "dsg_with_mesh.json",
+            robot_name,
+            config=config,
+            rviz_config=rviz_config,
+            use_zenoh=zenoh,
+        )
+        cmd = [shutil.which("tmuxp"), "load", str(fout.name)]
+        return subprocess.run(cmd, check=False).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())
