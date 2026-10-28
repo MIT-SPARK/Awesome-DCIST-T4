@@ -163,6 +163,10 @@ def render_config(root_path, manifest, base_yamls, concrete_configs, output_dir)
     root_path = pathlib.Path(root_path).expanduser().resolve()
     output_dir = pathlib.Path(output_dir).expanduser().resolve()
     for experiment_key in manifest["configs"].keys():
+        # Configs only used as building blocks for other configs aren't rendered
+        if experiment_key not in concrete_configs:
+            continue
+
         log_debug(f"Generating config for {experiment_key}")
         base_param_dir = root_path / "base_params"
         rendered_config_dir = output_dir / experiment_key

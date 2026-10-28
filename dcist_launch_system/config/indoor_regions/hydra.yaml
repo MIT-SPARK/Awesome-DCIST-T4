@@ -24,7 +24,6 @@ input:
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
         with_feature: true
-        with_traversability: true
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
