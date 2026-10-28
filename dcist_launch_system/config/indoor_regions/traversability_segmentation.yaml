@@ -1,6 +1,6 @@
 segmenter:
   model:
-    model_file: ganav_rugd_group6.onnx
+    model_file: ganav_trav3_r2d_160k.onnx
     color:
       mean: [0.485, 0.456, 0.406]
       stddev: [0.229, 0.224, 0.225]
@@ -10,18 +10,12 @@ image_resizer:
 output:
   recolor:
     groups:
-      - name: background
+      - name: traversable
         labels: [0]
-      - name: smooth
+      - name: maybe
         labels: [1]
-      - name: rough
+      - name: not_traversable
         labels: [2]
-      - name: bumpy
-        labels: [3]
-      - name: forbidden
-        labels: [4]
-      - name: obstacle
-        labels: [5]
 worker:
   max_queue_size: 10
   image_separation_s: 0.0

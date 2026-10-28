@@ -1,0 +1,4 @@
+name,red,green,blue,alpha,id
+traversable,0,200,0,255,0
+maybe,255,140,0,255,1
+not_traversable,220,0,0,255,2

@@ -132,7 +132,7 @@ frontend:
       - type: ProjectiveSemanticTraversabilityIntegrator
         max_range: 3.0
         fusion_mode: MIN
-        label_traversability: {0: 0.1, 1: 1.0, 2: 0.8, 3: 0.1, 4: 0.1, 5: 0.1}
+        label_traversability: {0: 1.0, 1: 0.1, 2: 0.1}
     sinks:
       - type: TraversabilityVisualizer
 backend:
