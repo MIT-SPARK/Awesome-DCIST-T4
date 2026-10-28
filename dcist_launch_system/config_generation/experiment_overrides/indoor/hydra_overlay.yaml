@@ -3,19 +3,6 @@ map_window: {type: spatial, max_radius_m: 10.0}
 input: {inputs: {camera: {sensor: {max_range: 5.0}}}}
 active_window:
   object_detector: {max_range: 5.0}
-  # tracker:
-  #   merge_tracks: false
-  # per-object TSDF over the track's frames: free-space carving + range weighting drop depth smear
-  # object_extractor: !replace
-  #   type: MeshObjectExtractor
-  #   min_object_allocation_confidence: 0.5
-  #   max_object_volume: 50.0
-  #   object_reconstruction_resolution: 0.1  # fixed voxel size; the default (-0.02 of extent) is coarse for smeared extents
-  #   bbox_type: aabb
-  # khronos_sinks:
-  #   # per-frame observations + per-track state for offline tracker replay (khronos_tracks_<stamp>/)
-  #   - type: ActiveWindowTrackSaver
-  #     output_directory: $<env ADT4_OUTPUT_DIR>
 frontend:
   traversability_places: {clustering: {max_radius: 1.5}}
 backend:

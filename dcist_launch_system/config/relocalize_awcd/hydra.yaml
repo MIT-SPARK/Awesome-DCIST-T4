@@ -13,7 +13,7 @@ input:
       sensor:
         type: camera_info
         min_range: 0.2
-        max_range: 5.0
+        max_range: 7.0
         extrinsics: {type: ros}
       receiver:
         type: ImageReceiver
@@ -33,7 +33,7 @@ active_window:
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
-    max_range: 5.0
+    max_range: 7.0
     min_range: 0.05
     verbosity: 1
     instance_filter: {type: CategoryFilter}
@@ -55,7 +55,7 @@ active_window:
   khronos_sinks:
     - {type: ActiveWindowVisualizer, track_label_min_observations: 15}
     - type: ActiveWindowChangeDetector
-      verbosity: 1
+      verbosity: 0
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_ema_alpha: 0.2
       removal_probability_threshold: 0.7
@@ -71,7 +71,7 @@ active_window:
       added_detection_method: mesh
       added_mesh_collision_radius: 0
       global_added_object_deform: false
-      enable_icp_refinement: true
+      enable_icp_refinement: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
       icp_downsampling_resolution: 0.2
@@ -94,8 +94,6 @@ active_window:
           min_draw_period_s: 0.5
           draw_graph: false
           draw_mesh: true
-    - type: ActiveWindowTrackSaver
-      output_directory: $<env ADT4_OUTPUT_DIR>
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}

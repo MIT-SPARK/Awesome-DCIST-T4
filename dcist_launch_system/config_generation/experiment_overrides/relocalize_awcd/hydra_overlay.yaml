@@ -4,20 +4,13 @@ input:
   inputs:
     camera:
       sensor:
-        max_range: 5.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
-      receiver:
-        # ZED +inf depth = no return (beyond its max depth, e.g. sky): don't drop frames that are mostly +inf
-        filters: !replace
-          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
+        max_range: 7.0  # far-range depth is biased (underestimated); also caps TSDF/object integration
 active_window:
-  projective_integrator:
-    # carve free space up to the sensor max_range along +inf (no return) depth pixels
-    interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
-    max_range: 5.0  # don't let far, depth-biased pixels join object clusters
+    max_range: 7.0  # don't let far, depth-biased pixels join object clusters
   khronos_sinks:
     - type: ActiveWindowChangeDetector
-      verbosity: 1
+      verbosity: 0
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       # Temporal EMA filter params for removed-object detection:
       removal_ema_alpha: 0.2  # EMA smoothing factor (lower = smoother, slower)
@@ -36,7 +29,7 @@ active_window:
       added_mesh_collision_radius: 0  # mesh: voxels of tolerance around prior mesh surfaces
       global_added_object_deform: false  # false: freeze added objects at their last local pose in the prior
       # ICP configs
-      enable_icp_refinement: true
+      enable_icp_refinement: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
       icp_downsampling_resolution: 0.2
@@ -59,5 +52,3 @@ active_window:
           min_draw_period_s: 0.5
           draw_graph: false  # prior mesh only; drawing the graph needs a `renderer:` config
           draw_mesh: true
-    - type: ActiveWindowTrackSaver
-      output_directory: $<env ADT4_OUTPUT_DIR>
