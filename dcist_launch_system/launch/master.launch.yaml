@@ -17,11 +17,11 @@ launch:
   # Zed camera driver (has to be above push_ros_namespace)
   - arg: {name: launch_zed, default: 'false'}
   - group:
-    # these set_remaps stay scoped to the group because no remaps exist yet at the top level
-    - set_remap: {from: /tf, to: $(var tf_topic)}
-    - set_remap: {from: /tf_static, to: $(var tf_static_topic)}
-    # zed_wrapper 5.x renamed rgb/image_rect_color -> rgb/color/rect/image; remap back to the old
-    # name. Camera info (rgb/camera_info) and image_transport topics are derived from this name.
+      # these set_remaps stay scoped to the group because no remaps exist yet at the top level
+      - set_remap: {from: /tf, to: $(var tf_topic)}
+      - set_remap: {from: /tf_static, to: $(var tf_static_topic)}
+      # zed_wrapper 5.x renamed rgb/image_rect_color -> rgb/color/rect/image; remap back to the old
+      # name. Camera info (rgb/camera_info) and image_transport topics are derived from this name.
       - set_remap: {from: /$(var robot_name)/$(var camera)/rgb/color/rect/image, to: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
       - include:
           if: $(var launch_zed)
