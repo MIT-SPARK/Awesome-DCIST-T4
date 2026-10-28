@@ -84,6 +84,12 @@ frontend:
       sinks:
         - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
+    # No-op unless with_traversability is enabled (see regions_traversability config).
+    persistent_processing:
+      - type: ProjectiveSemanticTraversabilityIntegrator
+        max_range: 3.0
+        fusion_mode: MIN
+        label_traversability: {0: 1.0, 1: 0.1, 2: 0.1}  # traversable, maybe, not traversable
     sinks:
       - type: TraversabilityVisualizer
 backend:

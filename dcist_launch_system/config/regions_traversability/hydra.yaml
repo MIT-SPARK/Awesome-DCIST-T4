@@ -24,6 +24,7 @@ input:
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
         with_feature: true
+        with_traversability: true
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
@@ -93,6 +94,11 @@ frontend:
       sinks:
         - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
+    persistent_processing:
+      - type: ProjectiveSemanticTraversabilityIntegrator
+        max_range: 3.0
+        fusion_mode: MIN
+        label_traversability: {0: 1.0, 1: 0.1, 2: 0.1}
     sinks:
       - type: TraversabilityVisualizer
   keyframe_selector:

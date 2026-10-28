@@ -21,6 +21,7 @@ configs:
   indoor: []
   prior_dsg: []
   regions: []
+  regions_traversability: [regions]
   relocalize: []
   relocalize_awcd: [relocalize]
   indoor_regions: [indoor, regions]
@@ -57,7 +58,10 @@ experiments:
     config: [relocalize, relocalize_awcd]
   spot_regions:
     launch_config: [robot_main, roman, hydra_regions, spot_real, sensors]
-    config: [regions, indoor_regions]
+    config: [indoor_regions]
+  spot_regions_traversability:
+    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors]
+    config: [regions_traversability]
   spot_data_collection:
     launch_config: [robot_main, spot_real, sensors]
     config: [default]
@@ -69,7 +73,10 @@ experiments:
     config: [relocalize, relocalize_awcd]
   spot_bag_regions:
     launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag]
-    config: [regions, indoor_regions]
+    config: [indoor_regions]
+  spot_bag_regions_traversability:
+    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag]
+    config: [regions_traversability]
 
   # phoenix — require Phoenix hardware or bag playback
   phoenix:

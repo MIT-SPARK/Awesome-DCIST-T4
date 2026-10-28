@@ -24,6 +24,7 @@ launch_files = get_share_info("launch", "*.launch.yaml")
 config_files = get_share_info("config", "*.yaml")
 labelspaces = get_share_info("labelspaces", "*.yaml")
 config_files_csv = get_share_info("config", "*.csv")
+resource_files = get_share_info("resource", "*.csv")
 platform_files = get_share_info("platforms")
 rviz_files = get_share_info("rviz", "*.rviz")
 
@@ -36,6 +37,7 @@ data_files = (
     + config_files
     + labelspaces
     + config_files_csv
+    + resource_files
     + platform_files
     + rviz_files
 )
