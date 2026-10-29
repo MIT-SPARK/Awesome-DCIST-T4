@@ -1,9 +1,2 @@
 ---
 input: {inputs: {camera: {receiver: {with_traversability: true}}}}
-frontend:
-  traversability_places:
-    estimator:
-      type: HeightTraversabilityEstimator
-      height_below: 1.0
-      height_above: 0.3
-      min_confidence: 0.5

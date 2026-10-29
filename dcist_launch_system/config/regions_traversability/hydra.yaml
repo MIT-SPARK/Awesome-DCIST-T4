@@ -84,7 +84,7 @@ frontend:
     type: traversability
     layer: MESH_PLACES
     estimator:
-      type: HeightTraversabilityEstimator
+      type: GradientTraversabilityEstimator
       gradient_threshold: 0.8
       height_below: 1.0
       height_above: 0.3
