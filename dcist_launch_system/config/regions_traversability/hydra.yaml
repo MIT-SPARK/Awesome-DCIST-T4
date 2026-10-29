@@ -84,7 +84,7 @@ frontend:
     type: traversability
     layer: MESH_PLACES
     estimator:
-      type: GradientTraversabilityEstimator
+      type: HeightTraversabilityEstimator
       gradient_threshold: 0.8
       height_below: 1.0
       height_above: 0.3
@@ -96,6 +96,9 @@ frontend:
         - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
     persistent_processing:
+      - type: RobotFootprintTraversability
+        bbox_min: [-0.75, -0.25]
+        bbox_max: [0.75, 0.25]
       - type: ProjectiveSemanticTraversabilityIntegrator
         max_range: 3.0
         fusion_mode: MIN
@@ -104,8 +107,9 @@ frontend:
       - type: TraversabilityVisualizer
   keyframe_selector:
     type: KeyframeSelector
-    max_range_difference_m: 0.5
-    feature_selector: {type: average}
+    feature_selector:
+      type: average
+      max_range_difference_m: 2.5
 backend:
   type: BackendModule
   publish_backend_tf: true
@@ -127,7 +131,7 @@ backend:
       source_layer: MESH_PLACES
       clustering:
         type: AgglomerativeIBClustering
-        verbosity: 1
+        verbosity: 0
         max_delta: 0.02
         score_threshold: 0.21
         top_k: 2
@@ -137,7 +141,7 @@ backend:
           type: RosEmbeddingGroup
           ns: ~/regions
           verbosity: 1
-          prompts: [parking lot, building, intersection, field, bridge, road]
+          prompts: [parking lot, building facade, intersection, field, bridge, road, sidewalk, courtyard, lawn, walking path, bike rack]
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0

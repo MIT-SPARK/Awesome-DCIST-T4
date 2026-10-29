@@ -35,7 +35,7 @@ renderer:
         draw: true
         height: 1.25
         scale: 1.0
-        adapter: {type: NameIdTextAdapter}
+        adapter: {type: LabelIdTextAdapter}
       edges: {scale: 0.1, alpha: 0.2}
     2p*:
       z_offset_scale: 0.0

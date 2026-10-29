@@ -86,6 +86,9 @@ frontend:
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 4.0}
     # No-op unless with_traversability is enabled (see regions_traversability config).
     persistent_processing:
+      - type: RobotFootprintTraversability
+        bbox_min: [-0.75, -0.25]
+        bbox_max: [0.75, 0.25]
       - type: ProjectiveSemanticTraversabilityIntegrator
         max_range: 3.0
         fusion_mode: MIN
