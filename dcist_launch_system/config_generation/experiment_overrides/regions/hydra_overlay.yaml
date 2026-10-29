@@ -1,7 +1,11 @@
 ---
 input: {inputs: {camera: {receiver: {with_feature: true}}}}
 frontend:
-  keyframe_selector: {type: KeyframeSelector, max_range_difference_m: 0.5, feature_selector: {type: average}}
+  keyframe_selector:
+    type: KeyframeSelector
+    feature_selector:
+      type: average
+      max_range_difference_m: 2.5
 backend:
   update_functors:
     regions:
@@ -9,7 +13,7 @@ backend:
       source_layer: MESH_PLACES
       clustering:
         type: AgglomerativeIBClustering
-        verbosity: 1
+        verbosity: 0
         max_delta: 0.02
         score_threshold: 0.21
         top_k: 2
@@ -19,4 +23,4 @@ backend:
           type: RosEmbeddingGroup
           ns: ~/regions
           verbosity: 1
-          prompts: [parking lot, building, intersection, field, bridge, road]
+          prompts: [parking lot, building facade, intersection, field, bridge, road, sidewalk, courtyard, lawn, walking path, bike rack]
