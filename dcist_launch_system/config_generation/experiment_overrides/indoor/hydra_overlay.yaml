@@ -5,3 +5,9 @@ active_window:
   object_detector: {max_range: 5.0}
 frontend:
   traversability_places: {clustering: {max_radius: 1.5}}
+backend:
+  update_functors:
+    objects:
+      node_matcher:
+        min_same_iou: 0.3
+        min_cross_iou: 0.5

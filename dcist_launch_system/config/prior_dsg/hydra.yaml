@@ -22,13 +22,14 @@ input:
         use_exact: true
         queue_size: 30
         filters:
-          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
+          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
   volumetric_map: {voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
+    interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
@@ -48,7 +49,7 @@ active_window:
     accumulate_voxels: true
     min_voxel_hits: 15
     merge_tracks: true
-    merge_containment_threshold: 0.2
+    merge_containment_threshold: 0.35
     merge_distance_factor: 2.0
   object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:

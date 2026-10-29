@@ -1,0 +1,5 @@
+<library path="dcist_launch_system_rviz">
+  <class name="dcist_launch_system_rviz/ChangeDetectionPanel" type="dcist_launch_system_rviz::ChangeDetectionPanel" base_class_type="rviz_common::Panel">
+    <description>Start, stop and reset active window change detection on one or all robots.</description>
+  </class>
+</library>

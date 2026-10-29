@@ -58,7 +58,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "awcd_visualizer_node = dcist_launch_system.awcd_visualizer_node:main",
+            "awcd_base_station_node = dcist_launch_system.awcd_base_station_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
             "record_topics = dcist_launch_system.record_topics:main",
             "tf_relay_node = dcist_launch_system.tf_relay_node:main",

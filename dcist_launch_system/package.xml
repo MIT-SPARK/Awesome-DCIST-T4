@@ -11,6 +11,7 @@
   <depend>python3-ruamel.yaml</depend> <!-- needed for spark_config -->
   <depend>tmux</depend>
   <exec_depend>xacro</exec_depend>
+  <exec_depend>dcist_launch_system_msgs</exec_depend>
   <exec_depend>khronos_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>tf2_msgs</exec_depend>

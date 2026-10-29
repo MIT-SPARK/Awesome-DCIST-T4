@@ -1,0 +1,22 @@
+---
+/**:
+  ros__parameters:
+    target_frame: map
+    tf_fallback_identity: true
+    require_same_label: true  # only merge added objects if labels match (unknown matches any)
+    merge_containment_threshold: 0.5  # min world-AABB overlap / smaller box volume to merge (across and within robots)
+    # Applied in order to every robot's reports before merging; each name's type + fields are under it.
+    filters: [prior_object_overlap, label_drop]
+    prior_object_overlap:
+      type: PriorObjectOverlapFilter  # drop added objects mostly inside a non-removed prior object
+      max_overlap_ratio: 0.4  # fraction of the added box inside the prior object's box
+      require_same_label: true  # only prior objects of the same label (objects on tables survive)
+    label_drop:
+      type: LabelDropFilter  # drop reports by integer category id of the deployed label space
+      # added_labels: [56]
+      # removed_labels: [39]
+    visualization:
+      enabled: true  # RViz markers: per robot on ~/changed_objects, merged on ~/reconciled_objects
+      line_width: 0.1
+      text_scale: 0.4
+      show_labels: true

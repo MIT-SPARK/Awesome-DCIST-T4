@@ -22,13 +22,14 @@ input:
         use_exact: true
         queue_size: 30
         filters:
-          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5}
+          - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
 active_window:
   type: ActiveWindow
   min_output_separation: 0.5
   volumetric_map: {voxel_size: 0.1, truncation_distance: 0.3, with_semantics: false}
   projective_integrator:
     semantic_integrator: {type: SingleLabelIntegrator}
+    interpolation_method: {type: adaptive, inf_is_free_space: true}
   object_detector:
     type: InstanceForwarding
     min_cluster_size: 30
@@ -48,16 +49,16 @@ active_window:
     accumulate_voxels: true
     min_voxel_hits: 15
     merge_tracks: true
-    merge_containment_threshold: 0.25
+    merge_containment_threshold: 0.35
     merge_distance_factor: 2.0
   object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:
     - {type: ActiveWindowVisualizer, track_label_min_observations: 15}
     - type: ActiveWindowChangeDetector
-      verbosity: 1
+      verbosity: 0
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_ema_alpha: 0.2
-      removal_probability_threshold: 0.8
+      removal_probability_threshold: 0.7
       removal_min_frames_observed: 5
       removal_min_in_bounds_fraction: 0.5
       removal_min_observed_fraction: 0.5
@@ -67,7 +68,10 @@ active_window:
       added_probability_threshold: 0.8
       added_min_frames_observed: 20
       added_prune_after_frames: 100
-      enable_icp_refinement: true
+      added_detection_method: mesh
+      added_mesh_collision_radius: 0
+      global_added_object_deform: false
+      enable_icp_refinement: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
       icp_downsampling_resolution: 0.2
@@ -76,6 +80,8 @@ active_window:
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
+      start_enabled: false
+      controller: {type: RosChangeDetectionController}
       awcd_sinks:
         - type: TfIcpPublisher
           pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
