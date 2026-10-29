@@ -20,6 +20,7 @@
       serial_number: 0
       pub_resolution: CUSTOM
       pub_downscale_factor: 2.0
+      grab_frame_rate: 30
       pub_frame_rate: 15.0
       enable_image_validity_check: 1
       gpu_id: -1
