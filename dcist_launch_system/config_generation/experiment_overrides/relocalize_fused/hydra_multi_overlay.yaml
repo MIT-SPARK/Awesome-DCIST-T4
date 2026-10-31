@@ -1,0 +1,7 @@
+---
+# Prior map is a fused multi-robot map (run-fusion-from-trajectories) with robots 1..N
+robots: !update
+  - inputs:
+      dgraph:
+        keep_robot_ids: true  # robots 1..N keep their own trajectories
+  - {}  # Live robot unit interface should be unchanged

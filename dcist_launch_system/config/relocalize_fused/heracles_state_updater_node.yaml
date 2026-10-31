@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    heracles_ip: $(env ADT4_HERACLES_IP)
+    heracles_port: $(env ADT4_HERACLES_PORT)
+    map_frame: map
+    robots_config_path: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml
+    publish_rate: 1.0

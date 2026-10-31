@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    calibration_duration_s: 30.0
+    frame_period_s: 0.5
+    max_calibration_time_s: 300.0
+    min_camera_height_m: 0.4
+    publish_before_calibrated: true
+    fixed_a: .nan
+    fixed_b: .nan
+    fallback_a: 1.0
+    fallback_b: 0.0
+    min_z: 1.0
+    max_z: 8.0
+    pixel_step: 4
+    tf_timeout_s: 0.1
+    reliable_input: true
+    ground_frame: $(var robot_name)/gpe

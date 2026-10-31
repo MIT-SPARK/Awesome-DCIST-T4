@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    target_frame: map
+    line_width: 0.1
+    text_scale: 0.4
+    show_labels: true
+    tf_fallback_identity: true
