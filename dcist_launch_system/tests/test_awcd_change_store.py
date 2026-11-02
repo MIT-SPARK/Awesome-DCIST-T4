@@ -24,7 +24,7 @@ def _record(
     stamp_ns=100,
     last_seen_ns=1000,
     center=(0.0, 0.0, 0.0),
-    semantic_label=1,
+    label="chair",
     num_frames_observed=5,
 ):
     return ChangeRecord(
@@ -35,7 +35,7 @@ def _record(
         center=np.array(center, dtype=float),
         dimensions=np.ones(3),
         orientation=np.array([0.0, 0.0, 0.0, 1.0]),
-        semantic_label=semantic_label,
+        label=label,
         confidence=0.9,
         change_confidence=0.75,
         num_frames_observed=num_frames_observed,
@@ -190,22 +190,20 @@ class TestReconciled:
 
     def test_label_mismatch_does_not_merge(self):
         store = AwcdChangeStore()
-        store.update(
-            "hamilton", ADDED, [_record("hamilton", ADDED, 1, semantic_label=1)]
-        )
-        store.update("lewis", ADDED, [_record("lewis", ADDED, 1, semantic_label=2)])
+        store.update("hamilton", ADDED, [_record("hamilton", ADDED, 1, label="chair")])
+        store.update("lewis", ADDED, [_record("lewis", ADDED, 1, label="table")])
 
         assert len(_reconciled(store)) == 2
 
         store.config = ReconcileConfig(require_same_label=False)
-        store.update("lewis", ADDED, [_record("lewis", ADDED, 1, semantic_label=2)])
+        store.update("lewis", ADDED, [_record("lewis", ADDED, 1, label="table")])
         assert len(_reconciled(store)) == 1
 
     def test_unknown_label_cannot_bridge_two_labels(self):
         store = AwcdChangeStore()
-        store.update("a", ADDED, [_record("a", ADDED, 1, semantic_label=1)])
-        store.update("b", ADDED, [_record("b", ADDED, 1, semantic_label=-1)])
-        store.update("c", ADDED, [_record("c", ADDED, 1, semantic_label=2)])
+        store.update("a", ADDED, [_record("a", ADDED, 1, label="chair")])
+        store.update("b", ADDED, [_record("b", ADDED, 1, label="")])
+        store.update("c", ADDED, [_record("c", ADDED, 1, label="table")])
 
         groups = sorted(len(r.members) for r in _reconciled(store))
         assert groups == [1, 2]
@@ -313,22 +311,20 @@ class TestReconciled:
         raise AssertionError("expected ValueError")
 
 
-def _prior(
-    obj_id, center=(0.0, 0.0, 0.0), semantic_label=1, dimensions=(1.0, 1.0, 1.0)
-):
+def _prior(obj_id, center=(0.0, 0.0, 0.0), label="chair", dimensions=(1.0, 1.0, 1.0)):
     return PriorObject(
         obj_id=obj_id,
         center=np.array(center, dtype=float),
         dimensions=np.array(dimensions, dtype=float),
         orientation=np.array([0.0, 0.0, 0.0, 1.0]),
-        semantic_label=semantic_label,
+        label=label,
     )
 
 
 class TestFilters:
     def _store(self, *filters):
         store = AwcdChangeStore(filters=list(filters))
-        store.set_prior_objects([_prior(7, semantic_label=1)])
+        store.set_prior_objects([_prior(7, label="chair")])
         return store
 
     def test_added_inside_same_label_prior_object_is_dropped(self):
@@ -346,7 +342,7 @@ class TestFilters:
         store.update(
             "hamilton",
             ADDED,
-            [_record("hamilton", ADDED, 1, center=(0.2, 0.0, 0.0), semantic_label=2)],
+            [_record("hamilton", ADDED, 1, center=(0.2, 0.0, 0.0), label="table")],
         )
         assert len(_reconciled(store)) == 1
 
@@ -368,10 +364,10 @@ class TestFilters:
         # The prior object was taken away and something of the same class now stands there.
         store = self._store(
             PriorObjectOverlapFilter(),
-            LabelDropFilter(LabelDropFilter.Config(removed_labels=[1])),
+            LabelDropFilter(LabelDropFilter.Config(removed_labels=["chair"])),
         )
         store.update(
-            "hamilton", REMOVED, [_record("hamilton", REMOVED, 7, semantic_label=1)]
+            "hamilton", REMOVED, [_record("hamilton", REMOVED, 7, label="chair")]
         )
         store.update(
             "hamilton", ADDED, [_record("hamilton", ADDED, 1, center=(0.2, 0.0, 0.0))]
@@ -385,7 +381,9 @@ class TestFilters:
         store = AwcdChangeStore(
             filters=[
                 LabelDropFilter(
-                    LabelDropFilter.Config(added_labels=[3], removed_labels=[4])
+                    LabelDropFilter.Config(
+                        added_labels=["cone"], removed_labels=["bag"]
+                    )
                 )
             ]
         )
@@ -393,16 +391,16 @@ class TestFilters:
             "hamilton",
             ADDED,
             [
-                _record("hamilton", ADDED, 1, semantic_label=3),
-                _record("hamilton", ADDED, 2, center=(5.0, 0.0, 0.0), semantic_label=4),
+                _record("hamilton", ADDED, 1, label="cone"),
+                _record("hamilton", ADDED, 2, center=(5.0, 0.0, 0.0), label="bag"),
             ],
         )
         store.update(
             "hamilton",
             REMOVED,
             [
-                _record("hamilton", REMOVED, 8, semantic_label=3),
-                _record("hamilton", REMOVED, 9, semantic_label=4),
+                _record("hamilton", REMOVED, 8, label="cone"),
+                _record("hamilton", REMOVED, 9, label="bag"),
             ],
         )
 
