@@ -80,8 +80,6 @@ class AwcdVisualizer:
         self.show_labels = node.declare_parameter(
             "visualization.show_labels", True
         ).value
-        # TODO(nathan) get this from ROS
-        self.labelspace = {}
 
         # Latched: every message holds the full current layer, so late RViz sessions catch up.
         latched = QoSProfile(
@@ -129,12 +127,7 @@ class AwcdVisualizer:
         pub.publish(array)
 
     def _label_text(self, record: ChangeRecord) -> str:
-        if record.semantic_label < 0:
-            label_name = "unknown"
-        else:
-            label_name = self.labelspace.get(
-                record.semantic_label, f"label_{record.semantic_label}"
-            )
+        label_name = record.label or "unknown"
         if record.members:
             source = ", ".join(f"{m.namespace}:{m.obj_id}" for m in record.members)
             source += f" | {record.kind}"

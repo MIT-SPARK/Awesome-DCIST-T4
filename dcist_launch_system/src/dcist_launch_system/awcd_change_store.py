@@ -24,7 +24,8 @@ robots' slices, from the latest per-robot snapshots (no state of their own), ind
 reads them. First the configured `ChangeFilter`s drop records (e.g. added objects that re-detect a
 prior object, ignored labels); then removed objects merge by prior-DSG NodeId (shared by all
 robots; any robot reporting it removed keeps it removed) and added objects by world-AABB
-containment with matching labels. Added records of the same robot merge too: a robot that revisits
+containment with matching labels. Labels are category names, not integer ids: robots may run
+different label spaces, and the prior DSG has its own. Added records of the same robot merge too: a robot that revisits
 an area reports an object it already reported under a new track id.
 
 Limitation: all overlap tests (merging and filters) only handle axis-aligned boxes. An oriented box
@@ -58,7 +59,7 @@ class ChangeRecord:
     center: np.ndarray  # (3,) float64, already transformed into the render/target frame
     dimensions: np.ndarray  # (3,) float64
     orientation: np.ndarray  # (4,) float64 xyzw quaternion, in the target frame
-    semantic_label: int
+    label: str  # category name; "" = unknown
     confidence: float  # tracking-quality (added-only); not currently rendered
     change_confidence: (
         float  # change-detection EMA that drives the added/removed decision
@@ -79,14 +80,14 @@ class PriorObject:
     center: np.ndarray  # (3,) float64
     dimensions: np.ndarray  # (3,) float64
     orientation: np.ndarray  # (4,) float64 xyzw quaternion
-    semantic_label: int
+    label: str  # category name in the prior DSG's label space; "" = unknown
 
 
 @dataclass
 class ReconcileConfig:
     """Merge criteria of `AwcdChangeStore.reconciled()`."""
 
-    # Only merge added objects whose labels match (unknown labels, < 0, match anything).
+    # Only merge added objects whose labels match (unknown labels, "", match anything).
     require_same_label: bool = True
     # Min overlap of the two world AABBs, as a fraction of the smaller box's volume.
     merge_containment_threshold: float = 0.5
@@ -134,9 +135,10 @@ def _volumes(boxes) -> np.ndarray:
     return np.prod(boxes[1] - boxes[0], axis=1)
 
 
-def _labels_match(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """(Na, Nb) label compatibility: equal, or either unknown (< 0)."""
-    return (a[:, None] == b[None]) | (a[:, None] < 0) | (b[None] < 0)
+def _labels_match(a: List[str], b: List[str]) -> np.ndarray:
+    """(Na, Nb) label compatibility: equal, or either unknown ("")."""
+    a, b = np.array(a, dtype=object), np.array(b, dtype=object)
+    return (a[:, None] == b[None]) | (a[:, None] == "") | (b[None] == "")
 
 
 @dataclass
@@ -187,10 +189,7 @@ class PriorObjectOverlapFilter(ChangeFilter):
         fraction = _overlap_volumes(added, prior) / _volumes(added)[:, None]
         hits = fraction >= self.config.max_overlap_ratio
         if self.config.require_same_label:
-            hits &= _labels_match(
-                np.array([r.semantic_label for r in records]),
-                np.array([p.semantic_label for p in priors]),
-            )
+            hits &= _labels_match([r.label for r in records], [p.label for p in priors])
         return ~hits.any(axis=1)
 
 
@@ -199,9 +198,9 @@ class LabelDropFilter(ChangeFilter):
 
     @dataclass
     class Config:
-        # Integer category ids of the deployed label space.
-        added_labels: List[int] = field(default_factory=list)
-        removed_labels: List[int] = field(default_factory=list)
+        # Category names (e.g. "chair"): robots' label spaces for added, the prior DSG's for removed.
+        added_labels: List[str] = field(default_factory=list)
+        removed_labels: List[str] = field(default_factory=list)
 
     def __init__(self, config: Optional["LabelDropFilter.Config"] = None):
         self.config = config or LabelDropFilter.Config()
@@ -210,13 +209,36 @@ class LabelDropFilter(ChangeFilter):
         dropped = set(
             self.config.added_labels if kind == ADDED else self.config.removed_labels
         )
-        return np.array([r.semantic_label not in dropped for r in records], dtype=bool)
+        return np.array([r.label not in dropped for r in records], dtype=bool)
+
+
+class LabelKeepFilter(ChangeFilter):
+    """Keeps only added / removed records whose label is listed; an empty list keeps that kind.
+
+    Unknown labels ("") are dropped by a non-empty list.
+    """
+
+    @dataclass
+    class Config:
+        # Category names, as in LabelDropFilter.
+        added_labels: List[str] = field(default_factory=list)
+        removed_labels: List[str] = field(default_factory=list)
+
+    def __init__(self, config: Optional["LabelKeepFilter.Config"] = None):
+        self.config = config or LabelKeepFilter.Config()
+
+    def keep(self, kind, records, context):
+        kept = set(
+            self.config.added_labels if kind == ADDED else self.config.removed_labels
+        )
+        return np.array([not kept or r.label in kept for r in records], dtype=bool)
 
 
 # Filter type name (the `type` of a configured filter) -> filter class; each has a nested Config.
 FILTER_TYPES = {
     "PriorObjectOverlapFilter": PriorObjectOverlapFilter,
     "LabelDropFilter": LabelDropFilter,
+    "LabelKeepFilter": LabelKeepFilter,
 }
 
 
@@ -235,11 +257,8 @@ def _fuse(kind: str, obj_id: int, members: List[ChangeRecord]) -> ChangeRecord:
     """Merged record: earliest stamp, bbox of the best-observed member, max confidences."""
     # members are sorted by (namespace, obj_id), so max() breaks ties deterministically.
     best = max(members, key=lambda r: r.num_frames_observed)
-    known_labels = [r.semantic_label for r in members if r.semantic_label >= 0]
-    if best.semantic_label >= 0:
-        label = best.semantic_label
-    else:
-        label = known_labels[0] if known_labels else -1
+    known_labels = [r.label for r in members if r.label]
+    label = best.label or (known_labels[0] if known_labels else "")
     return ChangeRecord(
         namespace=RECONCILED,
         kind=kind,
@@ -248,7 +267,7 @@ def _fuse(kind: str, obj_id: int, members: List[ChangeRecord]) -> ChangeRecord:
         center=best.center,
         dimensions=best.dimensions,
         orientation=best.orientation,
-        semantic_label=label,
+        label=label,
         confidence=max(r.confidence for r in members),
         change_confidence=max(r.change_confidence for r in members),
         num_frames_observed=sum(r.num_frames_observed for r in members),
@@ -382,9 +401,7 @@ class AwcdChangeStore:
 
         # Union-find; each root tracks the known labels in its group.
         parent = list(range(len(records)))
-        labels = [
-            {r.semantic_label} if r.semantic_label >= 0 else set() for r in records
-        ]
+        labels = [{r.label} if r.label else set() for r in records]
 
         def find(i):
             while parent[i] != i:

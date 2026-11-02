@@ -20,6 +20,7 @@ the node's outputs:
 import dataclasses
 import threading
 import time
+import typing
 from typing import Dict, Set
 
 import numpy as np
@@ -127,6 +128,7 @@ class AwcdBaseStationNode(Node):
         # Worker-only state: the prior DSG in use, its objects' signature, and the message each
         # robot was last ingested from.
         self.graph = None
+        self._prior_label_names: Dict[int, str] = {}
         self._prior_signature = None
         self._ingested_msgs: Dict[str, AwcdChanges] = {}
 
@@ -188,13 +190,19 @@ class AwcdBaseStationNode(Node):
         """Build a dataclass config from parameters `<prefix>.<field>`; unset fields keep defaults.
 
         ROS 2 parameters can't hold lists of maps, so each filter's fields live under its name.
-        List fields are integer arrays declared without a default (a YAML `[]` has no type).
+        List fields are declared without a default (a YAML `[]` has no type), typed from the field.
         """
         values = {}
         for f in dataclasses.fields(config_cls):
             name = f"{prefix}.{f.name}"
             if f.default_factory is not dataclasses.MISSING:
-                value = self.declare_parameter(name, Parameter.Type.INTEGER_ARRAY).value
+                is_str = typing.get_args(f.type) == (str,)
+                array = (
+                    Parameter.Type.STRING_ARRAY
+                    if is_str
+                    else Parameter.Type.INTEGER_ARRAY
+                )
+                value = self.declare_parameter(name, array).value
                 if value is not None:
                     values[f.name] = list(value)
             else:
@@ -255,7 +263,8 @@ class AwcdBaseStationNode(Node):
         if graph is not self.graph:
             # The prior publisher repeats the same file; only a different prior counts as a change.
             self.graph = graph
-            prior_objects = _prior_objects(graph)
+            self._prior_label_names = self._label_names(graph)
+            prior_objects = _prior_objects(graph, self._prior_label_names)
             signature = _prior_signature(prior_objects)
             if signature != self._prior_signature:
                 self._prior_signature = signature
@@ -274,6 +283,20 @@ class AwcdBaseStationNode(Node):
         self.store.reconcile()
         for output in self.outputs:
             output.call(self.store)
+
+    def _label_names(self, graph) -> Dict[int, str]:
+        """Category names of the prior DSG's objects, from the label space in its metadata."""
+        if graph is None:
+            return {}
+        labelspace = graph.get_labelspace(spark_dsg.DsgLayers.OBJECTS)
+        if not labelspace:
+            self.get_logger().warn(
+                "Prior DSG has no object label space; prior and removed labels are unknown "
+                "(they match any label).",
+                once=True,
+            )
+            return {}
+        return dict(labelspace.labels_to_names)
 
     def _lookup_prior_T_msg(self, msg_frame_id: str):
         """Return 4x4 transform target_frame_T_msg_frame, or identity + warn on TF failure."""
@@ -356,7 +379,6 @@ class AwcdBaseStationNode(Node):
             )
             dims = np.array(bbox.dimensions, dtype=float)
             orientation = _rotmat_to_quat(transform[:3, :3] @ _bbox_rotation(bbox))
-            semantic_label = getattr(attrs, "semantic_label", -1)
             records.append(
                 ChangeRecord(
                     namespace=msg.robot_name,
@@ -366,7 +388,9 @@ class AwcdBaseStationNode(Node):
                     center=center,
                     dimensions=dims,
                     orientation=orientation,
-                    semantic_label=int(semantic_label),
+                    label=self._prior_label_names.get(
+                        int(getattr(attrs, "semantic_label", -1)), ""
+                    ),
                     confidence=float(info.confidence),
                     change_confidence=float(info.change_confidence),
                     num_frames_observed=int(info.num_frames_observed),
@@ -402,7 +426,7 @@ class AwcdBaseStationNode(Node):
                     center=center,
                     dimensions=dims,
                     orientation=orientation,
-                    semantic_label=int(info.semantic_label),
+                    label=info.name,
                     confidence=float(info.confidence),
                     change_confidence=float(info.change_confidence),
                     num_frames_observed=int(info.num_frames_observed),
@@ -419,7 +443,7 @@ def _bbox_rotation(bbox) -> np.ndarray:
     return np.eye(3)
 
 
-def _prior_objects(graph):
+def _prior_objects(graph, label_names: Dict[int, str]):
     """The prior DSG's objects with valid boxes; the prior DSG is in the target frame."""
     if graph is None or not graph.has_layer(spark_dsg.DsgLayers.OBJECTS):
         return []
@@ -435,7 +459,7 @@ def _prior_objects(graph):
                 center=np.array(bbox.world_P_center, dtype=float),
                 dimensions=np.array(bbox.dimensions, dtype=float),
                 orientation=_rotmat_to_quat(_bbox_rotation(bbox)),
-                semantic_label=int(getattr(attrs, "semantic_label", -1)),
+                label=label_names.get(int(getattr(attrs, "semantic_label", -1)), ""),
             )
         )
     return objects
@@ -446,7 +470,7 @@ def _prior_signature(objects):
     return tuple(
         (
             o.obj_id,
-            o.semantic_label,
+            o.label,
             tuple(o.center.tolist()),
             tuple(o.dimensions.tolist()),
             tuple(o.orientation.tolist()),
@@ -474,7 +498,9 @@ def _make_changed_object_info(record: ChangeRecord) -> ChangedObjectInfo:
     info.bbox_orientation.y = float(record.orientation[1])
     info.bbox_orientation.z = float(record.orientation[2])
     info.bbox_orientation.w = float(record.orientation[3])
-    info.semantic_label = int(record.semantic_label)
+    # Names only: a merged record can mix robots' label spaces, so no single id is right.
+    info.semantic_label = -1
+    info.name = record.label
     info.confidence = float(record.confidence)
     return info
 
