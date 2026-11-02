@@ -24,6 +24,7 @@ configs:
   regions_traversability: [regions]
   relocalize: []
   relocalize_awcd: [relocalize]
+  relocalize_fused: [relocalize]
   indoor_regions: [indoor, regions]
 # Variant names shown first in run-adt4 session selection
 important_variants:
@@ -55,7 +56,7 @@ experiments:
     config: [default, indoor]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
-    config: [relocalize, relocalize_awcd]
+    config: [relocalize, relocalize_awcd, relocalize_fused]
   spot_regions:
     launch_config: [robot_main, roman, hydra_regions, spot_real, sensors]
     config: [indoor_regions]
@@ -70,7 +71,7 @@ experiments:
     config: [default, indoor]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
-    config: [relocalize, relocalize_awcd]
+    config: [relocalize, relocalize_awcd, relocalize_fused]
   spot_bag_regions:
     launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag]
     config: [indoor_regions]
@@ -84,7 +85,7 @@ experiments:
     config: [default]
   phoenix_relocalize:
     launch_config: [relocalize, phoenix_real, sensors]
-    config: [relocalize, relocalize_awcd]
+    config: [relocalize, relocalize_awcd, relocalize_fused]
   phoenix_data_collection:
     launch_config: [robot_main, phoenix_real, sensors]
     config: [default]
@@ -93,7 +94,7 @@ experiments:
     config: [default]
   phoenix_bag_relocalize:
     launch_config: bag_relocalize
-    config: [relocalize, relocalize_awcd]
+    config: [relocalize, relocalize_awcd, relocalize_fused]
 
   # development — offline/simulation experiments
   spot_prior_dsg:

@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+"""Fuse ADT4 maps from robots whose trajectories were already solved in a common frame."""
+
+import pathlib
+import shutil
+import subprocess
+import sys
+
+import click
+import yaml
+
+
+def _info(msg):
+    click.secho(f"[INFO] {msg}", fg="green")
+
+
+def _error(msg):
+    click.secho(f"[ERROR] {msg}", fg="red")
+
+
+def _normalize_path(path):
+    return pathlib.Path(path).expanduser().absolute()
+
+
+def _resolve_output(output, force):
+    output = _normalize_path(output)
+    if output.exists():
+        if not force:
+            click.confirm(f"Output '{output}' exists! Remove?", abort=True)
+
+        _info(f"Clearing previous output: '{output}'")
+        shutil.rmtree(output)
+
+    output.mkdir(parents=True)
+    return output
+
+
+def _hydra_multi_config(config):
+    pkg_path = pathlib.Path(__file__).absolute().parent.parent
+    config_path = pkg_path / "config" / config / "offline_fusion.yaml"
+    if not config_path.exists():
+        _error(f"Invalid Hydra-Multi config: {config_path}")
+        sys.exit("Invalid config")
+
+    _info(f"Using Hydra-Multi config: {config_path}")
+    return config_path
+
+
+def _roman_map(adt4_dir):
+    maps = sorted((adt4_dir / "roman").glob("*.roman_map.pkl"))
+    if len(maps) != 1:
+        _error(f"Expected one roman map in {adt4_dir / 'roman'}, found {len(maps)}")
+        sys.exit("Invalid input")
+
+    return maps[0]
+
+
+def _check_input(adt4_dir):
+    required = [
+        adt4_dir / "hydra" / "frontend" / "dsg_with_mesh.json",
+        adt4_dir / "hydra" / "backend" / "deformation_graph.json",
+    ]
+    for path in required:
+        if not path.exists():
+            _error(f"Missing {path}")
+            sys.exit("Invalid input")
+
+
+@click.command()
+@click.argument("adt4_dirs", nargs=-1, required=True, type=click.Path(exists=True))
+@click.option("-o", "--output", required=True, type=click.Path(), help="fused map output")
+@click.option("-f", "--force", is_flag=True, help="clear output if it exists")
+@click.option("-c", "--config", default="default", help="config to use")
+@click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
+@click.option("-l", "--log-level", type=int, default=0, help="glog level")
+def main(adt4_dirs, output, force, config, verbosity, log_level):
+    """
+    Fuse the Hydra scene graphs and collect the ROMAN maps of several ADT4 runs.
+
+    \b
+    Each run must have been made with trajectories already expressed in a common frame
+    (e.g., replayed with a solved trajectory via run-adt4 --trajectory), so no loop
+    closures or optimization are needed: Hydra-Multi stacks the graphs and reconciles
+    duplicated objects. Robots are numbered 1..N in the order given.
+
+    \b
+    Output layout (usable as a prior map):
+        hydra/backend/dsg.json, dsg_with_mesh.json, deformation_graph.json, ...
+        roman/<id>.roman_map.pkl
+        robots.yaml   (robot id -> name and source run)
+    """
+    adt4_dirs = [_normalize_path(x) for x in adt4_dirs]
+    for adt4_dir in adt4_dirs:
+        _check_input(adt4_dir)
+
+    roman_maps = [_roman_map(x) for x in adt4_dirs]
+    output = _resolve_output(output, force)
+    hydra_multi_config = _hydra_multi_config(config)
+
+    robots = [
+        {"id": i + 1, "name": x.name, "adt4_dir": str(x)} for i, x in enumerate(adt4_dirs)
+    ]
+    with (output / "robots.yaml").open("w") as fout:
+        yaml.safe_dump({"robots": robots}, fout, sort_keys=False)
+
+    for robot in robots:
+        _info(f"Robot {robot['id']}: {robot['name']} ({robot['adt4_dir']})")
+
+    command = ["ros2", "run", "hydra_multi", "hydra-multi-offline-fusion"]
+    command += ["--verbosity", f"{verbosity}", "--log-level", f"{log_level}"]
+    command += ["--starting-robot-id", "1"]
+    command += ["-o", str(output / "hydra")]
+    command += [str(x / "hydra") for x in adt4_dirs]
+    command += ["--config-utilities-file", str(hydra_multi_config)]
+    _info(f"cmd: {' '.join(command)}")
+    ret = subprocess.run(command)
+    if ret.returncode != 0:
+        _error(f"Fusion failed: {ret.returncode}")
+        sys.exit(ret.returncode)
+
+    # Hydra-Multi saves the deformation graph under backend/pgmo, prior maps read backend/
+    backend = output / "hydra" / "backend"
+    shutil.copy(backend / "pgmo" / "deformation_graph.json", backend)
+
+    roman_output = output / "roman"
+    roman_output.mkdir()
+    for robot, roman_map in zip(robots, roman_maps):
+        shutil.copy(roman_map, roman_output / f"{robot['id']}.roman_map.pkl")
+
+    _info(f"Wrote fused map to {output}")
+
+
+if __name__ == "__main__":
+    main()
