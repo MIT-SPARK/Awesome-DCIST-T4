@@ -15,6 +15,10 @@
       type: LabelDropFilter  # drop reports by category name (robots' label spaces for added, the prior's for removed)
       # added_labels: [chair]
       # removed_labels: [cone]
+    # label_keep:  # add to `filters` to report only these categories (an empty list keeps that kind)
+    #   type: LabelKeepFilter
+    #   added_labels: [chair, bag]
+    #   removed_labels: [cone]
     visualization:
       enabled: true  # RViz markers: per robot on ~/changed_objects, merged on ~/reconciled_objects
       line_width: 0.1

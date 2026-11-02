@@ -212,10 +212,33 @@ class LabelDropFilter(ChangeFilter):
         return np.array([r.label not in dropped for r in records], dtype=bool)
 
 
+class LabelKeepFilter(ChangeFilter):
+    """Keeps only added / removed records whose label is listed; an empty list keeps that kind.
+
+    Unknown labels ("") are dropped by a non-empty list.
+    """
+
+    @dataclass
+    class Config:
+        # Category names, as in LabelDropFilter.
+        added_labels: List[str] = field(default_factory=list)
+        removed_labels: List[str] = field(default_factory=list)
+
+    def __init__(self, config: Optional["LabelKeepFilter.Config"] = None):
+        self.config = config or LabelKeepFilter.Config()
+
+    def keep(self, kind, records, context):
+        kept = set(
+            self.config.added_labels if kind == ADDED else self.config.removed_labels
+        )
+        return np.array([not kept or r.label in kept for r in records], dtype=bool)
+
+
 # Filter type name (the `type` of a configured filter) -> filter class; each has a nested Config.
 FILTER_TYPES = {
     "PriorObjectOverlapFilter": PriorObjectOverlapFilter,
     "LabelDropFilter": LabelDropFilter,
+    "LabelKeepFilter": LabelKeepFilter,
 }
 
 

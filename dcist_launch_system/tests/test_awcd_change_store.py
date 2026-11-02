@@ -9,6 +9,7 @@ from dcist_launch_system.awcd_change_store import (
     AwcdChangeStore,
     ChangeRecord,
     LabelDropFilter,
+    LabelKeepFilter,
     PriorObject,
     PriorObjectOverlapFilter,
     ReconcileConfig,
@@ -406,3 +407,22 @@ class TestFilters:
 
         kept = {(r.kind, r.obj_id) for r in _reconciled(store)}
         assert kept == {(ADDED, reconciled_added_id("hamilton", 2)), (REMOVED, 8)}
+
+    def test_label_keep_empty_list_keeps_kind(self):
+        config = LabelKeepFilter.Config(added_labels=["cone"])
+        store = AwcdChangeStore(filters=[LabelKeepFilter(config)])
+        store.update(
+            "hamilton",
+            ADDED,
+            [
+                _record("hamilton", ADDED, 1, label="cone"),
+                _record("hamilton", ADDED, 2, center=(5.0, 0.0, 0.0), label="bag"),
+                _record("hamilton", ADDED, 3, center=(9.0, 0.0, 0.0), label=""),
+            ],
+        )
+        store.update(
+            "hamilton", REMOVED, [_record("hamilton", REMOVED, 9, label="bag")]
+        )
+
+        kept = {(r.kind, r.obj_id) for r in _reconciled(store)}
+        assert kept == {(ADDED, reconciled_added_id("hamilton", 1)), (REMOVED, 9)}
