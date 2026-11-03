@@ -59,6 +59,7 @@ setup(
     entry_points={
         "console_scripts": [
             "awcd_base_station_node = dcist_launch_system.awcd_base_station_node:main",
+            "awcd_scene_change_bridge_node = dcist_launch_system.awcd_scene_change_bridge_node:main",
             "dsg_saver_node = dcist_launch_system.dsg_saver_node:main",
             "record_topics = dcist_launch_system.record_topics:main",
             "tf_relay_node = dcist_launch_system.tf_relay_node:main",

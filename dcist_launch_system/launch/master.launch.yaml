@@ -551,6 +551,24 @@ launch:
         - {from: ~/scene_changes, to: /scene_graph/changes}
         - {from: ~/scene_changes_applied, to: /scene_graph/changes_applied}
 
+  # AWCD scene change bridge: change detection, as scene changes for the writer above
+  # (each removal / addition once, added objects with their class). It reads the AWCD base
+  # station's reconciled changes, which are in the map frame; awcd_changes_topic:=/awcd_changes
+  # reads the robots' raw reports instead, which are only right when they are already in map.
+  - arg: {name: launch_awcd_scene_change_bridge, default: 'false'}
+  - arg: {name: awcd_changes_topic, default: /$(var robot_name)/awcd_base_station/reconciled_changes}
+  - pyenv_node:
+      if: $(var launch_awcd_scene_change_bridge)
+      pkg: dcist_launch_system
+      exec: awcd_scene_change_bridge_node
+      name: awcd_scene_change_bridge
+      pyenv: $(var spark_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: ~/awcd_changes, to: $(var awcd_changes_topic)}
+        - {from: ~/scene_changes, to: /scene_graph/changes}
+
   # TF network publisher (robots: republishes /<robot_name>/tf at a reduced rate on
   # /<robot_name>/network/tf, which is all the base station subscribes to). By default it only
   # forwards the frames in tf_network.yaml; ADT4_TF_NETWORK_MODE=all forwards the whole tree
