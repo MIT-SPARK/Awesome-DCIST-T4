@@ -1,0 +1,74 @@
+# Side-by-side GA-Nav comparison, used by launch/ganav_compare.launch.yaml
+Panels:
+- Class: rviz_common/Displays
+  Name: Displays
+  Help Height: 0
+  Tree Height: 200
+Visualization Manager:
+  Class: ''
+  Enabled: true
+  Name: root
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Displays:
+  - Class: rviz_default_plugins/Image
+    Enabled: true
+    Max Value: 1
+    Median window: 5
+    Min Value: 0
+    Name: RGB
+    Normalize Range: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: rgb/image_rect_color
+    Value: true
+  - Class: rviz_default_plugins/Image
+    Enabled: true
+    Max Value: 1
+    Median window: 5
+    Min Value: 0
+    Name: Baseline (group6 -> trav3)
+    Normalize Range: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: ganav_compare/baseline/semantic_overlay/image_raw
+    Value: true
+  - Class: rviz_default_plugins/Image
+    Enabled: true
+    Max Value: 1
+    Median window: 5
+    Min Value: 0
+    Name: New (trav3)
+    Normalize Range: true
+    Topic:
+      Depth: 5
+      Durability Policy: Volatile
+      History Policy: Keep Last
+      Reliability Policy: Best Effort
+      Value: ganav_compare/new/semantic_overlay/image_raw
+    Value: true
+  Tools: []
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+    Saved: null
+Window Geometry:
+  Height: 1000
+  Width: 1900
+  Hide Left Dock: true
+  Hide Right Dock: true
+  RGB:
+    collapsed: false
+  Baseline (group6 -> trav3):
+    collapsed: false
+  New (trav3):
+    collapsed: false
