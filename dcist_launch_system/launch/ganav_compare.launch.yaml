@@ -1,0 +1,80 @@
+---
+# Side-by-side GA-Nav traversability comparison on a bag.
+#
+# Runs the deployed 6-class GA-Nav and a 3-class trav3 model on the same ZED RGB stream.
+# The baseline output is collapsed to 3 classes (smooth/rough -> traversable, bumpy -> maybe,
+# rest -> not traversable), so both nodes publish the same label space and colours
+# (green / orange / red):
+#   /<robot>/<robot>_zed/ganav_compare/{baseline,new}/semantic{,_color,_overlay}/image_raw
+#
+#   ros2 launch dcist_launch_system ganav_compare.launch.yaml robot_name:=euclid \
+#       bag:=$HOME/mit/data/adt4_output/b31_DABAG_OCT27/recorded_data
+#   # less-safe alternative trav3 model, and record both outputs for offline metrics:
+#   ros2 launch dcist_launch_system ganav_compare.launch.yaml robot_name:=hamilton \
+#       bag:=$HOME/mit/data/adt4_output/reconcilation_bag/recorded_data \
+#       new_model:=ganav_trav3_r2a_160k record:=/tmp/ganav_compare_reconciliation
+#
+# Models are looked up in ~/.semantic_inference (TensorRT engines are built there on first run).
+launch:
+  - arg: {name: robot_name, description: Robot prefix in the bag (e.g. hamilton or euclid)}
+  - arg: {name: bag, default: '', description: Bag to play (leave empty to play one yourself)}
+  - arg: {name: bag_rate, default: '1.0', description: Playback rate}
+  - arg: {name: bag_start, default: '0.0', description: Seconds into the bag to start from}
+  - arg: {name: baseline_model, default: ganav_rugd_group6, description: Deployed 6-class model (no .onnx)}
+  - arg: {name: new_model, default: ganav_trav3_r2d_160k, description: 3-class model (no .onnx)}
+  - arg: {name: rviz, default: 'true', description: Show RGB and both overlays side by side}
+  - arg: {name: record, default: '', description: Output bag path for RGB + both label streams}
+  - let: {name: camera, value: $(var robot_name)_zed}
+  - let: {name: rgb, value: /$(var robot_name)/$(var camera)/rgb/image_rect_color}
+  - let: {name: compare_ns, value: /$(var robot_name)/$(var camera)/ganav_compare}
+
+  - node:
+      pkg: semantic_inference_ros
+      exec: closed_set_node
+      namespace: $(var compare_ns)/baseline
+      name: traversability_segmentation
+      remap:
+        - {from: color/image_raw, to: $(var rgb)}
+      args: >
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/ganav_compare/baseline.yaml
+        --config-utilities-yaml {segmenter: {model: {model_file: $(var baseline_model).onnx}}}
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/resource/ganav_trav3_colors.csv}}}
+
+  - node:
+      pkg: semantic_inference_ros
+      exec: closed_set_node
+      namespace: $(var compare_ns)/new
+      name: traversability_segmentation
+      remap:
+        - {from: color/image_raw, to: $(var rgb)}
+      args: >
+        --config-utilities-file $(find-pkg-share dcist_launch_system)/config/ganav_compare/trav3.yaml
+        --config-utilities-yaml {segmenter: {model: {model_file: $(var new_model).onnx}}}
+        --config-utilities-yaml {output: {recolor: {colormap_path: $(find-pkg-share dcist_launch_system)/resource/ganav_trav3_colors.csv}}}
+
+  - node:
+      if: $(var rviz)
+      pkg: rviz2
+      exec: rviz2
+      name: ganav_compare_rviz
+      namespace: /$(var robot_name)/$(var camera)
+      args: -d $(find-pkg-share dcist_launch_system)/rviz/ganav_compare.rviz
+
+  - executable:
+      if: $(eval "'$(var record)' != ''")
+      cmd: >
+        ros2 bag record -s mcap -o $(var record)
+        $(var rgb)
+        $(var compare_ns)/baseline/semantic/image_raw
+        $(var compare_ns)/new/semantic/image_raw
+
+  # Delayed so the segmentation nodes (and the recorder) are subscribed before the first frame.
+  - timer:
+      period: 5.0
+      children:
+        - executable:
+            if: $(eval "'$(var bag)' != ''")
+            cmd: >
+              ros2 bag play $(var bag) --rate $(var bag_rate) --start-offset $(var bag_start)
+              --topics $(var rgb) /$(var robot_name)/$(var camera)/rgb/camera_info
+            output: screen
