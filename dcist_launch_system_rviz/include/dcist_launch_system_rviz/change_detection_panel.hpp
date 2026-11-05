@@ -22,6 +22,8 @@ namespace dcist_launch_system_rviz {
  * @brief Starts, stops and resets active window change detection on one or all robots, via the
  * <robot>/change_detection/{start,stop,reset} services of khronos' RosChangeDetectionController.
  * "Clear Base Station" drops the selected robot(s)' cached changes at the AWCD base station.
+ * Reset with "All" selected also resets the scene graph (the scene change writer's ~/reset):
+ * every map change is dropped and Neo4j is the prior scene graph again.
  */
 class ChangeDetectionPanel : public rviz_common::Panel {
   Q_OBJECT
@@ -38,8 +40,14 @@ class ChangeDetectionPanel : public rviz_common::Panel {
   void discoverRobots();
   void onStart() { sendToSelected("start"); }
   void onStop() { sendToSelected("stop"); }
-  void onReset() { sendToSelected("reset"); }
-  void onResetAndStart() { sendToSelected("reset", "start"); }
+  void onReset() {
+    sendToSelected("reset");
+    resetSceneGraphIfAll();
+  }
+  void onResetAndStart() {
+    sendToSelected("reset", "start");
+    resetSceneGraphIfAll();
+  }
   void onClearBaseStation();
 
  private:
@@ -61,11 +69,16 @@ class ChangeDetectionPanel : public rviz_common::Panel {
   void postToGui(std::function<void()> fn);
   void setResult(const QString& text);
   void updateStatus();
+  //! With "All" selected: reset the scene graph to the prior map, once the robots have reset.
+  void resetSceneGraphIfAll();
+  void resetSceneGraph();
 
   rclcpp::Node::SharedPtr node_;
   std::map<QString, Robot> robots_;  // only touched on the Qt thread
   std::string clear_service_;        // discovered <ns>/awcd_base_station/clear_robots
   rclcpp::Client<ClearRobots>::SharedPtr clear_client_;
+  std::string scene_reset_service_;  // discovered <ns>/scene_change_writer/reset
+  rclcpp::Client<Trigger>::SharedPtr scene_reset_client_;
   QString pending_selection_;
 
   QComboBox* robot_box_;

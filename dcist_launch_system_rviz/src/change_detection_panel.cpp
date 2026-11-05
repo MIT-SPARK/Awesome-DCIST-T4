@@ -2,6 +2,7 @@
 
 #include <QHBoxLayout>
 #include <QMetaObject>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <rviz_common/display_context.hpp>
 
@@ -10,6 +11,13 @@ namespace {
 
 const std::string kStartSuffix = "/change_detection/start";
 const std::string kClearSuffix = "/awcd_base_station/clear_robots";
+const std::string kSceneResetSuffix = "/scene_change_writer/reset";
+// Robots publish their (empty) change set after a reset; reset the map after that.
+const int kSceneResetDelayMs = 1000;
+
+bool endsWith(const std::string& s, const std::string& suffix) {
+  return s.size() >= suffix.size() && !s.compare(s.size() - suffix.size(), suffix.size(), suffix);
+}
 const QString kAll = "All";
 
 }  // namespace
@@ -28,6 +36,10 @@ ChangeDetectionPanel::ChangeDetectionPanel(QWidget* parent) : Panel(parent) {
   auto* stop_button = new QPushButton("Stop");
   auto* reset_button = new QPushButton("Reset");
   auto* reset_start_button = new QPushButton("Reset && Start");
+  const QString reset_tip =
+      "Reset change detection. With All selected, also reset the scene graph to the prior map";
+  reset_button->setToolTip(reset_tip);
+  reset_start_button->setToolTip(reset_tip);
   button_layout->addWidget(start_button);
   button_layout->addWidget(stop_button);
   button_layout->addWidget(reset_button);
@@ -71,6 +83,11 @@ void ChangeDetectionPanel::discoverRobots() {
   }
 
   for (const auto& [service, types] : node_->get_service_names_and_types()) {
+    if (service != scene_reset_service_ && endsWith(service, kSceneResetSuffix)) {
+      scene_reset_service_ = service;
+      scene_reset_client_ = node_->create_client<Trigger>(service);
+      continue;
+    }
     if (service != clear_service_ && service.size() >= kClearSuffix.size() &&
         !service.compare(service.size() - kClearSuffix.size(), kClearSuffix.size(), kClearSuffix)) {
       clear_service_ = service;
@@ -181,6 +198,28 @@ void ChangeDetectionPanel::onClearBaseStation() {
       request, [this, selected](rclcpp::Client<ClearRobots>::SharedFuture future) {
         const auto text = "Clear base station (" + selected +
                           "): " + QString::fromStdString(future.get()->message);
+        postToGui([this, text]() { setResult(text); });
+      });
+}
+
+void ChangeDetectionPanel::resetSceneGraphIfAll() {
+  if (robot_box_->currentText() != kAll) {
+    return;  // one robot's reset withdraws only its own changes
+  }
+  QTimer::singleShot(kSceneResetDelayMs, this, [this]() { resetSceneGraph(); });
+}
+
+void ChangeDetectionPanel::resetSceneGraph() {
+  if (!scene_reset_client_ || !scene_reset_client_->service_is_ready()) {
+    setResult("Reset scene graph: scene change writer not available");
+    return;
+  }
+  scene_reset_client_->async_send_request(
+      std::make_shared<Trigger::Request>(),
+      [this](rclcpp::Client<Trigger>::SharedFuture future) {
+        const auto response = future.get();
+        const auto text = QString("Reset scene graph: ") +
+                          QString::fromStdString(response->message);
         postToGui([this, text]() { setResult(text); });
       });
 }
