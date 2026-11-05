@@ -10,7 +10,10 @@ Output  ~/scene_changes      heracles_ros_interfaces/SceneChangeMsg, source "awc
 
 The writer applies the changes to Neo4j and announces them on /scene_graph/changes_applied,
 where the repair planner judges whether they affect the running plan. Which changes are sent,
-and when, is decided in awcd_scene_changes.py.
+and when, is decided in awcd_scene_changes.py. By default (send_full_change_set) each robot's
+whole current set is sent whenever it changes, empty sets included, so the writer can undo
+what AWCD withdrew -- a change detection reset restores the prior map. With it false, each
+change is sent once and never undone (for a writer without the change log).
 
 Raw added objects are held until the robot's labelspace arrives, so they enter the map with
 their class; after labelspace_timeout_s without one they are sent unlabelled.
@@ -36,6 +39,7 @@ from dcist_launch_system.awcd_scene_changes import (
     AwcdSceneChanges,
     ReportedObject,
     labelspace_lookup,
+    snapshot_signature,
 )
 
 
@@ -61,6 +65,11 @@ class AwcdSceneChangeBridge(Node):
         self.declare_parameter("min_frames", 0)
         self.declare_parameter("labelspace_topic", "/{robot}/labelspace")
         self.declare_parameter("labelspace_timeout_s", 10.0)
+        self.declare_parameter("send_full_change_set", True)
+        self._full = bool(self.get_parameter("send_full_change_set").value)
+        self._last_sent: Dict[
+            str, tuple
+        ] = {}  # robot -> signature of the set last sent
         self.filter = AwcdSceneChanges(
             float(self.get_parameter("min_change_confidence").value),
             int(self.get_parameter("min_frames").value),
@@ -83,9 +92,7 @@ class AwcdSceneChangeBridge(Node):
             AwcdChanges, "~/awcd_changes", self._on_changes, 10
         )
         self.create_timer(1.0, self._retry_held_back)
-        self.get_logger().info(
-            f"Forwarding {self._sub.topic_name} to ~/scene_changes"
-        )
+        self.get_logger().info(f"Forwarding {self._sub.topic_name} to ~/scene_changes")
 
     def _on_changes(self, msg: AwcdChanges):
         robot = msg.robot_name
@@ -127,13 +134,20 @@ class AwcdSceneChangeBridge(Node):
         removed = [_reported(i, False) for i in msg.removed_objects]
         added = [_reported(i, True) for i in msg.added_objects]
         label_name = self._label_name(robot)
-        changes = self.filter.changes(robot, removed, added, label_name)
+        if self._full:
+            changes = self.filter.snapshot(robot, removed, added, label_name)
+            signature = snapshot_signature(changes)
+            if self._last_sent.get(robot) == signature:
+                return
+            self._last_sent[robot] = signature
+        else:
+            changes = self.filter.changes(robot, removed, added, label_name)
         if label_name is None and self.filter.held_back(robot, added):
             self.get_logger().warn(
                 f"{robot}: holding added objects until its labelspace arrives",
                 throttle_duration_sec=5.0,
             )
-        if not changes:
+        if not changes and not self._full:
             return
         if msg.header.frame_id and msg.header.frame_id != "map":
             self.get_logger().warn(
@@ -154,8 +168,12 @@ class AwcdSceneChangeBridge(Node):
             sc.confidence = c.confidence
             out.changes.append(sc)
         self._pub.publish(out)
+        if not changes:
+            self.get_logger().info(f"{robot}: sent an empty change set")
+            return
         self.get_logger().info(
             f"{robot}: sent "
+            + ("full set: " if self._full else "")
             + ", ".join(
                 f"removed {c.symbol}"
                 if c.kind == SceneChange.REMOVED

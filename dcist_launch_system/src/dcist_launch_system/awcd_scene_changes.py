@@ -1,5 +1,14 @@
 """Turn AWCD reports into scene changes for the scene change writer. No ROS dependencies.
 
+Two ways to send them (the bridge's send_full_change_set parameter):
+
+* full change set (``snapshot``, the default): every report is sent whole, each change with
+  AWCD's id for it -- the prior-map symbol of a removed object, "awcd:<robot>:<id>" for an added
+  one. The writer keeps the map in step with the set: a change no longer in it was withdrawn
+  (e.g. after a change detection reset) and is undone, so a removed object comes back.
+* new changes only (``changes``, below): each change is sent once and never undone. This is
+  what older writers understand.
+
 The reports are either each robot's own (`ActiveWindowChangeDetectorPublisher`) or the base
 station's reconciled set (awcd_base_station_node, robot_name "reconciled"). Both republish their
 *complete* current change set whenever it changes (see awcd_change_store.py). The scene change
@@ -101,14 +110,78 @@ class AwcdSceneChanges:
             elif label_name is None:
                 continue
             else:
-                label = label_name(obj.semantic_label) if obj.semantic_label >= 0 else ""
+                label = (
+                    label_name(obj.semantic_label) if obj.semantic_label >= 0 else ""
+                )
             self._added_sent.add(key)
             out.append(Change(ADDED, "", label, obj.position, obj.change_confidence))
+        return out
+
+    def snapshot(
+        self,
+        robot_name: str,
+        removed: List[ReportedObject],
+        added: List[ReportedObject],
+        label_name: Optional[Callable[[int], str]],
+    ) -> List[Change]:
+        """Every change in this report, keyed by AWCD's id, for the writer to mirror.
+
+        Added objects without a class yet (label_name None, no name in the report) are left
+        out, as in changes(); the next call with the labelspace known includes them.
+        """
+        out = []
+        for obj in removed:
+            if self._passes(obj):
+                symbol = removed_symbol(obj.obj_id)
+                out.append(
+                    Change(REMOVED, symbol, "", (0.0, 0.0, 0.0), obj.change_confidence)
+                )
+        for obj in added:
+            if not self._passes(obj):
+                continue
+            if obj.name:
+                label = obj.name
+            elif label_name is None:
+                continue
+            else:
+                label = (
+                    label_name(obj.semantic_label) if obj.semantic_label >= 0 else ""
+                )
+            self._added_sent.add((robot_name, int(obj.obj_id)))
+            out.append(
+                Change(
+                    ADDED,
+                    added_key(robot_name, obj.obj_id),
+                    label,
+                    obj.position,
+                    obj.change_confidence,
+                )
+            )
         return out
 
     def held_back(self, robot_name: str, added: List[ReportedObject]) -> int:
         """How many added objects in this report have not been sent."""
         return sum((robot_name, int(o.obj_id)) not in self._added_sent for o in added)
+
+
+def added_key(robot_name: str, obj_id: int) -> str:
+    """AWCD's id for an added object, as the writer keys it (sent in the symbol field)."""
+    return f"awcd:{robot_name}:{int(obj_id)}"
+
+
+def snapshot_signature(changes: List[Change], grid_m: float = 0.1) -> tuple:
+    """What a full change set says, to send it only when that changes (positions to grid_m)."""
+    return tuple(
+        sorted(
+            (
+                c.kind,
+                c.symbol,
+                c.semantic_label,
+                tuple(round(v / grid_m) for v in c.position),
+            )
+            for c in changes
+        )
+    )
 
 
 def labelspace_lookup(names: List[str]) -> Callable[[int], str]:
