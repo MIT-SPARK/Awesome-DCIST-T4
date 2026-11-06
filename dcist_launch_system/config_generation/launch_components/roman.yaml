@@ -1,6 +1,7 @@
 ---
 nodes_to_monitor:
   depth_correction: {}
+  zed_depth_quality: {}
   fastsam: {}
   roman_map: {}
   roman_lc: {}

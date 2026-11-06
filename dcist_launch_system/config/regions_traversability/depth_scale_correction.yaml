@@ -15,3 +15,13 @@
     tf_timeout_s: 0.1
     reliable_input: true
     ground_frame: $(var robot_name)/gpe
+    calibration_source: lidar
+    lidar_topic: /$(var robot_name)/livox/lidar
+    lidar_odom_frame: $(var robot_name)/odom
+    lidar_mount_rpy_deg: [180.0, 0.0, 0.0]
+    lidar_wait_s: 30.0
+    lidar_calibration_duration_s: 10.0
+    lidar_max_calibration_duration_s: 60.0
+    lidar_min_bin_pairs: [500, 300, 300]
+    quality_enabled: true
+    quality_period_s: 2.0

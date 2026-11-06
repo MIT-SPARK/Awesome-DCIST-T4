@@ -186,8 +186,9 @@ launch:
   - arg: {name: launch_fastsam, default: 'false'}
   - arg: {name: launch_roman_map, default: 'false'}
   - arg: {name: launch_roman_lc, default: 'false'}
-  # ROMAN and Hydra read ZED depth corrected online from the ground (depth_processing_ros; needs
-  # <robot_name>/gpe in TF), published as <camera>/depth_corrected/*.
+  # ROMAN and Hydra read ZED depth corrected at start-up from lidar or the ground
+  # (depth_processing_ros, calibration_source in depth_scale_correction.yaml), published as
+  # <camera>/depth_corrected/*. Its depth quality vs lidar is a separate status row.
   - arg: {name: launch_depth_correction, default: 'false'}
   - node:
       if: $(var launch_depth_correction)
@@ -200,6 +201,7 @@ launch:
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/depth_scale_correction.yaml, allow_substs: true}
       remap:
         - {from: ~/node_status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
+        - {from: ~/depth_quality_status, to: /$(var robot_name)/ros_system_monitor/node_diagnostic_collector}
 
   # ROMAN (the camera and status remaps are on the nodes in launch/roman/)
   # FastSAM
