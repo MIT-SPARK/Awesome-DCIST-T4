@@ -25,6 +25,7 @@ configs:
   relocalize: []
   relocalize_awcd: [relocalize]
   indoor_regions: [indoor, regions]
+  image_logging: []
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
@@ -52,7 +53,7 @@ experiments:
   # spot configs — require Spot hardware or bag playback
   spot:
     launch_config: [map, spot_real, sensors]
-    config: [default, indoor]
+    config: [default, indoor, image_logging]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, relocalize_awcd]
@@ -67,7 +68,7 @@ experiments:
     config: [default]
   spot_bag:
     launch_config: [bag_map, spot_bag]
-    config: [default, indoor]
+    config: [default, indoor, image_logging]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
@@ -81,7 +82,7 @@ experiments:
   # phoenix — require Phoenix hardware or bag playback
   phoenix:
     launch_config: [map, phoenix_real, sensors]
-    config: [default]
+    config: [default, image_logging]
   phoenix_relocalize:
     launch_config: [relocalize, phoenix_real, sensors]
     config: [relocalize, relocalize_awcd]
@@ -90,7 +91,7 @@ experiments:
     config: [default]
   phoenix_bag:
     launch_config: bag_map
-    config: [default]
+    config: [default, image_logging]
   phoenix_bag_relocalize:
     launch_config: bag_relocalize
     config: [relocalize, relocalize_awcd]
