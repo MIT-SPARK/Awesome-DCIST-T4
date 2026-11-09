@@ -62,3 +62,4 @@
 [submodule "depth_processing_ros"]
 	path = depth_processing_ros
 	url = git@github.com:mbpeterson70/depth_processing_ros.git
+	branch = lidar-depth-calibration

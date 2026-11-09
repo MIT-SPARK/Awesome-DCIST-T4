@@ -1,6 +1,7 @@
 ---
-# depth_scale_correction_node (ZED depth bias, calibrated online from the ground; see the
-# depth_processing_ros package README). Loaded with allow_substs, so $(var ...) works here.
+# depth_scale_correction_node (ZED depth bias, calibrated once at start-up from lidar or the
+# ground; see the depth_processing_ros package README). Loaded with allow_substs, so $(var ...)
+# works here.
 /**:
   ros__parameters:
     # calibration window: this many seconds of usable frames (robot standing, flat ground in view)
@@ -24,3 +25,21 @@
     # reliable subscriptions (large images are often dropped best-effort)
     reliable_input: true
     ground_frame: $(var robot_name)/gpe
+    # calibration source: lidar (falls back to the ground if no scan arrives within lidar_wait_s) or
+    # ground. To switch a config to the ground, add
+    # experiment_overrides/<config>/depth_scale_correction_overlay.yaml with
+    #   /**: {ros__parameters: {calibration_source: ground}}
+    calibration_source: lidar
+    lidar_topic: /$(var robot_name)/livox/lidar
+    lidar_odom_frame: $(var robot_name)/odom
+    # topaz/smaug: Mid-360 mounted upside down, TF and driver extrinsic identity
+    lidar_mount_rpy_deg: [180.0, 0.0, 0.0]
+    lidar_wait_s: 30.0
+    # complete once the window spans lidar_calibration_duration_s and has lidar_min_bin_pairs at
+    # 0.5-3, 3-5 and 5-9.5 m; after lidar_max_calibration_duration_s fit anyway (WARNING)
+    lidar_calibration_duration_s: 10.0
+    lidar_max_calibration_duration_s: 60.0
+    lidar_min_bin_pairs: [500, 300, 300]
+    # corrected depth vs lidar as the zed_depth_quality status row
+    quality_enabled: true
+    quality_period_s: 2.0
