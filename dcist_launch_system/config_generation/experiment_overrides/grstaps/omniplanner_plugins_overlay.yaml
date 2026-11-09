@@ -1,0 +1,13 @@
+---
+# Adds the GRSTAPS-X planner. Paths come from the ADT4_GRSTAPS_* /
+# ADT4_GUROBI_* environment variables (see GrstapsDomain), so nothing
+# machine-specific belongs here.
+planners:
+  grstaps_planner:
+    plugin:
+      type: Grstaps
+      run_mode: native
+      # Every Spot in this fleet carries an arm (see the grstaps_repair overlay).
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm
