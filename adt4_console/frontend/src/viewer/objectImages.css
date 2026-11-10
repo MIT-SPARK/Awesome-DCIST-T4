@@ -1,0 +1,145 @@
+/* Object images: search-list thumbnails + Inspect hero (see objectImages.tsx). */
+.search-results li.has-thumb {
+  padding: 4px 8px 4px 4px;
+}
+.sr-thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-left-width: 3px;
+  display: grid;
+  place-items: center;
+}
+.sr-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sr-thumb-empty {
+  background: var(--bg-1);
+}
+.sr-thumb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.85;
+}
+.sr-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sr-sub {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.obj-images {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.obj-images-head .sub-title {
+  margin: 0;
+}
+.obj-hero {
+  position: relative;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+  cursor: zoom-in;
+  width: 100%;
+}
+.obj-hero img {
+  display: block;
+  width: 100%;
+  max-height: 46vh;
+  object-fit: contain;
+  background: #000;
+}
+.obj-hero-tag {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+/* agent frames: corner badge with the distance from the node's pose */
+.obj-hero-tag.frame-tag {
+  left: auto;
+  right: 6px;
+  top: 6px;
+  bottom: auto;
+}
+.obj-hero-tag.frame-own {
+  background: color-mix(in srgb, var(--accent) 80%, black);
+}
+.thumb.thumb-badged {
+  position: relative;
+}
+.thumb-tag {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  right: 3px;
+  width: fit-content;
+  max-width: calc(100% - 6px);
+  font-size: 10px;
+  line-height: 1.25;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  text-align: left;
+}
+.thumb-tag .nowrap {
+  white-space: nowrap;
+}
+/* Inspect › place: the keyframes that observed it (PlaceKeyframes.tsx) */
+.place-kf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.place-kf-head .sub-title {
+  margin: 0;
+}
+.place-kf-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.place-kf-session {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--line-2);
+  min-width: 0;
+}
+.place-kf-session-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.place-kf-grid {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+.place-kf-meta {
+  text-align: center;
+  overflow-wrap: anywhere;
+}

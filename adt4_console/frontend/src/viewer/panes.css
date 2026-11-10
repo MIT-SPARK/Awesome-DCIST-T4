@@ -1,0 +1,448 @@
+/* Viewer pane chrome: splitters and floating tab windows (Panes.tsx, ViewerPage.tsx). */
+
+.tab-slot,
+.tab-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- splitters ---------- */
+.pane-splitter {
+  flex: none;
+  position: relative;
+  z-index: 45;
+  touch-action: none;
+  outline: none;
+}
+.pane-splitter.col {
+  width: 7px;
+  margin: 0 -3px;
+  cursor: col-resize;
+}
+.pane-splitter.row {
+  height: 7px;
+  margin: -3px 0;
+  cursor: row-resize;
+}
+.pane-splitter > span {
+  position: absolute;
+  background: transparent;
+  transition: background 0.12s;
+}
+.pane-splitter.col > span {
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+}
+.pane-splitter.row > span {
+  left: 0;
+  right: 0;
+  top: 3px;
+  height: 1px;
+}
+.pane-splitter:hover > span,
+.pane-splitter:focus-visible > span,
+.pane-splitter:active > span {
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+body.pane-dragging-col,
+body.pane-dragging-col * {
+  cursor: col-resize !important;
+  user-select: none;
+}
+body.pane-dragging-row,
+body.pane-dragging-row * {
+  cursor: row-resize !important;
+  user-select: none;
+}
+
+/* ---------- right panel header: tab strip + pop-out ---------- */
+.vright-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  transition: box-shadow 0.12s;
+}
+.vright-head .segmented {
+  flex: 1;
+  min-width: 0;
+  /* nine tabs: scroll sideways rather than clip the last ones */
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+/* seven tabs share the strip: tighter buttons than the default segmented */
+.vright-head .segmented button {
+  flex: 1 1 auto;
+  padding: 6px 4px;
+  font-size: 12.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.vright-head.dock-hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.vright-head .tab-float-mark {
+  font-size: 0.8em;
+  opacity: 0.7;
+  margin-left: 3px;
+}
+.pop-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.pop-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.pop-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dock-empty {
+  margin: auto;
+  text-align: center;
+  padding: 24px 8px;
+}
+
+/* ---------- floating windows ---------- */
+.float-win {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  min-width: 0;
+  overflow: visible;
+}
+.float-win.dragging {
+  opacity: 0.94;
+}
+.float-win.dock-hover {
+  opacity: 0.6;
+  outline: 2px solid var(--accent);
+}
+.float-title {
+  flex: none;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.float-win.minimized .float-title {
+  border-bottom: 0;
+  border-radius: 8px;
+}
+.float-win.dragging .float-title {
+  cursor: grabbing;
+}
+.float-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.float-btn {
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.75;
+}
+.float-btn:hover {
+  background: var(--bg-3);
+  opacity: 1;
+}
+.float-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+.float-body[hidden] {
+  display: none;
+}
+.float-rz {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+.rz-n,
+.rz-s {
+  left: 8px;
+  right: 8px;
+  height: 7px;
+  cursor: ns-resize;
+}
+.rz-n {
+  top: -4px;
+}
+.rz-s {
+  bottom: -4px;
+}
+.rz-e,
+.rz-w {
+  top: 8px;
+  bottom: 8px;
+  width: 7px;
+  cursor: ew-resize;
+}
+.rz-e {
+  right: -4px;
+}
+.rz-w {
+  left: -4px;
+}
+.rz-ne,
+.rz-nw,
+.rz-se,
+.rz-sw {
+  width: 14px;
+  height: 14px;
+}
+.rz-ne {
+  top: -5px;
+  right: -5px;
+  cursor: nesw-resize;
+}
+.rz-sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: nesw-resize;
+}
+.rz-nw {
+  top: -5px;
+  left: -5px;
+  cursor: nwse-resize;
+}
+.rz-se {
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+}
+
+/* ---------- layout section (left panel) ---------- */
+.layout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+
+/* ---------- controls help (ControlsHelp.tsx) ---------- */
+.help-wrap {
+  position: relative;
+}
+.help-btn {
+  font-weight: 700;
+  min-width: 30px;
+}
+.help-card {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 70;
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(70vh, 620px);
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  font-size: 12.5px;
+}
+.help-card section + section {
+  margin-top: 10px;
+}
+.help-card h5 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.help-card dl {
+  margin: 0;
+}
+.help-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px;
+  padding: 2px 0;
+}
+.help-row dt,
+.help-row dd {
+  margin: 0;
+}
+.help-row dd {
+  color: var(--text-2);
+}
+.help-card kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--bg-2);
+  white-space: nowrap;
+}
+.top-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(44px + var(--sheet-h, 0px));
+  transform: translateX(-50%);
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  padding: 5px 6px 5px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--accent-2);
+  border-radius: 999px;
+  font-size: 12.5px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* toolbar toggles (Follow / Drive layout) */
+.vtoolbar .panel-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- drive layout: camera pinned above the side-panel tabs ---------- */
+
+/* the picture fills what the pane has left */
+
+/* desktop toolbar: Layers, then the search box (wraps under
+   them when the canvas is narrow); the right toolbar keeps its room */
+.vtoolbar.top-left {
+  flex-wrap: wrap;
+}
+.vtoolbar.top-left .searchbox {
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+@media (max-width: 900px) {
+  .vtoolbar.top-left {
+    right: 10px;
+  }
+}
+
+/* ---------- startup-load bar (LoadBar.tsx) ---------- */
+.load-bar {
+  position: absolute;
+  /* LoadBar.tsx measures it under the toolbars; this is before the first measure */
+  top: 54px;
+  left: 10px;
+  z-index: 38;
+  width: min(440px, calc(100% - 20px));
+  padding: 6px 10px 7px;
+  background: color-mix(in srgb, var(--bg-2) 94%, transparent);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius, 6px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.load-bar-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0s linear 0.35s;
+}
+.load-bar-track {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.load-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+.load-bar-track.indeterminate .load-bar-fill {
+  animation: load-bar-slide 1.4s ease-in-out infinite;
+}
+@keyframes load-bar-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+.load-bar-err .load-bar-fill {
+  background: var(--warn);
+}
+.load-bar-text {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-2);
+}
+.load-bar-text b {
+  font-weight: 600;
+  color: var(--text);
+}
+.load-part.done b {
+  color: var(--ok);
+}
+.load-sep {
+  color: var(--muted);
+}
+.load-eta {
+  color: var(--text);
+}
+/* phone: full width */
+.viewer.phone .load-bar {
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  width: auto;
+  padding: 5px 9px 6px;
+}
+.viewer.phone .load-bar-text {
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .load-bar-track.indeterminate .load-bar-fill {
+    animation: none;
+  }
+}
