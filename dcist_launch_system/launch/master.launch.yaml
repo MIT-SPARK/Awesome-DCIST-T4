@@ -475,7 +475,8 @@ launch:
       exec: dsg_file_publisher
       name: awcd_prior_dsg_publisher
       pyenv: $(var spark_env)
-      args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map --rate 0.2
+      # Sent once, latched (the base station subscribes transient local).
+      args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map
       param:
         - {name: use_sim_time, value: $(var sim_time)}
       remap:
