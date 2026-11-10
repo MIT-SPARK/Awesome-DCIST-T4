@@ -82,6 +82,8 @@ bash ${ADT4_WS}/src/awesome_dcist_t4/install/python_setup.bash
 sudo ln -s ${ADT4_WS}/src/fast_downward/fast-downward.py /usr/local/bin/fast-downward
 ```
 
+The script also builds the browser UI of the [web console](adt4_console/README.md) when Node.js 20.19 or newer is installed (otherwise it prints that it skipped it). Ubuntu's `nodejs` package (18.x) is too old; install Node 22 with [nvm](https://github.com/nvm-sh/nvm) (`nvm install 22`) or [NodeSource](https://github.com/nodesource/distributions) before running it.
+
 > **NOTE** for Blackwell architecture GPU eg. RTX 5090:
 >
 > In ROMAN environment, we should replace the torch installation with `pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu128` or other torch+cuda version that support Blackwell.
@@ -543,6 +545,8 @@ With the `image_logging` config (e.g., `spot-image_logging` or `spot_bag-image_l
 * `$ADT4_OUTPUT_DIR/hydra/frontend/track_bindings.json` and `$ADT4_OUTPUT_DIR/hydra/backend/merges.json`: which tracks belong to which object nodes
 
 To build the image store for a map from these files, run `hydra image-store index $ADT4_OUTPUT_DIR` (from `hydra_python`). It writes `$ADT4_OUTPUT_DIR/image_store`. The raw keyframe archives take about 0.75 MB each and can be deleted once the store is built and checked (`hydra image-store check`).
+
+To look at a saved map (scene graph, mesh, object images and keyframes) in a browser, see the [web console](adt4_console/README.md): `adt4_console/bin/adt4-console --map run=$ADT4_OUTPUT_DIR`, then open http://localhost:8090.
 
 ## Citations and Related Papers
 
