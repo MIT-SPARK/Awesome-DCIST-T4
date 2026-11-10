@@ -1,0 +1,18 @@
+---
+# Plan repair driven by GRSTAPS-X instead of fast-downward.
+#
+# Identical to planning_repair except for planner_goal_topic: the goal manager
+# decides whether to replan and then forwards to whichever plugin is named here.
+# Nothing upstream changes -- the heracles repair agent publishes the same
+# ConstrainedPddlGoalMsg to the same commanded_goal topic either way.
+nodes_to_monitor:
+  omniplanner: {}
+  nlu_rviz_instruction_panel: {}
+windows:
+  - window_name: planning
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true ${ADT4_RVIZ_CONFIG:+rviz_config:=$ADT4_RVIZ_CONFIG}
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME planner_goal_topic:=grstaps_planner/pddl_goal launch_omniplanner_repair:=true
+    #! - plan commander repl

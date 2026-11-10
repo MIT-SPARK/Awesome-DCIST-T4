@@ -1,0 +1,42 @@
+---
+# GRSTAPS-X wired into the plan-repair flow.
+#
+# goal_format: constrained_pddl makes the plugin subscribe ConstrainedPddlGoalMsg
+# on grstaps_planner/pddl_goal, which is what the goal manager forwards (see
+# planner_goal_topic in planning_repair_grstaps.yaml). The heracles repair agent
+# is unchanged: it publishes to commanded_goal and never names a planner.
+#
+# Self-contained rather than a delta on the grstaps overlay -- config inheritance
+# resolves only leaf keys, so a parent config contributes no override files.
+#
+# Paths come from the ADT4_GRSTAPS_* / ADT4_GUROBI_* environment variables
+# (see GrstapsDomain), so nothing machine-specific belongs here.
+planners:
+  grstaps_planner:
+    plugin:
+      type: Grstaps
+      run_mode: native
+      goal_format: constrained_pddl
+      # The ITAGS entry point, so `before` constraints become precedence pairs.
+      # On the pddl entry an instruction-level ordering between two unrelated
+      # targets cannot be encoded at all -- a PDDL goal is a conjunction of
+      # end-state facts with no notion of sequence.
+      entry: itags
+      # Every Spot in this fleet carries an arm, but the shared robot registry
+      # declares them `spot` / `simulated-spot`, which map to the armless
+      # `spot` species; relocation would then find no robot to give it to.
+      # Overriding by type here, rather than editing the registry, keeps every
+      # other experiment reading the registry as it is. A Spot without an arm
+      # would need `robot_species: {<name>: spot}`.
+      robot_type_species:
+        spot: spot_arm
+        simulated-spot: spot_arm
+      # An inspection is a joint task, and its default coalition is a ground
+      # robot plus a UAV. This fleet has no UAV, so that team can never be
+      # fielded and every inspection goal would fail to allocate. Two ground
+      # robots is what the Spots here can actually provide. Huskies are left
+      # out of GRSTAPS-X plans entirely (UNPLANNABLE_ROBOT_TYPES): the phoenix
+      # executor ignores plan ordering, so a partner would wait on one forever.
+      inspect_requirement:
+        ground: 2
+        sensor: 2

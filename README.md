@@ -71,6 +71,16 @@ bash src/awesome_dcist_t4/semantic_inference/install/setup.sh
 ```
 You can find more details about the set up [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies).
 
+The GRSTAPS-X solver used by the `*grstaps*` experiments is a private repo,
+so it is imported separately (this needs an SSH key with access to it):
+```bash
+vcs import src < src/awesome_dcist_t4/install/grstaps_packages.yaml
+rosdep install --from-paths src/grstapsx --ignore-src -r -y --rosdistro jazzy
+```
+This clones it to `src/grstapsx`, and `colcon build` then downloads Gurobi and
+installs the `itags` solver. It does need a Gurobi license activated once on the machine that runs
+the planner; see the [OmniPlanner GRSTAPS-X setup](omniplanner/README.md#setup).
+
 You probably want to add some scripts to your path for convenience:
 ```bash
 echo 'export PATH=$PATH:$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/bin' >> ~/.zshrc
