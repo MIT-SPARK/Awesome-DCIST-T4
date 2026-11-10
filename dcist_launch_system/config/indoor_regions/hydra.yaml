@@ -93,13 +93,15 @@ frontend:
       smoothing: true
       sinks:
         - {type: TsdfGradientOccupancyPublisher, gradient_threshold: 0.5, min_confidence: 0.5, filter_disjoint: true}
+    transient_processing:
+      - {type: ErosionDilation, num_dilations: 1}
     clustering: {type: RegionGrowingTraversabilityClustering, max_radius: 1.5}
     persistent_processing:
       - type: RobotFootprintTraversability
         bbox_min: [-0.75, -0.25]
         bbox_max: [0.75, 0.25]
       - type: ProjectiveSemanticTraversabilityIntegrator
-        max_range: 3.0
+        max_range: 5.0
         fusion_mode: MIN
         label_traversability: {0: 1.0, 1: 0.1, 2: 0.1}
     sinks:
