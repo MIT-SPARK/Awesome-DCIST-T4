@@ -1,9 +1,10 @@
 #!/bin/bash
-# ./python_setup.sh [--no-roman] [--no-spark]
+# ./python_setup.sh [--no-roman] [--no-spark] [--no-console]
 
 ci_running=false
 install_roman=true
 install_spark=true
+install_console=true
 
 while :; do
     echo $1
@@ -20,8 +21,12 @@ while :; do
             install_spark=false
             shift
             ;;
+        --no-console)
+            install_console=false
+            shift
+            ;;
         -h|-?|--help)
-            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark]"
+            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark] [--no-console]"
             exit
             ;;
         *)
@@ -129,4 +134,37 @@ if [ "$install_spark" = true ]; then
     # clean up environment after install
     deactivate
     popd
+fi
+
+##################################
+# Web console UI (adt4_console)
+##################################
+# The console's Python dependencies are in spark_requirements.txt. Its browser UI
+# is built here (into adt4_console/adt4_console/static, not committed) and needs
+# Node >= 20.19; without it the console serves a placeholder page and the API.
+
+if [ "$install_console" = true ]; then
+    console_frontend=$ADT4_WS/src/awesome_dcist_t4/adt4_console/frontend
+    node_ok=false
+    if command -v node > /dev/null 2>&1 && command -v npm > /dev/null 2>&1; then
+        if node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 20 || (a === 20 && b >= 19) ? 0 : 1)'; then
+            node_ok=true
+        fi
+    fi
+    if [ "$ci_running" = true ]; then
+        echo "Skipping the console UI build (--is-ci)."
+    elif [ ! -f $console_frontend/package.json ]; then
+        echo "Skipping the console UI build: no $console_frontend/package.json."
+    elif [ "$node_ok" = false ]; then
+        echo "*********************************************************************************************************"
+        echo "** Skipping the console UI build: it needs Node >= 20.19 (found: $(node --version 2>/dev/null || echo none)). **"
+        echo "** Install Node 22 (nvm or NodeSource; apt's 18.x is too old) and re-run this script, or run:            **"
+        echo "**   cd $console_frontend && npm ci && npm run build"
+        echo "*********************************************************************************************************"
+    else
+        echo "Building the console UI in $console_frontend"
+        pushd $console_frontend
+        npm ci && npm run build
+        popd
+    fi
 fi

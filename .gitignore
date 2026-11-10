@@ -5,3 +5,7 @@
 # Network diagnostics
 adt4_diagnostics/
 *.pyc
+
+# adt4_console: the web UI is built at install time (install/python_setup.bash)
+adt4_console/adt4_console/static/
+adt4_console/frontend/node_modules/

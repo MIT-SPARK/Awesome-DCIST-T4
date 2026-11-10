@@ -18,3 +18,10 @@ pydantic_settings
 boto3
 textual
 textual-dev
+# adt4_console (map viewer)
+fastapi
+uvicorn[standard]
+msgpack
+pyproj
+scipy
+pillow
