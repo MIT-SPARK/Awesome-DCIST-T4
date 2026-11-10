@@ -61,6 +61,10 @@ def build_run(root: pathlib.Path) -> pathlib.Path:
         G.add_node(2, dsg.NodeSymbol("a", k), ag, 97)
     G.insert_edge(dsg.NodeSymbol("P", 0), dsg.NodeSymbol("P", 1))
     G.insert_edge(dsg.NodeSymbol("P", 0), dsg.NodeSymbol("O", 0))
+    # the robot path in time order (a1, a2, a0) and the place a1 is in
+    G.insert_edge(dsg.NodeSymbol("a", 1), dsg.NodeSymbol("a", 2))
+    G.insert_edge(dsg.NodeSymbol("a", 2), dsg.NodeSymbol("a", 0))
+    G.insert_edge(dsg.NodeSymbol("P", 1), dsg.NodeSymbol("a", 1))
     G.save(str(backend / "dsg.json"), False)
     (backend / "mesh.ply").write_text(PLY)
     _build_image_store(run)

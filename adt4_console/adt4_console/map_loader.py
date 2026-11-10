@@ -278,6 +278,14 @@ class MapLoader:
         store_mesh_path = optional(
             "heracles.graph_interface", "store_mesh_path", "the mesh of loaded maps"
         )
+        agent_edges = optional(
+            "heracles.graph_interface", "agent_edges", "robot paths in loaded maps"
+        )
+        insert_agent_edges = optional(
+            "heracles.graph_interface",
+            "insert_agent_edges_to_db",
+            "robot paths in loaded maps",
+        )
         sid = "graph"
         self._stage(job, sid, "running", 2, "reading the scene graph")
         G = spark_dsg.DynamicSceneGraph.load(str(dsg))
@@ -309,6 +317,11 @@ class MapLoader:
             ("buildings", lambda: gi.add_buildings_from_dsg(G, db)),
             ("edges", lambda: gi.add_edges_from_dsg(G, db)),
         ]
+        if agent_edges is not None and insert_agent_edges is not None:
+            # after the places: the robot path and the places the agents are in
+            steps.append(
+                ("agent edges", lambda: insert_agent_edges(db, *agent_edges(G)))
+            )
         for i, (what, fn) in enumerate(steps):
             self._stage(job, sid, "running", 15 + 75 * i / len(steps), what)
             fn()

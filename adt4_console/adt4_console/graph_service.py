@@ -1240,6 +1240,20 @@ def _neo4j_image(r: dict) -> NodeImage:
     )
 
 
+_AGENT_EDGES = """
+MATCH (a:Agent)-[:AGENT_CONNECTED]->(b:Agent) RETURN a.nodeSymbol AS f, b.nodeSymbol AS t
+UNION ALL
+MATCH (p)-[:CONTAINS]->(a:Agent) WHERE p:Place OR p:MeshPlace
+RETURN p.nodeSymbol AS f, a.nodeSymbol AS t
+"""
+
+
+def _sym(text: str) -> str:
+    """``c(i)`` form of a heracles node symbol (``a12`` or ``a(12)``)."""
+    c, i = parse_symbol(text)
+    return f"{c}({i})"
+
+
 class Neo4jSource(Source):
     kind = "neo4j"
 
@@ -1431,6 +1445,11 @@ class Neo4jSource(Source):
         edges = _codec().graph_edges(
             G
         )  # whole graph: 60 ms on Penn, same form as a full load
+        # agents are records outside G (heracles leaves them out): keep their edges
+        edges |= {
+            e for e in loaded.edges
+            if any(getattr(records.get(s), "layer", None) == AGENT_LAYER for s in e)
+        }  # fmt: skip
         delta.edges_add = sorted(edges - loaded.edges)
         delta.edges_del = sorted(loaded.edges - edges)
         self._loaded = Loaded(
@@ -1601,6 +1620,14 @@ class Neo4jSource(Source):
                 loaded.records[sym] = codec.NodeRecord(
                     sym, AGENT_LAYER, ord(c), tuple(float(v) for v in r["c"][:3])
                 )
+        # the robot path and the places the agents are in (heracles agent_edges)
+        for r in self.query(_AGENT_EDGES):
+            try:
+                a, b = (_sym(str(r[k])) for k in ("f", "t"))
+            except ValueError:
+                continue
+            if a in loaded.records and b in loaded.records:
+                loaded.edges.add((a, b))
 
     def mesh_path(self):
         from .heracles_compat import optional

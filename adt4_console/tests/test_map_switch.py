@@ -81,6 +81,13 @@ def test_a_run_without_images_loads(live, plain_run):
     snap = client.get("/api/graph/neo4j:test/stats").json()
     layers = {e["key"]: e["nodes"] for e in snap["layers"]}
     assert layers.get("2/0") == 3 and layers.get("3/0") == 2
+    # with the robot path and the place the agent is in, as the run directory has them
+    # (needs heracles' agent_edges)
+    from heracles import graph_interface as gi
+
+    if hasattr(gi, "agent_edges"):
+        assert snap["edges"].get("agents-agents") == 2
+        assert snap["edges"].get("agents-places") == 1
     # picking it again is a no-op
     again = client.post("/api/maps/activate", json={"path": str(run)}).json()
     assert again.get("already") is True

@@ -19,7 +19,12 @@ def test_graph_stats_file_source(settings, tmp_path):
             "2/97": 3,
             "3/0": 2,
         }
-        assert st["edges"] == {"objects-places": 1, "places-places": 1}
+        assert st["edges"] == {
+            "agents-agents": 2,
+            "agents-places": 1,
+            "objects-places": 1,
+            "places-places": 1,
+        }
         assert st["mesh"] == {"vertices": 6, "faces": 2, "tiles": 2}
         assert st["labels"][0] == {
             "label": 1,
