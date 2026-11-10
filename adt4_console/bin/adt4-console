@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""adt4-console entry point (dev, no install): re-execs into $ADT4_ENV/spark_env
+(where fastapi and uvicorn live) before importing anything heavy."""
+
+import os
+import pathlib
+import sys
+
+if not os.environ.get("_ADT4_CONSOLE_REEXEC"):
+    _adt4_env = os.environ.get("ADT4_ENV", "")
+    if _adt4_env:
+        _spark_env = pathlib.Path(_adt4_env) / "spark_env"
+        _spark_python = _spark_env / "bin" / "python3"
+        if _spark_python.exists() and sys.prefix != str(_spark_env):
+            os.environ["_ADT4_CONSOLE_REEXEC"] = "1"
+            os.execv(str(_spark_python), [str(_spark_python)] + sys.argv)
+
+# Dev checkout: the adt4_console package next to this script
+_pkg = pathlib.Path(__file__).resolve().parent.parent
+if str(_pkg) not in sys.path:
+    sys.path.insert(0, str(_pkg))
+
+from adt4_console.cli import main  # noqa: E402
+
+main()
