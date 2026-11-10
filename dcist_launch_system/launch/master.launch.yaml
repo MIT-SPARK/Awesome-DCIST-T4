@@ -406,6 +406,10 @@ launch:
       exec: goal_manager_node
       name: goal_manager
       pyenv: $(var spark_env)
+      # The robots list (and each robot's type) the planner uses: a Husky is
+      # stopped with an empty Path, not through spot_executor_node.
+      param:
+        - {name: plugin_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml}
       remap:
         - {from: ~/commanded_goal, to: /$(var robot_name)/commanded_goal}
         - {from: ~/planner_goal, to: /$(var robot_name)/omniplanner_node/$(var planner_goal_topic)}
