@@ -183,10 +183,21 @@ database before publishing it. `seed_dsg_path` is set to
 including robot poses and holding relationships, and restarts the map version at
 1. Use it at the start of a fresh run. Set `ADT4_NEO4J_SEED=false` when restarting
 the publisher during a mission to preserve the current database and recorded
-changes. The publisher defaults to `false`; the `heracles_prior_dsg_repair`
-launch component defaults to `true` unless the variable is explicitly set.
+changes. The publisher defaults to `false`.
+
+The `heracles_prior_dsg_repair*` launch components seed once per session: the
+publisher pane seeds the first time it runs (unless `ADT4_NEO4J_SEED=false` is
+set), then sets `ADT4_NEO4J_SEED=false` in that pane's shell. Restarting the pane
+mid-run (Ctrl-C, Up, Enter) therefore keeps the database. To reseed on purpose,
+run `export ADT4_NEO4J_SEED=true` in the pane and re-run the command; a new tmux
+session seeds again.
 If the seed file is missing, the publisher logs an error and retains the existing
 database.
+
+In those components the AWCD base station reads the prior map file from
+`awcd_base_station/prior_dsg` (`launch_awcd_prior_dsg_publisher:=true`), not the
+edited heracles map on `hydra/backend/dsg`, so an applied removal is not mistaken
+for a withdrawn one.
 
 The state updater tracks the robots listed under `robots:` in the config's
 `omniplanner_plugins.yaml`, the same robots the planner plans for. For each one

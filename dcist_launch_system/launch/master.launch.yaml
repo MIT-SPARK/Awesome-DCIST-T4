@@ -457,7 +457,23 @@ launch:
         --config-utilities-yaml {mesh_frame: map, mesh_filepath: $(env ADT4_PRIOR_MAP)/hydra/backend/mesh.ply}
 
   # AWCD base station (merges changed objects from all robots; optionally draws them into rviz)
+  # It resolves removed objects in the prior DSG on awcd_prior_dsg_topic. That is
+  # hydra/backend/dsg by default, which is the prior file when prior_dsg_publisher
+  # runs. With heracles, hydra/backend/dsg is the edited map, so the repair configs
+  # set launch_awcd_prior_dsg_publisher:=true and a dedicated awcd_prior_dsg_topic.
   - arg: {name: launch_awcd_base_station, default: 'false'}
+  - arg: {name: awcd_prior_dsg_topic, default: hydra/backend/dsg}
+  - arg: {name: launch_awcd_prior_dsg_publisher, default: 'false'}
+  - node:
+      if: $(var launch_awcd_prior_dsg_publisher)
+      pkg: hydra_ros
+      exec: dsg_file_publisher
+      name: awcd_prior_dsg_publisher
+      args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map --rate 0.2
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: dsg, to: $(var awcd_prior_dsg_topic)}
   - pyenv_node:
       if: $(var launch_awcd_base_station)
       pkg: dcist_launch_system
@@ -468,7 +484,7 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_base_station.yaml, allow_substs: true}
       remap:
-        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_in, to: $(var awcd_prior_dsg_topic)}
 
   # DSG Saver
   - arg: {name: launch_dsg_saver, default: 'false'}
