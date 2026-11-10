@@ -41,7 +41,7 @@ experiments:
     launch_config: [plan_prior, multi_status, tf_relay]
     config: [default]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, console_viewer]
     config: [default]
   base_station_repair:
     launch_config: [plan_prior_repair, multi_status, tf_relay]

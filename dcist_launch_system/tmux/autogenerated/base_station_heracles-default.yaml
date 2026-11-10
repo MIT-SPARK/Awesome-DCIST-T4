@@ -56,3 +56,8 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true]
+  - window_name: console
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - if ss -ltn 2>/dev/null | grep -q ':8090 '; then echo 'a console already serves :8090; not starting another'; else $ADT4_WS/src/awesome_dcist_t4/adt4_console/bin/adt4-console --port 8090 --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} --live-neo4j live ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP}; fi
