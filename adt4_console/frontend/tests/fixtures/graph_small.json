@@ -1,0 +1,126 @@
+{
+ "nodes": {
+  "O(1)": {
+   "sym": "O(1)",
+   "layer": 2,
+   "part": 0,
+   "pos": [
+    1.0,
+    2.0,
+    0.5
+   ],
+   "label": 18,
+   "bbox": [
+    0.5,
+    1.5,
+    0.0,
+    1.5,
+    2.5,
+    1.0
+   ],
+   "color": [
+    255,
+    0,
+    0
+   ],
+   "name": "sign",
+   "active": true
+  },
+  "O(2)": {
+   "sym": "O(2)",
+   "layer": 2,
+   "part": 0,
+   "pos": [
+    -3.25,
+    0.125,
+    0.75
+   ],
+   "label": 4,
+   "bbox": null,
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "name": "",
+   "active": false
+  },
+  "P(10)": {
+   "sym": "P(10)",
+   "layer": 3,
+   "part": 0,
+   "pos": [
+    0.0,
+    0.0,
+    1.0
+   ],
+   "label": -1,
+   "bbox": null,
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "name": "",
+   "active": false
+  },
+  "P(11)": {
+   "sym": "P(11)",
+   "layer": 3,
+   "part": 0,
+   "pos": [
+    4.0,
+    0.0,
+    1.0
+   ],
+   "label": -1,
+   "bbox": null,
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "name": "",
+   "active": false
+  },
+  "a(0)": {
+   "sym": "a(0)",
+   "layer": 2,
+   "part": 97,
+   "pos": [
+    0.0,
+    -1.0,
+    0.0
+   ],
+   "label": -1,
+   "bbox": null,
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "name": "",
+   "active": false
+  }
+ },
+ "edges": [
+  [
+   "O(1)",
+   "P(10)"
+  ],
+  [
+   "P(10)",
+   "P(11)"
+  ],
+  [
+   "a(0)",
+   "P(10)"
+  ]
+ ],
+ "labelspaces": {
+  "2/0": {
+   "18": "sign",
+   "4": "chair"
+  }
+ }
+}
