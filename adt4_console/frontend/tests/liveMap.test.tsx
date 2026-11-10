@@ -3,7 +3,7 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {act} from "react";
 import {createRoot, type Root} from "react-dom/client";
-import {_resetLiveMap, applyLiveMap, mapLoaded, mapProgress, useLiveMap, type LiveMap, type MapStage} from "../src/stores/liveMap";
+import {_resetLiveMap, applyLiveMap, mapLoaded, mapLoading, mapProgress, useLiveMap, type LiveMap, type MapStage} from "../src/stores/liveMap";
 import {useViewer} from "../src/stores/viewer";
 
 (globalThis as unknown as {IS_REACT_ACT_ENVIRONMENT: boolean}).IS_REACT_ACT_ENVIRONMENT = true;
@@ -41,6 +41,16 @@ describe("live map progress", () => {
     expect(mapProgress(m)).toBe(50);
     expect(mapLoaded(m)).toBe(false);
     expect(mapLoaded(live("a", true, [stage("graph", "done", 100), stage("images", "skipped", 100)], false))).toBe(true);
+  });
+
+  it("an empty Neo4j (no run, no job, all stages pending) is not a load in progress", () => {
+    const empty = {
+      target: "live", run: null, name: null, dsg: null, nodes: 0, has_images: false, has_features: false, ready: false,
+      job_id: null, stages: [stage("graph", "pending"), stage("images", "pending")],
+    } as unknown as LiveMap; // prettier-ignore
+    expect(mapLoading(empty)).toBe(false);
+    expect(mapLoading(live("a", false, [stage("graph", "running", 10), stage("images", "pending")]))).toBe(true);
+    expect(mapLoading(live("a", true, [stage("graph", "done", 100)]))).toBe(false);
   });
 
   it("switches the viewer to the live source once the graph is in", async () => {

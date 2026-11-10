@@ -4,7 +4,7 @@
 import {useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import {useNavigate} from "react-router";
 import {errorText, getJSON, postJSON, useApi} from "../lib/api";
-import {activateMap, bindLiveMap, mapLoaded, mapProgress, useLiveMap} from "../stores/liveMap";
+import {activateMap, bindLiveMap, mapLoading, mapProgress, useLiveMap} from "../stores/liveMap";
 import type {GraphSource, MapEntry, MapsResponse} from "../types";
 import {Badge, Card, Empty, ErrorBox, Loading, PageHeader, Spinner, Toggle} from "../components/ui";
 import {MapLoadBars} from "../viewer/LiveMapPanel";
@@ -121,7 +121,7 @@ function ActiveMapCard() {
   const error = useLiveMap(s => s.error);
   useEffect(() => bindLiveMap(), []);
   if (!map && !error) return null;
-  const loading = !!map && !mapLoaded(map);
+  const loading = mapLoading(map);
   return (
     <Card
       title={

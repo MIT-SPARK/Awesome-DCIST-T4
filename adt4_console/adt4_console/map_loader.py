@@ -94,7 +94,7 @@ class MapLoader:
     # -- status ------------------------------------------------------------------
     def status(self, target_name: str | None = None) -> dict:
         """The live map: {target, run, name, dsg, nodes, has_images, has_features,
-        ready (for planning), stages: [{id, label, state, pct, detail}], job_id}."""
+        ready (scene graph loaded), stages: [{id, label, state, pct, detail}], job_id}."""
         with self._lock:
             if self._status is not None and (
                 target_name is None or self._status["target"] == target_name
@@ -242,7 +242,7 @@ class MapLoader:
         try:
             G, db = self._load_graph(job, t, dsg, run)
             self._set(ready=True, nodes=t.count_nodes())
-            job.log("ok", f"Ready for planning: {run.name} in {time.time() - t0:.1f} s")
+            job.log("ok", f"Scene graph ready: {run.name} in {time.time() - t0:.1f} s")
             if image_store:
                 self._load_images(job, t, G, db, image_store)
             if feats is not None:

@@ -57,6 +57,12 @@ export function mapLoaded(m: LiveMap | null): boolean {
   return !!m && m.stages.every(s => s.state === "done" || s.state === "skipped");
 }
 
+/** A load is in progress: a job runs, or a stage has started and not all are done. An
+ *  empty Neo4j reports every stage pending with no job; that is not a load. */
+export function mapLoading(m: LiveMap | null): boolean {
+  return !!m && !mapLoaded(m) && (!!m.job_id || m.stages.some(s => s.state !== "pending"));
+}
+
 /** Overall progress of the stages that run (skipped ones do not count), 0-100. */
 export function mapProgress(m: LiveMap | null): number {
   const run = (m?.stages ?? []).filter(s => s.state !== "skipped");

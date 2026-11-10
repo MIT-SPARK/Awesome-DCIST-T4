@@ -123,6 +123,10 @@ export function SatelliteGround({floorZ}: {floorZ: number | null}) {
   const geo = useGeo(s => s.geo);
   const on = useGeo(s => s.satellite);
   const opacity = useGeo(s => s.satOpacity);
+  // the canvas renders on demand: redraw when the underlay is switched or faded, or the
+  // last frame (with or without the imagery) stays on screen
+  const invalidateFrame = useThree(st => st.invalidate);
+  useEffect(() => invalidateFrame(), [on, opacity, invalidateFrame]);
   const layers = useGeo(s => s.layers);
   const bounds = useGeo(s => s.bounds);
   const layer = layers.find(l => l.default) ?? layers.find(l => l.id === "esri_world_imagery") ?? layers[0];

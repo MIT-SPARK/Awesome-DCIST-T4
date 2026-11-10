@@ -3,7 +3,7 @@
 // in after, each with its own bar. Runs without an image store skip those stages.
 import {useEffect, useState} from "react";
 import {Badge} from "../components/ui";
-import {activateMap, bindLiveMap, mapLoaded, mapProgress, refreshMapChoices, useLiveMap, type LiveMap, type MapStage} from "../stores/liveMap";
+import {activateMap, bindLiveMap, mapLoading, mapProgress, refreshMapChoices, useLiveMap, type LiveMap, type MapStage} from "../stores/liveMap";
 
 const STATE_TEXT: Record<MapStage["state"], string> = {
   pending: "waiting",
@@ -37,7 +37,7 @@ export function LiveMapPanel() {
     bindLiveMap();
     void refreshMapChoices();
   }, []);
-  const loading = !!map && !mapLoaded(map);
+  const loading = mapLoading(map);
   const current = choices.find(c => map?.run && (c.path === map.run || c.name === map.name));
   return (
     <section className="vsec" data-testid="live-map">
@@ -87,7 +87,7 @@ export function LiveMapPanel() {
 export function MapLoadPill() {
   const map = useLiveMap(s => s.map);
   useEffect(() => bindLiveMap(), []);
-  if (!map || mapLoaded(map)) return null;
+  if (!map || !mapLoading(map)) return null;
   return (
     <div className="map-load-pill" data-testid="map-load-pill">
       <div className="row gap small">
