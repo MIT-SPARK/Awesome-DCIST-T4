@@ -468,11 +468,13 @@ launch:
   - arg: {name: launch_awcd_base_station, default: 'false'}
   - arg: {name: awcd_prior_dsg_topic, default: hydra/backend/dsg}
   - arg: {name: launch_awcd_prior_dsg_publisher, default: 'false'}
-  - node:
+  # (spark_env: the system spark_dsg can be too old to load the prior file)
+  - pyenv_node:
       if: $(var launch_awcd_prior_dsg_publisher)
       pkg: hydra_ros
       exec: dsg_file_publisher
       name: awcd_prior_dsg_publisher
+      pyenv: $(var spark_env)
       args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map --rate 0.2
       param:
         - {name: use_sim_time, value: $(var sim_time)}
