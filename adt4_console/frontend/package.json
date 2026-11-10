@@ -1,0 +1,35 @@
+{
+  "name": "adt4-console-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "3.1.2",
+    "@react-three/drei": "10.7.6",
+    "@react-three/fiber": "9.6.1",
+    "camera-controls": "3.1.2",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-router": "7.18.4",
+    "three": "0.182.0",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "@types/three": "0.182.0",
+    "@vitejs/plugin-react": "5.0.2",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.2",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}

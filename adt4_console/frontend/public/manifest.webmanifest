@@ -1,0 +1,16 @@
+{
+  "name": "ADT4 Console",
+  "short_name": "ADT4",
+  "description": "Fleet, maps, live scene graph and mission control for the ADT4 robots.",
+  "start_url": "./#/fleet",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0f14",
+  "theme_color": "#10161d",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
