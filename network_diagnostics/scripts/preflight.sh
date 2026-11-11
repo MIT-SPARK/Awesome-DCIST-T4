@@ -270,6 +270,33 @@ else
     check_warn "ADT4_ROBOT_NAME not set"
 fi
 
+# --- Check 9: fleetlink ---
+echo -e "${BOLD}9. Fleetlink${NC}"
+
+FLEET_LINK="${ADT4_FLEETLINK_MODE:-${ADT4_FLEET_LINK:-$(python3 -c "
+import yaml
+with open('${TOPOLOGY}') as f:
+    print(((yaml.safe_load(f) or {}).get('fleet_defaults') or {}).get('fleet_link') or 'router')
+" 2>/dev/null || echo router)}}"
+echo -e "  Mode: ${CYAN}${FLEET_LINK}${NC}"
+
+if command -v ros2 &>/dev/null && ros2 pkg prefix fleetlink &>/dev/null; then
+    check_pass "fleetlink package installed"
+else
+    check_fail "fleetlink package not found — build it (colcon build --packages-select fleetlink)"
+fi
+
+FLEETLINK_PY="${FLEETLINK_PYTHON:-${ADT4_ENV:+${ADT4_ENV}/spark_env/bin/python3}}"
+FLEETLINK_PY="${FLEETLINK_PY:-python3}"
+zenoh_version=$("$FLEETLINK_PY" -c "import importlib.metadata as m; print(m.version('eclipse-zenoh'))" 2>/dev/null || true)
+if [[ "$zenoh_version" == "1.8.0" ]]; then
+    check_pass "eclipse-zenoh 1.8.0 in ${FLEETLINK_PY}"
+elif [[ "$FLEET_LINK" == "fleetlink" ]]; then
+    check_fail "eclipse-zenoh 1.8.0 missing in ${FLEETLINK_PY} (found: ${zenoh_version:-none}; install/spark_requirements.txt)"
+else
+    check_warn "eclipse-zenoh 1.8.0 missing in ${FLEETLINK_PY} (found: ${zenoh_version:-none}); needed in fleetlink mode"
+fi
+
 # --- Summary ---
 echo ""
 echo -e "${BOLD}━━━ Summary ━━━${NC}"
