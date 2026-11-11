@@ -68,4 +68,4 @@
 	url = git@github.com:harelb/fleetlink.git
 [submodule "adt4_console"]
 	path = adt4_console
-	url = https://github.com/harelb/adt4_console.git
+	url = git@github.com:harelb/adt4_console.git

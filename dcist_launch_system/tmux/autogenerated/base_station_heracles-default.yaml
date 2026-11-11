@@ -67,5 +67,4 @@ windows:
   - window_name: console
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes:
-      - ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}
+    panes: ["ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}"]

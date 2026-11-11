@@ -157,6 +157,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_FLEETLINK\_MESH\_SOURCE     | Mesh the agent sends: `odometric` (default) or `dsg`              |
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
 | ADT4\_CONSOLE\_PORT              | Port of the web console (default: 8090; optional)                 |
+| ADT4\_CONSOLE\_TOKEN             | Token the web console requires from browsers (optional; see below)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
@@ -398,6 +399,12 @@ missions and chat. `install/python_setup.bash` installs its Python packages and 
 the live Neo4j map at `ADT4_HERACLES_IP:ADT4_HERACLES_PORT`. On a headless base station RViz
 exits in its own pane and the rest of the session keeps running. Features whose packages a
 workspace lacks are hidden; see the console's README.
+
+The console listens on every interface of the base station, and without a token anyone on
+that network can use it: edit the map, send robots goals, and use the chat (which spends the
+LLM API key). Set `ADT4_CONSOLE_TOKEN` before launching to require that token; browsers then
+open `http://<base station>:8090/?token=<token>`, and API clients send
+`Authorization: Bearer <token>`.
 
 
 
