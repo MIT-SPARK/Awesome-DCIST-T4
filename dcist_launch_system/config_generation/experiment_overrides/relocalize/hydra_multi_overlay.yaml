@@ -1,0 +1,6 @@
+---
+robots: !update
+  - inputs:
+      dgraph:
+        include_mesh: false  # the fixed prior's mesh only slows down optimization
+  - {}  # Live robot unit interface should be unchanged

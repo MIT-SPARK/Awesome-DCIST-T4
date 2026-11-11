@@ -16,6 +16,7 @@ robots:
         include_priors: true
         fix_as_prior: true
         prior_variance: 1.0e-6
+        include_mesh: false
   - type: RosUnitInterface
     robot_id: 0
     rate: 10.0
