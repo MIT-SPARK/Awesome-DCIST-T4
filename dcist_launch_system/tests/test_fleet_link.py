@@ -231,9 +231,13 @@ def _window(name, window):
 )
 def test_base_sessions_have_fleetlink_base_window(name):
     router, bridge = _window(name, "fleetlink_base")["panes"]
-    assert router.startswith('if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ')
+    # a router/bridge already running (start-adt4-console's adt4_console session) is not
+    # started a second time; otherwise fleetlink mode only
+    assert router.startswith('if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo ')
+    assert 'elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ' in router
     assert "ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}" in router
-    assert bridge.startswith('if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ')
+    assert bridge.startswith("if pgrep -f fleetlink-bridge >/dev/null; then echo ")
+    assert 'elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ' in bridge
     assert "ros2 run fleetlink fleetlink-bridge --ros-args" in bridge
     assert "-p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450}" in bridge
     assert RELAY in bridge and TOPOLOGY in bridge

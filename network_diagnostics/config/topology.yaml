@@ -82,7 +82,7 @@ fleet_defaults:
     relocalize:
       spot: spot_relocalize-relocalize
       phoenix: phoenix_relocalize-relocalize
-  base_station_session: base_station_heracles-default
+  base_station_session: base_station_web_repair-default
   output_root: ~/adt4_output
   # router: rmw_zenohd router-to-router over the radio | fleetlink: only fleetlink crosses it
   fleet_link: fleetlink
