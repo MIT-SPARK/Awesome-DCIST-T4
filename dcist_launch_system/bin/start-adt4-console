@@ -13,6 +13,13 @@
 # interface needs to be chosen. Stop it with the console's Fleet page or
 # `tmux kill-session -t adt4_system` before starting a full base_station_* session (both use the
 # same ports).
+# run-adt4 imports dcist_launch_system, so the workspace has to be sourced
+if [ -z "${ADT4_WS:-}" ]; then
+  echo "start-adt4-console: set ADT4_WS (the colcon workspace, e.g. ~/dcist_ws)" >&2
+  exit 1
+fi
+source /opt/ros/jazzy/setup.bash
+source "$ADT4_WS/install/setup.bash"
 set -eo pipefail
 name="${ADT4_ROBOT_NAME:-$(hostname -s)}"
 out="$HOME/adt4_output/console_$(date +%Y%m%d_%H%M%S)"
