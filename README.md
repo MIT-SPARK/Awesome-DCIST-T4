@@ -158,6 +158,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
 | ADT4\_CONSOLE\_PORT              | Port of the web console (default: 8090; optional)                 |
 | ADT4\_CONSOLE\_TOKEN             | Token the web console requires from browsers (optional; see below)|
+| ADT4\_OPENSET\_QUERY\_PORT       | Port of the openset\_query object search server (default: 8077; optional)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
@@ -409,6 +410,26 @@ that browser. Without a configured token, no sign-in dialog appears.
 Links with `?token=<token>` still work, and API clients send `Authorization: Bearer <token>`.
 `run-adt4` forwards the token and port to the console session even when the tmux
 server is already running. Dry-run output redacts the token.
+
+### Open-vocabulary object search (openset_query)
+
+The `openset_query` submodule ([harelb/openset_query](https://github.com/harelb/openset_query))
+is a SAM3 query server that finds objects in the robots' keyframe images from a text query; the
+console then adds the objects you pick to the map. It runs on the base station only, in an
+`openset_query` window of the heracles base station sessions (`base_station_heracles`,
+`base_station_heracles_repair`, `base_station_grstaps_heracles_repair`), and reads the same
+live Neo4j map as the console. The console hides the feature while the server is not running.
+
+Install it with `bash install/python_setup.bash --openset-query` (off by default; it creates
+its own venv at `$ADT4_ENV/sam3`; the server keeps its models on the GPU). The model weights
+come from Hugging Face: `google/siglip2-so400m-patch16-naflex` downloads freely, but
+`facebook/sam3` is gated, so either accept its license on huggingface.co, run
+`$ADT4_ENV/sam3/bin/hf auth login` and then `bash openset_query/setup_env.sh --weights`, or copy
+`~/.cache/huggingface/hub/models--facebook--sam3` from a machine that has it. A missing model
+does not fail the install; `bash openset_query/setup_env.sh --check` reports what is missing. The server listens on
+`ADT4_OPENSET_QUERY_PORT` (default 8077); the console finds it at `SAM3_QUERY_SERVER_URL`
+(default `http://127.0.0.1:8077`), so set both when changing the port. See the
+[openset_query README](https://github.com/harelb/openset_query#readme) for details.
 
 
 

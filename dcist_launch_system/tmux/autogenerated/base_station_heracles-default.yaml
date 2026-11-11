@@ -68,3 +68,8 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes: ["ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}"]
+  - window_name: openset_query
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-store-root $HOME/adt4_output/live; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi
