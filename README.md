@@ -402,9 +402,11 @@ workspace lacks are hidden; see the console's README.
 
 The console listens on every interface of the base station, and without a token anyone on
 that network can use it: edit the map, send robots goals, and use the chat (which spends the
-LLM API key). Set `ADT4_CONSOLE_TOKEN` before launching to require that token; browsers then
-open `http://<base station>:8090/?token=<token>`, and API clients send
-`Authorization: Bearer <token>`.
+LLM API key). Set `ADT4_CONSOLE_TOKEN` before launching to require that token. Browsers
+opening `http://<base station>:8090/` then show a sign-in dialog if they have no valid
+saved token. Enter the token in the password field; valid tokens are remembered in
+that browser. Without a configured token, no sign-in dialog appears.
+Links with `?token=<token>` still work, and API clients send `Authorization: Bearer <token>`.
 `run-adt4` forwards the token and port to the console session even when the tmux
 server is already running. Dry-run output redacts the token.
 
