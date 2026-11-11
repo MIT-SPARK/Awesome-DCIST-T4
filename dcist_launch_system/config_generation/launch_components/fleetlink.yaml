@@ -1,6 +1,6 @@
 ---
 # ADT4_FLEETLINK_MODE / _CONNECT / _PORT: set by run-adt4 for the session from topology.yaml
-# (python -m dcist_launch_system.fleet_env); unset (tmuxp load without run-adt4) = router mode.
+# (fleet_helpers.fleet_link_env); unset (tmuxp load without run-adt4) = router mode.
 # The agent runs in both modes and reports to the robot's status monitor (~/node_status).
 nodes_to_monitor:
   fleetlink_agent: {}

@@ -1,6 +1,6 @@
 ---
 # ADT4_FLEETLINK_MODE / _CONNECT / _PORT: set by run-adt4 for the session from topology.yaml
-# (python -m dcist_launch_system.fleet_env); unset (tmuxp load without run-adt4) = router mode.
+# (fleet_helpers.fleet_link_env); unset (tmuxp load without run-adt4) = router mode.
 # The bridge reports to the base's status monitor in both modes: in router mode it runs idle
 # (idle:=true, status only, NOMINAL "Idle: router mode ..."), so the tracked entry never goes
 # missing, like tf_relay idles in fleetlink mode.

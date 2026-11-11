@@ -1,25 +1,22 @@
-"""Fleet link mode: router endpoints, fleetlink endpoints, fleet_env, the validator.
+"""Fleet link mode: router endpoints, fleetlink endpoints, fleet_link_env.
 
 Addresses are documentation ranges (RFC 5737) and loopback only.
 """
 
 import copy
 import pathlib
-import shlex
-import subprocess
-import sys
 
 import pytest
 import yaml
 
-from dcist_launch_system import fleet_env as fe
 from dcist_launch_system.fleet_helpers import (
+    FleetLinkError,
+    fleet_link_env,
     fleet_link_mode,
     fleetlink_summary,
     generate_fleetlink_endpoints,
     generate_zenoh_endpoints,
     load_topology,
-    validate_topology,
 )
 
 TOPO = {
@@ -147,183 +144,66 @@ def test_fleetlink_summary():
 def test_real_topology_fleetlink_settings(topology_path):
     t = load_topology(topology_path)
     assert fleet_link_mode(t) == "fleetlink"
-    assert not [
-        p for p in validate_topology(t) if "fleetlink" in p or "fleet_link" in p
-    ]
     for name in t["machines"]:
         for net in t["networks"]:
             assert generate_zenoh_endpoints(t, net, name) == []
 
 
-# --- validator -------------------------------------------------------------------
+# --- fleet_link_env -------------------------------------------------------------
 
 
-def test_validate_topology_ok():
-    assert validate_topology(topo("fleetlink")) == []
-    assert validate_topology(topo("router")) == []
-
-
-def test_validate_duplicate_address():
-    t = topo()
-    t["machines"]["beta"]["addresses"]["silvus"] = "198.51.100.10"
-    assert validate_topology(t) == [
-        "duplicate silvus address 198.51.100.10: alpha and beta"
-    ]
-    # the same address on different networks is fine
-    t["machines"]["beta"]["addresses"] = {"penn_wifi": "198.51.100.10"}
-    assert validate_topology(t) == []
-
-
-def test_validate_fleet_link_and_base():
-    t = topo("radio")
-    assert any("fleet_link must be one of" in p for p in validate_topology(t))
-    t = topo("fleetlink")
-    t["fleet_defaults"]["fleetlink_base"] = "alpha"
-    assert validate_topology(t) == [
-        "fleet_defaults.fleetlink_base 'alpha' is not a base_station"
-    ]
-    t["fleet_defaults"]["fleetlink_base"] = "nobody"
-    assert validate_topology(t) == [
-        "fleet_defaults.fleetlink_base 'nobody' is not a machine"
-    ]
-    del t["fleet_defaults"]["fleetlink_base"]
-    assert validate_topology(t) == [
-        "fleet_link is 'fleetlink' but fleetlink_base is not set"
-    ]
-
-
-def test_validate_fleetlink_port_and_networks():
-    t = topo(fleetlink_port="7450", fleetlink_networks=["silvus", "doodle"])
-    problems = validate_topology(t)
-    assert "zenoh.fleetlink_port must be an int, got '7450'" in problems
-    assert "zenoh.fleetlink_networks: unknown network 'doodle'" in problems
-
-
-# --- fleet_env -----------------------------------------------------------------
-
-
-def test_fleet_env_router_mode():
-    env = fe.fleet_env("alpha", topo("router"))
-    assert env == {
+def test_fleet_link_env_router_mode():
+    assert fleet_link_env("alpha", topo("router")) == {
         "ADT4_FLEETLINK_MODE": "router",
         "ADT4_FLEETLINK_CONNECT": "tcp/127.0.0.1:7447",
         "ADT4_FLEETLINK_PORT": "7450",
     }
+    t = topo()
+    del t["fleet_defaults"]["fleet_link"]  # no fleet_link: router mode
+    assert fleet_link_env("nosuch", t)["ADT4_FLEETLINK_MODE"] == "router"
 
 
-def test_fleet_env_fleetlink_robot_and_base():
-    t = topo("fleetlink")
-    env = fe.fleet_env("alpha", t)
-    assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"
-    assert env["ADT4_FLEETLINK_CONNECT"] == (
-        "tcp/198.51.100.100:7450,tcp/192.0.2.3:7450"
-    )
-    base = fe.fleet_env("gamma", t)
-    assert base["ADT4_FLEETLINK_MODE"] == "fleetlink"
-    assert base["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7450"
-    assert fe.fleet_env("alpha", t, network="mit_wifi")["ADT4_FLEETLINK_CONNECT"] == (
-        "tcp/192.0.2.3:7450"
-    )
-
-
-def test_fleet_env_mode_override():
-    env = fe.fleet_env("alpha", topo("fleetlink"), mode="router")
-    assert env["ADT4_FLEETLINK_MODE"] == "router"
-    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
-    env = fe.fleet_env("alpha", topo("router"), mode="fleetlink")
-    assert env["ADT4_FLEETLINK_CONNECT"].startswith("tcp/198.51.100.100:7450")
-    warnings = []
-    env = fe.fleet_env("alpha", topo("router"), mode="bogus", warn=warnings.append)
-    assert env["ADT4_FLEETLINK_MODE"] == "router" and warnings
-
-
-def test_fleet_env_falls_back_to_router():
-    warnings = []
-    t = topo("fleetlink")
-    # unknown machine
-    env = fe.fleet_env("nosuch", t, warn=warnings.append)
-    assert env["ADT4_FLEETLINK_MODE"] == "router"
-    # base unreachable on every fleetlink network
-    t2 = topo("fleetlink", fleetlink_networks=["penn_wifi"])
-    env = fe.fleet_env("alpha", t2, warn=warnings.append)
-    assert env["ADT4_FLEETLINK_MODE"] == "router"
-    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
-    # --network the base is not on: keep the full list
-    env = fe.fleet_env("alpha", t, network="penn_wifi", warn=warnings.append)
-    assert env["ADT4_FLEETLINK_CONNECT"].count(",") == 1
-    # garbage topology never raises
-    bad = {"machines": 5, "fleet_defaults": {"fleet_link": "fleetlink"}}
-    assert fe.fleet_env("alpha", bad, warn=warnings.append)["ADT4_FLEETLINK_MODE"] == (
-        "router"
-    )
-    assert len(warnings) == 4
-
-
-def test_mode_from_env_reads_legacy_name():
-    assert fe.mode_from_env({}) is None
-    assert fe.mode_from_env({"ADT4_FLEET_LINK": "router"}) == "router"
-    assert fe.mode_from_env({"ADT4_FLEETLINK_MODE": "fleetlink"}) == "fleetlink"
-    both = {"ADT4_FLEETLINK_MODE": "fleetlink", "ADT4_FLEET_LINK": "router"}
-    assert fe.mode_from_env(both) == "fleetlink"
-    assert fe.mode_from_env(
-        {"ADT4_FLEETLINK_MODE": "", "ADT4_FLEET_LINK": "router"}
-    ) == ("router")
-
-
-def _cli(*args):
-    return subprocess.run(
-        [sys.executable, "-m", "dcist_launch_system.fleet_env", *args],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-
-
-def _exports(stdout):
-    out = {}
-    for line in stdout.splitlines():
-        assert line.startswith("export ")
-        k, v = line[len("export ") :].split("=", 1)
-        out[k] = shlex.split(v)[0]
-    return out
-
-
-def test_fleet_env_cli(tmp_path):
-    path = tmp_path / "topology.yaml"
-    path.write_text(yaml.safe_dump(topo("fleetlink")))
-    r = _cli("alpha", "--topology", str(path))
-    assert r.returncode == 0, r.stderr
-    assert _exports(r.stdout) == {
+def test_fleet_link_env_fleetlink_robot_and_base():
+    t = topo("fleetlink", fleetlink_port=17450)
+    env = fleet_link_env("alpha", t)
+    assert env == {
         "ADT4_FLEETLINK_MODE": "fleetlink",
-        "ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.100:7450,tcp/192.0.2.3:7450",
-        "ADT4_FLEETLINK_PORT": "7450",
+        "ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.100:17450,tcp/192.0.2.3:17450",
+        "ADT4_FLEETLINK_PORT": "17450",
     }
-    r = _cli("alpha", "--topology", str(path), "--network", "mit_wifi")
-    assert _exports(r.stdout)["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
-    r = _cli("alpha", "--topology", str(path), "--mode", "router")
-    assert _exports(r.stdout)["ADT4_FLEETLINK_MODE"] == "router"
-    # a missing topology still exits 0 with router mode
-    r = _cli("alpha", "--topology", str(tmp_path / "missing.yaml"))
-    assert r.returncode == 0
-    assert _exports(r.stdout)["ADT4_FLEETLINK_MODE"] == "router"
-    assert "router mode" in r.stderr
+    base = fleet_link_env("gamma", t)
+    assert base["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:17450"
 
 
-def test_fleet_env_cli_check(tmp_path):
-    path = tmp_path / "topology.yaml"
-    path.write_text(yaml.safe_dump(topo("fleetlink")))
-    assert _cli("--check", "--topology", str(path)).returncode == 0
-    bad = topo("fleetlink")
-    bad["fleet_defaults"]["fleetlink_base"] = "alpha"
-    path.write_text(yaml.safe_dump(bad))
-    r = _cli("--check", "--topology", str(path))
-    assert r.returncode == 1 and "not a base_station" in r.stdout
+def test_fleet_link_env_mode_override():
+    env = fleet_link_env("alpha", topo("fleetlink"), mode="router")
+    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
+    env = fleet_link_env("alpha", topo("router"), mode="fleetlink")
+    assert env["ADT4_FLEETLINK_CONNECT"].startswith("tcp/198.51.100.100:7450")
 
 
-def test_fleet_env_cli_real_topology():
-    r = _cli("willow")
-    assert r.returncode == 0, r.stderr
-    assert set(_exports(r.stdout)) == set(fe.FLEET_VARS)
+@pytest.mark.parametrize(
+    "machine, t, mode, match",
+    [
+        ("alpha", topo("router"), "bogus", "unknown fleet link mode 'bogus'"),
+        ("alpha", topo("radio"), None, "unknown fleet link mode 'radio'"),
+        ("nosuch", topo("fleetlink"), None, "'nosuch' is not a machine"),
+        (
+            "alpha",
+            topo("fleetlink", fleetlink_networks=["penn_wifi"]),
+            None,
+            "'gamma' has no address on zenoh.fleetlink_networks",
+        ),
+    ],
+)
+def test_fleet_link_env_errors(machine, t, mode, match):
+    with pytest.raises(FleetLinkError, match=match):
+        fleet_link_env(machine, t, mode)
+
+
+def test_fleet_link_env_real_topology(topology_path):
+    env = fleet_link_env("willow", load_topology(topology_path))
+    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7450"
 
 
 # --- generated sessions --------------------------------------------------------------

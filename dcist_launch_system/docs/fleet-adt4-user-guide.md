@@ -289,7 +289,7 @@ silvus_radios:
     radio_310061: { mgmt_ip: "172.20.187.45", node_id: 310061 }
 ```
 
-`python -m dcist_launch_system.fleet_env --check` validates the file (duplicate addresses on a network, `fleet_link`, `fleetlink_base`, `fleetlink_port`, `fleetlink_networks`); `python -m dcist_launch_system.fleet_env <machine>` prints the fleet link values `run-adt4` will use on that machine.
+`run-adt4` derives each session's fleet link values from this file (`fleet_helpers.fleet_link_env`).
 
 ### Network auto-detection
 

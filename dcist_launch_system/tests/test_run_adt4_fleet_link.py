@@ -103,12 +103,12 @@ def test_connect_and_port_always_from_topology(run_adt4, capsys):
 
 
 def test_router_fallback_when_fleet_settings_fail(run_adt4, monkeypatch):
-    import dcist_launch_system.fleet_env as fe
+    from dcist_launch_system import fleet_helpers
 
     def boom(*args, **kwargs):
         raise RuntimeError("no topology")
 
-    monkeypatch.setattr(fe, "fleet_env", boom)
+    monkeypatch.setattr(fleet_helpers, "load_topology", boom)
     env = {"ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:7450"}
     run_adt4._derive_fleet_env(env, "alpha")
     assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "router"
@@ -116,12 +116,12 @@ def test_router_fallback_when_fleet_settings_fail(run_adt4, monkeypatch):
 
 
 def test_fleet_env_falls_back_without_topology(run_adt4, monkeypatch):
-    import dcist_launch_system.fleet_env as fe
+    from dcist_launch_system import fleet_helpers
 
     def boom(*args, **kwargs):
         raise RuntimeError("no topology")
 
-    monkeypatch.setattr(fe, "fleet_env", boom)
+    monkeypatch.setattr(fleet_helpers, "load_topology", boom)
     env = run_adt4._fleet_env("alpha")
     assert env["ADT4_FLEETLINK_MODE"] == "router"
 

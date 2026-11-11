@@ -79,50 +79,6 @@ FLEET_LINK_MODES = ("router", "fleetlink")
 DEFAULT_FLEETLINK_PORT = 7450
 
 
-def validate_topology(topology):
-    """Consistency checks on a topology dict; returns a list of problems (empty = ok).
-
-    * no two machines share an address on the same network;
-    * ``fleet_defaults.fleet_link`` is one of FLEET_LINK_MODES;
-    * ``fleet_defaults.fleetlink_base`` names a base_station (required in fleetlink mode);
-    * ``zenoh.fleetlink_port`` is an int and ``zenoh.fleetlink_networks`` are known networks.
-    """
-    problems = []
-    machines = topology.get("machines") or {}
-    seen = {}  # (network, address) -> machine
-    for name, m in sorted(machines.items()):
-        for net, addr in sorted(((m or {}).get("addresses") or {}).items()):
-            other = seen.setdefault((net, str(addr)), name)
-            if other != name:
-                problems.append(f"duplicate {net} address {addr}: {other} and {name}")
-    defaults = topology.get("fleet_defaults") or {}
-    mode = defaults.get("fleet_link", "router")
-    if mode not in FLEET_LINK_MODES:
-        problems.append(
-            f"fleet_defaults.fleet_link must be one of {list(FLEET_LINK_MODES)}, "
-            f"got {mode!r}"
-        )
-    base = defaults.get("fleetlink_base")
-    if base is not None:
-        if base not in machines:
-            problems.append(f"fleet_defaults.fleetlink_base {base!r} is not a machine")
-        elif (machines[base] or {}).get("role") != "base_station":
-            problems.append(
-                f"fleet_defaults.fleetlink_base {base!r} is not a base_station"
-            )
-    elif mode == "fleetlink":
-        problems.append("fleet_link is 'fleetlink' but fleetlink_base is not set")
-    zconf = topology.get("zenoh") or {}
-    port = zconf.get("fleetlink_port")
-    if port is not None and (not isinstance(port, int) or isinstance(port, bool)):
-        problems.append(f"zenoh.fleetlink_port must be an int, got {port!r}")
-    networks = topology.get("networks") or {}
-    for net in zconf.get("fleetlink_networks") or []:
-        if net not in networks:
-            problems.append(f"zenoh.fleetlink_networks: unknown network {net!r}")
-    return problems
-
-
 def detect_network(topology):
     """Match local IPs against topology subnets to find the active network."""
     result = subprocess.run(
@@ -764,6 +720,53 @@ def fleetlink_summary(topology, role=None):
             return f"fleetlink router :{port} (no fleetlink_base set)"
         return f"no robot links (fleetlink router :{port} on {base})"
     return f"fleetlink client -> {base}:{port}"
+
+
+class FleetLinkError(ValueError):
+    """The fleet link settings for a machine cannot be derived from the topology."""
+
+
+ROUTER_MODE_PORT = 7447
+
+
+def fleet_link_env(machine_name, topology, mode=None):
+    """``{ADT4_FLEETLINK_MODE, ADT4_FLEETLINK_CONNECT, ADT4_FLEETLINK_PORT}`` for a machine.
+
+    ``mode`` ("router" | "fleetlink") overrides ``fleet_defaults.fleet_link`` (missing:
+    router). Router mode connects to the local rmw_zenohd. In fleetlink mode a base
+    station connects to its local fleetlink router and a robot to the fleetlink base's
+    address on each network of ``zenoh.fleetlink_networks``, in failover order.
+    Raises FleetLinkError for an unknown mode, a machine missing from the topology, or a
+    fleetlink base with no address on those networks.
+    """
+    topology = topology or {}
+    if not mode:
+        mode = (topology.get("fleet_defaults") or {}).get("fleet_link") or "router"
+    if mode not in FLEET_LINK_MODES:
+        raise FleetLinkError(
+            f"unknown fleet link mode {mode!r} (expected one of {list(FLEET_LINK_MODES)})"
+        )
+    port = fleetlink_port(topology)
+    zenoh_port = (topology.get("zenoh") or {}).get("port", ROUTER_MODE_PORT)
+    env = {
+        "ADT4_FLEETLINK_MODE": mode,
+        "ADT4_FLEETLINK_CONNECT": f"tcp/127.0.0.1:{zenoh_port}",
+        "ADT4_FLEETLINK_PORT": str(port),
+    }
+    if mode == "router":
+        return env
+    machines = topology.get("machines") or {}
+    if machine_name not in machines:
+        raise FleetLinkError(f"{machine_name!r} is not a machine in topology.yaml")
+    if (machines[machine_name] or {}).get("role") == "base_station":
+        return {**env, "ADT4_FLEETLINK_CONNECT": f"tcp/127.0.0.1:{port}"}
+    endpoints = generate_fleetlink_endpoints(topology)
+    if not endpoints:
+        raise FleetLinkError(
+            f"fleetlink base {fleetlink_base(topology)!r} has no address on "
+            "zenoh.fleetlink_networks"
+        )
+    return {**env, "ADT4_FLEETLINK_CONNECT": ",".join(endpoints)}
 
 
 def deploy_zenoh_config(user, ip, endpoints):

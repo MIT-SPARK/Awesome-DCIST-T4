@@ -33,7 +33,7 @@ ADT4_VARS = [
 ]
 
 # Fleet link mode (router | fleetlink) and fleetlink endpoints, derived from
-# topology.yaml by dcist_launch_system.fleet_env. Only the mode can be overridden from
+# topology.yaml by fleet_helpers.fleet_link_env. Only the mode can be overridden from
 # the environment; ADT4_FLEET_LINK is its old name: still read, and exported with the
 # same value.
 FLEET_VARS = ["ADT4_FLEETLINK_MODE", "ADT4_FLEETLINK_CONNECT", "ADT4_FLEETLINK_PORT"]
@@ -192,23 +192,16 @@ def _fleet_env(robot_name, mode=None):
     try:
         try:
             from dcist_launch_system import fleet_helpers
-            from dcist_launch_system.fleet_env import fleet_env
         except ImportError:  # workspace not sourced: use this checkout's sources
             sys.path.append(str(_ws_path() / "src"))
             from dcist_launch_system import fleet_helpers
-            from dcist_launch_system.fleet_env import fleet_env
 
         # this checkout's topology (the installed package cannot find it from a
         # non-symlink install); ADT4_TOPOLOGY overrides it
         topology = fleet_helpers.load_topology(
             os.environ.get("ADT4_TOPOLOGY") or _topology_path()
         )
-        return fleet_env(
-            robot_name,
-            topology,
-            warn=lambda msg: click.secho(f"fleet link: {msg}", fg="yellow"),
-            mode=mode,
-        )
+        return fleet_helpers.fleet_link_env(robot_name, topology, mode)
     except Exception as e:
         click.secho(f"Fleet link settings unavailable ({e}), router mode", fg="yellow")
         return {

@@ -579,7 +579,7 @@ backend (every scene-graph message then carries the whole mesh). If the odometri
 breaks (missed updates), the agent falls back to the `dsg` mode.
 
 **What runs where.** `run-adt4` derives the mode for the machine it launches on
-(`python -m dcist_launch_system.fleet_env <machine>` prints the same values) and exports
+(`fleet_helpers.fleet_link_env`) and exports
 `ADT4_FLEETLINK_MODE`, `ADT4_FLEETLINK_CONNECT` (where fleetlink connects) and
 `ADT4_FLEETLINK_PORT` to the tmux session. Robot mapping and relocalization sessions have a
 `fleetlink` window (the agent); the `base_station*` sessions have a `fleetlink_base` window

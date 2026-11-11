@@ -6,6 +6,7 @@ Run on the base station (namespaced by its own robot name) so that nodes reading
 /<robot>/network/tf with tf_network_node.
 """
 
+import os
 import re
 import time
 
@@ -14,8 +15,6 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from ros_system_monitor_msgs.msg import NodeInfoMsg
 from tf2_msgs.msg import TFMessage
-
-from dcist_launch_system.fleet_env import mode_from_env
 
 TF_TYPE = "tf2_msgs/msg/TFMessage"
 TOPIC_REGEX = re.compile(r"^/([^/]+)/network/(tf|tf_static)$")
@@ -189,7 +188,7 @@ class TfRelay(Node):
             t_now,
             dt,
             self.stale_after_s,
-            fleetlink=mode_from_env() == "fleetlink",
+            fleetlink=os.environ.get("ADT4_FLEETLINK_MODE") == "fleetlink",
         )
         for robot in self.msg_counts:
             self.msg_counts[robot] = 0
