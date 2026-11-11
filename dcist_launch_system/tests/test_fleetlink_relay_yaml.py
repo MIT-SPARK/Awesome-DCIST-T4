@@ -10,17 +10,26 @@ import sys
 
 import pytest
 
-try:
-    import fleetlink.relay  # noqa: F401
-except ImportError:  # not built: use the submodule's sources
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "fleetlink"))
-RelayConfig = pytest.importorskip("fleetlink.relay").RelayConfig
-
 RELAY_YAML = os.path.join(os.path.dirname(__file__), "..", "fleetlink", "relay.yaml")
 
 
-def test_real_relay_yaml_loads_and_filters_platforms():
-    cfg = RelayConfig.load(RELAY_YAML)
+@pytest.fixture(scope="module")
+def relay_config_class():
+    try:
+        from fleetlink.relay import RelayConfig
+    except ImportError:  # not built: use the submodule's sources
+        # The hand-written config directory (or submodule root) may have been
+        # cached as a namespace package by the failed import.
+        sys.modules.pop("fleetlink", None)
+        sys.path.insert(
+            0, str(pathlib.Path(__file__).resolve().parents[2] / "fleetlink")
+        )
+        return pytest.importorskip("fleetlink.relay").RelayConfig
+    return RelayConfig
+
+
+def test_real_relay_yaml_loads_and_filters_platforms(relay_config_class):
+    cfg = relay_config_class.load(RELAY_YAML)
     spot = cfg.resolve("euclid", "spot", base="willow")
     husky = cfg.resolve("gauss", "phoenix", base="willow")
     plan = "/euclid/omniplanner_node/compiled_plan_out"
@@ -53,8 +62,8 @@ def test_real_relay_yaml_loads_and_filters_platforms():
     assert len(cfg.hash) == 12
 
 
-def test_real_relay_yaml_phoenix_rows():
-    cfg = RelayConfig.load(RELAY_YAML)
+def test_real_relay_yaml_phoenix_rows(relay_config_class):
+    cfg = relay_config_class.load(RELAY_YAML)
     spot = cfg.resolve("euclid", "spot", base="willow")
     for platform in ("phoenix", "husky"):  # husky: the topology alias
         phx = cfg.resolve("gauss", platform, base="willow")
@@ -84,8 +93,8 @@ def test_real_relay_yaml_phoenix_rows():
     assert "/euclid/manual_mode" not in spot.topics
 
 
-def test_relay_yaml_teleop_entries():
-    cfg = RelayConfig.load(RELAY_YAML)
+def test_relay_yaml_teleop_entries(relay_config_class):
+    cfg = relay_config_class.load(RELAY_YAML)
     spot = cfg.resolve("euclid", "spot", base="willow")
     husky = cfg.resolve("gauss", "phoenix", base="willow")
     vel = spot.topics["/euclid/spot_executor_node/cmd_vel"]
