@@ -405,6 +405,8 @@ that network can use it: edit the map, send robots goals, and use the chat (whic
 LLM API key). Set `ADT4_CONSOLE_TOKEN` before launching to require that token; browsers then
 open `http://<base station>:8090/?token=<token>`, and API clients send
 `Authorization: Bearer <token>`.
+`run-adt4` forwards the token and port to the console session even when the tmux
+server is already running. Dry-run output redacts the token.
 
 
 
