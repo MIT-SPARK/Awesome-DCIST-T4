@@ -46,7 +46,7 @@ MODE_ONLY_NODES = {
     "fleetlink_bridge": "fleetlink",
 }
 
-CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT")
+CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT", "ADT4_NETWORK")
 
 
 class PlatformType(enum.Enum):
