@@ -79,8 +79,13 @@ def neo4j_base_sessions():
     }
 
 
+# console-only session (start-adt4-console): no SAM3 server; the planning session started
+# beside it runs the one openset_query server (a second copy would fight over its port/GPU)
+CONSOLE_ONLY = {"base_station_console"}
+
+
 def test_neo4j_base_sessions_run_openset_query():
-    sessions = neo4j_base_sessions()
+    sessions = {k: v for k, v in neo4j_base_sessions().items() if k not in CONSOLE_ONLY}
     assert sessions
     for name, exp in sessions.items():
         assert "openset_query" in exp["launch_config"], name
