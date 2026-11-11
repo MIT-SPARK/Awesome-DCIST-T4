@@ -11,6 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Dependencies
-        run: sudo apt-get update && sudo apt install pipx
+        run: |
+          SUDO=""
+          if [ "$(id -u)" -ne 0 ]; then SUDO="sudo"; fi
+          # Fallback for when the Ubuntu mirrors do not resolve (e.g. the Ubuntu DNS outage of
+          # 2026-11-11): add public DNS servers and, if that does not help, use the HTTPS
+          # kernel.org Ubuntu mirror. Packages stay GPG-verified whichever mirror serves them.
+          if ! getent hosts archive.ubuntu.com > /dev/null || ! getent hosts security.ubuntu.com > /dev/null; then
+            echo "Ubuntu mirrors do not resolve: adding public DNS servers"
+            printf 'nameserver 8.8.8.8\nnameserver 1.1.1.1\n' | $SUDO tee -a /etc/resolv.conf > /dev/null || true
+            echo 'Acquire::ForceIPv4 "true";' | $SUDO tee /etc/apt/apt.conf.d/99force-ipv4 > /dev/null
+            if ! getent hosts archive.ubuntu.com > /dev/null || ! getent hosts security.ubuntu.com > /dev/null; then
+              echo "Ubuntu mirrors still do not resolve: using https://mirrors.edge.kernel.org/ubuntu"
+              for f in /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources /etc/apt/apt-mirrors.txt; do
+                [ -f "$f" ] || continue
+                $SUDO sed -i -E 's#https?://((azure|[a-z]{2})\.)?(archive|security)\.ubuntu\.com/ubuntu/?#https://mirrors.edge.kernel.org/ubuntu/#g' "$f"
+              done
+            fi
+          fi
+          $SUDO apt-get -o Acquire::Retries=5 update
+          $SUDO apt-get -o Acquire::Retries=5 install -y pipx
       - name: Lint
         run: pipx install pre-commit && cd ${{github.workspace}} && pre-commit run --all-files
