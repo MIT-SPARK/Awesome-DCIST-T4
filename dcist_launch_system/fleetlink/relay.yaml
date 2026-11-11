@@ -8,6 +8,7 @@
 #
 # topics:  one entry per ROS topic that crosses the radio.
 #   topic          name pattern, usually "/{robot}/..."
+#   base_topic     optional base-side publication alias for up topics (requires fleetlink fanout support)
 #   type           ROS message type (pkg/msg/Name). Type-hash mismatch => message rejected.
 #   dir            down = base -> robot, up = robot -> base. A topic must appear in ONE
 #                  direction only (validation rejects both; this is the loop prevention).
@@ -156,6 +157,30 @@ topics:
     ttl_s:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  # Plan ordering across robots: private uplinks feed the base's global
+  # topic, which is relayed down to every executor. Downlink messages never
+  # feed a private uplink, so this does not create a relay echo loop.
+  - topic: /{robot}/spot_executor_node/plan_progress
+    base_topic: /plan_progress
+    type: robot_executor_msgs/msg/PlanProgressMsg
+    dir: up
+    mode: reliable
+    cls: C0
+    rate_hz:
+    ttl_s:
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 100}
+    platform: [spot]
+  - topic: /plan_progress
+    type: robot_executor_msgs/msg/PlanProgressMsg
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz:
+    ttl_s:
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 100}
     platform: [spot]
   # finished actions for the plan repair node (omniplanner_repair_node); one topic for the
   # whole fleet, the message carries robot_name
