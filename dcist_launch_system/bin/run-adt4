@@ -2,6 +2,7 @@
 
 import atexit
 import enum
+import json
 import os
 import pathlib
 import readline
@@ -28,7 +29,19 @@ ADT4_VARS = [
     "ADT4_SIM_TIME",
     "ADT4_RVIZ_CONFIG",
     "ADT4_TF_NETWORK_MODE",
+    "ADT4_FLEETLINK_MODE",
+    "ADT4_FLEETLINK_CONNECT",
 ]
+
+# Fleet link mode (router | fleetlink) and fleetlink endpoints, derived from
+# topology.yaml by dcist_launch_system.fleet_env. ADT4_FLEET_LINK is the old name of
+# ADT4_FLEETLINK_MODE: still read, and exported with the same value.
+FLEET_VARS = ["ADT4_FLEETLINK_MODE", "ADT4_FLEETLINK_CONNECT", "ADT4_FLEETLINK_PORT"]
+LEGACY_MODE_VAR = "ADT4_FLEET_LINK"
+# what this run derived (JSON), exported to the session: a later run-adt4 started
+# from a shell inside that session derives those values again instead of taking
+# them as explicit overrides
+DERIVED_ENV_VAR = "ADT4_FLEETLINK_DERIVED"
 
 
 class PlatformType(enum.Enum):
@@ -56,6 +69,8 @@ class SessionInfo:
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
     zenoh: bool = True
+    fleet_link: str = "router"
+    session_env: dict = field(default_factory=dict)
 
     @property
     def platform_type(self) -> PlatformType:
@@ -167,6 +182,92 @@ def _resolve_output_dir(output_dir, force):
         shutil.rmtree(output_dir)
 
     return output_dir
+
+
+def _topology_path():
+    return _ws_path().parent / "network_diagnostics" / "config" / "topology.yaml"
+
+
+def _fleet_env(robot_name, mode=None):
+    """{ADT4_FLEETLINK_MODE, _CONNECT, _PORT} for this machine from topology.yaml.
+
+    Never fails the launch: any problem falls back to router mode.
+    """
+    try:
+        try:
+            from dcist_launch_system import fleet_helpers
+            from dcist_launch_system.fleet_env import fleet_env
+        except ImportError:  # workspace not sourced: use this checkout's sources
+            sys.path.append(str(_ws_path() / "src"))
+            from dcist_launch_system import fleet_helpers
+            from dcist_launch_system.fleet_env import fleet_env
+
+        # this checkout's topology (the installed package cannot find it from a
+        # non-symlink install); ADT4_TOPOLOGY overrides it
+        topology = fleet_helpers.load_topology(
+            os.environ.get("ADT4_TOPOLOGY") or _topology_path()
+        )
+        return fleet_env(
+            robot_name,
+            topology,
+            warn=lambda msg: click.secho(f"fleet link: {msg}", fg="yellow"),
+            mode=mode,
+        )
+    except Exception as e:
+        click.secho(f"Fleet link settings unavailable ({e}), router mode", fg="yellow")
+        return {
+            "ADT4_FLEETLINK_MODE": "router",
+            "ADT4_FLEETLINK_CONNECT": "tcp/127.0.0.1:7447",
+            "ADT4_FLEETLINK_PORT": "7450",
+        }
+
+
+def _inherited_vars(env):
+    """Vars whose value is still what the recorded earlier run-adt4 derived."""
+    try:
+        recorded = json.loads(env.get(DERIVED_ENV_VAR) or "{}")
+    except ValueError:
+        return []
+    if not isinstance(recorded, dict):
+        return []
+    return [k for k, v in recorded.items() if env.get(k) == v]
+
+
+def _derive_fleet_env(env, robot_name, fleet_env=None):
+    """Fill ``env`` (in place) with the fleet link vars; return what was derived.
+
+    A value set in the launching environment wins (``ADT4_FLEETLINK_MODE``, else the
+    legacy ``ADT4_FLEET_LINK``, picks the mode the endpoints are derived for); the rest
+    come from topology.yaml. They are always set: the tmux session environment passes
+    them on, and an unset one would reach the panes as a literal "$VAR".
+    """
+    fleet_env = fleet_env or _fleet_env
+    for var in _inherited_vars(env):
+        env.pop(var, None)
+    env.pop(DERIVED_ENV_VAR, None)
+
+    derived = {}
+    mode = env.get("ADT4_FLEETLINK_MODE") or env.get(LEGACY_MODE_VAR) or None
+    for var, value in fleet_env(robot_name, mode).items():
+        if not env.get(var):
+            env[var] = derived[var] = value
+        elif env[var] != value:
+            click.secho(
+                f"{var}={env[var]} from the environment overrides topology.yaml's "
+                f"{value!r} (unset it if that is stale)",
+                fg="yellow",
+            )
+    if env.get(LEGACY_MODE_VAR) != env["ADT4_FLEETLINK_MODE"]:
+        env[LEGACY_MODE_VAR] = derived[LEGACY_MODE_VAR] = env["ADT4_FLEETLINK_MODE"]
+
+    env[DERIVED_ENV_VAR] = json.dumps(derived, sort_keys=True)
+    return derived
+
+
+def _session_env(env):
+    """run-adt4's fleet link values for the tmux session environment."""
+    names = FLEET_VARS + [LEGACY_MODE_VAR, DERIVED_ENV_VAR]
+    return {k: env[k] for k in names if env.get(k)}
 
 
 def _show_vars(env):
@@ -282,10 +383,24 @@ def _make_bag_window(info: SessionInfo):
     return window_config
 
 
-def _make_zenoh_window():
+# In fleetlink mode only fleetlink crosses the radio, so the local rmw_zenohd must
+# not dial other machines. ~/.zshrc often points ZENOH_ROUTER_CONFIG_URI at a fleet
+# config whose connect endpoints are the other routers; clear them
+# (ZENOH_CONFIG_OVERRIDE: ';'-separated key=JSON5 pairs applied over that file).
+FLEETLINK_ZENOH_OVERRIDE = "connect/endpoints=[]"
+
+
+def _zenoh_cmd(fleet_link):
+    cmd = "ros2 run rmw_zenoh_cpp rmw_zenohd"
+    if fleet_link == "fleetlink":
+        return f"ZENOH_CONFIG_OVERRIDE={shlex.quote(FLEETLINK_ZENOH_OVERRIDE)} {cmd}"
+    return cmd
+
+
+def _make_zenoh_window(fleet_link="router"):
     return {
         "layout": "tiled",
-        "panes": ["ros2 run rmw_zenoh_cpp rmw_zenohd"],
+        "panes": [_zenoh_cmd(fleet_link)],
         "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
         "window_name": "zenoh",
     }
@@ -302,7 +417,14 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
         contents["windows"].append(_make_record_window(info))
 
     if info.zenoh:
-        contents["windows"] = [_make_zenoh_window()] + contents["windows"]
+        contents["windows"] = [_make_zenoh_window(info.fleet_link)] + contents[
+            "windows"
+        ]
+
+    # the fleet link values reach every session (e.g. tf_relay reads the mode),
+    # whatever its components declare
+    contents.setdefault("environment", {})
+    contents["environment"].update(info.session_env)
 
     if info.session_name:
         contents["session_name"] = info.session_name
@@ -419,6 +541,7 @@ def main(
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
     if prior_map:
         env["ADT4_PRIOR_MAP"] = str(prior_map)
+    _derive_fleet_env(env, robot_name)
 
     if rviz_config:
         rviz_config = pathlib.Path(rviz_config).expanduser().absolute()
@@ -445,6 +568,8 @@ def main(
         trajectory=_normalize_optional(trajectory),
         record=record,
         zenoh=zenoh,
+        fleet_link=env["ADT4_FLEETLINK_MODE"],
+        session_env=_session_env(env),
     )
     if trajectory_args:
         info.trajectory_args = trajectory_args.split(" ")
