@@ -1,0 +1,10 @@
+---
+windows:
+  - window_name: console
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      # web console (fleet, map viewer, planning) on http://<base station>:${ADT4_CONSOLE_PORT:-8090},
+      # also showing the live Neo4j map that heracles seeds from the prior and updates
+      # (ADT4_HERACLES_IP/PORT; credentials from ADT4_NEO4J_USERNAME/PASSWORD)
+      - ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}
