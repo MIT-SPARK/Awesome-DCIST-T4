@@ -1,3 +1,4 @@
+---
 # fleetlink generic ROS relay table for ADT4 (fleetlink mode).
 # Seeded from dcist_launch_system/scripts/fleetlink_inventory.py (static analysis; rows
 # marked "unverified" had no robot-side counterpart found by the scan).
@@ -42,15 +43,14 @@
 #            timeout_s: the caller gives up after this; requests are retried every 1 s.
 # Unknown keys, modes, directions or classes are rejected (fleetlink.relay.RelayConfig).
 version: 1
-
 topics:
   # ---------------------------------------------------------------- commands (down)
   - topic: /{robot}/omniplanner_node/compiled_plan_out
-    type: robot_executor_msgs/msg/ActionSequenceMsg   # nav_msgs/msg/Path for platform husky/phoenix
+    type: robot_executor_msgs/msg/ActionSequenceMsg  # nav_msgs/msg/Path for platform husky/phoenix
     dir: down
     mode: latest_reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 30
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 1}
@@ -60,7 +60,7 @@ topics:
     dir: down
     mode: latest_reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 30
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 1}
@@ -72,7 +72,7 @@ topics:
     dir: down
     mode: reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 10
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 10}
@@ -82,7 +82,7 @@ topics:
     dir: down
     mode: reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 10
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 10}
@@ -92,7 +92,7 @@ topics:
     dir: down
     mode: reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 10
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 10}
@@ -106,7 +106,7 @@ topics:
     dir: down
     mode: reliable
     cls: C0
-    rate_hz: null
+    rate_hz:
     ttl_s: 30
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 10}
@@ -150,10 +150,10 @@ topics:
   - topic: /{robot}/spot_executor_node/action_result
     type: robot_executor_msgs/msg/ActionResultMsg
     dir: up
-    mode: reliable            # per-action results must not be lost (planner obligation tracking)
+    mode: reliable  # per-action results must not be lost (planner obligation tracking)
     cls: C0
-    rate_hz: null
-    ttl_s: null
+    rate_hz:
+    ttl_s:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
@@ -164,8 +164,8 @@ topics:
     dir: up
     mode: reliable
     cls: C0
-    rate_hz: null
-    ttl_s: null
+    rate_hz:
+    ttl_s:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
@@ -176,7 +176,7 @@ topics:
     dir: up
     mode: latest_reliable
     cls: C3
-    rate_hz: null
+    rate_hz:
     ttl_s: 120
     replay_on_resync: false
     qos: {reliability: reliable, durability: volatile, depth: 1}
@@ -213,8 +213,8 @@ topics:
     dir: up
     mode: latest_reliable
     cls: C2
-    rate_hz: null
-    ttl_s: null
+    rate_hz:
+    ttl_s:
     replay_on_resync: true
     qos: {reliability: reliable, durability: transient_local, depth: 10}
     # NOTE: global like table_in; BaseBridge republishes it as is (one shared publisher).
@@ -224,8 +224,8 @@ topics:
     dir: up
     mode: latest_reliable
     cls: C2
-    rate_hz: null
-    ttl_s: null
+    rate_hz:
+    ttl_s:
     replay_on_resync: true
     qos: {reliability: reliable, durability: transient_local, depth: 1}
   # phoenix auto / manual mode (true = manual: sequence_controller ignores plans). The
@@ -272,7 +272,7 @@ topics:
   #   ttl_s: 30
   #   replay_on_resync: true
   #   qos: {reliability: reliable, durability: transient_local, depth: 1}
-  # - topic: /{robot}/spot_executor_node/inflated_occupancy_map     # heavy (OccupancyGrid)
+  # - topic: /{robot}/spot_executor_node/inflated_occupancy_map  # heavy (OccupancyGrid)
   #   type: nav_msgs/msg/OccupancyGrid
   #   dir: up
   #   mode: latest
@@ -281,7 +281,7 @@ topics:
   #   ttl_s: 60
   #   replay_on_resync: true
   #   qos: {reliability: reliable, durability: transient_local, depth: 1}
-  # - topic: /{robot}/hydra/tsdf/occupancy                          # heavy; display disabled in dcist.rviz
+  # - topic: /{robot}/hydra/tsdf/occupancy  # heavy; display disabled in dcist.rviz
   #   type: nav_msgs/msg/OccupancyGrid
   #   dir: up
   #   mode: latest
@@ -298,10 +298,9 @@ topics:
   # (omniplanner remaps ~/llm_response to rviz2_node/llm_response in the planner namespace;
   # the console's per-robot subscription is dead), plan_visited_pois, commanded_goal and
   # pddl_goal (goal_manager <-> omniplanner, both on the base).
-
 tf:
   - parent: map
-    child: "{robot}/base_link"
+    child: '{robot}/base_link'
     rate_hz: 5.0
     ttl_s: 2
     mode: latest
@@ -310,12 +309,11 @@ tf:
   # static transforms (e.g. {robot}/body -> {robot}/base_link, calibration) are sent once
   # and again on resync
   - static: true
-    frames_prefix: "{robot}/"
+    frames_prefix: '{robot}/'
     dir: up
     mode: latest_reliable
     cls: C0
     replay_on_resync: true
-
 services:
   # robot-side executor calls this; the base (heracles_state_updater) serves it
   # Heracles serves one endpoint per robot on the base ROS graph, with the same
@@ -377,7 +375,7 @@ services:
     ttl_s: 5
     timeout_s: 10
     platform: [phoenix, husky]
-  # active window change detection (khronos RosChangeDetectionController, #355): the
+  #  active window change detection (khronos RosChangeDetectionController,  # 355): the
   # console's Live panel starts it once the robot is relocalized. Short ttl: a start or
   # stop that arrives late must not fire.
   - service: /{robot}/change_detection/start

@@ -1,4 +1,4 @@
-"""ADT4's fleetlink relay table (dcist_launch_system/config/fleetlink/relay.yaml).
+"""ADT4's fleetlink relay table (dcist_launch_system/fleetlink/relay.yaml).
 
 Needs the fleetlink package importable (``from fleetlink.relay import RelayConfig``):
 a built workspace, or the fleetlink submodule on the path (skipped otherwise).
@@ -16,9 +16,7 @@ except ImportError:  # not built: use the submodule's sources
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "fleetlink"))
 RelayConfig = pytest.importorskip("fleetlink.relay").RelayConfig
 
-RELAY_YAML = os.path.join(
-    os.path.dirname(__file__), "..", "config", "fleetlink", "relay.yaml"
-)
+RELAY_YAML = os.path.join(os.path.dirname(__file__), "..", "fleetlink", "relay.yaml")
 
 
 def test_real_relay_yaml_loads_and_filters_platforms():

@@ -554,7 +554,7 @@ For additional instructions, please refer [here](https://github.com/ros2/rmw_zen
 > **In short:** by default robots and the base station no longer share one ROS graph over
 > the radio. Each machine keeps its own ROS graph, and fleetlink sends only what the base
 > needs (scene graph, mesh, pose, health, cameras) plus the topics and services listed in
-> `dcist_launch_system/config/fleetlink/relay.yaml`. `run-adt4` sets this up from
+> `dcist_launch_system/fleetlink/relay.yaml`. `run-adt4` sets this up from
 > `topology.yaml`; set `fleet_defaults.fleet_link: router` there (or
 > `ADT4_FLEETLINK_MODE=router`) to go back to the previous router-to-router setup.
 
