@@ -5,6 +5,7 @@ import itertools
 import logging
 import pathlib
 import pprint
+import shlex
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,114 @@ def str_to_bool(string):
     elif string.lower() == "false":
         return False
     return None
+
+
+# --- pane shells -------------------------------------------------------------
+# tmuxp types `shell_command_before` and each pane command with `tmux send-keys`.
+# With a slow (oh-my-zsh) shell those keystrokes race the shell start-up: on the
+# robots they were lost or landed in another window's pane, so commands silently
+# never ran. Every generated pane therefore runs as its own process instead,
+# through tmuxp's pane-level `shell` key:
+#
+#     zsh -ic '<shell_command_before> && <cmd>; <exec an interactive zsh>'
+#
+# The pane inherits the tmux session environment, but `zsh -ic` sources ~/.zshrc
+# before the command, so anything ~/.zshrc exports (e.g. ZENOH_ROUTER_CONFIG_URI)
+# wins over the session value, as it did for typed commands. When the command
+# exits, the pane becomes an interactive zsh whose history holds the command
+# (up-arrow restarts it). A command ending in a backslash is only prepared, not
+# run: it is put on the prompt instead.
+PANE_ZDOTDIR = (
+    "${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"
+)
+
+
+def _cmd_strings(value):
+    """tmuxp shell_command / shell_command_before (str, list, dicts) -> [str]."""
+    if value is None:
+        return []
+    if isinstance(value, dict):
+        value = value.get("shell_command", value.get("cmd", []))
+    if isinstance(value, str):
+        value = [value]
+    cmds = []
+    for item in value:
+        if isinstance(item, dict):
+            item = item.get("cmd", "")
+        if item is None:
+            continue
+        item = str(item).strip()
+        if item and item != "blank":
+            cmds.append(item)
+    return cmds
+
+
+def interactive_shell_cmd(cmd=None, prefill=False):
+    """Shell code that replaces the pane process with an interactive zsh.
+
+    ``cmd`` goes into that shell's history (or onto its prompt with ``prefill``).
+    Falls back to a plain ``exec zsh`` if the pane_shell ZDOTDIR is missing.
+    """
+    env = []
+    if cmd:
+        env.append(f"ADT4_PANE_CMD={shlex.quote(cmd)}")
+        if prefill:
+            env.append("ADT4_PANE_PREFILL=1")
+    return (
+        f'z="{PANE_ZDOTDIR}"; [[ -r $z/.zshrc ]] && '
+        'export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$z; ' + " ".join(env + ["exec zsh"])
+    )
+
+
+def pane_script(before, cmds):
+    """The shell script a pane runs: setup && command(s), then an interactive zsh."""
+    before = _cmd_strings(before)
+    cmds = _cmd_strings(cmds)
+    prefill = None
+    if cmds and cmds[-1].endswith("\\"):
+        # a prepared command (typed but not run in the send-keys days)
+        prefill = cmds.pop().rstrip("\\").rstrip()
+    steps = before + cmds
+    script = " && ".join(steps) + "; " if steps else ""
+    history = prefill if prefill is not None else " && ".join(cmds)
+    return script + interactive_shell_cmd(history, prefill=prefill is not None)
+
+
+def pane_shell(before, cmds):
+    """tmuxp pane-level ``shell`` value for ``pane_script(before, cmds)``."""
+    return f"zsh -ic {shlex.quote(pane_script(before, cmds))}"
+
+
+def pane_command(pane):
+    """The command a converted pane runs (its history entry); "" for none."""
+    shell = pane.get("shell", "") if isinstance(pane, dict) else str(pane or "")
+    argv = shlex.split(shell)
+    if argv[:2] != ["zsh", "-ic"] or len(argv) != 3:
+        return shell
+    for token in shlex.split(argv[2]):
+        if token.startswith("ADT4_PANE_CMD="):
+            return token[len("ADT4_PANE_CMD=") :]
+    return ""
+
+
+def convert_to_pane_shells(contents):
+    """Rewrite a tmuxp session so no pane relies on send-keys (see above)."""
+    session_before = _cmd_strings(contents.pop("shell_command_before", None))
+    for window in contents.get("windows") or []:
+        before = session_before + _cmd_strings(window.pop("shell_command_before", None))
+        panes = window.get("panes") or [None]
+        new_panes = []
+        for pane in panes:
+            pane = dict(pane) if isinstance(pane, dict) else {"shell_command": pane}
+            if "shell" in pane:  # already a process pane
+                new_panes.append(pane)
+                continue
+            cmds = pane.pop("shell_command", None)
+            pane_before = before + _cmd_strings(pane.pop("shell_command_before", None))
+            pane["shell"] = pane_shell(pane_before, cmds)
+            new_panes.append(pane)
+        window["panes"] = new_panes
+    return contents
 
 
 def log_error(msg):
@@ -305,8 +414,14 @@ def render_tmux(root_path, manifest, tmux_output_dir):
                 extras["environment"]["ADT4_MONITOR_CONFIG"] = monitor_str
 
             cmd += ["-c", _dump_str(extras)]
+            ret = subprocess.run(cmd, stdout=subprocess.PIPE)
+            if ret.returncode != 0:
+                log_error(f"Failed to composite tmux for {logging_key}!")
+                continue
+
+            session = convert_to_pane_shells(yaml.safe_load(ret.stdout))
             with base_launch_fn.open("w") as fout:
-                subprocess.run(cmd, stdout=fout)
+                yaml.safe_dump(session, fout, sort_keys=False, width=100000)
 
     unmatched = important_variants - set(generated_variants)
     if unmatched:

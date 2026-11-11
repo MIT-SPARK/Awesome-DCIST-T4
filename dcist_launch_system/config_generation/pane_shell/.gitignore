@@ -1,0 +1,2 @@
+# zsh writes its completion cache here when panes start with this ZDOTDIR
+.zcompdump*
