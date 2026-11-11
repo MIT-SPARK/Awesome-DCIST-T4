@@ -10,7 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Dependencies
-        run: sudo apt-get update && sudo apt install pipx
+      - name: Install pre-commit
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pre-commit"
+          "$RUNNER_TEMP/pre-commit/bin/python" -m pip install pre-commit
+          echo "$RUNNER_TEMP/pre-commit/bin" >> "$GITHUB_PATH"
       - name: Lint
-        run: pipx install pre-commit && cd ${{github.workspace}} && pre-commit run --all-files
+        run: pre-commit run --all-files
