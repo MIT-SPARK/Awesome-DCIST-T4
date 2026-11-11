@@ -28,7 +28,6 @@ configs:
   regions_traversability: [regions]
   relocalize: []
   relocalize_awcd: [relocalize]
-  relocalize_fused: [relocalize]
   indoor_regions: [indoor, regions]
   grstaps: [prior_dsg]
   # Same planner, but listening for the repair flow's ConstrainedPddlGoalMsg
@@ -69,7 +68,7 @@ experiments:
     config: [default, indoor, image_logging]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
-    config: [relocalize, relocalize_awcd, relocalize_fused]
+    config: [relocalize, relocalize_awcd]
   spot_regions:
     launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink]
     config: [indoor_regions]
@@ -84,7 +83,7 @@ experiments:
     config: [default, indoor, image_logging]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
-    config: [relocalize, relocalize_awcd, relocalize_fused]
+    config: [relocalize, relocalize_awcd]
   spot_bag_regions:
     launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink]
     config: [indoor_regions]
@@ -98,7 +97,7 @@ experiments:
     config: [default, image_logging]
   phoenix_relocalize:
     launch_config: [relocalize, phoenix_real, sensors]
-    config: [relocalize, relocalize_awcd, relocalize_fused]
+    config: [relocalize, relocalize_awcd]
   phoenix_data_collection:
     launch_config: [robot_main, phoenix_real, sensors]
     config: [default]
@@ -107,7 +106,7 @@ experiments:
     config: [default, image_logging]
   phoenix_bag_relocalize:
     launch_config: bag_relocalize
-    config: [relocalize, relocalize_awcd, relocalize_fused]
+    config: [relocalize, relocalize_awcd]
 
   # development — offline/simulation experiments
   # a simulated Spot (FakeSpot executor) with the fleetlink agent: plan -> result over
