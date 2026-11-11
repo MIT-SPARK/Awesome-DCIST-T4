@@ -155,14 +155,14 @@ fi
 ##################################
 # The console's Python dependencies are in spark_requirements.txt. Its browser UI
 # is built here (into adt4_console/adt4_console/static, not committed; colcon
-# installs it with the package) and needs Node >= 20.19; without it the console
+# installs it with the package) and needs Node 20.19+ or 22.12+; without it the console
 # serves a page saying how to build the UI, and the API.
 
 if [ "$install_console" = true ]; then
     console_frontend=$ADT4_WS/src/awesome_dcist_t4/adt4_console/frontend
     node_ok=false
     if command -v node > /dev/null 2>&1 && command -v npm > /dev/null 2>&1; then
-        if node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 20 || (a === 20 && b >= 19) ? 0 : 1)'; then
+        if node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit((a === 20 && b >= 19) || (a === 22 && b >= 12) || a > 22 ? 0 : 1)'; then
             node_ok=true
         fi
     fi
@@ -172,14 +172,15 @@ if [ "$install_console" = true ]; then
         echo "Skipping the console UI build: no $console_frontend/package.json."
     elif [ "$node_ok" = false ]; then
         echo "*********************************************************************************************************"
-        echo "** Skipping the console UI build: it needs Node >= 20.19 (found: $(node --version 2>/dev/null || echo none)). **"
+        echo "** Skipping the console UI build: it needs Node 20.19+ or 22.12+ (found: $(node --version 2>/dev/null || echo none)). **"
         echo "** Install Node 22 (nvm or NodeSource; apt's 18.x is too old) and re-run this script, or run:            **"
         echo "**   cd $console_frontend && npm ci && npm run build"
         echo "*********************************************************************************************************"
     else
         echo "Building the console UI in $console_frontend"
-        pushd $console_frontend
-        npm ci && npm run build
-        popd
+        if ! (cd "$console_frontend" && npm ci && npm run build); then
+            echo "Console UI build failed; fix the npm error and re-run this script." >&2
+            exit 1
+        fi
     fi
 fi

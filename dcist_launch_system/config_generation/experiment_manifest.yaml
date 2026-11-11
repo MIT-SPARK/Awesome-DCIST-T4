@@ -70,14 +70,14 @@ experiments:
     launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base]
     config: [default]
   base_station_web:
-    launch_config: [plan_prior_web, multi_status, tf_relay]
+    launch_config: [plan_prior_web, multi_status, tf_relay, fleetlink_base]
     config: [default]
   base_station_web_repair:
-    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay]
+    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay, fleetlink_base]
     config: [default]
   # same, planning with GRSTAPS-X (needs `itags` on PATH and ADT4_GUROBI_LICENSE)
   base_station_web_grstaps_repair:
-    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay]
+    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay, fleetlink_base]
     config: [grstaps_repair]
 
   # spot configs — require Spot hardware or bag playback
