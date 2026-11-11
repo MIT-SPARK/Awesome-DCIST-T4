@@ -1,8 +1,13 @@
 ---
+# tf_relay merges the robots' TF on the base in router mode only: in fleetlink mode
+# (ADT4_FLEETLINK_MODE, set by run-adt4) fleetlink-bridge relays robot TF and tf_relay is not
+# started; run-adt4 then drops tf_relay from the status monitor (_monitor_config).
 nodes_to_monitor:
   tf_relay: {}
 windows:
   - window_name: tf_relay
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true]
+    panes:
+      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo "tf_relay not started (fleetlink mode, fleetlink-bridge relays robot TF)"; else ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config
+        sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true; fi

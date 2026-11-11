@@ -38,6 +38,9 @@ ADT4_VARS = [
 # topology.yaml by fleet_helpers.fleet_link_env. Only the mode can be overridden from
 # the environment.
 FLEET_VARS = ["ADT4_FLEETLINK_MODE", "ADT4_FLEETLINK_CONNECT", "ADT4_FLEETLINK_PORT"]
+# status-monitor entries whose node runs in one fleet link mode only (their panes check
+# ADT4_FLEETLINK_MODE); run-adt4 drops them from ADT4_MONITOR_CONFIG in the other mode
+MODE_ONLY_NODES = {"tf_relay": "router"}
 
 
 class PlatformType(enum.Enum):
@@ -379,6 +382,21 @@ def _make_zenoh_window(fleet_link="router"):
     }
 
 
+def _monitor_config(monitor, fleet_link):
+    """ADT4_MONITOR_CONFIG without the nodes that do not run in ``fleet_link`` mode."""
+    config = yaml.safe_load(monitor) or {}
+    nodes = config.get("nodes_to_track") or {}
+    keep = {
+        name: entry
+        for name, entry in nodes.items()
+        if MODE_ONLY_NODES.get(name, fleet_link) == fleet_link
+    }
+    if len(keep) == len(nodes):
+        return monitor
+    config["nodes_to_track"] = keep
+    return yaml.dump(config, default_flow_style=True, width=800).strip("\n")
+
+
 def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False):
     with session_path.open("r") as fin:
         contents = yaml.safe_load(fin.read())
@@ -398,6 +416,11 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     # whatever its components declare
     contents.setdefault("environment", {})
     contents["environment"].update(info.session_env)
+    monitor = contents["environment"].get("ADT4_MONITOR_CONFIG")
+    if monitor:
+        contents["environment"]["ADT4_MONITOR_CONFIG"] = _monitor_config(
+            monitor, info.fleet_link
+        )
 
     if info.session_name:
         contents["session_name"] = info.session_name

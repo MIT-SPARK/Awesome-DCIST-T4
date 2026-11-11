@@ -222,3 +222,36 @@ def test_regional_mapping_sessions_have_a_radio_relay(session):
     agents = [w for w in config["windows"] if w["window_name"] == "fleetlink"]
     assert len(agents) == 1
     assert "relay_config:=" in " ".join(agents[0]["panes"])
+
+
+MONITOR = "{nodes_to_track: {omniplanner: {}, tf_relay: {}}}"
+
+
+def test_monitor_config_router_mode_unchanged(run_adt4):
+    assert run_adt4._monitor_config(MONITOR, "router") == MONITOR
+
+
+def test_monitor_config_drops_router_only_nodes_in_fleetlink_mode(run_adt4):
+    out = run_adt4._monitor_config(MONITOR, "fleetlink")
+    assert yaml.safe_load(out) == {"nodes_to_track": {"omniplanner": {}}}
+
+
+@pytest.mark.parametrize("mode", ["router", "fleetlink"])
+def test_session_file_monitor_config_follows_mode(run_adt4, tmp_path, mode):
+    session = tmp_path / "s.yaml"
+    session.write_text(
+        yaml.safe_dump(
+            {
+                "session_name": "adt4_system",
+                "environment": {"ADT4_MONITOR_CONFIG": MONITOR},
+                "windows": [{"window_name": "core"}],
+            }
+        )
+    )
+    info = run_adt4.SessionInfo("alpha", tmp_path, fleet_link=mode)
+    out = tmp_path / "out.yaml"
+    with out.open("w") as fout:
+        run_adt4._write_session_to_file(session, info, fout)
+    env = yaml.safe_load(out.read_text())["environment"]
+    tracked = yaml.safe_load(env["ADT4_MONITOR_CONFIG"])["nodes_to_track"]
+    assert ("tf_relay" in tracked) == (mode == "router")

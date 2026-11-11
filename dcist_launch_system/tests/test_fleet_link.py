@@ -283,3 +283,12 @@ def test_robot_sessions_have_fleetlink_agent(name):
 def test_single_machine_sims_have_no_fleetlink(name):
     assert _window(name, "fleetlink_base") is None
     assert _window(name, "fleetlink") is None
+
+
+@pytest.mark.parametrize(
+    "name", ["base_station-default", "base_station_heracles-default"]
+)
+def test_tf_relay_runs_in_router_mode_only(name):
+    [pane] = _window(name, "tf_relay")["panes"]
+    assert pane.startswith('if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo ')
+    assert pane.endswith("launch_tf_relay:=true; fi")
