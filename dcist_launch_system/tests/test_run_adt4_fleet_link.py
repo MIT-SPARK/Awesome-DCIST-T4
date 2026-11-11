@@ -224,16 +224,24 @@ def test_regional_mapping_sessions_have_a_radio_relay(session):
     assert "relay_config:=" in " ".join(agents[0]["panes"])
 
 
-MONITOR = "{nodes_to_track: {omniplanner: {}, tf_relay: {}}}"
+MONITOR = "{nodes_to_track: {fleetlink_bridge: {}, omniplanner: {}, tf_relay: {}}}"
 
 
-def test_monitor_config_router_mode_unchanged(run_adt4):
-    assert run_adt4._monitor_config(MONITOR, "router") == MONITOR
+@pytest.mark.parametrize(
+    "mode, tracked",
+    [
+        ("router", {"omniplanner": {}, "tf_relay": {}}),
+        ("fleetlink", {"fleetlink_bridge": {}, "omniplanner": {}}),
+    ],
+)
+def test_monitor_config_tracks_the_nodes_of_the_mode(run_adt4, mode, tracked):
+    out = run_adt4._monitor_config(MONITOR, mode)
+    assert yaml.safe_load(out) == {"nodes_to_track": tracked}
 
 
-def test_monitor_config_drops_router_only_nodes_in_fleetlink_mode(run_adt4):
-    out = run_adt4._monitor_config(MONITOR, "fleetlink")
-    assert yaml.safe_load(out) == {"nodes_to_track": {"omniplanner": {}}}
+def test_monitor_config_without_mode_only_nodes_is_unchanged(run_adt4):
+    monitor = "{nodes_to_track: {omniplanner: {}}}"
+    assert run_adt4._monitor_config(monitor, "fleetlink") == monitor
 
 
 @pytest.mark.parametrize("mode", ["router", "fleetlink"])
@@ -255,3 +263,4 @@ def test_session_file_monitor_config_follows_mode(run_adt4, tmp_path, mode):
     env = yaml.safe_load(out.read_text())["environment"]
     tracked = yaml.safe_load(env["ADT4_MONITOR_CONFIG"])["nodes_to_track"]
     assert ("tf_relay" in tracked) == (mode == "router")
+    assert ("fleetlink_bridge" in tracked) == (mode == "fleetlink")

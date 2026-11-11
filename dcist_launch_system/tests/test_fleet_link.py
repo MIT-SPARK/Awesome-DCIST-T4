@@ -259,12 +259,15 @@ def test_base_sessions_have_fleetlink_base_window(name):
 )
 def test_robot_sessions_have_fleetlink_agent(name):
     [agent] = _window(name, "fleetlink")["panes"]
-    assert agent.startswith("ros2 run fleetlink fleetlink-agent --ros-args ")
+    # fleetlink mode only, as the router and bridge on the base
+    assert agent.startswith(
+        'if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then '
+        "ros2 run fleetlink fleetlink-agent --ros-args "
+    )
+    assert agent.endswith('router mode)"; fi')
     assert "-p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7447}" in agent
-    # the topology always (it gives the platform), the relay table only in fleetlink mode
     assert TOPOLOGY in agent
-    assert '$([ "$ADT4_FLEETLINK_MODE" = fleetlink ] && echo -p relay_config:=' in agent
-    assert RELAY in agent
+    assert "-p relay_config:=$(ros2 pkg prefix dcist_launch_system)" + RELAY in agent
     assert (
         "-r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static"
         in agent

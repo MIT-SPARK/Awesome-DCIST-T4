@@ -565,7 +565,7 @@ for how it works and its parameters. ADT4 runs in one of two modes, chosen by
 | mode | what crosses the radio |
 |---|---|
 | `fleetlink` (default) | only fleetlink. The base station named by `fleet_defaults.fleetlink_base` runs `fleetlink-router` (port `zenoh.fleetlink_port`, default 7450) and `fleetlink-bridge`; each robot's `fleetlink-agent` dials it over `zenoh.fleetlink_networks`, in failover order. |
-| `router` | the ROS graph itself: the base's `rmw_zenohd` links router-to-router to every robot and all graphs merge. The fleetlink agent still runs, connected to the robot's own router, and the relay is off. |
+| `router` | the ROS graph itself: the base's `rmw_zenohd` links router-to-router to every robot and all graphs merge, as before fleetlink. No fleetlink process runs, and `tf_relay` merges robot TF on the base. |
 
 **Switching back to router mode.** For the whole fleet, set `fleet_defaults.fleet_link: router`
 in `topology.yaml` on every machine, redeploy the zenoh config (`fleet-adt4` Zenoh screen or
@@ -578,9 +578,9 @@ the deformation graph, deformed on the base), so Hydra's `serialize_dsg_mesh` st
 `ADT4_FLEETLINK_MESH_SOURCE=dsg` sends the scene graph's mesh instead and needs
 `serialize_dsg_mesh: true`.
 
-**Status monitor.** The status monitor tracks `fleetlink_agent` on robots (base link up/down,
-RTT, mesh fallback) and `fleetlink_bridge` on the base (robots up / silent); in router mode
-the bridge runs idle and reports NOMINAL.
+**Status monitor.** In fleetlink mode the status monitor tracks `fleetlink_agent` on robots
+(base link up/down, RTT, mesh fallback) and `fleetlink_bridge` on the base (robots up /
+silent). `run-adt4` tracks them in fleetlink mode only and `tf_relay` in router mode only.
 
 ## Saving a Map
 

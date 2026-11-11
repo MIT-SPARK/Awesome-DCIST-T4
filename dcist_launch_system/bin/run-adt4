@@ -40,7 +40,11 @@ ADT4_VARS = [
 FLEET_VARS = ["ADT4_FLEETLINK_MODE", "ADT4_FLEETLINK_CONNECT", "ADT4_FLEETLINK_PORT"]
 # status-monitor entries whose node runs in one fleet link mode only (their panes check
 # ADT4_FLEETLINK_MODE); run-adt4 drops them from ADT4_MONITOR_CONFIG in the other mode
-MODE_ONLY_NODES = {"tf_relay": "router"}
+MODE_ONLY_NODES = {
+    "tf_relay": "router",
+    "fleetlink_agent": "fleetlink",
+    "fleetlink_bridge": "fleetlink",
+}
 
 
 class PlatformType(enum.Enum):

@@ -1,9 +1,8 @@
 ---
 # ADT4_FLEETLINK_MODE / _CONNECT / _PORT: set by run-adt4 for the session from topology.yaml
 # (fleet_helpers.fleet_link_env); unset (tmuxp load without run-adt4) = router mode.
-# The bridge reports to the base's status monitor in both modes: in router mode it runs idle
-# (idle:=true, status only, NOMINAL "Idle: router mode ..."), so the tracked entry never goes
-# missing, like tf_relay idles in fleetlink mode.
+# Router and bridge run in fleetlink mode only; the bridge reports to the base's status monitor,
+# and in router mode run-adt4 drops fleetlink_bridge from it (_monitor_config).
 nodes_to_monitor:
   fleetlink_bridge: {}
 windows:
@@ -14,10 +13,9 @@ windows:
       # fleetlink mode only (fleet_defaults.fleet_link: fleetlink): the radio's zenoh router, which the robot agents dial
       - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE,
         router mode)"; fi
-      # fleetlink mode: relays the robots' ROS topics / TF / services into this ROS graph (config/fleetlink/relay.yaml).
+      # fleetlink mode only: relays the robots' ROS topics / TF / services into this ROS graph (config/fleetlink/relay.yaml).
       # Robot TF goes where the base reads TF, which is namespaced by robot (see master.launch.yaml).
-      # router mode: idle, only reports NOMINAL to the status monitor
       - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector"
         -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p
-        relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/config/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else ros2 run fleetlink fleetlink-bridge --ros-args -r
-        "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p idle:=true; fi
+        relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/config/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE,
+        router mode)"; fi
