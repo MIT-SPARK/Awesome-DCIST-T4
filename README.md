@@ -386,22 +386,18 @@ ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
 | `spot-image_logging.yaml`                        | Same as `spot-default`, and also logs keyframe images and object tracks for an image-backed map    |
 | `spot_bag-image_logging.yaml`                    | Same as `spot_bag-default`, and also logs keyframe images and object tracks for an image-backed map |
 | `spot_sim_fleetlink-default.yaml`                | Runs the simulated Spot executor and fleetlink agent for testing plans from a separate base station in fleetlink mode |
-| `base_station_web-default.yaml`                  | Base station with the web console instead of RViz: prior scene graph, planner, console             |
-| `base_station_web_repair-default.yaml`           | Same with heracles (Neo4j) and plan repair; the console also shows the live Neo4j map               |
-| `base_station_web_grstaps_repair-grstaps_repair.yaml` | Same, planning with GRSTAPS-X                                                              |
 
 ### Web console
 
 The `adt4_console` submodule ([harelb/adt4_console](https://github.com/harelb/adt4_console)) is a
 browser console for the base station: fleet status, the 3D scene graph and mesh, planning,
 missions and chat. `install/python_setup.bash` installs its Python packages and builds its UI
-(Node 20.19+ or 22.12+; `--no-console` skips it). The `base_station_web*` sessions start it in their
-`console` window (`ros2 run adt4_console adt4-console`); open `http://<base station>:8090/`
-(port: `ADT4_CONSOLE_PORT`). `base_station_web_repair` reads the Neo4j map at
-`ADT4_HERACLES_IP:ADT4_HERACLES_PORT`. Features whose packages a workspace lacks are hidden;
-see the console's README. When fleetlink is installed and `run-adt4` selects fleetlink mode,
-these sessions also start its router and ROS bridge in the `fleetlink_base` window.
-Without fleetlink mode, that window stays idle and requires no fleetlink package.
+(Node 20.19+ or 22.12+; `--no-console` skips it). Every `base_station*` session starts it in a
+`console` window next to RViz (`ros2 run adt4_console adt4-console`); open
+`http://<base station>:8090/` (port: `ADT4_CONSOLE_PORT`). The heracles sessions also give it
+the live Neo4j map at `ADT4_HERACLES_IP:ADT4_HERACLES_PORT`. On a headless base station RViz
+exits in its own pane and the rest of the session keeps running. Features whose packages a
+workspace lacks are hidden; see the console's README.
 
 
 

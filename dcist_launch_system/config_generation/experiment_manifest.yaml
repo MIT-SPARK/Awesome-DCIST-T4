@@ -19,12 +19,6 @@ launch_configs:
   # Same repair flow, but the goal manager forwards to the GRSTAPS-X plugin.
   plan_prior_repair_grstaps: [main, prior_dsg, planning_repair_grstaps]
   plan_prior_heracles_repair_grstaps: [main, heracles_prior_dsg_repair_grstaps, planning_repair_grstaps]
-  # web console instead of RViz (no RViz or RViz-only visualizer nodes)
-  plan_prior_web: [main, prior_dsg_web, planning_web, console]
-  # web console + heracles (Neo4j) + plan repair
-  plan_prior_web_heracles_repair: [main, heracles_prior_dsg_repair_web, planning_repair_web, console_neo4j]
-  # same, with the goal manager forwarding to GRSTAPS-X
-  plan_prior_web_heracles_repair_grstaps: [main, heracles_prior_dsg_repair_grstaps_web, planning_repair_web_grstaps, console_neo4j]
 # Configs build the set of rosparams that will be loaded
 configs:
   default: []
@@ -46,8 +40,6 @@ configs:
 important_variants:
   - base_station-default
   - base_station_heracles-default
-  - base_station_web-default
-  - base_station_web_repair-default
   - phoenix-default
   - phoenix_relocalize-relocalize
   - spot-default
@@ -58,27 +50,17 @@ experiments:
   # fleetlink_base (fleetlink router + bridge, fleetlink mode only) is added here rather than to
   # plan_prior*, which the single-machine spot_* simulations below also use.
   base_station:
-    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j]
     config: [default]
   base_station_repair:
-    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j]
     config: [default]
-  base_station_web:
-    launch_config: [plan_prior_web, multi_status, tf_relay, fleetlink_base]
-    config: [default]
-  base_station_web_repair:
-    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay, fleetlink_base]
-    config: [default]
-  # same, planning with GRSTAPS-X (needs `itags` on PATH and ADT4_GUROBI_LICENSE)
-  base_station_web_grstaps_repair:
-    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay, fleetlink_base]
-    config: [grstaps_repair]
 
   # spot configs — require Spot hardware or bag playback
   spot:
@@ -142,7 +124,7 @@ experiments:
     launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
     config: [grstaps_repair]
   base_station_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base]
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j]
     config: [grstaps_repair]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
