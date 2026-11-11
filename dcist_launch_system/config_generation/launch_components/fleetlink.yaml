@@ -10,6 +10,8 @@ windows:
       # router mode: connects to the local rmw_zenohd (7447); fleetlink mode: to the base's fleetlink router over
       # the radio (ADT4_FLEETLINK_CONNECT, a failover list) and runs the ROS relay (config/fleetlink/relay.yaml).
       # The topology gives the robot's platform (relay rows); the agent reads the robot's namespaced TF.
+      # Mesh: odometric (Hydra's mesh deltas + deformation graph, deformed on the base), so Hydra keeps
+      # serialize_dsg_mesh: false; ADT4_FLEETLINK_MESH_SOURCE=dsg needs serialize_dsg_mesh: true.
       - ros2 run fleetlink fleetlink-agent --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -p robot_name:=$ADT4_ROBOT_NAME -p use_sim_time:=$sim_time
-        -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7447} -p cameras:="${ADT4_FLEETLINK_CAMERAS:-['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw']}"
+        -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7447} -p mesh_source:=${ADT4_FLEETLINK_MESH_SOURCE:-odometric} -p cameras:="${ADT4_FLEETLINK_CAMERAS:-['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw']}"
         -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} $([ "$ADT4_FLEETLINK_MODE" = fleetlink ] && echo -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/config/fleetlink/relay.yaml)

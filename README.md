@@ -550,6 +550,15 @@ both directions. ADT4 runs in one of two modes, chosen by `fleet_defaults.fleet_
 
 `fleet_defaults.fleetlink_base` names the base station that runs the fleetlink router.
 
+**Mesh.** The agent sends the mesh in fleetlink's `odometric` mode: it tiles Hydra's mesh
+updates (`hydra/frontend/full_mesh_update`) and sends the deformation graph's optimized poses
+(`mesh_graph_incremental`, `mesh_graph`), and the receiving side deforms the mesh, so a loop
+closure costs a few kB instead of resending the mesh. Hydra's `serialize_dsg_mesh` stays
+`false`, as before. `ADT4_FLEETLINK_MESH_SOURCE=dsg` makes the agent tile the mesh carried in
+Hydra's scene graph instead, which needs `serialize_dsg_mesh: true` in both frontend and
+backend (every scene-graph message then carries the whole mesh). If the odometric stream
+breaks (missed updates), the agent falls back to the `dsg` mode.
+
 **What runs where.** `run-adt4` derives the mode for the machine it launches on
 (`python -m dcist_launch_system.fleet_env <machine>` prints the same values) and exports
 `ADT4_FLEETLINK_MODE`, `ADT4_FLEETLINK_CONNECT` (where fleetlink connects) and
