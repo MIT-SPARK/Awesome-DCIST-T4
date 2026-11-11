@@ -65,4 +65,4 @@
 	branch = lidar-depth-calibration
 [submodule "fleetlink"]
 	path = fleetlink
-	url = https://github.com/harelb/fleetlink.git
+	url = git@github.com:harelb/fleetlink.git
