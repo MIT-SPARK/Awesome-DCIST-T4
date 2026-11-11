@@ -22,6 +22,15 @@ from rich.table import Table
 
 from dcist_launch_system import fleet_helpers
 
+
+def _ws_path():
+    return pathlib.Path(__file__).absolute().parent.parent
+
+
+# generate_configs provides the pane shells shared with the generated sessions
+sys.path.append(str(_ws_path() / "config_generation"))
+import generate_configs  # noqa: E402
+
 ADT4_VARS = [
     "ADT4_ROBOT_NAME",
     "ADT4_PLATFORM_ID",
@@ -91,10 +100,6 @@ class SessionInfo:
 
         click.secho("Platform ID '{self.platform_id}' is unknown!", fg="red")
         sys.exit("invalid platform")
-
-
-def _ws_path():
-    return pathlib.Path(__file__).absolute().parent.parent
 
 
 def _get_important_experiments():
@@ -274,6 +279,9 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
     return subprocess.run(cmd, env=env).returncode
 
 
+SETUP_CMD = "source ${ADT4_WS}/install/setup.zsh"
+
+
 def _make_record_window(info: SessionInfo):
     record_name = info.platform_type.value if info.record == "???" else info.record
     topic_dir = _ws_path() / "recording"
@@ -287,13 +295,11 @@ def _make_record_window(info: SessionInfo):
     click.secho(f"Recording topics from '{topic_path}'", fg="green")
     output_path = info.output_path / "recorded_data"
     cmd = f"ros2 run dcist_launch_system record_topics {output_path} {topic_path}"
-    window_config = {
+    return {
         "layout": "tiled",
-        "panes": [cmd],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [{"shell": generate_configs.pane_shell([SETUP_CMD], cmd)}],
         "window_name": "recording",
     }
-    return window_config
 
 
 def _tf_remap_args(info: SessionInfo):
@@ -347,10 +353,13 @@ def _make_bag_window(info: SessionInfo):
     # play_rosbag republishes (filtered) TF from its wrapper node, which these remaps move
     bag_args += ["--ros-args"] + _tf_remap_args(info)
 
+    # Every pane runs as its own process (pane `shell`, see
+    # generate_configs.pane_shell) instead of having its command typed into a
+    # shell that may not be ready yet; the pane stays an interactive shell after.
+    play_cmd = f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"
     window_config = {
         "layout": "tiled",
-        "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [{"shell": generate_configs.pane_shell([SETUP_CMD], play_cmd)}],
         "window_name": "play_rosbag",
     }
     if info.trajectory:
@@ -360,7 +369,9 @@ def _make_bag_window(info: SessionInfo):
         cmd += ["--parent", f"{info.robot_name}/odom", "--child", child_frame]
         cmd += info.trajectory_args
         cmd += ["--ros-args", "-p", "use_sim_time:=true"] + _tf_remap_args(info)
-        window_config["panes"].append(" ".join(cmd))
+        window_config["panes"].append(
+            {"shell": generate_configs.pane_shell([SETUP_CMD], " ".join(cmd))}
+        )
 
     return window_config
 
@@ -382,8 +393,9 @@ def _zenoh_cmd(fleet_link):
 def _make_zenoh_window(fleet_link="router"):
     return {
         "layout": "tiled",
-        "panes": [_zenoh_cmd(fleet_link)],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [
+            {"shell": generate_configs.pane_shell([SETUP_CMD], _zenoh_cmd(fleet_link))}
+        ],
         "window_name": "zenoh",
     }
 
