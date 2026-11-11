@@ -632,15 +632,3 @@ A big thank you to our sponsors for their generous support:
 
 * [ARL Distributed and Collaborative Intelligent Systems and Technology Collaborative Research Alliance (DCIST
 CRA) agreement W911NF-17-2-0181](https://arl.devcom.army.mil/cras/dcist-cra/)
-
-### Plan ordering over fleetlink
-
-GRSTAPS executors publish their own READY/DONE reports on the private
-`/<robot>/spot_executor_node/plan_progress` uplink as well as the shared ROS topic.
-The relay publishes each uplink on `/plan_progress` at the base, then sends that
-shared topic down to every Spot. Downlink reports do not feed the private
-uplinks, so they cannot echo back over the radio.
-
-This requires the executor uplink in `robustrobotics/spot_tools#67` and fleetlink's
-`base_topic` support (`harelb/fleetlink#2`). Rebuild matching
-`robot_executor_msgs` on the base station and every robot when updating the executor.
