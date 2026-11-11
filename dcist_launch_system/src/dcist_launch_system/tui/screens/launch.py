@@ -24,6 +24,8 @@ from textual.widgets import (
 from dcist_launch_system.fleet_helpers import (
     _quote_path,
     deploy_zenoh_config,
+    fleet_link_mode,
+    fleetlink_summary,
     generate_namespaced_rviz,
     generate_zenoh_endpoints,
     rsync_transfer,
@@ -351,6 +353,11 @@ class LaunchScreen(ModalScreen):
         targets = [self.ctx.runtime_config[bs_names[0]]]
         log.write(f"[bold]Deploying zenoh config to {targets[0]['name']}...[/]")
         log.write(f"  [dim]Endpoints → robots: {', '.join(robot_names)}[/]")
+        if fleet_link_mode(self.ctx.topo) == "fleetlink":
+            log.write(
+                "  [dim]fleetlink mode: no robot endpoints; robots are "
+                f"{fleetlink_summary(self.ctx.topo)}[/]"
+            )
 
         def do_deploy():
             results = []
@@ -611,6 +618,12 @@ class LaunchScreen(ModalScreen):
                     self.app.call_from_thread(
                         log.write, "[bold]Deploying zenoh config to base station...[/]"
                     )
+                    if fleet_link_mode(self.ctx.topo) == "fleetlink":
+                        self.app.call_from_thread(
+                            log.write,
+                            "  [dim]fleetlink mode: the base router links to no robots; "
+                            f"robots are {fleetlink_summary(self.ctx.topo)}[/]",
+                        )
                     all_ok = True
                     for m in deploy_targets:
                         try:
