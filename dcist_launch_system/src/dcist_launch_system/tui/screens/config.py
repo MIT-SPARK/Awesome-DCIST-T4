@@ -5,7 +5,6 @@ from __future__ import annotations
 import pathlib
 import threading
 
-import yaml
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, VerticalScroll
@@ -22,6 +21,7 @@ from textual.widgets import (
 from dcist_launch_system.fleet_helpers import (
     _DEFAULT_TOPOLOGY,
     filter_reachable,
+    save_topology,
 )
 from dcist_launch_system.tui.context import TuiContext
 
@@ -328,10 +328,18 @@ class ConfigScreen(ModalScreen):
             if self.ctx.topology_path
             else _DEFAULT_TOPOLOGY
         )
+        addresses_path = self.ctx.addresses_path
         try:
-            with open(topo_path, "w") as f:
-                yaml.dump(self.ctx.topo, f, default_flow_style=False, sort_keys=False)
+            _, private = save_topology(self.ctx.topo, topo_path, addresses_path)
             log.write(f"[green]Saved to {topo_path}[/]")
+            if addresses_path:
+                log.write(f"[green]Saved addresses to {addresses_path}[/]")
+            elif private:
+                log.write(
+                    "[yellow]Addresses NOT saved: no fleet address overlay was "
+                    "loaded (--addresses / $ADT4_FLEET_ADDRESSES). topology.yaml "
+                    "never holds addresses.[/]"
+                )
         except OSError as e:
             log.write(f"[red]Failed to save: {e}[/]")
 
