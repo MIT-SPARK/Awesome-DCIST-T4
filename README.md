@@ -585,7 +585,9 @@ breaks (missed updates), the agent falls back to the `dsg` mode.
 (router and bridge, fleetlink mode only). In fleetlink mode `run-adt4` also starts the local
 `rmw_zenohd` with `ZENOH_CONFIG_OVERRIDE='connect/endpoints=[]'`, and a zenoh config deploy
 from `fleet-adt4` gives every machine no connect endpoints, so no ROS router dials across
-the radio.
+the radio. The status monitor tracks `fleetlink_agent` on robots (base link up/down, RTT,
+mesh fallback) and `fleetlink_bridge` on the base (robots up / silent); in router mode the
+bridge runs idle and reports NOMINAL.
 
 **Switching modes.** For the whole fleet, set `fleet_defaults.fleet_link: router` (or
 `fleetlink`) in `topology.yaml` on every machine, redeploy the zenoh config (`fleet-adt4`
