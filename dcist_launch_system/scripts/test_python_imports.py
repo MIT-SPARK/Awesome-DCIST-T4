@@ -1,3 +1,4 @@
+from adt4_console.app import *
 from heracles_agents.llm_agent import *
 from heracles_agents.llm_interface import *
 from nlu_interface import *
