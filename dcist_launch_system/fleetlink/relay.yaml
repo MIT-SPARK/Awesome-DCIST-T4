@@ -199,12 +199,15 @@ topics:
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
   # manipulation approval request (spot_executor_node -> operator UIs): JPEG candidate images
-  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters
+  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters.
+  # priority high: the robot waits on the operator, so it rides the C2 lane (zenoh DATA_HIGH,
+  # ahead of mesh/video/store) and the agent holds its C2-C6 queues until it is acked (<= 10 s)
   - topic: /{robot}/spot_executor_node/manipulation_request
     type: nlu_interface_rviz/msg/ManipulationApprovalRequest
     dir: up
     mode: latest_reliable
-    cls: C3
+    cls: C2
+    priority: high
     rate_hz:
     ttl_s: 120
     replay_on_resync: false
