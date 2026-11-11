@@ -92,6 +92,8 @@ silvus_radios:
 zenoh:
   port: 7447
   connect_network: silvus
+  fleetlink_port: 7450  # dedicated fleetlink router on the base (fleet_link: fleetlink)
+  fleetlink_networks: [silvus]  # robot agents try these in order (failover)
 ssh:
   base_station_user: rrg
   robot_user: swarm
@@ -106,3 +108,6 @@ fleet_defaults:
       phoenix: phoenix_relocalize-relocalize
   base_station_session: base_station_heracles-default
   output_root: ~/adt4_output
+  # router: rmw_zenohd router-to-router over the radio | fleetlink: only fleetlink crosses it
+  fleet_link: fleetlink
+  fleetlink_base: willow  # base station that runs the fleetlink router

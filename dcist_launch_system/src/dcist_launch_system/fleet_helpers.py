@@ -68,6 +68,61 @@ def load_topology(path=None):
         return yaml.safe_load(f)
 
 
+# How robots and the base station talk (topology fleet_defaults.fleet_link):
+#   router     the base's rmw_zenohd links router-to-router to every robot, so all ROS
+#              graphs merge across the radio;
+#   fleetlink  only fleetlink crosses the radio (robot agents dial the base's dedicated
+#              fleetlink router); every ROS graph stays on its own machine.
+# topology.yaml selects fleetlink; a topology without fleet_link keeps router mode, which
+# needs no fleetlink settings.
+FLEET_LINK_MODES = ("router", "fleetlink")
+DEFAULT_FLEETLINK_PORT = 7450
+
+
+def validate_topology(topology):
+    """Consistency checks on a topology dict; returns a list of problems (empty = ok).
+
+    * no two machines share an address on the same network;
+    * ``fleet_defaults.fleet_link`` is one of FLEET_LINK_MODES;
+    * ``fleet_defaults.fleetlink_base`` names a base_station (required in fleetlink mode);
+    * ``zenoh.fleetlink_port`` is an int and ``zenoh.fleetlink_networks`` are known networks.
+    """
+    problems = []
+    machines = topology.get("machines") or {}
+    seen = {}  # (network, address) -> machine
+    for name, m in sorted(machines.items()):
+        for net, addr in sorted(((m or {}).get("addresses") or {}).items()):
+            other = seen.setdefault((net, str(addr)), name)
+            if other != name:
+                problems.append(f"duplicate {net} address {addr}: {other} and {name}")
+    defaults = topology.get("fleet_defaults") or {}
+    mode = defaults.get("fleet_link", "router")
+    if mode not in FLEET_LINK_MODES:
+        problems.append(
+            f"fleet_defaults.fleet_link must be one of {list(FLEET_LINK_MODES)}, "
+            f"got {mode!r}"
+        )
+    base = defaults.get("fleetlink_base")
+    if base is not None:
+        if base not in machines:
+            problems.append(f"fleet_defaults.fleetlink_base {base!r} is not a machine")
+        elif (machines[base] or {}).get("role") != "base_station":
+            problems.append(
+                f"fleet_defaults.fleetlink_base {base!r} is not a base_station"
+            )
+    elif mode == "fleetlink":
+        problems.append("fleet_link is 'fleetlink' but fleetlink_base is not set")
+    zconf = topology.get("zenoh") or {}
+    port = zconf.get("fleetlink_port")
+    if port is not None and (not isinstance(port, int) or isinstance(port, bool)):
+        problems.append(f"zenoh.fleetlink_port must be an int, got {port!r}")
+    networks = topology.get("networks") or {}
+    for net in zconf.get("fleetlink_networks") or []:
+        if net not in networks:
+            problems.append(f"zenoh.fleetlink_networks: unknown network {net!r}")
+    return problems
+
+
 def detect_network(topology):
     """Match local IPs against topology subnets to find the active network."""
     result = subprocess.run(
@@ -608,12 +663,18 @@ def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None)
     Robots get no connect endpoints — base stations connect to them.
     If robot_filter is set (list of robot names), only those robots are included.
     Returns list of endpoint strings, e.g. ["tcp/192.168.100.3:7447"].
+
+    In fleetlink mode (``fleet_defaults.fleet_link: fleetlink``) every machine
+    gets ``[]``: no rmw_zenohd router links cross the radio, each ROS graph
+    stays local, and only fleetlink does (generate_fleetlink_endpoints).
     """
     machines = topology.get("machines", {})
     zenoh_conf = topology.get("zenoh", {})
     port = zenoh_conf.get("port", 7447)
 
     info = machines[machine_name]
+    if fleet_link_mode(topology) == "fleetlink":
+        return []
     is_base = info.get("role") == "base_station"
 
     connect_endpoints = []
@@ -631,6 +692,78 @@ def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None)
                 connect_endpoints.append(f"tcp/{addrs[network]}:{port}")
 
     return connect_endpoints
+
+
+def fleet_link_mode(topology):
+    """``fleet_defaults.fleet_link`` ("router" | "fleetlink"); missing or unknown -> "router"."""
+    defaults = (topology or {}).get("fleet_defaults") or {}
+    mode = defaults.get("fleet_link") or "router"
+    return mode if mode in FLEET_LINK_MODES else "router"
+
+
+def fleetlink_port(topology):
+    """``zenoh.fleetlink_port`` (default 7450): the base's fleetlink router port."""
+    port = ((topology or {}).get("zenoh") or {}).get("fleetlink_port")
+    if isinstance(port, int) and not isinstance(port, bool):
+        return port
+    return DEFAULT_FLEETLINK_PORT
+
+
+def fleetlink_base(topology):
+    """``fleet_defaults.fleetlink_base``: the base station running the fleetlink router."""
+    return ((topology or {}).get("fleet_defaults") or {}).get("fleetlink_base")
+
+
+def _tcp_endpoint(addr, port):
+    addr = str(addr)
+    return f"tcp/[{addr}]:{port}" if ":" in addr else f"tcp/{addr}:{port}"
+
+
+def generate_fleetlink_endpoints(topology, base=None, networks=None):
+    """Ordered fleetlink connect endpoints for a robot agent.
+
+    ``tcp/<base address on net>:<fleetlink_port>`` for each net in ``networks``
+    (default ``zenoh.fleetlink_networks``, else ``zenoh.connect_network``, else
+    every network the base has an address on, sorted) on which ``base``
+    (default ``fleet_defaults.fleetlink_base``) has an address. Unknown base ->
+    ``[]``.
+
+    The whole list goes to the agent: a zenoh client opens one session to the
+    first endpoint that answers, in list order, and on losing it reconnects to
+    the first one that answers again, so the order is the failover order and
+    two networks reaching the same router never make two sessions.
+    """
+    machines = (topology or {}).get("machines") or {}
+    base = base or fleetlink_base(topology)
+    if not base or base not in machines:
+        return []
+    addrs = (machines[base] or {}).get("addresses") or {}
+    zconf = (topology or {}).get("zenoh") or {}
+    if networks is None:
+        networks = zconf.get("fleetlink_networks") or (
+            [zconf["connect_network"]]
+            if zconf.get("connect_network")
+            else sorted(addrs)
+        )
+    port = fleetlink_port(topology)
+    endpoints = []
+    for net in networks:
+        if net in addrs:
+            ep = _tcp_endpoint(addrs[net], port)
+            if ep not in endpoints:
+                endpoints.append(ep)
+    return endpoints
+
+
+def fleetlink_summary(topology, role=None):
+    """One-line description of a machine's radio link in fleetlink mode, for UIs."""
+    base = fleetlink_base(topology) or "?"
+    port = fleetlink_port(topology)
+    if role == "base_station":
+        if base == "?":
+            return f"fleetlink router :{port} (no fleetlink_base set)"
+        return f"no robot links (fleetlink router :{port} on {base})"
+    return f"fleetlink client -> {base}:{port}"
 
 
 def deploy_zenoh_config(user, ip, endpoints):
@@ -788,7 +921,9 @@ def patch_zenoh_config_local(endpoints, template_path=None):
     Replaces connect.endpoints, preserving all other ROS transport/timeout/
     routing settings from the template.  The listen port is left at the
     template default (7447) since all zenoh instances — fleet or base station
-    — share the same port.
+    — share the same port.  Callers pass generate_zenoh_endpoints() output,
+    which is ``[]`` in fleetlink mode (the local router then links to no
+    robots; the fleetlink router on zenoh.fleetlink_port carries the radio).
 
     Returns the path to the temporary config file, or None on failure.
     """
