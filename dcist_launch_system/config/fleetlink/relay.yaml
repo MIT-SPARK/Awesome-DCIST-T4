@@ -1,0 +1,407 @@
+# fleetlink generic ROS relay table for ADT4 (fleetlink mode).
+# Seeded from dcist_launch_system/scripts/fleetlink_inventory.py (static analysis; rows
+# marked "unverified" had no robot-side counterpart found by the scan).
+#
+# Both ends (RobotRelay on the robot, BaseBridge on the base) load this file; its hash goes
+# in the heartbeat so a mismatch is warned about. `{robot}` is replaced by the robot name.
+#
+# topics:  one entry per ROS topic that crosses the radio.
+#   topic          name pattern, usually "/{robot}/..."
+#   type           ROS message type (pkg/msg/Name). Type-hash mismatch => message rejected.
+#   dir            down = base -> robot, up = robot -> base. A topic must appear in ONE
+#                  direction only (validation rejects both; this is the loop prevention).
+#   mode           reliable         in order, queue cap 32, retry 1 s x 30, receiver dedupes
+#                  latest_reliable  a newer message replaces a pending retry; receiver applies
+#                                   only tseq above the last applied
+#                  latest           rate limited, fire and forget
+#   cls            fleetlink QoS class (C0 command/ack .. C5 video) used for budgeting
+#   rate_hz        max send rate (latest mode); null = unlimited
+#   ttl_s          drop on the receiver if older than this (clock-offset corrected); null = no ttl
+#   ttl_strict     (latest only) fail closed: until the round-trip clock offset is measured
+#                  every message counts as expired; a latest value that waited past ttl_s
+#                  for its rate slot is dropped on the sender. For motion commands, so radio
+#                  delay can never replay motion.
+#   replay_on_resync  when the peer restarts, re-address pending messages to it (and, for
+#                  latest / latest_reliable, resend the last value; a reliable entry never
+#                  resends one the old peer acked). Off for commands so a rebooted robot
+#                  never re-runs a stale plan.
+#   qos            QoS of the republished ROS endpoint on the receiving side
+#                  (reliability: reliable|best_effort, durability: volatile|transient_local, depth)
+#   platform       optional list; only relay for these robot platforms (topology
+#                  platform_type: spot, phoenix; "husky" kept as an alias). A robot without
+#                  platform_type counts as spot (fleetlink.relay_ros.platform_of). Phoenix
+#                  (Husky) has no spot_executor_node: its rows are the Path plan, teleop
+#                  into twist_mux, manual_mode and the toggle_manual_mode Stop / Resume.
+# tf:        composed transform pairs (robot side uses a tf2 Buffer, base side republishes to
+#            /tf and /tf_static). Static transforms are sent once and again on resync.
+# services:  request/reply relayed with the C0 request/ack pattern (not Zenoh get).
+#            dir is the direction of the REQUEST (down: base calls robot-side server;
+#            up: robot calls base-side server). `service` is the name on the robot;
+#            `base_name` (default: same) the name on the base, where `{base}` is the
+#            base station's ADT4_ROBOT_NAME (fleetlink-bridge param base_name).
+#            timeout_s: the caller gives up after this; requests are retried every 1 s.
+# Unknown keys, modes, directions or classes are rejected (fleetlink.relay.RelayConfig).
+version: 1
+
+topics:
+  # ---------------------------------------------------------------- commands (down)
+  - topic: /{robot}/omniplanner_node/compiled_plan_out
+    type: robot_executor_msgs/msg/ActionSequenceMsg   # nav_msgs/msg/Path for platform husky/phoenix
+    dir: down
+    mode: latest_reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 30
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [spot]
+  - topic: /{robot}/omniplanner_node/compiled_plan_out
+    type: nav_msgs/msg/Path
+    dir: down
+    mode: latest_reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 30
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+  # pause / resume / stop: published by the console and the plan repair goal manager,
+  # served by spot_executor_node
+  - topic: /{robot}/spot_executor_node/pause
+    type: std_msgs/msg/Bool
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 10
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  - topic: /{robot}/spot_executor_node/resume
+    type: std_msgs/msg/Bool
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 10
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  - topic: /{robot}/spot_executor_node/stop
+    type: std_msgs/msg/Bool
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 10
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+
+  # manipulation approval answer (console / RViz panel -> spot_executor_node, which waits
+  # for exactly one per request; API.md 9c). Never replayed: a rebooted robot must not
+  # grasp on a stale answer.
+  - topic: /{robot}/spot_executor_node/pick_confirmation
+    type: nlu_interface_rviz/msg/ManipulationApprovalResponse
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: 30
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  # teleop velocity (console Teleop panel -> spot_executor_node, which owns the lease).
+  # The console streams at 10 Hz while driving; ttl 0.5 s strict, so a command delayed by
+  # the radio is dropped rather than replayed. The executor's own deadman stops the robot
+  # 0.5 s after the last command that arrives, and each command ends on the robot after 0.5 s.
+  - topic: /{robot}/spot_executor_node/cmd_vel
+    type: geometry_msgs/msg/Twist
+    dir: down
+    mode: latest
+    cls: C0
+    rate_hz: 10.0
+    ttl_s: 0.5
+    ttl_strict: true
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [spot]
+
+  # phoenix (Husky) teleop: the console streams TwistStamped (frame {robot}/base_link) into
+  # twist_mux's twist_marker_server input (priority 8: above autonomy cmd_vel 1, below the
+  # joystick 10 and RC 12). Same strict 0.5 s ttl as the Spot row; twist_mux's own 0.5 s
+  # input timeout is the deadman on the robot, and its e-stop / safety-stop locks still apply.
+  - topic: /{robot}/twist_marker_server/cmd_vel
+    type: geometry_msgs/msg/TwistStamped
+    dir: down
+    mode: latest
+    cls: C0
+    rate_hz: 10.0
+    ttl_s: 0.5
+    ttl_strict: true
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+
+  # ---------------------------------------------------------------- results / telemetry (up)
+  # Rows whose message type is not installed on a machine are skipped with a warning
+  # (fleetlink.relay_ros.drop_unavailable_types), e.g. action_result with a
+  # robot_executor_msgs that has no ActionResultMsg.
+  - topic: /{robot}/spot_executor_node/action_result
+    type: robot_executor_msgs/msg/ActionResultMsg
+    dir: up
+    mode: reliable            # per-action results must not be lost (planner obligation tracking)
+    cls: C0
+    rate_hz: null
+    ttl_s: null
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  # finished actions for the plan repair node (omniplanner_repair_node); one topic for the
+  # whole fleet, the message carries robot_name
+  - topic: /action_done
+    type: robot_executor_msgs/msg/ActionDoneMsg
+    dir: up
+    mode: reliable
+    cls: C0
+    rate_hz: null
+    ttl_s: null
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
+  # manipulation approval request (spot_executor_node -> operator UIs): JPEG candidate images
+  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters
+  - topic: /{robot}/spot_executor_node/manipulation_request
+    type: nlu_interface_rviz/msg/ManipulationApprovalRequest
+    dir: up
+    mode: latest_reliable
+    cls: C3
+    rate_hz: null
+    ttl_s: 120
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [spot]
+  # teleop state (std_msgs/String JSON: active, standing, commanded velocity, interlock);
+  # the executor publishes 5 Hz while teleop is active, 1 Hz otherwise
+  - topic: /{robot}/spot_executor_node/teleop_state
+    type: std_msgs/msg/String
+    dir: up
+    mode: latest
+    cls: C1
+    rate_hz: 2.0
+    ttl_s: 3
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [spot]
+  - topic: /global/ros_system_monitor/table_in
+    type: ros_system_monitor_msgs/msg/StatusTable
+    dir: up
+    mode: latest
+    cls: C1
+    rate_hz: 1.0
+    ttl_s: 10
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    # NOTE: not per-robot; every robot publishes into the same global topic (monitor_name
+    # in the msg identifies the robot). BaseBridge republishes it as is (one shared publisher).
+  # Change detection (AWCD) for plan repair: each robot's khronos publishes its detected
+  # changes, latched, on the global /awcd_changes (robot_name in the msg); the base station's
+  # awcd_base_station merges them and the scene change bridge turns them into scene changes
+  # (replan on a change). Without these rows a fleetlink-only radio never delivers them.
+  - topic: /awcd_changes
+    type: khronos_msgs/msg/AwcdChanges
+    dir: up
+    mode: latest_reliable
+    cls: C2
+    rate_hz: null
+    ttl_s: null
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 10}
+    # NOTE: global like table_in; BaseBridge republishes it as is (one shared publisher).
+  # the robot's object labelspace (latched): class names for the bridge's added objects
+  - topic: /{robot}/labelspace
+    type: semantic_inference_msgs/msg/Labelspace
+    dir: up
+    mode: latest_reliable
+    cls: C2
+    rate_hz: null
+    ttl_s: null
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 1}
+  # phoenix auto / manual mode (true = manual: sequence_controller ignores plans). The
+  # console reads it for the AUTO / MANUAL chip; the agent's C1 state guards carry it too.
+  # change detector state (running / paused / reset), latched by khronos
+  - topic: /{robot}/change_detection/state
+    type: std_msgs/msg/String
+    dir: up
+    mode: latest
+    cls: C1
+    rate_hz: 1.0
+    ttl_s: 10
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 1}
+  - topic: /{robot}/manual_mode
+    type: std_msgs/msg/Bool
+    dir: up
+    mode: latest
+    cls: C1
+    rate_hz: 1.0
+    ttl_s: 10
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+
+  # ---------------------------------------------------------------- RViz-only (up), OFF by default
+  # Heavy; the web console gets map/paths through fleetlink C2/C3 instead. Uncomment only if RViz
+  # displays are needed through the relay. All are latched on the robot.
+  # - topic: /{robot}/spot_executor_node/mlp_path_publisher
+  #   type: nav_msgs/msg/Path
+  #   dir: up
+  #   mode: latest
+  #   cls: C3
+  #   rate_hz: 0.5
+  #   ttl_s: 30
+  #   replay_on_resync: true
+  #   qos: {reliability: reliable, durability: transient_local, depth: 1}
+  # - topic: /{robot}/spot_executor_node/mlp_target_publisher
+  #   type: visualization_msgs/msg/MarkerArray
+  #   dir: up
+  #   mode: latest
+  #   cls: C3
+  #   rate_hz: 0.5
+  #   ttl_s: 30
+  #   replay_on_resync: true
+  #   qos: {reliability: reliable, durability: transient_local, depth: 1}
+  # - topic: /{robot}/spot_executor_node/inflated_occupancy_map     # heavy (OccupancyGrid)
+  #   type: nav_msgs/msg/OccupancyGrid
+  #   dir: up
+  #   mode: latest
+  #   cls: C3
+  #   rate_hz: 0.1
+  #   ttl_s: 60
+  #   replay_on_resync: true
+  #   qos: {reliability: reliable, durability: transient_local, depth: 1}
+  # - topic: /{robot}/hydra/tsdf/occupancy                          # heavy; display disabled in dcist.rviz
+  #   type: nav_msgs/msg/OccupancyGrid
+  #   dir: up
+  #   mode: latest
+  #   cls: C3
+  #   rate_hz: 0.1
+  #   ttl_s: 60
+  #   replay_on_resync: true
+  #   qos: {reliability: reliable, durability: volatile, depth: 1}
+  # (also RViz-only: .../hydra/tsdf/occupancy_updates, .../inflated_occupancy_map_updates,
+  #  /{robot}/hydra/traversability/layer; no robot-side publisher confirmed. The base
+  #  scene-graph topics hydra/backend/dsg* are carried by fleetlink C2/C3, not this relay.)
+  #
+  # Deliberately NOT relayed (base-internal or dead): /{robot}/omniplanner_node/llm_response
+  # (omniplanner remaps ~/llm_response to rviz2_node/llm_response in the planner namespace;
+  # the console's per-robot subscription is dead), plan_visited_pois, commanded_goal and
+  # pddl_goal (goal_manager <-> omniplanner, both on the base).
+
+tf:
+  - parent: map
+    child: "{robot}/base_link"
+    rate_hz: 5.0
+    ttl_s: 2
+    mode: latest
+    cls: C1
+    dir: up
+  # static transforms (e.g. {robot}/body -> {robot}/base_link, calibration) are sent once
+  # and again on resync
+  - static: true
+    frames_prefix: "{robot}/"
+    dir: up
+    mode: latest_reliable
+    cls: C0
+    replay_on_resync: true
+
+services:
+  # robot-side executor calls this; the base (heracles_state_updater) serves it
+  # (master.launch.yaml remaps heracles_state_updater's ~/update_holding_state to the base
+  # session's own name, hence base_name)
+  - service: /{robot}/update_holding_state
+    base_name: /{base}/update_holding_state
+    type: heracles_ros_interfaces/srv/UpdateHoldingState
+    dir: up
+    cls: C0
+    ttl_s: 10
+    timeout_s: 10
+    platform: [spot]
+  # console Stop & save, called in this order (the core window's shutdown pane runs the
+  # same pair). hydra_ros_node's ~/shutdown (ianvs spinAndWait) answers at once, then
+  # hydra saves and exits; roman_map_node pickles its map before answering.
+  - service: /{robot}/hydra/shutdown
+    type: std_srvs/srv/Empty
+    dir: down
+    cls: C0
+    ttl_s: 30
+    timeout_s: 10
+  - service: /{robot}/roman/shutdown
+    type: std_srvs/srv/Empty
+    dir: down
+    cls: C0
+    ttl_s: 30
+    timeout_s: 170
+  # console "Take lease": the executor forcibly takes the Spot lease (e.g. from the
+  # tablet). Short ttl: a take-lease that arrives late must not fire.
+  - service: /{robot}/spot_executor_node/take_lease
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 10
+    timeout_s: 15
+    platform: [spot]
+  # console Teleop panel Stand / Sit, served by the executor (it owns the lease). Short
+  # ttl: a posture change that arrives late must not fire; Spot.stand blocks up to 10 s.
+  - service: /{robot}/spot_executor_node/stand
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 15
+    platform: [spot]
+  - service: /{robot}/spot_executor_node/sit
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 15
+    platform: [spot]
+  # phoenix Stop / Resume (console): data=true puts the robot in manual mode (the
+  # sequence_controller stops executing plans), data=false back to autonomous. Short ttl
+  # like take_lease / stand / sit: a mode switch that arrives late must not fire.
+  - service: /{robot}/toggle_manual_mode
+    type: std_srvs/srv/SetBool
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 10
+    platform: [phoenix, husky]
+  # active window change detection (khronos RosChangeDetectionController, #355): the
+  # console's Live panel starts it once the robot is relocalized. Short ttl: a start or
+  # stop that arrives late must not fire.
+  - service: /{robot}/change_detection/start
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 10
+  - service: /{robot}/change_detection/stop
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 10
+  - service: /{robot}/change_detection/reset
+    type: std_srvs/srv/Trigger
+    dir: down
+    cls: C0
+    ttl_s: 5
+    timeout_s: 10
+  - service: /{robot}/dsg_saver/save_dsg
+    type: dcist_launch_system_msgs/srv/SaveDsg
+    dir: down
+    cls: C0
+    ttl_s: 60
+    timeout_s: 60
