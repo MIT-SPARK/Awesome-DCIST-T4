@@ -156,6 +156,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_FLEETLINK\_PORT             | Port of the base's fleetlink router (topology `zenoh.fleetlink_port`, default 7450); set by `run-adt4`; not overridable|
 | ADT4\_FLEETLINK\_MESH\_SOURCE     | Mesh the agent sends: `odometric` (default) or `dsg`              |
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
+| ADT4\_CONSOLE\_PORT              | Port of the web console (default: 8090; optional)                 |
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
@@ -385,6 +386,20 @@ ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
 | `spot-image_logging.yaml`                        | Same as `spot-default`, and also logs keyframe images and object tracks for an image-backed map    |
 | `spot_bag-image_logging.yaml`                    | Same as `spot_bag-default`, and also logs keyframe images and object tracks for an image-backed map |
 | `spot_sim_fleetlink-default.yaml`                | Runs the simulated Spot executor and fleetlink agent for testing plans from a separate base station in fleetlink mode |
+| `base_station_web-default.yaml`                  | Base station with the web console instead of RViz: prior scene graph, planner, console             |
+| `base_station_web_repair-default.yaml`           | Same with heracles (Neo4j) and plan repair; the console also shows the live Neo4j map               |
+| `base_station_web_grstaps_repair-grstaps_repair.yaml` | Same, planning with GRSTAPS-X                                                              |
+
+### Web console
+
+The `adt4_console` submodule ([harelb/adt4_console](https://github.com/harelb/adt4_console)) is a
+browser console for the base station: fleet status, the 3D scene graph and mesh, planning,
+missions and chat. `install/python_setup.bash` installs its Python packages and builds its UI
+(Node >= 20.19; `--no-console` skips it). The `base_station_web*` sessions start it in their
+`console` window (`ros2 run adt4_console adt4-console`); open `http://<base station>:8090/`
+(port: `ADT4_CONSOLE_PORT`). `base_station_web_repair` reads the Neo4j map at
+`ADT4_HERACLES_IP:ADT4_HERACLES_PORT`. Features whose packages a workspace lacks are hidden;
+see the console's README.
 
 
 
