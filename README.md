@@ -596,15 +596,14 @@ sessions. For one launch, `export ADT4_FLEETLINK_MODE=router` (or `fleetlink`) b
 `run-adt4`. The endpoints always come from the
 topology (`ADT4_TOPOLOGY` can point at a bench copy for a base station that is not in it). Both ends of a
 link must use the same mode and the same `relay.yaml` (the link status reports a config
-mismatch). [`docs/fleetlink_bench_cutover.md`](docs/fleetlink_bench_cutover.md) is the
-bench and field checklist.
+mismatch).
 
 The fleetlink router port is set in topology.yaml (`zenoh.fleetlink_port`, default 7450).
 
 **Setup.** fleetlink is built with the workspace (`colcon build`). Its agent and bridge need
 `eclipse-zenoh==1.8.0` (the zenoh of `rmw_zenoh`), which `install/python_setup.bash` installs
 into `$ADT4_ENV/spark_env`; the entry points re-execute in that environment
-(`FLEETLINK_PYTHON` overrides it). `network_diagnostics/scripts/preflight.sh` checks both.
+(`FLEETLINK_PYTHON` overrides it).
 fleetlink reads the topology from `ADT4_TOPOLOGY` or the path the launch passes, and takes
 only roles and `platform_type` from it, never addresses. `fleetlink-image-pack` (packing a
 run's image store for a map transfer) uses Hydra's `hydra_python.image_store`. The agent's

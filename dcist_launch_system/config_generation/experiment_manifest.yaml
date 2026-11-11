@@ -110,7 +110,7 @@ experiments:
 
   # development — offline/simulation experiments
   # a simulated Spot (FakeSpot executor) with the fleetlink agent: plan -> result over
-  # fleetlink without the real robot (docs/fleetlink_bench_cutover.md)
+  # fleetlink without the real robot
   spot_sim_fleetlink:
     launch_config: [robot_main, spot_sim, fleetlink]
     config: [default]
