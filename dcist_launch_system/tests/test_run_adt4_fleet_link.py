@@ -55,7 +55,6 @@ def test_derive_fills_unset(run_adt4):
     env = {}
     run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
     assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"
-    assert env["ADT4_FLEET_LINK"] == "fleetlink"  # legacy name, same value
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
     assert env["ADT4_FLEETLINK_PORT"] == "7450"
     assert "ADT4_FLEETLINK_DERIVED" not in env
@@ -63,24 +62,22 @@ def test_derive_fills_unset(run_adt4):
         "ADT4_FLEETLINK_MODE",
         "ADT4_FLEETLINK_CONNECT",
         "ADT4_FLEETLINK_PORT",
-        "ADT4_FLEET_LINK",
     }
 
 
-@pytest.mark.parametrize("var", ["ADT4_FLEETLINK_MODE", "ADT4_FLEET_LINK"])
-def test_env_mode_wins_and_picks_endpoints(run_adt4, var, capsys):
-    env = {var: "router"}
+def test_env_mode_wins_and_picks_endpoints(run_adt4, capsys):
+    env = {"ADT4_FLEETLINK_MODE": "router"}
     run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
-    assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "router"
+    assert env["ADT4_FLEETLINK_MODE"] == "router"
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
     assert "overrides topology.yaml's 'fleetlink'" in capsys.readouterr().out
 
 
-def test_new_mode_var_beats_legacy(run_adt4):
-    env = {"ADT4_FLEETLINK_MODE": "fleetlink", "ADT4_FLEET_LINK": "router"}
-    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet("router"))
-    assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "fleetlink"
-    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
+def test_legacy_mode_name_is_ignored(run_adt4):
+    env = {"ADT4_FLEET_LINK": "router"}
+    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
+    assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"
+    assert "ADT4_FLEET_LINK" not in run_adt4._session_env(env)
 
 
 def test_env_mode_matching_topology_is_quiet(run_adt4, capsys):
@@ -111,7 +108,7 @@ def test_router_fallback_when_fleet_settings_fail(run_adt4, monkeypatch):
     monkeypatch.setattr(fleet_helpers, "load_topology", boom)
     env = {"ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:7450"}
     run_adt4._derive_fleet_env(env, "alpha")
-    assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "router"
+    assert env["ADT4_FLEETLINK_MODE"] == "router"
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
 
 
@@ -147,7 +144,7 @@ def test_session_file_carries_fleet_env(run_adt4, tmp_path, mode):
         run_adt4._write_session_to_file(session, info, fout)
     contents = yaml.safe_load(out.read_text())
     assert contents["environment"]["ADT4_FLEETLINK_MODE"] == mode
-    assert contents["environment"]["ADT4_FLEET_LINK"] == mode
+    assert "ADT4_FLEET_LINK" not in contents["environment"]
     zenoh = contents["windows"][0]
     assert zenoh["window_name"] == "zenoh"
     assert ("ZENOH_CONFIG_OVERRIDE" in zenoh["panes"][0]) == (mode == "fleetlink")

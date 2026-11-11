@@ -34,10 +34,8 @@ ADT4_VARS = [
 
 # Fleet link mode (router | fleetlink) and fleetlink endpoints, derived from
 # topology.yaml by fleet_helpers.fleet_link_env. Only the mode can be overridden from
-# the environment; ADT4_FLEET_LINK is its old name: still read, and exported with the
-# same value.
+# the environment.
 FLEET_VARS = ["ADT4_FLEETLINK_MODE", "ADT4_FLEETLINK_CONNECT", "ADT4_FLEETLINK_PORT"]
-LEGACY_MODE_VAR = "ADT4_FLEET_LINK"
 
 
 class PlatformType(enum.Enum):
@@ -214,15 +212,15 @@ def _fleet_env(robot_name, mode=None):
 def _derive_fleet_env(env, robot_name, fleet_env=None):
     """Fill ``env`` (in place) with the fleet link vars.
 
-    The mode comes from ``ADT4_FLEETLINK_MODE`` in the launching environment, else the
-    legacy ``ADT4_FLEET_LINK``, else topology.yaml (a nested run-adt4 inherits its
+    The mode comes from ``ADT4_FLEETLINK_MODE`` in the launching environment, else
+    topology.yaml (a nested run-adt4 inherits its
     session's mode). ``ADT4_FLEETLINK_CONNECT`` / ``_PORT`` always come from
     topology.yaml for that mode, overwriting the environment. All are always set: the
     tmux session environment passes them on, and an unset one would reach the panes
     as a literal "$VAR".
     """
     fleet_env = fleet_env or _fleet_env
-    mode = env.get("ADT4_FLEETLINK_MODE") or env.get(LEGACY_MODE_VAR) or None
+    mode = env.get("ADT4_FLEETLINK_MODE") or None
     derived = fleet_env(robot_name, mode)
     if mode:
         topo_mode = fleet_env(robot_name)["ADT4_FLEETLINK_MODE"]
@@ -230,17 +228,15 @@ def _derive_fleet_env(env, robot_name, fleet_env=None):
             click.secho(
                 f"fleet link mode {derived['ADT4_FLEETLINK_MODE']!r} from the "
                 f"environment overrides topology.yaml's {topo_mode!r} (unset "
-                "ADT4_FLEETLINK_MODE / ADT4_FLEET_LINK if that is stale)",
+                "ADT4_FLEETLINK_MODE if that is stale)",
                 fg="yellow",
             )
     env.update(derived)
-    env[LEGACY_MODE_VAR] = env["ADT4_FLEETLINK_MODE"]
 
 
 def _session_env(env):
     """run-adt4's fleet link values for the tmux session environment."""
-    names = FLEET_VARS + [LEGACY_MODE_VAR]
-    return {k: env[k] for k in names if env.get(k)}
+    return {k: env[k] for k in FLEET_VARS if env.get(k)}
 
 
 def _show_vars(env):

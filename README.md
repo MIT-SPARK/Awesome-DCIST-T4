@@ -160,8 +160,7 @@ You should periodically rerun the python setup script to make sure everything is
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
 for each session from the topology. Only the mode can be overridden (`ADT4_FLEETLINK_MODE`
-set in your environment wins; the older `ADT4_FLEET_LINK` is still read); connect and port
-always follow the topology for that mode. See [Fleetlink](#fleetlink-robot---base-station-link).
+set in your environment wins); connect and port always follow the topology for that mode. See [Fleetlink](#fleetlink-robot---base-station-link).
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
@@ -594,7 +593,7 @@ bridge runs idle and reports NOMINAL.
 `fleetlink`) in `topology.yaml` on every machine, redeploy the zenoh config (`fleet-adt4`
 Zenoh screen or `fleet-adt4 zenoh`), restart the base's `rmw_zenohd`, then restart the
 sessions. For one launch, `export ADT4_FLEETLINK_MODE=router` (or `fleetlink`) before
-`run-adt4`; the old name `ADT4_FLEET_LINK` is still read. The endpoints always come from the
+`run-adt4`. The endpoints always come from the
 topology (`ADT4_TOPOLOGY` can point at a bench copy for a base station that is not in it). Both ends of a
 link must use the same mode and the same `relay.yaml` (the link status reports a config
 mismatch). [`docs/fleetlink_bench_cutover.md`](docs/fleetlink_bench_cutover.md) is the
