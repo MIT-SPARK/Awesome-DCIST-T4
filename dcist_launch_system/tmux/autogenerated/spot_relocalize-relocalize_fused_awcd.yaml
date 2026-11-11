@@ -30,6 +30,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_FLEETLINK_CAMERAS: "['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw','frontleft=frontleft/color/image_raw/compressed','frontright=frontright/color/image_raw/compressed','left=left/color/image_raw/compressed','right=right/color/image_raw/compressed','back=back/color/image_raw/compressed','hand=hand/color/image_raw/compressed']"
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, fleetlink_agent: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, hydra_multi: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, spot_executor: {}, tf_network: {}, tx_rx_monitor: {}, zed_depth_quality: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: relocalize_fused_awcd

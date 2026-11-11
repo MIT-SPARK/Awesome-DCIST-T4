@@ -18,6 +18,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_FLEETLINK_CAMERAS: "['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw','frontleft=frontleft/color/image_raw/compressed','frontright=frontright/color/image_raw/compressed','left=left/color/image_raw/compressed','right=right/color/image_raw/compressed','back=back/color/image_raw/compressed','hand=hand/color/image_raw/compressed']"
   ADT4_MONITOR_CONFIG: "{nodes_to_track: {gps_monitor: {external_monitor: {type: GpsMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, spot_executor: {}, tf_network: {}, tx_rx_monitor: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
