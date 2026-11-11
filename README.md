@@ -535,6 +535,52 @@ echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.jso
 ```
 For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/).
 
+## Fleetlink (robot <-> base station link)
+
+[fleetlink](https://github.com/harelb/fleetlink) (the `fleetlink/` submodule) carries each
+robot's live state (scene graph, mesh, pose, health, cameras) to the base station over
+lossy radio links, and relays a configured list of ROS topics, transforms and services in
+both directions. ADT4 runs in one of two modes, chosen by `fleet_defaults.fleet_link` in
+`network_diagnostics/config/topology.yaml`:
+
+| mode | what crosses the radio |
+|---|---|
+| `fleetlink` (default) | only fleetlink. Every machine's ROS graph stays on that machine. The base runs a dedicated zenoh router for fleetlink (`fleetlink-router`, `zenoh.fleetlink_port`, 7450) and `fleetlink-bridge`; each robot's `fleetlink-agent` dials it over the networks in `zenoh.fleetlink_networks` (in failover order) and relays the rows of [`dcist_launch_system/config/fleetlink/relay.yaml`](dcist_launch_system/config/fleetlink/relay.yaml): plans, pause / resume / stop, results, health, change detection, robot TF, holding state, Stop & save. |
+| `router` | the ROS graph itself: the base's `rmw_zenohd` links router-to-router to every robot (the deployed zenoh config's `connect.endpoints`) and all graphs merge. The fleetlink agent still runs, connected to the robot's own router, and the relay is off. |
+
+`fleet_defaults.fleetlink_base` names the base station that runs the fleetlink router.
+
+**What runs where.** `run-adt4` derives the mode for the machine it launches on
+(`python -m dcist_launch_system.fleet_env <machine>` prints the same values) and exports
+`ADT4_FLEETLINK_MODE`, `ADT4_FLEETLINK_CONNECT` (where fleetlink connects) and
+`ADT4_FLEETLINK_PORT` to the tmux session. Robot mapping and relocalization sessions have a
+`fleetlink` window (the agent); the `base_station*` sessions have a `fleetlink_base` window
+(router and bridge, fleetlink mode only). In fleetlink mode `run-adt4` also starts the local
+`rmw_zenohd` with `ZENOH_CONFIG_OVERRIDE='connect/endpoints=[]'`, and a zenoh config deploy
+from `fleet-adt4` gives every machine no connect endpoints, so no ROS router dials across
+the radio.
+
+**Switching modes.** For the whole fleet, set `fleet_defaults.fleet_link: router` (or
+`fleetlink`) in `topology.yaml` on every machine, redeploy the zenoh config (`fleet-adt4`
+Zenoh screen or `fleet-adt4 zenoh`), restart the base's `rmw_zenohd`, then restart the
+sessions. For one launch, `export ADT4_FLEETLINK_MODE=router` (or `fleetlink`) before
+`run-adt4`; the old name `ADT4_FLEET_LINK` is still read. `ADT4_FLEETLINK_CONNECT` overrides
+the endpoints, e.g. for a bench base station that is not in the topology. Both ends of a
+link must use the same mode and the same `relay.yaml` (the link status reports a config
+mismatch). [`docs/fleetlink_bench_cutover.md`](docs/fleetlink_bench_cutover.md) is the
+bench and field checklist.
+
+**Setup.** fleetlink is built with the workspace (`colcon build`). Its agent and bridge need
+`eclipse-zenoh==1.8.0` (the zenoh of `rmw_zenoh`), which `install/python_setup.bash` installs
+into `$ADT4_ENV/spark_env`; the entry points re-execute in that environment
+(`FLEETLINK_PYTHON` overrides it). `network_diagnostics/scripts/preflight.sh` checks both.
+fleetlink reads the topology from `ADT4_TOPOLOGY` or the path the launch passes, and takes
+only roles and `platform_type` from it, never addresses. `fleetlink-image-pack` (packing a
+run's image store for a map transfer) uses Hydra's `hydra_python.image_store`. The agent's
+live image-store mirror also needs that store's tail (live) mode, which the pinned Hydra
+does not have yet; until then the agent logs `store mirror disabled: ...` once and
+everything else runs.
+
 ## Saving a Map
 
 A current session's map will be saved to the `$ADT4_OUTPUT_DIR` directory when you either:
