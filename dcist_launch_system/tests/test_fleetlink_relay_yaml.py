@@ -111,3 +111,20 @@ def test_relay_yaml_teleop_entries(relay_config_class):
         assert f"/gauss/spot_executor_node/{srv}" not in husky.services
     st = spot.topics["/euclid/spot_executor_node/teleop_state"]
     assert st.dir == "up" and st.type == "std_msgs/msg/String"
+
+
+def test_plan_progress_fans_out_without_relaying_its_downlink_back_up(
+    relay_config_class,
+):
+    cfg = relay_config_class.load(RELAY_YAML)
+    for robot in ("hamilton", "euclid"):
+        resolved = cfg.resolve(robot, "spot", "base_station")
+        uplink = resolved.topics[f"/{robot}/spot_executor_node/plan_progress"]
+        downlink = resolved.topics["/plan_progress"]
+        assert uplink.dir == "up" and uplink.base_topic == downlink.topic
+        assert downlink.dir == "down"
+        assert uplink.mode == downlink.mode == "reliable"
+        assert uplink.qos["depth"] == downlink.qos["depth"] == 100
+        assert all(
+            entry.topic != downlink.topic for entry in resolved.out_topics("robot")
+        )
