@@ -18,3 +18,10 @@ pydantic_settings
 boto3
 textual
 textual-dev
+# fleetlink (fleetlink/ submodule): its agent, bridge and receivers import zenoh from
+# spark_env, which must match rmw_zenoh's zenoh (1.8). colcon does not pip-install these.
+# fleetlink's optional OpenCV / Pillow (camera frames) and scipy (mesh deformation) come
+# with ultralytics above.
+eclipse-zenoh==1.8.0
+msgpack
+zstandard

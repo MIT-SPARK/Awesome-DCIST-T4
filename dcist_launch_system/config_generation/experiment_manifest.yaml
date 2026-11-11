@@ -5,8 +5,9 @@ launch_configs:
   main: [core, status]
   # robots also send reduced-rate TF to the base station
   robot_main: [main, tf_network]
-  map: [robot_main, hydra, roman]
-  relocalize: [robot_main, hydra_multi, roman]
+  # fleetlink: the robot's fleetlink agent (+ ROS relay in fleetlink mode)
+  map: [robot_main, hydra, roman, fleetlink]
+  relocalize: [robot_main, hydra_multi, roman, fleetlink]
   # development groupings
   bag_map: [map, rviz]
   bag_relocalize: [relocalize, rviz, relocalize_viz]
@@ -45,18 +46,20 @@ important_variants:
   - spot_relocalize-relocalize
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
-  # base station — these run on the base station only (no robot hardware needed)
+  # base station — these run on the base station only (no robot hardware needed).
+  # fleetlink_base (fleetlink router + bridge, fleetlink mode only) is added here rather than to
+  # plan_prior*, which the single-machine spot_* simulations below also use.
   base_station:
-    launch_config: [plan_prior, multi_status, tf_relay]
+    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base]
     config: [default]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base]
     config: [default]
   base_station_repair:
-    launch_config: [plan_prior_repair, multi_status, tf_relay]
+    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
@@ -67,10 +70,10 @@ experiments:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, relocalize_awcd]
   spot_regions:
-    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors]
+    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink]
     config: [indoor_regions]
   spot_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors]
+    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors, fleetlink]
     config: [regions_traversability]
   spot_data_collection:
     launch_config: [robot_main, spot_real, sensors]
@@ -82,10 +85,10 @@ experiments:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
   spot_bag_regions:
-    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag]
+    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink]
     config: [indoor_regions]
   spot_bag_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag]
+    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag, fleetlink]
     config: [regions_traversability]
 
   # phoenix — require Phoenix hardware or bag playback
@@ -106,6 +109,11 @@ experiments:
     config: [relocalize, relocalize_awcd]
 
   # development — offline/simulation experiments
+  # a simulated Spot (FakeSpot executor) with the fleetlink agent: plan -> result over
+  # fleetlink without the real robot
+  spot_sim_fleetlink:
+    launch_config: [robot_main, spot_sim, fleetlink]
+    config: [default]
   spot_grstaps:
     launch_config: [plan_prior, spot_sim]
     config: [grstaps]
@@ -116,7 +124,7 @@ experiments:
     launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
     config: [grstaps_repair]
   base_station_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, multi_status]
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base]
     config: [grstaps_repair]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]

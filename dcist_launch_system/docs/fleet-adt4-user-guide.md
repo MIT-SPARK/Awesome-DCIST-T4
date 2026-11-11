@@ -232,6 +232,8 @@ Manage Zenoh router configurations across the fleet.
 
 The fleet uses a star topology: the base station connects to all robots; robots listen only and need no config changes. Endpoint lists are generated from the active network's machine IPs and deployed by patching the existing JSON5 config files on each machine.
 
+In fleetlink mode (`fleet_defaults.fleet_link: fleetlink`) no ROS router link crosses the radio: every machine gets an empty endpoint list (deploying it clears the base's robot links left from router mode; restart the base's `rmw_zenohd` afterwards), and the table shows each machine's fleetlink link instead. Robots reach the base only through fleetlink: each robot's agent dials the fleetlink router on `fleet_defaults.fleetlink_base`. See the README's Fleetlink section.
+
 ---
 
 ## topology.yaml Reference
@@ -264,6 +266,8 @@ ssh:
 zenoh:
   port: 7447
   connect_network: silvus
+  fleetlink_port: 7450          # the base's fleetlink router (fleetlink mode)
+  fleetlink_networks: [silvus]  # networks robot agents dial it on, in failover order
 
 fleet_defaults:
   spot_platforms: [smaug, topaz]
@@ -276,12 +280,16 @@ fleet_defaults:
       phoenix: "phoenix_relocalize-relocalize"
   base_station_session: "base_station_heracles-default"
   output_root: "~/adt4_output"
+  fleet_link: fleetlink   # fleetlink | router (see the README's Fleetlink section)
+  fleetlink_base: willow  # base station that runs the fleetlink router
 
 silvus_radios:
   mgmt_subnet: "172.20.0.0/16"
   radios:
     radio_310061: { mgmt_ip: "172.20.187.45", node_id: 310061 }
 ```
+
+`run-adt4` derives each session's fleet link values from this file (`fleet_helpers.fleet_link_env`).
 
 ### Network auto-detection
 

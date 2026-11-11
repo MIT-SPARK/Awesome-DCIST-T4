@@ -30,6 +30,8 @@ from dcist_launch_system.fleet_helpers import (
     deploy_zenoh_config,
     detect_network,
     filter_reachable,
+    fleet_link_mode,
+    fleetlink_summary,
     generate_namespaced_rviz,
     generate_zenoh_endpoints,
     get_local_ip_for_network,
@@ -582,7 +584,9 @@ def zenoh(ctx, machine, dry_run):
     """Generate and deploy Zenoh router configs based on topology.
 
     Base stations get connect endpoints to robots (star topology).
-    Robots listen only — no outbound connections.
+    Robots listen only — no outbound connections. In fleetlink mode
+    (fleet_defaults.fleet_link: fleetlink) every machine gets no endpoints:
+    only fleetlink crosses the radio.
     """
     fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
     names = list(machine) if machine else None
@@ -604,6 +608,8 @@ def zenoh(ctx, machine, dry_run):
 
         n = len(endpoints)
         connect_str = f"{n} robot(s)" if n else "[dim]none (listen only)[/]"
+        if fleet_link_mode(fc.topology) == "fleetlink":
+            connect_str = fleetlink_summary(fc.topology, m["role"])
 
         if dry_run:
             table.add_row(mname, m["role"], connect_str, "[yellow]dry-run[/]")

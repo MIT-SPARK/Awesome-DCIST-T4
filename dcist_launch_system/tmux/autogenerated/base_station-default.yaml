@@ -2,6 +2,7 @@ nodes_to_monitor:
   omniplanner: {}
   nlu_rviz_instruction_panel: {}
   tf_relay: {}
+  fleetlink_bridge: {}
 session_name: adt4_system
 suppress_history: false
 environment:
@@ -14,7 +15,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {fleetlink_bridge: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: base_station-default
@@ -54,4 +55,11 @@ windows:
   - window_name: tf_relay
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
-    panes: [ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true]
+    panes:
+      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo "tf_relay not started (fleetlink mode, fleetlink-bridge relays robot TF)"; else ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true; fi
+  - window_name: fleetlink_base
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi
+      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi

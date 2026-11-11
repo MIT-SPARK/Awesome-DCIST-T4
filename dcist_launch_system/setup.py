@@ -27,6 +27,7 @@ config_files_csv = get_share_info("config", "*.csv")
 resource_files = get_share_info("resource", "*.csv")
 platform_files = get_share_info("platforms")
 rviz_files = get_share_info("rviz", "*.rviz")
+fleetlink_files = get_share_info("fleetlink", "*.yaml")
 
 data_files = (
     [
@@ -40,6 +41,7 @@ data_files = (
     + resource_files
     + platform_files
     + rviz_files
+    + fleetlink_files
 )
 
 

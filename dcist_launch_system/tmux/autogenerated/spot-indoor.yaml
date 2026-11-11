@@ -11,6 +11,7 @@ nodes_to_monitor:
   roman_lc: {}
   relocalization_monitor:
     external_monitor: {type: RelocalizationMonitor}
+  fleetlink_agent: {}
   spot_executor: {}
   gps_monitor:
     external_monitor: {type: GpsMonitor}
@@ -29,7 +30,7 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}, tf_network: {}, tx_rx_monitor: {}, zed_depth_quality: {}}}"
+  ADT4_MONITOR_CONFIG: "{nodes_to_track: {depth_correction: {}, fastsam: {}, fleetlink_agent: {}, gps_monitor: {external_monitor: {type: GpsMonitor}}, hydra: {external_monitor: {type: JsonMonitor}}, ntrip_monitor: {external_monitor: {type: NtripMonitor}}, relocalization_monitor: {external_monitor: {type: RelocalizationMonitor}}, roman_lc: {}, roman_map: {}, semantic_inference: {external_monitor: {type: JsonMonitor}}, spot_executor: {}, tf_network: {}, tx_rx_monitor: {}, zed_depth_quality: {}}}"
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: indoor
   logging_key: spot-indoor
@@ -68,6 +69,11 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_fastsam:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_map:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_roman_lc:=true
+  - window_name: fleetlink
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-agent --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -p robot_name:=$ADT4_ROBOT_NAME -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7447} -p mesh_source:=${ADT4_FLEETLINK_MESH_SOURCE:-odometric} -p cameras:="${ADT4_FLEETLINK_CAMERAS:-['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw']}" -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml; else echo "fleetlink-agent not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi
   - window_name: real_spot
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
