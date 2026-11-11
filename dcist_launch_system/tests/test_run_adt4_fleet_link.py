@@ -2,7 +2,6 @@
 
 import importlib.machinery
 import importlib.util
-import json
 import pathlib
 
 import pytest
@@ -34,9 +33,9 @@ def test_zenoh_fleetlink_mode_clears_connect_endpoints(run_adt4):
 
 
 def _fake_fleet(mode_default="fleetlink"):
-    def fleet_env(robot_name, mode=None, port=None):
+    def fleet_env(robot_name, mode=None):
         mode = mode or mode_default
-        port = port or 7450
+        port = 7450
         if mode == "fleetlink":
             return {
                 "ADT4_FLEETLINK_MODE": "fleetlink",
@@ -58,7 +57,9 @@ def test_derive_fills_unset(run_adt4):
     assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"
     assert env["ADT4_FLEET_LINK"] == "fleetlink"  # legacy name, same value
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
-    assert set(json.loads(env["ADT4_FLEETLINK_DERIVED"])) == {
+    assert env["ADT4_FLEETLINK_PORT"] == "7450"
+    assert "ADT4_FLEETLINK_DERIVED" not in env
+    assert set(run_adt4._session_env(env)) == {
         "ADT4_FLEETLINK_MODE",
         "ADT4_FLEETLINK_CONNECT",
         "ADT4_FLEETLINK_PORT",
@@ -67,36 +68,49 @@ def test_derive_fills_unset(run_adt4):
 
 
 @pytest.mark.parametrize("var", ["ADT4_FLEETLINK_MODE", "ADT4_FLEET_LINK"])
-def test_explicit_mode_picks_endpoints(run_adt4, var):
+def test_env_mode_wins_and_picks_endpoints(run_adt4, var, capsys):
     env = {var: "router"}
     run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
     assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "router"
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
+    assert "overrides topology.yaml's 'fleetlink'" in capsys.readouterr().out
 
 
-def test_explicit_connect_wins(run_adt4):
-    env = {"ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:7450"}
-    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
-    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/198.51.100.7:7450"
-    assert "ADT4_FLEETLINK_CONNECT" not in json.loads(env["ADT4_FLEETLINK_DERIVED"])
-
-
-def test_values_from_an_earlier_run_are_derived_again(run_adt4):
-    # a shell inside a router-mode session: its values are not explicit overrides
-    old = {}
-    run_adt4._derive_fleet_env(old, "alpha", fleet_env=_fake_fleet("router"))
-    assert old["ADT4_FLEETLINK_MODE"] == "router"
-    env = dict(old)
-    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet("fleetlink"))
+def test_new_mode_var_beats_legacy(run_adt4):
+    env = {"ADT4_FLEETLINK_MODE": "fleetlink", "ADT4_FLEET_LINK": "router"}
+    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet("router"))
     assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "fleetlink"
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
 
 
-def test_inherited_but_changed_value_counts_as_explicit(run_adt4):
-    old = {}
-    run_adt4._derive_fleet_env(old, "alpha", fleet_env=_fake_fleet("fleetlink"))
-    env = dict(old, ADT4_FLEETLINK_MODE="router")
-    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet("fleetlink"))
+def test_env_mode_matching_topology_is_quiet(run_adt4, capsys):
+    # e.g. a nested run-adt4 inheriting its session's mode
+    env = {"ADT4_FLEETLINK_MODE": "fleetlink"}
+    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
+    assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"
+    assert capsys.readouterr().out == ""
+
+
+def test_connect_and_port_always_from_topology(run_adt4, capsys):
+    env = {
+        "ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:7450",
+        "ADT4_FLEETLINK_PORT": "17450",
+    }
+    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
+    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/192.0.2.3:7450"
+    assert env["ADT4_FLEETLINK_PORT"] == "7450"
+    assert capsys.readouterr().out == ""
+
+
+def test_router_fallback_when_fleet_settings_fail(run_adt4, monkeypatch):
+    import dcist_launch_system.fleet_env as fe
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("no topology")
+
+    monkeypatch.setattr(fe, "fleet_env", boom)
+    env = {"ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:7450"}
+    run_adt4._derive_fleet_env(env, "alpha")
     assert env["ADT4_FLEETLINK_MODE"] == env["ADT4_FLEET_LINK"] == "router"
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7447"
 
@@ -145,49 +159,6 @@ def test_fleet_env_reads_the_checkout_topology(run_adt4, monkeypatch):
     env = run_adt4._fleet_env("willow")
     assert env["ADT4_FLEETLINK_MODE"] == "fleetlink"  # topology.yaml's default
     assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/127.0.0.1:7450"
-
-
-@pytest.mark.parametrize(
-    "robot,mode,connect",
-    [
-        ("willow", "fleetlink", "tcp/127.0.0.1:17450"),
-        ("euclid", "fleetlink", "tcp/192.0.2.1:17450,tcp/[2001:db8::1]:17450"),
-        ("willow", "router", "tcp/127.0.0.1:7447"),
-    ],
-)
-def test_port_override_derives_matching_endpoints(
-    run_adt4, monkeypatch, robot, mode, connect
-):
-    from dcist_launch_system import fleet_helpers
-
-    topology = {
-        "fleet_defaults": {"fleet_link": "fleetlink", "fleetlink_base": "willow"},
-        "machines": {
-            "euclid": {"role": "robot"},
-            "willow": {
-                "role": "base_station",
-                "addresses": {"radio": "192.0.2.1", "wifi": "2001:db8::1"},
-            },
-        },
-        "zenoh": {"fleetlink_networks": ["radio", "wifi"]},
-    }
-    monkeypatch.setattr(fleet_helpers, "load_topology", lambda path: topology)
-    env = {"ADT4_FLEETLINK_MODE": mode, "ADT4_FLEETLINK_PORT": "17450"}
-    run_adt4._derive_fleet_env(env, robot)
-    assert env["ADT4_FLEETLINK_PORT"] == "17450"
-    assert env["ADT4_FLEETLINK_CONNECT"] == connect
-    # Deriving a session must not change the topology used by later sessions.
-    assert "fleetlink_port" not in topology["zenoh"]
-
-
-def test_explicit_connect_wins_with_port_override(run_adt4):
-    env = {
-        "ADT4_FLEETLINK_PORT": "17450",
-        "ADT4_FLEETLINK_CONNECT": "tcp/198.51.100.7:27450",
-    }
-    run_adt4._derive_fleet_env(env, "alpha", fleet_env=_fake_fleet())
-    assert env["ADT4_FLEETLINK_CONNECT"] == "tcp/198.51.100.7:27450"
-    assert env["ADT4_FLEETLINK_PORT"] == "17450"
 
 
 @pytest.mark.parametrize(

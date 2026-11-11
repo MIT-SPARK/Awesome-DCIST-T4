@@ -151,16 +151,17 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_NTRIP\_USERNAME             | Username to access the NTRIP mountpoint datastream                |
 | ADT4\_NTRIP\_PASSWORD             | Password to access the NTRIP mountpoint datastream                |
 | ADT4\_TOPOLOGY                    | Fleet topology file (default: `network_diagnostics/config/topology.yaml`)|
-| ADT4\_FLEETLINK\_MODE             | Robot <-> base link: `fleetlink` or `router`; set by `run-adt4` from the topology|
-| ADT4\_FLEETLINK\_CONNECT          | Where the fleetlink agent connects (zenoh endpoints, failover order); set by `run-adt4`|
-| ADT4\_FLEETLINK\_PORT             | Port of the base's fleetlink router (default 7450); set by `run-adt4`|
+| ADT4\_FLEETLINK\_MODE             | Robot <-> base link: `fleetlink` or `router`; set by `run-adt4` from the topology unless already set|
+| ADT4\_FLEETLINK\_CONNECT          | Where the fleetlink agent connects (zenoh endpoints, failover order); set by `run-adt4` from the topology; not overridable|
+| ADT4\_FLEETLINK\_PORT             | Port of the base's fleetlink router (topology `zenoh.fleetlink_port`, default 7450); set by `run-adt4`; not overridable|
 | ADT4\_FLEETLINK\_MESH\_SOURCE     | Mesh the agent sends: `odometric` (default) or `dsg`              |
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
-for each session from the topology (a value already set in your environment wins), and the
-older `ADT4_FLEET_LINK` is still read as `ADT4_FLEETLINK_MODE`. See [Fleetlink](#fleetlink-robot---base-station-link).
+for each session from the topology. Only the mode can be overridden (`ADT4_FLEETLINK_MODE`
+set in your environment wins; the older `ADT4_FLEET_LINK` is still read); connect and port
+always follow the topology for that mode. See [Fleetlink](#fleetlink-robot---base-station-link).
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
@@ -593,16 +594,13 @@ bridge runs idle and reports NOMINAL.
 `fleetlink`) in `topology.yaml` on every machine, redeploy the zenoh config (`fleet-adt4`
 Zenoh screen or `fleet-adt4 zenoh`), restart the base's `rmw_zenohd`, then restart the
 sessions. For one launch, `export ADT4_FLEETLINK_MODE=router` (or `fleetlink`) before
-`run-adt4`; the old name `ADT4_FLEET_LINK` is still read. `ADT4_FLEETLINK_CONNECT` overrides
-the endpoints, e.g. for a bench base station that is not in the topology. Both ends of a
+`run-adt4`; the old name `ADT4_FLEET_LINK` is still read. The endpoints always come from the
+topology (`ADT4_TOPOLOGY` can point at a bench copy for a base station that is not in it). Both ends of a
 link must use the same mode and the same `relay.yaml` (the link status reports a config
 mismatch). [`docs/fleetlink_bench_cutover.md`](docs/fleetlink_bench_cutover.md) is the
 bench and field checklist.
 
-To use another fleetlink router port, set `ADT4_FLEETLINK_PORT` on both the base and
-robots before launching. Generated connect endpoints use that port too; an explicit
-`ADT4_FLEETLINK_CONNECT` still takes precedence. Router mode continues to connect the
-agent to the local ROS router's port.
+The fleetlink router port is set in topology.yaml (`zenoh.fleetlink_port`, default 7450).
 
 **Setup.** fleetlink is built with the workspace (`colcon build`). Its agent and bridge need
 `eclipse-zenoh==1.8.0` (the zenoh of `rmw_zenoh`), which `install/python_setup.bash` installs

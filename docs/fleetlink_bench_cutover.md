@@ -59,8 +59,9 @@ On the base, run `ros2 node list | sort > /tmp/router_nodes.txt`. Robot nodes su
    python -m dcist_launch_system.fleet_env willow    # base: ADT4_FLEETLINK_CONNECT=tcp/127.0.0.1:7450
    python -m dcist_launch_system.fleet_env euclid    # robot: tcp/<willow on each fleetlink network>:7450
    ```
-   For a bench base that is not in the topology, override the robot's endpoint:
-   `export ADT4_FLEETLINK_CONNECT=tcp/<bench base ip>:7450`.
+   For a bench base that is not in the topology, add it to a copy of `topology.yaml` and
+   `export ADT4_TOPOLOGY=<that copy>` on both machines (run-adt4 always derives the
+   endpoints from the topology).
 3. Redeploy the zenoh config (fleet TUI Zenoh screen or `fleet-adt4 zenoh`).
    In fleetlink mode this **clears the base router's robot endpoints**. Restart the base
    `rmw_zenohd`, then on the base check that `ss -tn state established '( dport = :7447 )'`
