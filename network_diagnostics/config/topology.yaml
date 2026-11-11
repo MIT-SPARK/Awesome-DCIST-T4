@@ -1,92 +1,68 @@
 ---
+# ADT4 fleet topology (public).
+#
+# This file has NO network addresses.  Network subnets, each machine's
+# `addresses`, and the Silvus radios (`silvus_radios.mgmt_subnet`, `radios`)
+# live in the private fleet address overlay, which fleet-adt4 and the
+# network_diagnostics scripts deep-merge over this file
+# (network_diagnostics/scripts/topology_merge.py).  The overlay is
+# fleet_addresses.yaml from the private repo robustrobotics/adt4_fleet_addresses,
+# found via --addresses, then $ADT4_FLEET_ADDRESSES, then
+# ~/.config/adt4/fleet_addresses/fleet_addresses.yaml:
+#
+#   git clone git@github.com:robustrobotics/adt4_fleet_addresses.git ~/.config/adt4/fleet_addresses
+#   export ADT4_FLEET_ADDRESSES=~/.config/adt4/fleet_addresses/fleet_addresses.yaml
+#
+# config/fleet_addresses.example.yaml shows its layout.  Never add addresses here.
+# Networks, in detection priority order (first subnet match wins); the subnets
+# are in the overlay.
 networks:
-  mit_wifi:
-    subnet: 10.29.0.0/16
-  penn_wifi:
-    subnet: 192.168.129.0/24
-  silvus:
-    subnet: 192.168.100.0/24
+  mit_wifi: {}
+  penn_wifi: {}
+  silvus: {}
 machines:
   euclid:
     role: robot
     platform_id: smaug
     platform_type: spot
     desc: Smaug Jockey
-    addresses:
-      mit_wifi: 10.29.141.193
-      penn_wifi: 192.168.129.234
-      silvus: 192.168.100.3
   hamilton:
     role: robot
-    addresses:
-      mit_wifi: 10.31.144.106
-      silvus: 192.168.100.2
-      penn_wifi: 192.168.129.210
     platform_id: topaz
+    platform_type: spot
     desc: Topaz Jockey
   gauss:
     role: robot
     platform_id: samoyed
     platform_type: phoenix
     desc: Husky Jockey
-    addresses:
-      mit_wifi: 10.29.170.181
   lewis:
     role: robot
     platform_id: samoyed
     platform_type: phoenix
     desc: Husky Jockey
-    addresses:
-      mit_wifi: 10.29.202.81
-      penn_wifi: 192.168.129.218
-      silvus: 192.168.100.105
   apollo:
     role: robot
     platform_id: apollo
     platform_type: spot
     desc: ARL Spot
-    addresses:
-      silvus: 192.168.100.13
   samoyed:
     role: robot
     platform_id: samoyed
     platform_type: phoenix
     desc: ARL Husky
-    addresses:
-      silvus: 192.168.100.62
-  russell:
-    role: base_station
-    desc: Aaron's laptop
-    addresses:
-      mit_wifi: 10.29.129.166
-      silvus: 192.168.100.101
   bonsai:
     role: base_station
     desc: RRG dev computer
-    addresses:
-      penn_wifi: 192.168.129.217
   willow:
     role: base_station
-    addresses:
-      mit_wifi: 10.29.227.98
-      silvus: 192.168.100.100
     desc: RRG base station
   sequia:
     role: base_station
     desc: Sequia base station
-    addresses:
-      mit_wifi: 10.29.166.252
-      silvus: 192.168.100.105
 silvus_radios:
-  mgmt_subnet: 172.20.0.0/16
+  # mgmt_subnet and radios (mgmt_ip, node_id) are in the overlay.
   api_endpoint: /cgi-bin/streamscape_api
-  radios:
-    radio_310061:
-      mgmt_ip: 172.20.187.45
-      node_id: 310061
-    radio_310226:
-      mgmt_ip: 172.20.187.210
-      node_id: 310226
   udp_telemetry:
     listen_port: 5100
 zenoh:

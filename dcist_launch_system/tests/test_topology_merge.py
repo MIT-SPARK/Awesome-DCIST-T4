@@ -146,14 +146,20 @@ class TestLoadMerged:
         pub, _, _ = overlay_file
         assert detect_network(load_topology(pub)) is None
 
+    def test_real_topology_has_no_private_keys(self, topology_path):
+        """The public topology.yaml must not carry any address."""
+        public = yaml.safe_load(open(topology_path))
+        _, private = topology_merge.split_private(public)
+        assert private == {}
+
     def test_real_topology_with_example_overlay(
         self, topology_path, example_addresses_path
     ):
         topo = load_topology(topology_path, example_addresses_path)
         public = yaml.safe_load(open(topology_path))
         example = yaml.safe_load(open(example_addresses_path))
-        # Every overlay machine exists in the public topology.
-        assert set(example["machines"]) <= set(public["machines"])
+        # Every overlay machine exists in the public topology, and vice versa.
+        assert set(example["machines"]) == set(public["machines"])
         assert list(topo["networks"]) == list(public["networks"])
         for net in topo["networks"].values():
             assert net["subnet"]
