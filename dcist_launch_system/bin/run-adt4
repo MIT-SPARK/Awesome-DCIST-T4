@@ -20,6 +20,8 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 
+from dcist_launch_system import fleet_helpers
+
 ADT4_VARS = [
     "ADT4_ROBOT_NAME",
     "ADT4_PLATFORM_ID",
@@ -182,55 +184,57 @@ def _topology_path():
     return _ws_path().parent / "network_diagnostics" / "config" / "topology.yaml"
 
 
+def _fleet_error(problem):
+    click.secho(
+        f"Cannot derive the fleet link settings: {problem}. Fix topology.yaml "
+        "(or ADT4_TOPOLOGY), or launch in router mode with ADT4_FLEETLINK_MODE=router.",
+        fg="red",
+    )
+    sys.exit(1)
+
+
 def _fleet_env(robot_name, mode=None):
-    """{ADT4_FLEETLINK_MODE, _CONNECT, _PORT} for this machine from topology.yaml.
+    """``({ADT4_FLEETLINK_MODE, _CONNECT, _PORT}, topology's mode)`` for this machine.
 
-    Never fails the launch: any problem falls back to router mode.
+    Exits with an error when they cannot be derived (unreadable topology, machine not
+    in it, fleetlink base without an address on zenoh.fleetlink_networks, unknown
+    mode). Router mode needs nothing from the topology but the ports.
     """
+    # this checkout's topology (the installed package cannot find it from a
+    # non-symlink install); ADT4_TOPOLOGY overrides it
+    path = os.environ.get("ADT4_TOPOLOGY") or _topology_path()
     try:
-        try:
-            from dcist_launch_system import fleet_helpers
-        except ImportError:  # workspace not sourced: use this checkout's sources
-            sys.path.append(str(_ws_path() / "src"))
-            from dcist_launch_system import fleet_helpers
-
-        # this checkout's topology (the installed package cannot find it from a
-        # non-symlink install); ADT4_TOPOLOGY overrides it
-        topology = fleet_helpers.load_topology(
-            os.environ.get("ADT4_TOPOLOGY") or _topology_path()
-        )
-        return fleet_helpers.fleet_link_env(robot_name, topology, mode)
-    except Exception as e:
-        click.secho(f"Fleet link settings unavailable ({e}), router mode", fg="yellow")
-        return {
-            "ADT4_FLEETLINK_MODE": "router",
-            "ADT4_FLEETLINK_CONNECT": "tcp/127.0.0.1:7447",
-            "ADT4_FLEETLINK_PORT": "7450",
-        }
+        topology = fleet_helpers.load_topology(path) or {}
+    except Exception as e:  # noqa: BLE001
+        if mode != "router":
+            _fleet_error(f"cannot read {path} ({e})")
+        topology = {}
+    topo_mode = (topology.get("fleet_defaults") or {}).get("fleet_link") or "router"
+    try:
+        return fleet_helpers.fleet_link_env(robot_name, topology, mode), topo_mode
+    except fleet_helpers.FleetLinkError as e:
+        _fleet_error(str(e))
 
 
 def _derive_fleet_env(env, robot_name, fleet_env=None):
     """Fill ``env`` (in place) with the fleet link vars.
 
     The mode comes from ``ADT4_FLEETLINK_MODE`` in the launching environment, else
-    topology.yaml (a nested run-adt4 inherits its
-    session's mode). ``ADT4_FLEETLINK_CONNECT`` / ``_PORT`` always come from
-    topology.yaml for that mode, overwriting the environment. All are always set: the
-    tmux session environment passes them on, and an unset one would reach the panes
-    as a literal "$VAR".
+    topology.yaml (a nested run-adt4 inherits its session's mode).
+    ``ADT4_FLEETLINK_CONNECT`` / ``_PORT`` always come from topology.yaml for that mode,
+    overwriting the environment. All are always set: the tmux session environment
+    passes them on, and an unset one would reach the panes as a literal "$VAR".
     """
     fleet_env = fleet_env or _fleet_env
     mode = env.get("ADT4_FLEETLINK_MODE") or None
-    derived = fleet_env(robot_name, mode)
-    if mode:
-        topo_mode = fleet_env(robot_name)["ADT4_FLEETLINK_MODE"]
-        if derived["ADT4_FLEETLINK_MODE"] != topo_mode:
-            click.secho(
-                f"fleet link mode {derived['ADT4_FLEETLINK_MODE']!r} from the "
-                f"environment overrides topology.yaml's {topo_mode!r} (unset "
-                "ADT4_FLEETLINK_MODE if that is stale)",
-                fg="yellow",
-            )
+    derived, topo_mode = fleet_env(robot_name, mode)
+    if derived["ADT4_FLEETLINK_MODE"] != topo_mode:
+        click.secho(
+            f"fleet link mode {derived['ADT4_FLEETLINK_MODE']!r} from the "
+            f"environment overrides topology.yaml's {topo_mode!r} (unset "
+            "ADT4_FLEETLINK_MODE if that is stale)",
+            fg="yellow",
+        )
     env.update(derived)
 
 

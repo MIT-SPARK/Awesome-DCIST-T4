@@ -160,7 +160,10 @@ You should periodically rerun the python setup script to make sure everything is
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
 for each session from the topology. Only the mode can be overridden (`ADT4_FLEETLINK_MODE`
-set in your environment wins); connect and port always follow the topology for that mode. See [Fleetlink](#fleetlink-robot---base-station-link).
+set in your environment wins); connect and port always follow the topology for that mode.
+If they cannot be derived (unreadable topology, machine not in it, fleetlink base without an
+address on `zenoh.fleetlink_networks`, unknown mode), `run-adt4` stops with an error; a
+topology without `fleet_defaults.fleet_link` is router mode. See [Fleetlink](#fleetlink-robot---base-station-link).
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
