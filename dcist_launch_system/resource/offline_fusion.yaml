@@ -27,7 +27,7 @@ backend:
     rot_sigma: 0.1
     trans_sigma: 10.0
   external_loop_closures: {max_time_difference: 1.5}
-  partial_optimizer: {type: ""}
+  partial_optimizer: {type: ''}
   pgmo:
     run_mode: FULL
     embed_trajectory_delta_t: 5.0

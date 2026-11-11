@@ -64,9 +64,12 @@ def _resolve_output(output, force, clean):
     return output
 
 
-def _hydra_multi_config(config):
-    pkg_path = pathlib.Path(__file__).absolute().parent.parent
-    config_path = pkg_path / "config" / config / "offline_fusion.yaml"
+def _hydra_multi_config(config_path):
+    if config_path is None:
+        pkg_path = pathlib.Path(__file__).absolute().parent.parent
+        config_path = pkg_path / "resource" / "offline_fusion.yaml"
+
+    config_path = _normalize_path(config_path)
     if not config_path.exists():
         _error(f"Invalid Hydra-Multi config: {config_path}")
         sys.exit("Invalid config")
@@ -312,7 +315,23 @@ def rerun_roman(
     "--run-roman/--no-run-roman", default=True, help="run roman after optimization"
 )
 @click.option("--rerun", is_flag=True, help="remove previous output if it exists")
-def main(input_config, output, force, verbosity, log_level, config, run_roman, rerun):
+@click.option(
+    "--hydra-multi-config",
+    type=click.Path(exists=True),
+    default=None,
+    help="Hydra-Multi config (default: resource/offline_fusion.yaml)",
+)
+def main(
+    input_config,
+    output,
+    force,
+    verbosity,
+    log_level,
+    config,
+    run_roman,
+    rerun,
+    hydra_multi_config,
+):
     """
     Detect loop closures between robots and fuse scene graphs.
 
@@ -326,7 +345,7 @@ def main(input_config, output, force, verbosity, log_level, config, run_roman, r
     robot_order = [x.adt4_directory.stem for x in fusion_inputs]
     _info(f"Robot order: {robot_order}")
 
-    hydra_multi_config = _hydra_multi_config(config)
+    hydra_multi_config = _hydra_multi_config(hydra_multi_config)
     roman_config = _roman_config(config)
     fastsam_config = _fastsam_config(config)
     lcd_file = lcd(roman_config, fusion_inputs, output)

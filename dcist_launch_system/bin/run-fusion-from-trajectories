@@ -35,9 +35,12 @@ def _resolve_output(output, force):
     return output
 
 
-def _hydra_multi_config(config):
-    pkg_path = pathlib.Path(__file__).absolute().parent.parent
-    config_path = pkg_path / "config" / config / "offline_fusion.yaml"
+def _hydra_multi_config(config_path):
+    if config_path is None:
+        pkg_path = pathlib.Path(__file__).absolute().parent.parent
+        config_path = pkg_path / "resource" / "offline_fusion.yaml"
+
+    config_path = _normalize_path(config_path)
     if not config_path.exists():
         _error(f"Invalid Hydra-Multi config: {config_path}")
         sys.exit("Invalid config")
@@ -68,12 +71,19 @@ def _check_input(adt4_dir):
 
 @click.command()
 @click.argument("adt4_dirs", nargs=-1, required=True, type=click.Path(exists=True))
-@click.option("-o", "--output", required=True, type=click.Path(), help="fused map output")
+@click.option(
+    "-o", "--output", required=True, type=click.Path(), help="fused map output"
+)
 @click.option("-f", "--force", is_flag=True, help="clear output if it exists")
-@click.option("-c", "--config", default="default", help="config to use")
+@click.option(
+    "--hydra-multi-config",
+    type=click.Path(exists=True),
+    default=None,
+    help="Hydra-Multi config (default: resource/offline_fusion.yaml)",
+)
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
 @click.option("-l", "--log-level", type=int, default=0, help="glog level")
-def main(adt4_dirs, output, force, config, verbosity, log_level):
+def main(adt4_dirs, output, force, hydra_multi_config, verbosity, log_level):
     """
     Fuse the Hydra scene graphs and collect the ROMAN maps of several ADT4 runs.
 
@@ -95,10 +105,11 @@ def main(adt4_dirs, output, force, config, verbosity, log_level):
 
     roman_maps = [_roman_map(x) for x in adt4_dirs]
     output = _resolve_output(output, force)
-    hydra_multi_config = _hydra_multi_config(config)
+    hydra_multi_config = _hydra_multi_config(hydra_multi_config)
 
     robots = [
-        {"id": i + 1, "name": x.name, "adt4_dir": str(x)} for i, x in enumerate(adt4_dirs)
+        {"id": i + 1, "name": x.name, "adt4_dir": str(x)}
+        for i, x in enumerate(adt4_dirs)
     ]
     with (output / "robots.yaml").open("w") as fout:
         yaml.safe_dump({"robots": robots}, fout, sort_keys=False)
