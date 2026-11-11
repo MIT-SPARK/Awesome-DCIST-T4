@@ -68,7 +68,9 @@ def _check_input(adt4_dir):
 
 @click.command()
 @click.argument("adt4_dirs", nargs=-1, required=True, type=click.Path(exists=True))
-@click.option("-o", "--output", required=True, type=click.Path(), help="fused map output")
+@click.option(
+    "-o", "--output", required=True, type=click.Path(), help="fused map output"
+)
 @click.option("-f", "--force", is_flag=True, help="clear output if it exists")
 @click.option("-c", "--config", default="default", help="config to use")
 @click.option("-v", "--verbosity", type=int, default=0, help="glog verbosity")
@@ -98,7 +100,8 @@ def main(adt4_dirs, output, force, config, verbosity, log_level):
     hydra_multi_config = _hydra_multi_config(config)
 
     robots = [
-        {"id": i + 1, "name": x.name, "adt4_dir": str(x)} for i, x in enumerate(adt4_dirs)
+        {"id": i + 1, "name": x.name, "adt4_dir": str(x)}
+        for i, x in enumerate(adt4_dirs)
     ]
     with (output / "robots.yaml").open("w") as fout:
         yaml.safe_dump({"robots": robots}, fout, sort_keys=False)
