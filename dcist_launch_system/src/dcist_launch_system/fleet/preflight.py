@@ -195,7 +195,7 @@ elif ! ping -c1 -W2 "$ip" >/dev/null 2>&1; then c spot_reach nogo "Spot does not
 elif ! timeout 3 bash -c "</dev/tcp/$ip/443" 2>/dev/null; then c spot_reach nogo "Spot at $ip answers ping but not its API port 443"
 else
   c spot_reach go "Spot reachable at $ip"
-  py=python3; [ -x "$ADT4_ENV/bin/python" ] && py="$ADT4_ENV/bin/python"
+  py=python3; [ -x "$ADT4_ENV/spark_env/bin/python" ] && py="$ADT4_ENV/spark_env/bin/python"
   r=$(echo __SPOT_PY__ | base64 -d | ADT4_BOSDYN_IP="$ip" timeout 20 "$py" - __BAT_NOGO__ 2>/dev/null | tail -1)
   [ -z "$r" ] && r="warn|Spot SDK check did not answer"
   c spot_state "${r%%|*}" "${r#*|}"
