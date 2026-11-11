@@ -54,6 +54,11 @@ experiments:
   base_station:
     launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
+  # Console only (no prior map, no planner): the web console with the fleetlink router + bridge
+  # the robots dial in to, e.g. while the robots build a new map. Started by start-adt4-console.
+  base_station_console:
+    launch_config: [multi_status, tf_relay, fleetlink_base, console]
+    config: [default]
   base_station_heracles:
     launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
     config: [default]

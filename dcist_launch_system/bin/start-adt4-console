@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Start the base station's web console on its own (no prior map, no planner): the
+# base_station_console session = console + fleetlink router/bridge (robots dial in to it)
+# + global status + tf_relay, started by run-adt4 like any other session (local zenoh router,
+# fleetlink env from topology.yaml).
+#
+#   start-adt4-console [run-adt4 options...]      e.g.  start-adt4-console -p ~/adt4_output/<map>
+#
+# Defaults: robot name $ADT4_ROBOT_NAME (else the hostname), output dir
+# ~/adt4_output/console_<YYYYMMDD_HHMMSS>; any option given here wins over them.
+# The console listens on all interfaces (http://<this machine>:${ADT4_CONSOLE_PORT:-8090}), and
+# the fleetlink router on all interfaces at ADT4_FLEETLINK_PORT (topology.yaml), so no network
+# interface needs to be chosen. Stop it with the console's Fleet page or
+# `tmux kill-session -t adt4_system` before starting a full base_station_* session (both use the
+# same ports).
+set -eo pipefail
+name="${ADT4_ROBOT_NAME:-$(hostname -s)}"
+out="$HOME/adt4_output/console_$(date +%Y%m%d_%H%M%S)"
+exec run-adt4 base_station_console-default -n "$name" -c "${ADT4_PLATFORM_ID:-base}" -o "$out" -y "$@"
