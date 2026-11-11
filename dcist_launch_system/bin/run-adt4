@@ -549,8 +549,9 @@ def main(
     env["ADT4_SIM_TIME"] = "true" if sim_time else "false"
     env["ADT4_TF_NETWORK_MODE"] = "all" if forward_all_tf else "frames"
     env["ADT4_OUTPUT_DIR"] = str(output_dir)
-    if prior_map:
-        env["ADT4_PRIOR_MAP"] = str(prior_map)
+    # always set: the session files pass ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, and tmuxp leaves an
+    # unset variable as the literal "$ADT4_PRIOR_MAP", which ${ADT4_PRIOR_MAP:+...} reads as set
+    env["ADT4_PRIOR_MAP"] = str(prior_map) if prior_map else ""
     _derive_fleet_env(env, robot_name)
 
     if rviz_config:
