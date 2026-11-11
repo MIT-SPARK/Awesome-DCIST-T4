@@ -1,8 +1,10 @@
 """Shared helpers for fleet-adt4: topology loading, SSH, rsync, and remote queries."""
 
 import base64
+import importlib.util
 import ipaddress
 import json
+import logging
 import pathlib
 import re
 import shlex
@@ -20,6 +22,39 @@ _DEFAULT_TOPOLOGY = (
 )
 
 _DEFAULT_OUTPUT_ROOT = "~/adt4_output"
+
+_log = logging.getLogger(__name__)
+
+
+def _import_topology_merge():
+    """Import network_diagnostics/scripts/topology_merge.py, the one implementation
+    of the public-topology + private-address merge (shared with the shell tools)."""
+    path = _DEFAULT_TOPOLOGY.parents[1] / "scripts" / "topology_merge.py"
+    spec = importlib.util.spec_from_file_location("adt4_topology_merge", path)
+    if spec is None or not path.is_file():
+        raise ImportError(f"topology_merge.py not found at {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    topology_merge = _import_topology_merge()
+except ImportError as _e:  # only load_topology/save_topology need it
+    topology_merge = None
+    _topology_merge_error = _e
+
+
+def _merge_module():
+    if topology_merge is None:
+        raise ImportError(
+            "fleet_helpers needs network_diagnostics/scripts/topology_merge.py "
+            f"from the ADT4 source tree: {_topology_merge_error}"
+        )
+    return topology_merge
+
+
+_warned_no_overlay = False
 
 
 def _quote_path(path):
@@ -61,11 +96,46 @@ def get_local_ips():
     return _local_ips_cache
 
 
-def load_topology(path=None):
-    """Parse topology.yaml and return the dict."""
-    path = pathlib.Path(path) if path else _DEFAULT_TOPOLOGY
-    with open(path) as f:
-        return yaml.safe_load(f)
+def find_addresses_path(addresses_path=None):
+    """Return the private fleet-address overlay that ``load_topology`` would use.
+
+    ``addresses_path`` if given, else ``$ADT4_FLEET_ADDRESSES``, else
+    ``~/.config/adt4/fleet_addresses/fleet_addresses.yaml`` if it exists, else
+    None.  Raises FileNotFoundError for an explicit path that does not exist.
+    """
+    return _merge_module().find_addresses_path(addresses_path)
+
+
+def load_topology(path=None, addresses_path=None):
+    """Load topology.yaml merged with the private fleet-address overlay.
+
+    topology.yaml (public) has the machines, roles, networks and ports; the
+    overlay (robustrobotics/adt4_fleet_addresses, see ``find_addresses_path``)
+    has the network subnets, machine addresses and Silvus radio management IPs,
+    and is deep-merged over it.  Without an overlay the public topology is
+    returned and a warning is logged once: no machine will resolve to an IP.
+    """
+    global _warned_no_overlay
+    overlay = find_addresses_path(addresses_path)
+    if overlay is None and not _warned_no_overlay:
+        _warned_no_overlay = True
+        _log.warning(_merge_module().NO_OVERLAY_MESSAGE)
+    return _merge_module().load_merged_topology(
+        pathlib.Path(path) if path else _DEFAULT_TOPOLOGY, overlay
+    )
+
+
+def save_topology(topo, path=None, addresses_path=None):
+    """Save ``topo`` split in two: public keys to topology.yaml (``path``), the
+    private address keys to the overlay (``addresses_path``, mode 0600).
+
+    With no ``addresses_path`` only the public part is written and the
+    addresses are not saved anywhere; they never go into topology.yaml.
+    Returns ``(public, private)``.
+    """
+    return _merge_module().save_split(
+        topo, pathlib.Path(path) if path else _DEFAULT_TOPOLOGY, addresses_path
+    )
 
 
 # How robots and the base station talk (topology fleet_defaults.fleet_link):
@@ -99,6 +169,8 @@ def detect_network(topology):
                     continue
 
     for net_name, net_info in topology.get("networks", {}).items():
+        if not (net_info or {}).get("subnet"):
+            continue  # no address overlay loaded
         subnet = ipaddress.ip_network(net_info["subnet"], strict=False)
         for lip in local_ips:
             if ipaddress.ip_address(lip) in subnet:
@@ -618,7 +690,7 @@ def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None)
     Base stations get connect endpoints to robots on the network (star topology).
     Robots get no connect endpoints — base stations connect to them.
     If robot_filter is set (list of robot names), only those robots are included.
-    Returns list of endpoint strings, e.g. ["tcp/192.168.100.3:7447"].
+    Returns list of endpoint strings, e.g. ["tcp/203.0.113.3:7447"].
 
     In fleetlink mode (``fleet_defaults.fleet_link: fleetlink``) every machine
     gets ``[]``: no rmw_zenohd router links cross the radio, each ROS graph
@@ -1317,17 +1389,34 @@ def generate_namespaced_rviz(robot_name, template_path=None, output_path=None):
     return str(output_path)
 
 
-def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
+def _iface_in_subnet(ip_addr_output, subnet):
+    """Return the first interface in ``ip -4 -o addr show`` output with an
+    address in ``subnet``, or None."""
+    if not subnet:
+        return None
+    net = ipaddress.ip_network(subnet, strict=False)
+    for line in ip_addr_output.splitlines():
+        m = re.match(r"\s*\d+:\s+(\S+)\s+inet\s+(\d+\.\d+\.\d+\.\d+)", line)
+        if m and ipaddress.ip_address(m.group(2)) in net:
+            return m.group(1)
+    return None
+
+
+def check_silvus_route(
+    user=None, ip=None, mgmt_subnet="172.20.0.0/16", silvus_subnet=None
+):
     """Check if a route to the Silvus management subnet exists.
 
+    ``mgmt_subnet`` defaults to the Silvus factory management subnet.
+    ``silvus_subnet`` is the Silvus data network (``networks.silvus.subnet`` in
+    the merged topology); the interface with an address in it is reported as
+    ``silvus_iface`` (None if ``silvus_subnet`` is not given).
     If user/ip are None, checks locally. Otherwise checks via SSH.
     Returns dict: {has_route: bool, interface: str or None, silvus_iface: str or None}
     """
-    # Find the silvus data interface (192.168.100.x) and check for mgmt route
     cmd = (
-        "iface=$(ip -4 -o addr show | grep '192\\.168\\.100\\.' | awk '{print $2}' | head -1); "
-        f"route=$(ip route show {mgmt_subnet} 2>/dev/null | head -1); "
-        'echo "$iface|$route"'
+        "ip -4 -o addr show; echo '--route--'; "
+        f"ip route show {shlex.quote(mgmt_subnet)} 2>/dev/null | head -1"
     )
     if user and ip:
         rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
@@ -1345,9 +1434,9 @@ def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
     if rc != 0 or not out:
         return {"has_route": False, "interface": None, "silvus_iface": None}
 
-    parts = out.strip().split("|", 1)
-    silvus_iface = parts[0].strip() if parts[0].strip() else None
-    route_line = parts[1].strip() if len(parts) > 1 else ""
+    addrs, _, route_line = out.partition("--route--")
+    silvus_iface = _iface_in_subnet(addrs, silvus_subnet)
+    route_line = route_line.strip()
     has_route = bool(route_line)
 
     return {
@@ -1358,17 +1447,19 @@ def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
     }
 
 
-def add_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=None):
+def add_silvus_route(
+    user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=None, silvus_subnet=None
+):
     """Add a route to the Silvus management subnet via the Silvus data interface.
 
     If user/ip are None, runs locally. Otherwise runs via SSH.
     Requires sudo. Returns (success: bool, message: str).
     """
     if not interface:
-        info = check_silvus_route(user, ip, mgmt_subnet)
+        info = check_silvus_route(user, ip, mgmt_subnet, silvus_subnet)
         interface = info.get("silvus_iface")
         if not interface:
-            return False, "No Silvus interface found (no 192.168.100.x address)"
+            return False, f"No Silvus interface found (no address in {silvus_subnet})"
         if info["has_route"]:
             return True, f"Route already exists: {info['route_info']}"
 

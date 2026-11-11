@@ -139,6 +139,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
+| ADT4\_FLEET\_ADDRESSES           | Private fleet address overlay (see "Fleet addresses (private)")  |
 | ADT4\_HERACLES\_AGENTS\_PATH      | Path to heracles\_agents package                                  |
 | ADT4\_HERACLES\_IP                | IP Address of the scene graph database (e.g. 127.0.0.1)           |
 | ADT4\_HERACLES\_PORT              | Port of the scene graph database (e.g. 7687)                      |
@@ -190,27 +191,26 @@ The state updater tracks the robots listed under `robots:` in the config's
 it updates the pose and exposes `/<robot>/update_holding_state`. Robots without
 an available transform are skipped for pose updates.
 
-### Silvus Network Computer IPs
+### Fleet addresses (private)
 
-| Hostname      | Description           | IP              |
-|---------------|-----------------------|-----------------|
-| euclid        | Jasper Jockey         | 192.168.100.3    |
-| hamilton      | Topaz Jockey          | 192.168.100.2    |
-| samoyed       | ARL Husky             | 192.168.100.62  |
-| apollo        | ARL Spot              | 192.168.100.13  |
-| russell       | Aaron's laptop        | 192.168.100.101  |
-| bonsai        | RRG dev computer      | ???.???.??.???  |
-| willow        | RRG base station      | 192.168.100.100  |
+The fleet's machines, roles and platforms are in
+[`network_diagnostics/config/topology.yaml`](network_diagnostics/config/topology.yaml).
+Their IP addresses, the network subnets and the Silvus radio management IPs are
+not in this public repo: they live in the private repo
+`robustrobotics/adt4_fleet_addresses`, in `fleet_addresses.yaml`, which has the same
+layout and is deep-merged over topology.yaml by `fleet-adt4` and the
+`network_diagnostics` scripts. On a fleet machine:
 
-### MIT Network Computer IPs
-| Hostname      | Description           | IP              |
-|---------------|-----------------------|-----------------|
-| euclid        | Jasper Jockey         | 10.29.219.68    |
-| hamilton      | Topaz Jockey          | 10.29.225.80    |
-| russell       | Aaron's laptop        | 10.29.129.166   |
-| bonsai        | RRG dev computer      | ???.???.??.???  |
-| willow        | RRG base station      | 10.29.170.228   |
-| gauss         | ACL husky laptop      | 10.29.242.128   |
+```bash
+git clone git@github.com:robustrobotics/adt4_fleet_addresses.git ~/.config/adt4/fleet_addresses
+echo 'export ADT4_FLEET_ADDRESSES=~/.config/adt4/fleet_addresses/fleet_addresses.yaml' >> ~/.zshrc
+```
+
+`~/.config/adt4/fleet_addresses/fleet_addresses.yaml` is also used without the env var.
+[`network_diagnostics/config/fleet_addresses.example.yaml`](network_diagnostics/config/fleet_addresses.example.yaml)
+shows the layout with documentation addresses. Edit addresses in that file (or in the
+`fleet-adt4` config screen, which saves them there), never in topology.yaml. Sim and
+single-machine runs do not need it.
 
 ## Running in the Field
 
@@ -531,14 +531,14 @@ To connect multiple Zenoh routers across laptops, copy
 to a location of your choosing (e.g., your home directory) and modify the
 `connect` block to include the endpoint(s) that the other host's `Zenoh router(s)`
 is listening on. For example, if another `Zenoh router` is listening on IP address
-`192.168.1.1` and port `7447` (the default) on its host, modify the config file to connect to
+`192.0.2.1` and port `7447` (the default) on its host, modify the config file to connect to
 this router as shown below:
 
 ```json5
 /// ... preceding parts of the config file.
 {
   connect: {
-    endpoints: ["tcp/192.168.1.1:7447"],
+    endpoints: ["tcp/192.0.2.1:7447"],
   },
 }
 /// ... following parts of the config file.

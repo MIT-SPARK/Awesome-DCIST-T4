@@ -475,18 +475,25 @@ class MonitorScreen(ModalScreen):
         mgmt_subnet = self.ctx.topo.get("silvus_radios", {}).get(
             "mgmt_subnet", "172.20.0.0/16"
         )
+        silvus_subnet = (self.ctx.topo.get("networks", {}).get("silvus") or {}).get(
+            "subnet"
+        )
 
         def do_check():
             results = []
             # Check local machine first
-            local_info = check_silvus_route(mgmt_subnet=mgmt_subnet)
+            local_info = check_silvus_route(
+                mgmt_subnet=mgmt_subnet, silvus_subnet=silvus_subnet
+            )
             results.append(("LOCAL", None, local_info))
 
             # Check all online machines
             machines = [m for m in self.ctx.runtime_config.values() if m.get("online")]
             for m in machines:
                 try:
-                    info = check_silvus_route(m["user"], m["ip"], mgmt_subnet)
+                    info = check_silvus_route(
+                        m["user"], m["ip"], mgmt_subnet, silvus_subnet
+                    )
                     results.append((m["name"], m, info))
                 except Exception as e:
                     results.append(

@@ -11,9 +11,12 @@ fleet-adt4
 # Specify network explicitly
 fleet-adt4 --network silvus
 
-# Use a different topology file
-fleet-adt4 --topology /path/to/topology.yaml
+# Use a different topology file and/or fleet address overlay
+fleet-adt4 --topology /path/to/topology.yaml --addresses /path/to/fleet_addresses.yaml
 ```
+
+Machine addresses are not in `topology.yaml`; they come from the private fleet
+address overlay (see [Fleet addresses (private)](#fleet-addresses-private)).
 
 ## Navigation Overview
 
@@ -133,7 +136,7 @@ Computes checksums of all experiment files across machines. Highlights files tha
 
 ## Config Screen (`c`)
 
-Edit the network topology: add, modify, or remove machines. Changes are written back to `topology.yaml` when you press `F5`.
+Edit the network topology: add, modify, or remove machines. `F5` saves the changes: addresses go to the fleet address overlay that was loaded, everything else to `topology.yaml`. If no overlay was loaded, the address changes are not saved (the log says so); they are never written to `topology.yaml`.
 
 | Key | Action |
 |-----|--------|
@@ -141,7 +144,7 @@ Edit the network topology: add, modify, or remove machines. Changes are written 
 | `F2` | Add new machine |
 | `F3` | Recheck connectivity of all machines |
 | `F4` | Remove selected machine |
-| `F5` | Save changes to `topology.yaml` |
+| `F5` | Save changes (`topology.yaml` + fleet address overlay) |
 | Escape | Back (discards unsaved changes) |
 
 ### Machine Fields
@@ -238,26 +241,30 @@ In fleetlink mode (`fleet_defaults.fleet_link: fleetlink`) no ROS router link cr
 
 ## topology.yaml Reference
 
-Default location: `network_diagnostics/config/topology.yaml`
+Default location: `network_diagnostics/config/topology.yaml` (public, no addresses).
+`fleet-adt4` merges the private fleet address overlay over it; the merged result
+looks like this (addresses from `network_diagnostics/config/fleet_addresses.example.yaml`,
+documentation ranges only):
 
 ```yaml
-networks:
-  mit_wifi:   { subnet: "10.29.0.0/16" }
-  silvus:     { subnet: "192.168.100.0/24" }
+networks:              # order = detection priority
+  mit_wifi:   { subnet: "198.51.100.0/24" }   # overlay
+  silvus:     { subnet: "203.0.113.0/24" }    # overlay
 
 machines:
   euclid:
     role: robot
     platform_id: smaug
+    platform_type: spot
     desc: "Smaug Jockey"
-    addresses:
-      mit_wifi: "10.29.141.193"
-      silvus: "192.168.100.3"
+    addresses:                 # overlay
+      mit_wifi: "198.51.100.3"
+      silvus: "203.0.113.3"
   sequia:
     role: base_station
     desc: "Base station"
-    addresses:
-      silvus: "192.168.100.105"
+    addresses:                 # overlay
+      silvus: "203.0.113.105"
 
 ssh:
   robot_user: "swarm"
@@ -284,12 +291,32 @@ fleet_defaults:
   fleetlink_base: willow  # base station that runs the fleetlink router
 
 silvus_radios:
-  mgmt_subnet: "172.20.0.0/16"
-  radios:
-    radio_310061: { mgmt_ip: "172.20.187.45", node_id: 310061 }
+  api_endpoint: /cgi-bin/streamscape_api
+  mgmt_subnet: "172.20.0.0/16"   # overlay (Silvus factory default)
+  radios:                        # overlay
+    radio_100001: { mgmt_ip: "172.20.134.161", node_id: 100001 }
 ```
 
-`run-adt4` derives each session's fleet link values from this file (`fleet_helpers.fleet_link_env`).
+`run-adt4` derives each session's fleet link values from this file merged with the address overlay below (`fleet_helpers.load_topology`, then `fleet_link_env`).
+
+### Fleet addresses (private)
+
+The overlay is `fleet_addresses.yaml` from the private repo
+`robustrobotics/adt4_fleet_addresses`. It has the same layout as `topology.yaml`
+and holds only `networks.<net>.subnet`, `machines.<name>.addresses`,
+`silvus_radios.mgmt_subnet` and `silvus_radios.radios.<radio>.{mgmt_ip,node_id}`.
+`fleet-adt4` uses, in order: `--addresses PATH`, `$ADT4_FLEET_ADDRESSES`,
+`~/.config/adt4/fleet_addresses/fleet_addresses.yaml`.
+
+```bash
+git clone git@github.com:robustrobotics/adt4_fleet_addresses.git ~/.config/adt4/fleet_addresses
+echo 'export ADT4_FLEET_ADDRESSES=~/.config/adt4/fleet_addresses/fleet_addresses.yaml' >> ~/.zshrc
+```
+
+Without an overlay `fleet-adt4` warns and no machine has an address. Edit
+addresses in the overlay, or in the Config screen (`F5` saves them to the overlay);
+a new machine goes in `topology.yaml` (role, platform) plus its `addresses` in the
+overlay, under the same name. The `network_diagnostics` scripts use the same overlay.
 
 ### Network auto-detection
 
@@ -300,9 +327,9 @@ Override with `--network <name>` to force a specific network:
 fleet-adt4 --network silvus
 ```
 
-To use a different topology file:
+To use a different topology file or address overlay:
 ```bash
-fleet-adt4 --topology /path/to/topology.yaml
+fleet-adt4 --topology /path/to/topology.yaml --addresses /path/to/fleet_addresses.yaml
 ```
 
 ---
