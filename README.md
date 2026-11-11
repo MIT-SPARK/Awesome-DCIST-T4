@@ -384,6 +384,7 @@ ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
 | `spot_prior_dsg-spot_prior_dsg.yaml`             | Runs with a single spot robot and a prior scene graph                                              |
 | `spot-image_logging.yaml`                        | Same as `spot-default`, and also logs keyframe images and object tracks for an image-backed map    |
 | `spot_bag-image_logging.yaml`                    | Same as `spot_bag-default`, and also logs keyframe images and object tracks for an image-backed map |
+| `spot_sim_fleetlink-default.yaml`                | Runs the simulated Spot executor and fleetlink agent for testing plans from a separate base station in fleetlink mode |
 
 
 
