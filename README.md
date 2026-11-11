@@ -368,6 +368,8 @@ ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
 | `spot_bag_relocalize-relocalize.yaml`            | Runs with single spot robot, based on a bag, using sim time and relocalizes in a prior scene graph |
 | `spot_bag-bag.yaml`                              | Runs with single spot robot, based on a bag, using sim time                                        |
 | `spot_prior_dsg-spot_prior_dsg.yaml`             | Runs with a single spot robot and a prior scene graph                                              |
+| `spot-image_logging.yaml`                        | Same as `spot-default`, and also logs keyframe images and object tracks for an image-backed map    |
+| `spot_bag-image_logging.yaml`                    | Same as `spot_bag-default`, and also logs keyframe images and object tracks for an image-backed map |
 
 
 
@@ -544,6 +546,13 @@ This will automatically cause ROMAN and Hydra to log their outputs.
 After doing one of these two options, the following paths should exist:
 * `$ADT4_OUTPUT_DIR/roman/roman_map.pkl`
 * `$ADT4_OUTPUT_DIR/hydra`
+
+With the `image_logging` config (e.g., `spot-image_logging` or `spot_bag-image_logging`), Hydra and Khronos also log images while mapping:
+* `$ADT4_OUTPUT_DIR/keyframes`: one archive (color, depth, pose) per keyframe
+* `$ADT4_OUTPUT_DIR/tracks`: the observations of each object track, with an image of each object
+* `$ADT4_OUTPUT_DIR/hydra/frontend/track_bindings.json` and `$ADT4_OUTPUT_DIR/hydra/backend/merges.json`: which tracks belong to which object nodes
+
+To build the image store for a map from these files, run `hydra image-store index $ADT4_OUTPUT_DIR` (from `hydra_python`). It writes `$ADT4_OUTPUT_DIR/image_store`. The raw keyframe archives take about 0.75 MB each and can be deleted once the store is built and checked (`hydra image-store check`).
 
 ## Citations and Related Papers
 
