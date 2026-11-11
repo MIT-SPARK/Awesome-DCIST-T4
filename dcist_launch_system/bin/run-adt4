@@ -188,7 +188,7 @@ def _topology_path():
     return _ws_path().parent / "network_diagnostics" / "config" / "topology.yaml"
 
 
-def _fleet_env(robot_name, mode=None):
+def _fleet_env(robot_name, mode=None, port=None):
     """{ADT4_FLEETLINK_MODE, _CONNECT, _PORT} for this machine from topology.yaml.
 
     Never fails the launch: any problem falls back to router mode.
@@ -207,6 +207,11 @@ def _fleet_env(robot_name, mode=None):
         topology = fleet_helpers.load_topology(
             os.environ.get("ADT4_TOPOLOGY") or _topology_path()
         )
+        if port is not None:
+            topology = {
+                **topology,
+                "zenoh": {**(topology.get("zenoh") or {}), "fleetlink_port": port},
+            }
         return fleet_env(
             robot_name,
             topology,
@@ -248,7 +253,10 @@ def _derive_fleet_env(env, robot_name, fleet_env=None):
 
     derived = {}
     mode = env.get("ADT4_FLEETLINK_MODE") or env.get(LEGACY_MODE_VAR) or None
-    for var, value in fleet_env(robot_name, mode).items():
+    port = env.get("ADT4_FLEETLINK_PORT")
+    if port:
+        port = click.IntRange(1, 65535).convert(port, None, None)
+    for var, value in fleet_env(robot_name, mode, port).items():
         if not env.get(var):
             env[var] = derived[var] = value
         elif env[var] != value:

@@ -597,6 +597,11 @@ link must use the same mode and the same `relay.yaml` (the link status reports a
 mismatch). [`docs/fleetlink_bench_cutover.md`](docs/fleetlink_bench_cutover.md) is the
 bench and field checklist.
 
+To use another fleetlink router port, set `ADT4_FLEETLINK_PORT` on both the base and
+robots before launching. Generated connect endpoints use that port too; an explicit
+`ADT4_FLEETLINK_CONNECT` still takes precedence. Router mode continues to connect the
+agent to the local ROS router's port.
+
 **Setup.** fleetlink is built with the workspace (`colcon build`). Its agent and bridge need
 `eclipse-zenoh==1.8.0` (the zenoh of `rmw_zenoh`), which `install/python_setup.bash` installs
 into `$ADT4_ENV/spark_env`; the entry points re-execute in that environment

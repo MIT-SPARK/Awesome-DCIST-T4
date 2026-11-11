@@ -38,7 +38,7 @@ def test_real_relay_yaml_loads_and_filters_platforms():
         "/euclid/omniplanner_node/llm_response" not in spot.topics
     )  # dead: not relayed
     hold = spot.services["/euclid/update_holding_state"]
-    assert hold.base_name == "/willow/update_holding_state" and hold.dir == "up"
+    assert hold.base_name == "/euclid/update_holding_state" and hold.dir == "up"
     assert "/gauss/update_holding_state" not in husky.services
     # Stop & save: hydra then roman, both robots; no bare /<robot>/shutdown
     for robot, res in (("euclid", spot), ("gauss", husky)):

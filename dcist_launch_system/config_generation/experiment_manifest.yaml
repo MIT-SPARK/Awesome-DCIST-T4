@@ -70,10 +70,10 @@ experiments:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, relocalize_awcd]
   spot_regions:
-    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors]
+    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink]
     config: [indoor_regions]
   spot_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors]
+    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors, fleetlink]
     config: [regions_traversability]
   spot_data_collection:
     launch_config: [robot_main, spot_real, sensors]
@@ -85,10 +85,10 @@ experiments:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
   spot_bag_regions:
-    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag]
+    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink]
     config: [indoor_regions]
   spot_bag_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag]
+    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag, fleetlink]
     config: [regions_traversability]
 
   # phoenix — require Phoenix hardware or bag playback

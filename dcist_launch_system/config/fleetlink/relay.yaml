@@ -318,10 +318,9 @@ tf:
 
 services:
   # robot-side executor calls this; the base (heracles_state_updater) serves it
-  # (master.launch.yaml remaps heracles_state_updater's ~/update_holding_state to the base
-  # session's own name, hence base_name)
+  # Heracles serves one endpoint per robot on the base ROS graph, with the same
+  # name the executor calls on its local graph.
   - service: /{robot}/update_holding_state
-    base_name: /{base}/update_holding_state
     type: heracles_ros_interfaces/srv/UpdateHoldingState
     dir: up
     cls: C0
