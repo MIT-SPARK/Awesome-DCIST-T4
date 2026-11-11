@@ -12,6 +12,7 @@
 - [Installation](#installation)
 - [Documentation](#documentation)
 - [Tools & Utilities](#tools-utilities)
+- [Fleetlink (robot <-> base station link)](#fleetlink-robot---base-station-link)
 - [Sponsors](#sponsors)
 
 
@@ -149,7 +150,17 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_NTRIP\_MOUNTPOINT           | Named datastream of corrections you want from the NTRIP Caster    |
 | ADT4\_NTRIP\_USERNAME             | Username to access the NTRIP mountpoint datastream                |
 | ADT4\_NTRIP\_PASSWORD             | Password to access the NTRIP mountpoint datastream                |
+| ADT4\_TOPOLOGY                    | Fleet topology file (default: `network_diagnostics/config/topology.yaml`)|
+| ADT4\_FLEETLINK\_MODE             | Robot <-> base link: `fleetlink` or `router`; set by `run-adt4` from the topology|
+| ADT4\_FLEETLINK\_CONNECT          | Where the fleetlink agent connects (zenoh endpoints, failover order); set by `run-adt4`|
+| ADT4\_FLEETLINK\_PORT             | Port of the base's fleetlink router (default 7450); set by `run-adt4`|
+| ADT4\_FLEETLINK\_MESH\_SOURCE     | Mesh the agent sends: `odometric` (default) or `dsg`              |
+| ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
+
+The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
+for each session from the topology (a value already set in your environment wins), and the
+older `ADT4_FLEET_LINK` is still read as `ADT4_FLEETLINK_MODE`. See [Fleetlink](#fleetlink-robot---base-station-link).
 
 Note that while some of these environment variables can be set to dummy values
 (e.g., API Keys for functionality you aren't using), all of them need to be set
@@ -536,6 +547,13 @@ echo export ZENOH_ROUTER_CONFIG_URI=/path/to/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.jso
 For additional instructions, please refer [here](https://github.com/ros2/rmw_zenoh/).
 
 ## Fleetlink (robot <-> base station link)
+
+> **In short:** by default robots and the base station no longer share one ROS graph over
+> the radio. Each machine keeps its own ROS graph, and fleetlink sends only what the base
+> needs (scene graph, mesh, pose, health, cameras) plus the topics and services listed in
+> `dcist_launch_system/config/fleetlink/relay.yaml`. `run-adt4` sets this up from
+> `topology.yaml`; set `fleet_defaults.fleet_link: router` there (or
+> `ADT4_FLEETLINK_MODE=router`) to go back to the previous router-to-router setup.
 
 [fleetlink](https://github.com/harelb/fleetlink) (the `fleetlink/` submodule) carries each
 robot's live state (scene graph, mesh, pose, health, cameras) to the base station over
