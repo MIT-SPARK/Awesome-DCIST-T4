@@ -46,6 +46,8 @@ MODE_ONLY_NODES = {
     "fleetlink_bridge": "fleetlink",
 }
 
+CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT")
+
 
 class PlatformType(enum.Enum):
     """Enum for platform type."""
@@ -429,13 +431,21 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     if info.session_name:
         contents["session_name"] = info.session_name
 
-    contents = yaml.dump(contents, width=300)
-    fout.write(contents)
+    if any(w.get("window_name") == "console" for w in contents["windows"]):
+        # A pre-existing tmux server keeps its own environment. Explicitly forward
+        # these optional settings, including empty values to clear stale settings.
+        contents.setdefault("environment", {}).update(
+            {name: os.environ.get(name, "") for name in CONSOLE_ENV_VARS}
+        )
+
+    fout.write(yaml.dump(contents, width=300))
     fout.flush()
 
     if verbose:
+        if contents.get("environment", {}).get("ADT4_CONSOLE_TOKEN"):
+            contents["environment"]["ADT4_CONSOLE_TOKEN"] = "<redacted>"
         console = rich.console.Console()
-        console.print(Panel(Syntax(contents, "yaml")))
+        console.print(Panel(Syntax(yaml.dump(contents, width=300), "yaml")))
 
 
 @click.command()

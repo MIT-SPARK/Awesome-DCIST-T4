@@ -156,6 +156,8 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_FLEETLINK\_PORT             | Port of the base's fleetlink router (topology `zenoh.fleetlink_port`, default 7450); set by `run-adt4`; not overridable|
 | ADT4\_FLEETLINK\_MESH\_SOURCE     | Mesh the agent sends: `odometric` (default) or `dsg`              |
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
+| ADT4\_CONSOLE\_PORT              | Port of the web console (default: 8090; optional)                 |
+| ADT4\_CONSOLE\_TOKEN             | Token the web console requires from browsers (optional; see below)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
@@ -385,6 +387,28 @@ ros2 topic pub /hilbert/omniplanner_node/region_rearrange_objects_pddl/pddl_goal
 | `spot-image_logging.yaml`                        | Same as `spot-default`, and also logs keyframe images and object tracks for an image-backed map    |
 | `spot_bag-image_logging.yaml`                    | Same as `spot_bag-default`, and also logs keyframe images and object tracks for an image-backed map |
 | `spot_sim_fleetlink-default.yaml`                | Runs the simulated Spot executor and fleetlink agent for testing plans from a separate base station in fleetlink mode |
+
+### Web console
+
+The `adt4_console` submodule ([harelb/adt4_console](https://github.com/harelb/adt4_console)) is a
+browser console for the base station: fleet status, the 3D scene graph and mesh, planning,
+missions and chat. `install/python_setup.bash` installs its Python packages and builds its UI
+(Node 20.19+ or 22.12+; `--no-console` skips it). Every `base_station*` session starts it in a
+`console` window next to RViz (`ros2 run adt4_console adt4-console`); open
+`http://<base station>:8090/` (port: `ADT4_CONSOLE_PORT`). The heracles sessions also give it
+the live Neo4j map at `ADT4_HERACLES_IP:ADT4_HERACLES_PORT`. On a headless base station RViz
+exits in its own pane and the rest of the session keeps running. Features whose packages a
+workspace lacks are hidden; see the console's README.
+
+The console listens on every interface of the base station, and without a token anyone on
+that network can use it: edit the map, send robots goals, and use the chat (which spends the
+LLM API key). Set `ADT4_CONSOLE_TOKEN` before launching to require that token. Browsers
+opening `http://<base station>:8090/` then show a sign-in dialog if they have no valid
+saved token. Enter the token in the password field; valid tokens are remembered in
+that browser. Without a configured token, no sign-in dialog appears.
+Links with `?token=<token>` still work, and API clients send `Authorization: Bearer <token>`.
+`run-adt4` forwards the token and port to the console session even when the tmux
+server is already running. Dry-run output redacts the token.
 
 
 

@@ -50,16 +50,16 @@ experiments:
   # fleetlink_base (fleetlink router + bridge, fleetlink mode only) is added here rather than to
   # plan_prior*, which the single-machine spot_* simulations below also use.
   base_station:
-    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j]
     config: [default]
   base_station_repair:
-    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
@@ -124,7 +124,7 @@ experiments:
     launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
     config: [grstaps_repair]
   base_station_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base]
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j]
     config: [grstaps_repair]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]
