@@ -25,3 +25,12 @@ textual-dev
 eclipse-zenoh==1.8.0
 msgpack
 zstandard
+# adt4_console (web console server)
+fastapi
+uvicorn[standard]
+pyproj
+scipy
+pillow
+trimesh
+networkx
+pyzmq
