@@ -1,5 +1,6 @@
 """Unit tests for fleet_helpers.py — all SSH/subprocess calls are mocked."""
 
+import shutil
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -145,6 +146,12 @@ class TestResolveMachines:
     def test_missing_platform_id_defaults_empty(self, sample_topology):
         result = resolve_machines(sample_topology, "mit_wifi", names=["gamma"])
         assert result[0]["platform_id"] == ""
+
+    def test_platform_type_included(self, sample_topology):
+        sample_topology["machines"]["alpha"]["platform_type"] = "spot"
+        by_name = {m["name"]: m for m in resolve_machines(sample_topology, "mit_wifi")}
+        assert by_name["alpha"]["platform_type"] == "spot"
+        assert by_name["gamma"]["platform_type"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +345,20 @@ class TestGetRemoteStatus:
         result = get_remote_status("swarm", "10.29.1.1")
         assert result["tmux_sessions"] == "N/A"
         assert result["ros2_procs"] == "N/A"
+
+    @pytest.mark.parametrize("shell", ["bash", "zsh"])
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_spot_command_parses_in_remote_shell(self, mock_ssh, shell):
+        """The Spot battery query is part of one remote command line; a quoting
+        error there breaks every status field of a Spot robot."""
+        if shutil.which(shell) is None:
+            pytest.skip(f"{shell} not installed")
+        mock_ssh.return_value = (-1, "", "")
+        get_remote_status("swarm", "10.29.1.1", platform_type="spot")
+        cmd = mock_ssh.call_args[0][2]
+        assert "battery_states" in cmd
+        check = subprocess.run([shell, "-n", "-c", cmd], capture_output=True, text=True)
+        assert check.returncode == 0, check.stderr
 
 
 # ---------------------------------------------------------------------------
