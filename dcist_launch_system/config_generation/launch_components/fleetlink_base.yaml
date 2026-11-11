@@ -1,7 +1,8 @@
 ---
 # ADT4_FLEETLINK_MODE / _CONNECT / _PORT: set by run-adt4 for the session from topology.yaml
 # (fleet_helpers.fleet_link_env); unset (tmuxp load without run-adt4) = router mode.
-# Router and bridge run in fleetlink mode only; the bridge reports to the base's status monitor,
+# Router and bridge run in fleetlink mode only, and only if not already running (e.g. in the
+# start-adt4-console session, which a base_station_* session can then join); the bridge reports to the base's status monitor,
 # and in router mode run-adt4 drops fleetlink_bridge from it (_monitor_config).
 nodes_to_monitor:
   fleetlink_bridge: {}
@@ -11,11 +12,11 @@ windows:
     layout: tiled
     panes:
       # fleetlink mode only (fleet_defaults.fleet_link: fleetlink): the radio's zenoh router, which the robot agents dial
-      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE,
+      - if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo "fleetlink-router already running on port ${ADT4_FLEETLINK_PORT:-7450} (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE,
         router mode)"; fi
       # fleetlink mode only: relays the robots' ROS topics / TF / services into this ROS graph (fleetlink/relay.yaml).
       # Robot TF goes where the base reads TF, which is namespaced by robot (see master.launch.yaml).
-      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector"
+      - if pgrep -f fleetlink-bridge >/dev/null; then echo "fleetlink-bridge already running (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector"
         -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p
         relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE,
         router mode)"; fi

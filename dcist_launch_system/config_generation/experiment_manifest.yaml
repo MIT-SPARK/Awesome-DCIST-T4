@@ -54,10 +54,12 @@ experiments:
   base_station:
     launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
-  # Console only (no prior map, no planner): the web console with the fleetlink router + bridge
-  # the robots dial in to, e.g. while the robots build a new map. Started by start-adt4-console.
+  # Console only (no prior map, no planner): the minimum to launch and watch robots from the web
+  # console - the console and the fleetlink router + bridge the robots dial in to. Started by
+  # start-adt4-console in its own tmux session (adt4_console); a base_station_* session can be
+  # started beside it later (it does not start a second console, router or bridge).
   base_station_console:
-    launch_config: [multi_status, tf_relay, fleetlink_base, console]
+    launch_config: [fleetlink_base, console]
     config: [default]
   base_station_heracles:
     launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
