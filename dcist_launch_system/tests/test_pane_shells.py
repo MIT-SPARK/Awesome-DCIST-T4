@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 import yaml
@@ -304,3 +305,94 @@ def test_fleetlink_bridge_guard(tmp_path, running):
     else:
         assert "already running" not in ret.stdout, ret
         assert "run fleetlink fleetlink-bridge --ros-args" in log.read_text()
+
+
+needs_tmuxp = pytest.mark.skipif(
+    not (shutil.which("tmuxp") and shutil.which("tmux") and shutil.which("zsh")),
+    reason="tmux/tmuxp/zsh missing",
+)
+
+
+def _load_and_capture(tmp_path, session):
+    """Load ``session`` with tmuxp on a private tmux server; {window.pane: screen}."""
+    home = tmp_path / "home"
+    home.mkdir(exist_ok=True)
+    (home / ".zshrc").write_text("PS1='> '\n")
+    path = tmp_path / "s.yaml"
+    path.write_text(yaml.safe_dump(session))
+    env = {
+        "PATH": os.environ["PATH"],
+        "HOME": str(home),
+        "SHELL": shutil.which("zsh"),
+        "TERM": "xterm-256color",
+        "TMUX_TMPDIR": str(tmp_path),
+    }
+    tmux = ["tmux", "-L", "minus_t"]
+    try:
+        subprocess.run(
+            ["tmuxp", "load", "-L", "minus_t", "-d", "-y", str(path)],
+            env=env, capture_output=True, timeout=60, check=True,
+        )  # fmt: skip
+        keys = [f"{w['window_name']}.{i}" for w in session["windows"]
+                for i in range(len(w["panes"]))]  # fmt: skip
+
+        def screens():
+            return {
+                k: subprocess.run(
+                    tmux
+                    + ["capture-pane", "-p", "-t", f"{session['session_name']}:{k}"],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                ).stdout  # fmt: skip
+                for k in keys
+            }
+
+        # second.1 runs either way; give second.0 (typed first) a moment more
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if "RAN_plain_1" in screens()["second.1"]:
+                break
+            time.sleep(0.25)
+        time.sleep(1.0)
+        return screens()
+    finally:
+        subprocess.run(tmux + ["kill-server"], env=env, capture_output=True)
+
+
+def _minus_t_session():
+    # libtmux 0.30 Pane.cmd skips `-t <pane>` when an argument contains "-t": the
+    # send-keys text `${X:-true}` then lands in the active pane (first.0)
+    return {
+        "session_name": "minus_t",
+        "windows": [
+            {"window_name": "first", "panes": ["echo first"]},
+            {
+                "window_name": "second",
+                "shell_command_before": "true",
+                "panes": [
+                    "print RAN_${UNSET_VAR:-true}_0",
+                    "print RAN_plain_1",  # no minus-t: always reaches its pane
+                ],
+            },
+        ],
+    }
+
+
+@needs_tmuxp
+def test_send_keys_misroutes_commands_containing_minus_t(tmp_path):
+    """Documents the root cause: with send-keys, a command containing "-t" is
+    typed into another pane (this is what the pane shells avoid)."""
+    out = _load_and_capture(tmp_path, _minus_t_session())
+    if "RAN_true_0" in out["second.0"]:
+        pytest.skip("this tmuxp/libtmux targets send-keys correctly")
+    assert "UNSET_VAR:-true" in out["first.0"]
+
+
+@needs_tmuxp
+def test_pane_shells_run_commands_containing_minus_t_in_their_pane(tmp_path):
+    session = gc.convert_to_pane_shells(_minus_t_session())
+    out = _load_and_capture(tmp_path, session)
+    assert "RAN_true_0" in out["second.0"], out
+    assert "RAN_plain_1" in out["second.1"], out
+    assert "RAN_" not in out["first.0"], out

@@ -35,14 +35,15 @@ def str_to_bool(string):
 
 # --- pane shells -------------------------------------------------------------
 # tmuxp types `shell_command_before` and each pane command with `tmux send-keys`
-# right after creating the pane, before the pane's shell has finished loading
-# ~/.zshrc. Whether those keystrokes survive depends on what the rc files do with
-# pending terminal input; with heavy rc files (oh-my-zsh: update check, compinit,
-# terminal queries) they were lost or typed into another pane: on willow the
-# prior_dsg heracles publisher pane sat at an empty prompt, play_rosbag lost its
-# command offline. Every generated pane therefore runs as its own process instead,
-# through tmuxp's pane-level `shell` key, so there is nothing to type and nothing
-# to lose:
+# (libtmux Pane.send_keys -> Pane.cmd). libtmux 0.30's Pane.cmd only adds
+# `-t <pane id>` when no argument contains the substring "-t", so a command such
+# as `${ADT4_NEO4J_SEED:-true}`, `${ADT4_FLEETLINK_CONNECT:-tcp/...}` or
+# `play_rosbag --filter-tf` is typed into whichever pane is active (the first
+# window's, zenoh), and only the separate Enter reaches its own pane: willow's
+# prior_dsg heracles publisher pane sat at an empty prompt with its command in the
+# zenoh pane, and play_rosbag lost its command. Typed keys also race the shell's
+# start-up (heavy ~/.zshrc). Every generated pane therefore runs as its own
+# process instead, through tmuxp's pane-level `shell` key, so nothing is typed:
 #
 #     zsh -ic 'trap : INT; <shell_command_before> && <cmd>; <exec an interactive zsh>'
 #

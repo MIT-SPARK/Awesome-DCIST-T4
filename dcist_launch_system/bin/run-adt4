@@ -323,10 +323,21 @@ def _expand_pane_shells(session_path, env):
     }
     for key in deferred:
         del environment[key]
+    # the session's own values win over the launching environment's (tmuxp gives
+    # them to the panes): run-adt4 rewrites some (ADT4_MONITOR_CONFIG), and a run-adt4
+    # started inside another ADT4 session inherits that session's values
+    values = {
+        **env,
+        **{
+            str(k): generate_configs.expand_vars(str(v), env)
+            for k, v in environment.items()
+            if v is not None
+        },
+    }
     for window in contents.get("windows") or []:
         for pane in window.get("panes") or []:
             if isinstance(pane, dict) and pane.get("shell"):
-                shell = generate_configs.expand_pane_shell(pane["shell"], env)
+                shell = generate_configs.expand_pane_shell(pane["shell"], values)
                 pane["shell"] = generate_configs.add_pane_exports(shell, deferred)
     with open(session_path, "w") as f:
         yaml.safe_dump(contents, f, sort_keys=False, width=100000)
