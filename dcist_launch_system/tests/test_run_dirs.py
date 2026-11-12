@@ -625,3 +625,28 @@ def test_per_run_outputs_use_the_run_dir():
             "$<var output_dir>/keyframes" in text and "$<var output_dir>/tracks" in text
         )
         assert "ADT4_OUTPUT_DIR" not in text
+
+
+def test_clock_sync_reads_timedatectl_and_chrony(monkeypatch):
+    import subprocess
+
+    from dcist_launch_system.fleet import run_dirs
+
+    def fake_run(cmd, **kw):
+        if cmd[0] == "timedatectl":
+            return subprocess.CompletedProcess(cmd, 0, "NTPSynchronized=yes\nNTP=yes\n", "")
+        if cmd[0] == "chronyc":
+            return subprocess.CompletedProcess(
+                cmd, 0, "A1B2C3D4,ntp.mit.edu,2,1794450000.1,0.000213,-0.00001,0.0003,1.2,0,0,0,0,64,Normal\n", "")
+        raise FileNotFoundError(cmd[0])
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    s = run_dirs.clock_sync()
+    assert s == {"synchronized": True, "ntp_service": True,
+                 "chrony": {"ref": "ntp.mit.edu", "stratum": 2, "offset_s": 0.000213}}
+
+    def missing(cmd, **kw):
+        raise FileNotFoundError(cmd[0])
+
+    monkeypatch.setattr(subprocess, "run", missing)
+    assert run_dirs.clock_sync() == {}

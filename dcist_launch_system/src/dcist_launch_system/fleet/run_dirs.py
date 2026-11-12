@@ -210,6 +210,34 @@ def _git(args, cwd, timeout=3) -> str | None:
     return out.stdout if out.returncode == 0 else None
 
 
+def clock_sync(timeout: float = 2.0) -> dict:
+    """This machine's clock sync state at run start (``timedatectl``, ``chronyc``):
+    ``{synchronized, ntp_service, chrony: {ref, offset_s, stratum}}``, keys absent
+    when a tool is missing.  The mission check maps robot clocks to the base with
+    fleetlink's measured offsets; this records whether NTP was there at all."""
+    import subprocess
+
+    out: dict = {}
+    try:
+        r = subprocess.run(["timedatectl", "show", "-p", "NTPSynchronized", "-p", "NTP"],
+                           capture_output=True, text=True, timeout=timeout)  # fmt: skip
+        kv = dict(ln.split("=", 1) for ln in r.stdout.splitlines() if "=" in ln)
+        if "NTPSynchronized" in kv:
+            out["synchronized"] = kv["NTPSynchronized"] == "yes"
+        if "NTP" in kv:
+            out["ntp_service"] = kv["NTP"] == "yes"
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    try:
+        r = subprocess.run(["chronyc", "-c", "tracking"], capture_output=True, text=True, timeout=timeout)
+        f = r.stdout.strip().split(",")
+        if r.returncode == 0 and len(f) > 5:
+            out["chrony"] = {"ref": f[1], "stratum": int(f[2]), "offset_s": float(f[4])}
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    return out
+
+
 def git_shas(superproject) -> dict:
     """``{"superproject": sha, "superproject_dirty": bool, "submodules": {path: sha}}``.
 

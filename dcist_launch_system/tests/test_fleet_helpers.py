@@ -727,3 +727,15 @@ class TestCheckSilvusRoute:
         info = check_silvus_route("swarm", "198.51.100.1")
         assert info["silvus_iface"] is None
         assert info["has_route"] is True
+
+
+def test_rsync_transfer_bwlimit(monkeypatch):
+    from dcist_launch_system import fleet_helpers as fh
+
+    seen = []
+    monkeypatch.setattr(fh, "get_local_ips", lambda: ["127.0.0.1"])
+    monkeypatch.setattr(fh, "_run_rsync", lambda cmd, **kw: (seen.append(cmd) or (0, "ok", "")))
+    ok, _, _ = fh.rsync_transfer("u", "10.0.0.5", "~/a", "u", "127.0.0.1", "/tmp/x_bw", bwlimit_kbps=2000)
+    assert ok and "--bwlimit=2000" in seen[-1]
+    fh.rsync_transfer("u", "10.0.0.5", "~/a", "u", "127.0.0.1", "/tmp/x_bw")
+    assert not any(a.startswith("--bwlimit") for a in seen[-1])

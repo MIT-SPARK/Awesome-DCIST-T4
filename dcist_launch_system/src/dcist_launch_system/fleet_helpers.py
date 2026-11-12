@@ -365,6 +365,7 @@ def rsync_transfer(
     stream=False,
     exclude=None,
     progress_callback=None,
+    bwlimit_kbps=None,
 ):
     """Rsync files between machines.
 
@@ -372,9 +373,12 @@ def rsync_transfer(
     If stream=True, print rsync progress to stdout in real time.
     progress_callback: optional callable(percent: int) for progress updates.
     exclude: list of rsync --exclude patterns.
+    bwlimit_kbps: rsync --bwlimit (KB/s) on the radio; None: no limit.
     Returns (success: bool, method: str, message: str).
     """
     rsync_flags = ["-az", "--info=progress2"]
+    if bwlimit_kbps:
+        rsync_flags.append(f"--bwlimit={int(bwlimit_kbps)}")
     if delete:
         rsync_flags.append("--delete")
     for pat in exclude or []:

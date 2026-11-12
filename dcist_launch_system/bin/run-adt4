@@ -308,6 +308,7 @@ def _write_run_info(
             "config": _session_config(session_path),
             "t_start": datetime.datetime.now().astimezone().timestamp(),
             "git": shas,
+            "clock": run_dirs.clock_sync(),
         }
         info = write_run_info(
             output_dir,

@@ -692,3 +692,17 @@ def test_legacy_single_mapping_preset_in_relocalize_mode_is_refused():
     plan.session = "spot_relocalize-relocalize"
     cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, topo)}
     assert "run-adt4 phoenix_relocalize-relocalize" in cmds["gauss"]
+
+
+def test_phoenix_records_by_default_spot_does_not():
+    """Mission logging phase B: a Husky's full recording (phoenix_topics.txt) is
+    its only execution record, so phoenix robots get -r unless turned off."""
+    plan = LaunchPlan(robots=["hamilton", "gauss"], session="spot-default", experiment="e", mode="mapping")
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, MIXED_RUNTIME, OUT, MIXED_TOPO)}
+    assert " -r " in cmds["gauss"] and " -r " not in cmds["hamilton"]
+    plan.record_phoenix = False
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, MIXED_RUNTIME, OUT, MIXED_TOPO)}
+    assert " -r " not in cmds["gauss"]
+    plan.record = True
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, MIXED_RUNTIME, OUT, MIXED_TOPO)}
+    assert all(c.count(" -r ") == 1 for c in cmds.values())

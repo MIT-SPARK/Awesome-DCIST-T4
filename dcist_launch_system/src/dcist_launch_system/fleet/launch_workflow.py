@@ -82,6 +82,11 @@ class LaunchPlan:
     prior_path: str = ""
     prior_source: str | None = None  # machine that holds prior_path, if remote
     record: bool = False
+    # Husky (phoenix) robots record their full topic list (run-adt4 -r,
+    # recording/phoenix_topics.txt) even without ``record``: ARL's phoenix keeps no
+    # execution log of its own (mission logging plan, phase B); run-adt4 warns
+    # below 50 GB free.  False: only with ``record``.
+    record_phoenix: bool = True
     base_station: str | None = None
     bs_session: str | None = None
     # network the robot <-> base links use (None: zenoh.connect_network, else the
@@ -398,11 +403,14 @@ def build_robot_commands(
         if prior_overrides and rname in prior_overrides:
             rprior = prior_overrides[rname]
         prior_flag = f" -p {_quote_path(rprior)}" if rprior else ""
+        rec = record_flag
+        if not rec and plan.record_phoenix and robot_platform(topo, m) == "phoenix":
+            rec = " -r"
         cmd = (
             f"{_WS_PREFIX}{fleet_env_prefix(m['name'], topo, plan.link_network)}{RUN_ADT4} "
             f"{shlex.quote(robot_session(plan, m, topo))} -n {shlex.quote(m['name'])} "
             f"-c {shlex.quote(m['platform_id'])} "
-            f"-o {_quote_path(out_dir)} -y{prior_flag}{record_flag} "
+            f"-o {_quote_path(out_dir)} -y{prior_flag}{rec} "
             f'--tmuxp-args "-d"'
         )
         cmds.append((m, cmd))
