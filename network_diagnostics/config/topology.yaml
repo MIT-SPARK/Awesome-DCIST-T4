@@ -33,12 +33,12 @@ machines:
     desc: Topaz Jockey
   gauss:
     role: robot
-    platform_id: samoyed
+    platform_id: phoenix
     platform_type: phoenix
     desc: Husky Jockey
   lewis:
     role: robot
-    platform_id: samoyed
+    platform_id: phoenix
     platform_type: phoenix
     desc: Husky Jockey
   apollo:
