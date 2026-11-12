@@ -23,6 +23,15 @@ from rich.table import Table
 
 from dcist_launch_system import fleet_helpers
 
+
+def _ws_path():
+    return pathlib.Path(__file__).absolute().parent.parent
+
+
+# generate_configs provides the pane shells shared with the generated sessions
+sys.path.append(str(_ws_path() / "config_generation"))
+import generate_configs  # noqa: E402
+
 ADT4_VARS = [
     "ADT4_ROBOT_NAME",
     "ADT4_PLATFORM_ID",
@@ -46,6 +55,9 @@ MODE_ONLY_NODES = {
     "fleetlink_agent": "fleetlink",
     "fleetlink_bridge": "fleetlink",
 }
+
+# rmw_zenohd's default port (topology.yaml zenoh.port, ADT4_ZENOH_PORT override it)
+DEFAULT_ZENOH_PORT = 7447
 
 CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT", "ADT4_NETWORK")
 
@@ -75,6 +87,7 @@ class SessionInfo:
     trajectory_args: list[str] = field(default_factory=list)
     record: Optional[str] = None
     zenoh: bool = True
+    zenoh_port: int = DEFAULT_ZENOH_PORT
     fleet_link: str = "router"
     session_env: dict = field(default_factory=dict)
 
@@ -92,10 +105,6 @@ class SessionInfo:
 
         click.secho("Platform ID '{self.platform_id}' is unknown!", fg="red")
         sys.exit("invalid platform")
-
-
-def _ws_path():
-    return pathlib.Path(__file__).absolute().parent.parent
 
 
 def _get_important_experiments():
@@ -291,6 +300,23 @@ def _session_file_env(session_file, env):
     return out
 
 
+def _expand_pane_shells(session_path, env):
+    """Expand ``$VAR``s in the session's pane scripts from ``env`` (in place).
+
+    tmuxp expanded typed commands from its own (this) environment; it leaves a pane
+    ``shell`` alone, and the pane would read the tmux server's environment instead,
+    which is the first session's when another (e.g. adt4_console) started the server.
+    """
+    with open(session_path) as f:
+        contents = yaml.safe_load(f) or {}
+    for window in contents.get("windows") or []:
+        for pane in window.get("panes") or []:
+            if isinstance(pane, dict) and pane.get("shell"):
+                pane["shell"] = generate_configs.expand_pane_shell(pane["shell"], env)
+    with open(session_path, "w") as f:
+        yaml.safe_dump(contents, f, sort_keys=False, width=100000)
+
+
 def _run_session(session_path, env, tmuxp_args, dry_run):
     env = {**env, **_session_file_env(session_path, env)}
     # pip --user installs (gauss) put tmuxp in ~/.local/bin, which is not on PATH for
@@ -301,6 +327,7 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
     if not tmuxp:
         click.secho("tmuxp not found (PATH or ~/.local/bin)", fg="red")
         return 1
+    _expand_pane_shells(session_path, env)
     cmd = [tmuxp, "load", str(session_path)]
     if tmuxp_args:
         cmd += shlex.split(tmuxp_args)
@@ -310,6 +337,9 @@ def _run_session(session_path, env, tmuxp_args, dry_run):
         return 0
 
     return subprocess.run(cmd, env=env).returncode
+
+
+SETUP_CMD = "source ${ADT4_WS}/install/setup.zsh"
 
 
 def _make_record_window(info: SessionInfo):
@@ -325,13 +355,11 @@ def _make_record_window(info: SessionInfo):
     click.secho(f"Recording topics from '{topic_path}'", fg="green")
     output_path = info.output_path / "recorded_data"
     cmd = f"ros2 run dcist_launch_system record_topics {output_path} {topic_path}"
-    window_config = {
+    return {
         "layout": "tiled",
-        "panes": [cmd],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [{"shell": generate_configs.pane_shell([SETUP_CMD], cmd)}],
         "window_name": "recording",
     }
-    return window_config
 
 
 def _tf_remap_args(info: SessionInfo):
@@ -385,10 +413,13 @@ def _make_bag_window(info: SessionInfo):
     # play_rosbag republishes (filtered) TF from its wrapper node, which these remaps move
     bag_args += ["--ros-args"] + _tf_remap_args(info)
 
+    # Every pane runs as its own process (pane `shell`, see
+    # generate_configs.pane_shell) instead of having its command typed into a
+    # shell that may not be ready yet; the pane stays an interactive shell after.
+    play_cmd = f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"
     window_config = {
         "layout": "tiled",
-        "panes": [f"ros2 run ianvs play_rosbag {info.bag} {' '.join(bag_args)}"],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [{"shell": generate_configs.pane_shell([SETUP_CMD], play_cmd)}],
         "window_name": "play_rosbag",
     }
     if info.trajectory:
@@ -398,7 +429,9 @@ def _make_bag_window(info: SessionInfo):
         cmd += ["--parent", f"{info.robot_name}/odom", "--child", child_frame]
         cmd += info.trajectory_args
         cmd += ["--ros-args", "-p", "use_sim_time:=true"] + _tf_remap_args(info)
-        window_config["panes"].append(" ".join(cmd))
+        window_config["panes"].append(
+            {"shell": generate_configs.pane_shell([SETUP_CMD], " ".join(cmd))}
+        )
 
     return window_config
 
@@ -410,18 +443,48 @@ def _make_bag_window(info: SessionInfo):
 FLEETLINK_ZENOH_OVERRIDE = "connect/endpoints=[]"
 
 
-def _zenoh_cmd(fleet_link):
+def _zenoh_port(env):
+    """The local rmw_zenohd's port: ADT4_ZENOH_PORT, else topology.yaml's zenoh.port."""
+    if env.get("ADT4_ZENOH_PORT"):
+        return int(env["ADT4_ZENOH_PORT"])
+    try:
+        topology = fleet_helpers.load_topology(
+            env.get("ADT4_TOPOLOGY") or _topology_path()
+        )
+        return int(
+            ((topology or {}).get("zenoh") or {}).get("port", DEFAULT_ZENOH_PORT)
+        )
+    except Exception:  # noqa: BLE001
+        return DEFAULT_ZENOH_PORT
+
+
+def _zenoh_cmd(fleet_link, port=DEFAULT_ZENOH_PORT):
+    """Start rmw_zenohd, unless a router already listens on ``port``.
+
+    Another session (start-adt4-console's adt4_console, or another team's router on a
+    shared machine) may already run one; a second would only fail with "Address
+    already in use", so say so instead (the same check as fleetlink_base.yaml's).
+    """
     cmd = "ros2 run rmw_zenoh_cpp rmw_zenohd"
     if fleet_link == "fleetlink":
-        return f"ZENOH_CONFIG_OVERRIDE={shlex.quote(FLEETLINK_ZENOH_OVERRIDE)} {cmd}"
-    return cmd
+        cmd = f"ZENOH_CONFIG_OVERRIDE={shlex.quote(FLEETLINK_ZENOH_OVERRIDE)} {cmd}"
+    return (
+        f'if ss -ltn | grep -q ":{port} "; then echo "zenoh router already running on '
+        f"port {port} (another session, e.g. adt4_console from start-adt4-console?), "
+        f'not starting another"; else {cmd}; fi'
+    )
 
 
-def _make_zenoh_window(fleet_link="router"):
+def _make_zenoh_window(fleet_link="router", port=DEFAULT_ZENOH_PORT):
     return {
         "layout": "tiled",
-        "panes": [_zenoh_cmd(fleet_link)],
-        "shell_command_before": "source ${ADT4_WS}/install/setup.zsh",
+        "panes": [
+            {
+                "shell": generate_configs.pane_shell(
+                    [SETUP_CMD], _zenoh_cmd(fleet_link, port)
+                )
+            }
+        ],
         "window_name": "zenoh",
     }
 
@@ -452,9 +515,9 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
         contents["windows"].append(_make_record_window(info))
 
     if info.zenoh:
-        contents["windows"] = [_make_zenoh_window(info.fleet_link)] + contents[
-            "windows"
-        ]
+        contents["windows"] = [
+            _make_zenoh_window(info.fleet_link, info.zenoh_port)
+        ] + contents["windows"]
 
     # the fleet link values reach every session (e.g. tf_relay reads the mode),
     # whatever its components declare
@@ -617,6 +680,7 @@ def main(
         trajectory=_normalize_optional(trajectory),
         record=record,
         zenoh=zenoh,
+        zenoh_port=_zenoh_port(env),
         fleet_link=env["ADT4_FLEETLINK_MODE"],
         session_env=_session_env(env),
     )
