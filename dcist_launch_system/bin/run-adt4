@@ -306,15 +306,38 @@ def _expand_pane_shells(session_path, env):
     tmuxp expanded typed commands from its own (this) environment; it leaves a pane
     ``shell`` alone, and the pane would read the tmux server's environment instead,
     which is the first session's when another (e.g. adt4_console) started the server.
+
+    A session ``environment`` value that refers to a variable ``env`` does not set
+    (e.g. ``HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH`` when run-adt4 was
+    started without ~/.zshrc, as the console's ssh launch does) would reach every
+    pane as the literal "$VAR". Such values are exported by the pane scripts instead,
+    after the pane's ~/.zshrc has run, so they expand there.
     """
     with open(session_path) as f:
         contents = yaml.safe_load(f) or {}
+    environment = contents.get("environment") or {}
+    deferred = {
+        key: value
+        for key, value in environment.items()
+        if value is not None and generate_configs.unresolved_vars(value, env)
+    }
+    for key in deferred:
+        del environment[key]
     for window in contents.get("windows") or []:
         for pane in window.get("panes") or []:
             if isinstance(pane, dict) and pane.get("shell"):
-                pane["shell"] = generate_configs.expand_pane_shell(pane["shell"], env)
+                shell = generate_configs.expand_pane_shell(pane["shell"], env)
+                pane["shell"] = generate_configs.add_pane_exports(shell, deferred)
     with open(session_path, "w") as f:
         yaml.safe_dump(contents, f, sort_keys=False, width=100000)
+
+
+def _default_heracles_agents_path(env):
+    """ADT4_HERACLES_AGENTS_PATH, else this checkout's heracles_agents submodule."""
+    if env.get("ADT4_HERACLES_AGENTS_PATH"):
+        return env["ADT4_HERACLES_AGENTS_PATH"]
+    path = _ws_path().parent / "heracles_agents"
+    return str(path) if path.is_dir() else None
 
 
 def _run_session(session_path, env, tmuxp_args, dry_run):
@@ -653,6 +676,11 @@ def main(
     # always set: the session files pass ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP, and tmuxp leaves an
     # unset variable as the literal "$ADT4_PRIOR_MAP", which ${ADT4_PRIOR_MAP:+...} reads as set
     env["ADT4_PRIOR_MAP"] = str(prior_map) if prior_map else ""
+    # sessions pass HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH; ~/.zshrc usually
+    # exports it, but a launch without ~/.zshrc (console ssh, zsh -c) does not
+    heracles_agents = _default_heracles_agents_path(env)
+    if heracles_agents:
+        env["ADT4_HERACLES_AGENTS_PATH"] = heracles_agents
     _derive_fleet_env(env, robot_name)
 
     if rviz_config:

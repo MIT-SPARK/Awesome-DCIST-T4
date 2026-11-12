@@ -221,9 +221,14 @@ def test_tmuxp_starts_every_pane_with_its_command(run_adt4, tmp_path):
     zdot = ws / "src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"
     shutil.copytree(PKG / "config_generation" / "pane_shell", zdot)
     (ws / "install" / "setup.zsh").write_text(f"export PATH={bin_dir}:$PATH\n")
-    (home / ".zshrc").write_text("PS1='pane> '\n")
+    # ~/.zshrc exports ADT4_HERACLES_AGENTS_PATH; the launching environment does not
+    (home / ".zshrc").write_text(
+        "PS1='pane> '\nexport ADT4_HERACLES_AGENTS_PATH=/rc/agents\n"
+    )
+    env_log = tmp_path / "env.log"
     (bin_dir / "ros2").write_text(
-        f'#!/bin/sh\necho "$TMUX_PANE $*" >> {log}\nexec sleep 300\n'
+        f'#!/bin/sh\necho "$TMUX_PANE $*" >> {log}\n'
+        f'echo "$TMUX_PANE $HERACLES_EVALUATION_PATH" >> {env_log}\nexec sleep 300\n'
     )
     (bin_dir / "ros2").chmod(0o755)
 
@@ -308,6 +313,12 @@ def test_tmuxp_starts_every_pane_with_its_command(run_adt4, tmp_path):
         ran = ros2_panes()
         assert started[("play_rosbag", 0)][0] in ran
         assert started[("zenoh", 0)][0] in ran  # its guard passed: port 1 is free
+        # a session value referring to a variable only ~/.zshrc sets resolves in panes
+        assert "HERACLES_EVALUATION_PATH" not in session["environment"]
+        heracles_env = dict(
+            line.split(" ", 1) for line in env_log.read_text().splitlines()
+        )
+        assert heracles_env[started[("prior_dsg", 0)][0]] == "/rc/agents"
 
         def capture(key):
             return subprocess.run(
@@ -326,3 +337,63 @@ def test_tmuxp_starts_every_pane_with_its_command(run_adt4, tmp_path):
         assert ("planning", 0) in panes()
     finally:
         subprocess.run(tmux + ["kill-server"], env=env, capture_output=True)
+
+
+def test_session_env_values_with_unset_vars_resolve_in_the_pane(run_adt4, tmp_path):
+    """HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH, launched without ~/.zshrc
+    (console ssh): the panes export it after their ~/.zshrc instead of getting the
+    literal "$ADT4_HERACLES_AGENTS_PATH"."""
+    gc = run_adt4.generate_configs
+    session = tmp_path / "s.yaml"
+    contents = {
+        "environment": {
+            "HERACLES_EVALUATION_PATH": "$ADT4_HERACLES_AGENTS_PATH",
+            "QUOTING": '${ADT4_HERACLES_AGENTS_PATH}/a "b"',
+            "ADT4_ROBOT_NAME": "$ADT4_ROBOT_NAME",
+            "ADT4_MONITOR_CONFIG": "{nodes_to_track: {}}",
+        },
+        "windows": [
+            {"window_name": "w", "panes": [{"shell": gc.pane_shell([], "echo hi")}]}
+        ],
+    }
+    session.write_text(yaml.safe_dump(contents))
+    run_adt4._expand_pane_shells(session, {"ADT4_ROBOT_NAME": "willow"})
+    out = yaml.safe_load(session.read_text())
+    # resolvable values stay for tmuxp; the others move into the pane
+    assert out["environment"] == {
+        "ADT4_ROBOT_NAME": "$ADT4_ROBOT_NAME",
+        "ADT4_MONITOR_CONFIG": "{nodes_to_track: {}}",
+    }
+    script = shlex.split(out["windows"][0]["panes"][0]["shell"])[2]
+    assert script.startswith("trap : INT; export HERACLES_EVALUATION_PATH=")
+    probe = (
+        script.split("; _adt4_zd=")[0]
+        + '; print -r -- "$HERACLES_EVALUATION_PATH|$QUOTING"'
+    )
+    ret = subprocess.run(
+        ["zsh", "-f", "-c", probe],
+        env={"PATH": os.environ["PATH"], "ADT4_HERACLES_AGENTS_PATH": "/rc/agents"},
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert ret.stdout.splitlines()[-1] == '/rc/agents|/rc/agents/a "b"', ret
+
+    # when run-adt4's environment has the variable, tmuxp expands it as before
+    session.write_text(yaml.safe_dump(contents))
+    full = {"ADT4_HERACLES_AGENTS_PATH": "/x", "ADT4_ROBOT_NAME": "willow"}
+    run_adt4._expand_pane_shells(session, full)
+    out = yaml.safe_load(session.read_text())
+    assert (
+        out["environment"]["HERACLES_EVALUATION_PATH"] == "$ADT4_HERACLES_AGENTS_PATH"
+    )
+    assert "export HERACLES" not in out["windows"][0]["panes"][0]["shell"]
+
+
+def test_heracles_agents_path_defaults_to_the_checkout(run_adt4):
+    assert (
+        run_adt4._default_heracles_agents_path({"ADT4_HERACLES_AGENTS_PATH": "/a"})
+        == "/a"
+    )
+    default = run_adt4._default_heracles_agents_path({})
+    assert default == str(PKG.parent / "heracles_agents")

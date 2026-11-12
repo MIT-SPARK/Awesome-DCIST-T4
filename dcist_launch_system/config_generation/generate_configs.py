@@ -180,6 +180,35 @@ def expand_pane_shell(shell, env):
     return f"zsh -ic {shlex.quote(expand_vars(script[:tail], env) + interactive)}"
 
 
+def unresolved_vars(text, env):
+    """Names ``$VAR``/``${VAR}`` in ``text`` refers to that ``env`` does not set."""
+    names = []
+    for m in _VAR_RE.finditer(str(text)):
+        name = m.group(1)
+        if name.startswith("{"):
+            name = name[1:-1]
+        if re.fullmatch(r"\w+", name, re.ASCII) and name not in env:
+            names.append(name)
+    return names
+
+
+def add_pane_exports(shell, exports):
+    """Export ``exports`` ({name: value}) at the start of a pane script, after the
+    pane's ~/.zshrc: a value's ``$VAR``s then expand in the pane, from what the rc
+    files export, instead of reaching the pane as the literal text."""
+    argv = shlex.split(shell)
+    if not exports or argv[:2] != ["zsh", "-ic"] or len(argv) != 3:
+        return shell
+    script = argv[2]
+    preamble = PANE_PREAMBLE if script.startswith(PANE_PREAMBLE) else ""
+    lines = []
+    for name, value in exports.items():
+        quoted = re.sub(r'(["\\`])', r"\\\1", str(value))
+        lines.append(f'export {name}="{quoted}"; ')
+    script = preamble + "".join(lines) + script[len(preamble) :]
+    return f"zsh -ic {shlex.quote(script)}"
+
+
 def convert_to_pane_shells(contents):
     """Rewrite a tmuxp session so no pane relies on send-keys (see above)."""
     session_before = _cmd_strings(contents.pop("shell_command_before", None))
