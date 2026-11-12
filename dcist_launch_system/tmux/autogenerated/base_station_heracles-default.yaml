@@ -73,3 +73,8 @@ windows:
     layout: tiled
     panes:
       - if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-store-root $HOME/adt4_output/live; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi
+  - window_name: mission_bag
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - "if [ -n \"$ADT4_MISSION_BAG_TOPICS\" ] && [ -n \"$ADT4_RUN_DIR\" ]; then ros2 run dcist_launch_system record_topics \"$ADT4_RUN_DIR/mission_bag\" \"$ADT4_MISSION_BAG_TOPICS\" --storage mcap --preset zstd_fast --max-bag-duration 600 --lock \"${ADT4_MISSION_BAG_LOCK:-mission_bag}\"; else echo \"mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)\"; fi"

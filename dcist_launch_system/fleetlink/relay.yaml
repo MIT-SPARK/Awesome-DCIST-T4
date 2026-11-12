@@ -144,6 +144,22 @@ topics:
     qos: {reliability: reliable, durability: volatile, depth: 1}
     platform: [phoenix, husky]
 
+  # ---------------------------------------------------------------- mission id (down)
+  # The console's current mission (latched JSON {mission_id, state, t_start, robots}),
+  # published on the base's /global/mission/current; every robot gets the same topic,
+  # latched, so its event logs stamp the mission id. Global like table_in: BaseBridge
+  # subscribes once per robot; replay_on_resync resends the last value to a restarted
+  # robot (a mission id is state, not a command).
+  - topic: /global/mission/current
+    type: std_msgs/msg/String
+    dir: down
+    mode: latest_reliable
+    cls: C1
+    rate_hz:
+    ttl_s:
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 1}
+
   # ---------------------------------------------------------------- results / telemetry (up)
   # Rows whose message type is not installed on a machine are skipped with a warning
   # (fleetlink.relay_ros.drop_unavailable_types), e.g. action_result with a

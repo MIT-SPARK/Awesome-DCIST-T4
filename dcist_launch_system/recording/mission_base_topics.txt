@@ -1,0 +1,55 @@
+# Mission bag, base station (run-adt4 mission_bag window; record_topics syntax:
+# '#' comments, '# optional' = may stay silent in a mission, '*' = one name segment).
+# run-adt4 appends every topic the fleetlink base bridge publishes on the base, derived
+# from fleetlink/relay.yaml at launch (dcist_launch_system.mission_bag), and writes the
+# result to <run>/mission_bag_topics.txt. Relay topics listed here keep the marker given
+# here. Not recordable here: the DSG, mesh, camera video and image-store frames that
+# fleetlink carries reach the console over zenoh, not as ROS topics.
+#
+# all robots' TF as relayed to the base (fleetlink-bridge in fleetlink mode, tf_relay in
+# router mode): map -> <robot>/base_link at 5 Hz per robot, plus their static transforms
+/${ADT4_ROBOT_NAME}/tf
+/${ADT4_ROBOT_NAME}/tf_static
+# goals: operator / chat -> goal_manager -> planner plugin
+/${ADT4_ROBOT_NAME}/commanded_goal  # optional: no goal sent yet
+/${ADT4_ROBOT_NAME}/omniplanner_node/*/pddl_goal  # optional: one plugin per mission
+/${ADT4_ROBOT_NAME}/omniplanner_node/goto_points/goto_points_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/tsp_planner/solve_tsp_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/language_planner/language_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/grstaps_planner/grstaps_goal  # optional
+# plans and planner state
+/*/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_viz_out
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_status
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_failed  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_robots
+/${ADT4_ROBOT_NAME}/omniplanner_node/robot_platforms
+/${ADT4_ROBOT_NAME}/omniplanner_node/task_schedule  # optional: GRSTAPS only
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_visited_pois_all  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_covered_pois  # optional
+/*/omniplanner_node/plan_visited_pois  # optional
+/*/omniplanner_node/path_status  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/rviz2_node/llm_response  # optional
+# goal manager and plan repair
+/${ADT4_ROBOT_NAME}/goal_manager/robot_plan_states
+/${ADT4_ROBOT_NAME}/plan_repair/alert  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/replan_request  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/map_version  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/omniplanner_node/map_epoch  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/omniplanner_node/progress_alert  # optional
+# grasping: the robot's approval request (candidate images + depth, a few hundred kB per
+# request) and the operator's answer (console / RViz panel)
+/*/spot_executor_node/manipulation_request
+/*/spot_executor_node/pick_confirmation
+# relay topics that are legitimately quiet in some sessions (the rest of relay.yaml is
+# appended at launch)
+/*/manual_mode  # optional: Husky only
+/awcd_changes  # optional: relocalize_awcd only
+/*/change_detection/state  # optional: relocalize_awcd only
+# base-side change detection and scene changes
+/${ADT4_ROBOT_NAME}/awcd_base_station/reconciled_changes  # optional
+/scene_graph/changes  # optional
+/scene_graph/changes_applied  # optional
+# link health (fleetlink-bridge) and system status
+/fleetlink/link_status  # optional: fleetlink mode only
+/global/ros_system_monitor/table_in

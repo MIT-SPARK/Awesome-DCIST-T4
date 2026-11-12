@@ -59,7 +59,6 @@ MANIFEST = (
 )
 LAUNCH_MODES = ("mapping", "relocalize")
 
-_GB = 1024**3
 RUN_ADT4 = "src/awesome_dcist_t4/dcist_launch_system/bin/run-adt4"
 _WS_PREFIX = "cd ~/dcist_ws && source install/setup.zsh && "
 # Variables every tmuxp session file sets (``environment:``).  A command run on
@@ -707,8 +706,9 @@ def _unlabelled_copy(deps, target, output_root, runs, dest_name, prior_entry):
 
 # A robot never reads the prior's image store (only the base's heracles/console do),
 # and it is most of a map's size (5.3 of 5.6 GB for b45): robots get the map without it.
-ROBOT_PRIOR_EXCLUDES = ["recorded_data/", "image_store/", "image_store.partial/"]
-BASE_PRIOR_EXCLUDES = ["recorded_data/"]
+# Bags and ROS logs are not part of a map (at any depth: runs/<run_id>/...).
+BASE_PRIOR_EXCLUDES = ["recorded_data/", "mission_bag/", "ros_log/"]
+ROBOT_PRIOR_EXCLUDES = BASE_PRIOR_EXCLUDES + ["image_store/", "image_store.partial/"]
 
 
 def _mark_origin(deps, target, dest_path, prior_entry, prior_source, images="all"):
@@ -820,7 +820,12 @@ def _resolve_session_conflicts(targets, cb, deps) -> bool:
 
 
 def _resolve_output_conflicts(cmds, out_dir, experiment, cb, deps) -> bool:
-    conflicts = []
+    """Report machines where the experiment dir already exists; never delete it.
+
+    run-adt4 adds a new ``runs/<run_id>`` under an existing experiment dir and repoints
+    its ``latest`` link, so earlier runs are kept (``run-adt4 --wipe`` deletes them).
+    """
+    existing = []
     for m, _ in cmds:
         _, out, _ = deps.ssh(
             m["user"],
@@ -829,65 +834,13 @@ def _resolve_output_conflicts(cmds, out_dir, experiment, cb, deps) -> bool:
             timeout=5,
         )
         if "EXISTS" in out:
-            conflicts.append(m)
-    if not conflicts:
-        return True
-
-    names = ", ".join(m["name"] for m in conflicts)
-    cb.log("warn", f"{out_dir} already exists on: {names}")
-
-    total_bytes = 0
-    for m in conflicts:
-        _, sz, _ = deps.ssh(
-            m["user"],
-            m["ip"],
-            f"du -sb {_quote_path(out_dir)} 2>/dev/null | awk '{{print $1}}'",
-            timeout=10,
-        )
-        try:
-            total_bytes += int(sz.strip())
-        except (ValueError, AttributeError):
-            pass
-
-    detail = {"machines": [m["name"] for m in conflicts], "bytes": total_bytes}
-    if total_bytes >= _GB:
-        size_str = f"{total_bytes / _GB:.1f} GB"
+            existing.append(m["name"])
+    if existing:
         cb.log(
-            "error",
-            f"Warning: existing data is ~{size_str}. Type 'confirm' to overwrite.",
+            "info",
+            f"{out_dir} already exists on: {', '.join(existing)}; "
+            "this launch adds a new run (runs/<run_id>), earlier runs are kept",
         )
-        request = Confirmation(
-            kind="overwrite_output",
-            message=(
-                f"Output directory '{experiment}' already exists on:\n{names}\n\n"
-                f"Total data at risk: ~{size_str}\n\n"
-                "Type confirm below to overwrite and proceed."
-            ),
-            required_text="confirm",
-            detail=detail,
-        )
-    else:
-        request = Confirmation(
-            kind="overwrite_output",
-            message=(
-                f"Output directory '{experiment}' already exists on:\n{names}\n\n"
-                "Overwrite existing directories and launch?"
-            ),
-            yes_label="Yes, Overwrite",
-            no_label="No, Keep",
-            detail=detail,
-        )
-
-    answer = cb.confirm(request)
-    if answer is None:
-        cb.log("error", "Launch aborted — confirmation timed out or app closed.")
-        return False
-    if not answer:
-        cb.log("error", "Launch aborted — existing directories preserved.")
-        return False
-    for m in conflicts:
-        cb.log("dim", f"Removing {out_dir} on {m['name']}...")
-        deps.ssh(m["user"], m["ip"], f"rm -rf {_quote_path(out_dir)}", timeout=15)
     return True
 
 

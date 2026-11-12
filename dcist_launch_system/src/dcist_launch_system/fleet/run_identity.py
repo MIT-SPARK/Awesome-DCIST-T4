@@ -6,8 +6,13 @@ Every run directory (``~/adt4_output/<experiment>`` on each machine) is identifi
 * ``<run>/run_info.json`` -- written once by ``run-adt4`` at launch (``write_run_info``)
   and never overwritten, so a restart into the same directory keeps the id::
 
-      {"run_id": uuid4, "experiment", "robot", "platform", "session",
-       "started_at": ISO-8601 UTC, "host", "git_commit"}
+      {"run_id", "experiment", "robot", "platform", "session",
+       "started_at": ISO-8601 UTC, "host", "git_commit", ...}
+
+  run-adt4 writes it in ``<experiment>/runs/<run_id>/`` (``fleet.run_dirs``) with
+  ``run_id = <machine>_<YYYYmmdd-HHMMSS>_<4hex>`` plus ``machine``, ``config``,
+  ``session_id`` (ADT4_SESSION_ID), ``t_start`` (epoch s) and ``git`` (superproject and
+  submodule shas); never the environment.  Older runs have a uuid4 run_id.
 
 * ``<copy>/.adt4_origin.json`` -- written on the destination of a transfer
   (``make_origin``)::
@@ -104,11 +109,15 @@ def write_run_info(
     host: str | None = None,
     commit: str | None = None,
     workspace=None,
+    run_id: str | None = None,
+    extra: dict | None = None,
 ) -> dict:
     """Create ``<run_dir>/run_info.json`` unless a valid one exists; return its content.
 
     Never overwrites: a restart into the same directory keeps the run id.  The file
     is created with O_EXCL so two concurrent launches cannot both write one.
+    ``run_id`` defaults to a uuid4 (run-adt4 passes ``run_dirs.make_run_id``);
+    ``extra`` adds fields (never the environment: it holds passwords and API keys).
     """
     run_dir = str(run_dir)
     path = os.path.join(run_dir, RUN_INFO)
@@ -119,7 +128,7 @@ def write_run_info(
     if commit is None and workspace is not None:
         commit = git_commit(workspace)
     info = {
-        "run_id": str(uuid.uuid4()),
+        "run_id": run_id or str(uuid.uuid4()),
         "experiment": experiment or os.path.basename(run_dir.rstrip("/")),
         "robot": robot,
         "platform": platform,
@@ -128,6 +137,8 @@ def write_run_info(
         "host": host or socket.gethostname(),
         "git_commit": commit,
     }
+    for key, value in (extra or {}).items():
+        info.setdefault(key, value)
     if os.path.exists(path):  # present but unreadable / no run_id: keep it aside
         os.replace(path, path + ".invalid")
     try:

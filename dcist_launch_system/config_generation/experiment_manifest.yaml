@@ -58,111 +58,112 @@ experiments:
   # fleetlink_base (fleetlink router + bridge, fleetlink mode only) is added here rather than to
   # plan_prior*, which the single-machine spot_* simulations below also use.
   base_station:
-    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
+    launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console, mission_bag]
     config: [default]
   # Console only (no prior map, no planner): the minimum to launch and watch robots from the web
   # console - the console (on the base station's Neo4j map, like the base_station_*heracles*/web_repair
   # consoles) and the fleetlink router + bridge the robots dial in to. Started by
   # start-adt4-console in its own tmux session (adt4_console); a base_station_* session can be
-  # started beside it later (it does not start a second console, router or bridge).
+  # started beside it later (it does not start a second console, router or bridge, and its
+  # mission bag waits for this one: record_topics --lock base).
   base_station_console:
-    launch_config: [fleetlink_base, console_neo4j]
+    launch_config: [fleetlink_base, console_neo4j, mission_bag]
     config: [default]
   # web console base stations (no RViz): planning on a prior map, viewed and commanded from the console
   base_station_web:
-    launch_config: [plan_prior_web, multi_status, tf_relay, fleetlink_base, console]
+    launch_config: [plan_prior_web, multi_status, tf_relay, fleetlink_base, console, mission_bag]
     config: [default]
   # + heracles (prior map in Neo4j), plan repair and SAM3 object search
   base_station_web_repair:
-    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query, mission_bag]
     config: [default]
   # same, planning with GRSTAPS-X (needs `itags` on PATH and ADT4_GUROBI_LICENSE)
   base_station_web_grstaps_repair:
-    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query, mission_bag]
     config: [grstaps_repair]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query, mission_bag]
     config: [default]
   base_station_repair:
-    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base, console]
+    launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base, console, mission_bag]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query, mission_bag]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
   spot:
-    launch_config: [map, spot_real, sensors]
+    launch_config: [map, spot_real, sensors, mission_bag]
     config: [default, indoor, image_logging, indoor_image_logging]
   spot_relocalize:
-    launch_config: [relocalize, spot_real, sensors]
+    launch_config: [relocalize, spot_real, sensors, mission_bag]
     config: [relocalize, relocalize_awcd]
   spot_regions:
-    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink]
+    launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink, mission_bag]
     config: [indoor_regions]
   spot_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors, fleetlink]
+    launch_config: [robot_main, roman, hydra_regions_traversability, spot_real, sensors, fleetlink, mission_bag]
     config: [regions_traversability]
   spot_data_collection:
-    launch_config: [robot_main, spot_real, sensors]
+    launch_config: [robot_main, spot_real, sensors, mission_bag]
     config: [default]
   spot_bag:
-    launch_config: [bag_map, spot_bag]
+    launch_config: [bag_map, spot_bag, mission_bag]
     config: [default, indoor, image_logging, indoor_image_logging]
   spot_bag_relocalize:
-    launch_config: [bag_relocalize, spot_bag]
+    launch_config: [bag_relocalize, spot_bag, mission_bag]
     config: [relocalize, relocalize_awcd]
   spot_bag_regions:
-    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink]
+    launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink, mission_bag]
     config: [indoor_regions]
   spot_bag_regions_traversability:
-    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag, fleetlink]
+    launch_config: [robot_main, roman, hydra_regions_traversability, rviz, spot_bag, fleetlink, mission_bag]
     config: [regions_traversability]
 
   # phoenix — require Phoenix hardware or bag playback
   phoenix:
-    launch_config: [map, phoenix_real, sensors]
+    launch_config: [map, phoenix_real, sensors, mission_bag]
     config: [default, image_logging]
   phoenix_relocalize:
-    launch_config: [relocalize, phoenix_real, sensors]
+    launch_config: [relocalize, phoenix_real, sensors, mission_bag]
     config: [relocalize, relocalize_awcd]
   phoenix_data_collection:
-    launch_config: [robot_main, phoenix_real, sensors]
+    launch_config: [robot_main, phoenix_real, sensors, mission_bag]
     config: [default]
   phoenix_bag:
-    launch_config: bag_map
+    launch_config: [bag_map, mission_bag]
     config: [default, image_logging]
   phoenix_bag_relocalize:
-    launch_config: bag_relocalize
+    launch_config: [bag_relocalize, mission_bag]
     config: [relocalize, relocalize_awcd]
 
   # development — offline/simulation experiments
   # a simulated Spot (FakeSpot executor) with the fleetlink agent: plan -> result over
   # fleetlink without the real robot
   spot_sim_fleetlink:
-    launch_config: [robot_main, spot_sim, fleetlink]
+    launch_config: [robot_main, spot_sim, fleetlink, mission_bag]
     config: [default]
   spot_grstaps:
-    launch_config: [plan_prior, spot_sim]
+    launch_config: [plan_prior, spot_sim, mission_bag]
     config: [grstaps]
   spot_grstaps_repair:
-    launch_config: [plan_prior_repair_grstaps, spot_sim]
+    launch_config: [plan_prior_repair_grstaps, spot_sim, mission_bag]
     config: [grstaps_repair]
   spot_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
+    launch_config: [plan_prior_heracles_repair_grstaps, spot_sim, mission_bag]
     config: [grstaps_repair]
   base_station_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j, openset_query]
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j, openset_query, mission_bag]
     config: [grstaps_repair]
   spot_prior_dsg:
-    launch_config: [plan_prior, spot_sim]
+    launch_config: [plan_prior, spot_sim, mission_bag]
     config: [prior_dsg]
   spot_prior_dsg_heracles:
-    launch_config: [plan_prior_heracles, spot_sim]
+    launch_config: [plan_prior_heracles, spot_sim, mission_bag]
     config: [prior_dsg]
   spot_prior_dsg_repair:
-    launch_config: [plan_prior_repair, spot_sim]
+    launch_config: [plan_prior_repair, spot_sim, mission_bag]
     config: [prior_dsg]
   spot_prior_dsg_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, spot_sim]
+    launch_config: [plan_prior_heracles_repair, spot_sim, mission_bag]
     config: [prior_dsg]

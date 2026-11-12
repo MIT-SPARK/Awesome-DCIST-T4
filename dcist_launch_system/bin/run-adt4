@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import atexit
+import datetime
 import enum
 import os
 import pathlib
@@ -22,11 +23,14 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from dcist_launch_system import fleet_helpers
+from dcist_launch_system.fleet import run_dirs
 
 ADT4_VARS = [
     "ADT4_ROBOT_NAME",
     "ADT4_PLATFORM_ID",
     "ADT4_OUTPUT_DIR",
+    "ADT4_RUN_DIR",
+    "ADT4_SESSION_ID",
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
     "ADT4_RVIZ_CONFIG",
@@ -48,6 +52,24 @@ MODE_ONLY_NODES = {
 }
 
 CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT", "ADT4_NETWORK")
+
+# Per-run values for the tmux session environment (see _run_env). Always set, so a
+# pre-existing tmux server's stale values never reach the panes.
+RUN_ENV_VARS = (
+    "ADT4_RUN_DIR",
+    "ADT4_RUN_ID",
+    "ADT4_SESSION_ID",
+    "ROS_LOG_DIR",
+    "PDDL_DUMP_DIR",
+    "OMNIPLANNER_DUMP_DIR",
+    "ADT4_MISSION_BAG_TOPICS",
+    "ADT4_MISSION_BAG_LOCK",
+)
+
+# recording/mission_<name>_topics.txt recorded by the mission_bag window, by session
+# name prefix (base_station-default, spot_relocalize-relocalize, phoenix-default, ...)
+MISSION_BAG_LISTS = (("base_station", "base"), ("spot", "spot"), ("phoenix", "phoenix"))
+SPOT_PLATFORM_IDS = ("smaug", "topaz", "apollo")
 
 
 class PlatformType(enum.Enum):
@@ -77,6 +99,12 @@ class SessionInfo:
     zenoh: bool = True
     fleet_link: str = "router"
     session_env: dict = field(default_factory=dict)
+    # this launch's run directory (<output>/runs/<run_id>); output_path when unset
+    run_path: Optional[pathlib.Path] = None
+
+    @property
+    def run_dir(self) -> pathlib.Path:
+        return self.run_path or self.output_path
 
     @property
     def platform_type(self) -> PlatformType:
@@ -122,8 +150,30 @@ def _resolve_prior_map(prior_map):
         if not prior_map.exists():
             click.secho(f"Invalid prior map: '{prior_map}'!", fg="red")
             sys.exit("invalid prior map")
+        prior_map = _resolve_prior_run(prior_map)
 
     return prior_map
+
+
+def _resolve_prior_run(prior_map: pathlib.Path) -> pathlib.Path:
+    """An experiment dir (``latest`` / ``runs/``) -> the run holding its map.
+
+    A run dir or a flat legacy dir (``hydra/``, ``roman/`` directly inside) is used as
+    is. Resolved before this launch creates its own run, so ``-p X -o X`` loads the
+    previous run's map.
+    """
+    resolved, how = run_dirs.resolve_prior_map(prior_map)
+    resolved = pathlib.Path(resolved)
+    if how == "newest_with_map":
+        click.secho(
+            f"{prior_map}/latest has no map; using its newest run with one: {resolved}",
+            fg="yellow",
+        )
+    elif how == "latest_without_map":
+        click.secho(f"No run of '{prior_map}' has a map; using {resolved}", fg="yellow")
+    if resolved != prior_map:
+        click.secho(f"Prior map: {resolved}", fg="green")
+    return resolved
 
 
 def _show_options(choices, message=None):
@@ -178,16 +228,181 @@ def _resolve_session_path(session_path):
     return session_path
 
 
-def _resolve_output_dir(output_dir, force):
-    output_dir = pathlib.Path(output_dir).expanduser().absolute()
-    if output_dir.exists():
-        if not force:
-            click.confirm(f"Output '{output_dir}' exists! Remove?", abort=True)
+def _resolve_output_dir(output_dir, force=False, wipe=False, dry_run=False):
+    """The experiment dir (``-o``). Never deleted, except with ``--wipe``.
 
-        click.secho(f"Clearing previous output: '{output_dir}'", fg="green")
+    Every launch adds ``<output>/runs/<run_id>`` (``_make_run_dir``), so relaunching
+    with the same ``-o`` keeps the earlier runs. ``--wipe`` restores the old behaviour
+    (delete the whole experiment dir first; asks unless ``-f``).
+    """
+    output_dir = pathlib.Path(output_dir).expanduser().absolute()
+    if wipe and output_dir.exists():
+        if dry_run:
+            click.secho(f"dry run: would remove '{output_dir}' (--wipe)", fg="yellow")
+            return output_dir
+        if not force:
+            click.confirm(
+                f"--wipe: delete '{output_dir}' and ALL its runs?", abort=True
+            )
+
+        click.secho(f"Clearing previous output (--wipe): '{output_dir}'", fg="green")
         shutil.rmtree(output_dir)
+    elif output_dir.exists():
+        click.secho(
+            f"Output '{output_dir}' exists; its runs are kept (new run added)",
+            fg="green",
+        )
 
     return output_dir
+
+
+def _make_run_dir(output_dir: pathlib.Path, machine=None, run_id=None):
+    """``(run_id, run_dir)``: create ``<output>/runs/<run_id>`` and repoint ``latest``."""
+    run_id, run_dir = run_dirs.create_run_dir(
+        output_dir, machine=machine, run_id=run_id
+    )
+    run_dir = pathlib.Path(run_dir)
+    for sub in ("ros_log", "omniplanner"):
+        (run_dir / sub).mkdir(exist_ok=True)
+    if not run_dirs.point_latest(output_dir, run_dir):
+        click.secho(
+            f"'{output_dir / run_dirs.LATEST}' is not a symlink; left unchanged",
+            fg="yellow",
+        )
+    return run_id, run_dir
+
+
+def _session_config(session_path):
+    """The session file's ``config`` (rosparam variant), e.g. ``relocalize``."""
+    try:
+        with open(session_path) as f:
+            contents = yaml.safe_load(f) or {}
+        return (contents.get("environment") or {}).get("config")
+    except (OSError, yaml.YAMLError):
+        return None
+
+
+def _write_run_info(
+    output_dir,
+    robot_name,
+    platform_id,
+    session_path,
+    run_id=None,
+    experiment=None,
+    session_id=None,
+    machine=None,
+):
+    """``<run_dir>/run_info.json``: this run's identity (never the environment).
+
+    Map transfers and the console's Maps page tell runs apart by ``run_id``; mission
+    logs join on it and on ``session_id`` (``ADT4_SESSION_ID``, set by the console's
+    Launch). Kept if the file already exists.
+    """
+    try:
+        from dcist_launch_system.fleet.run_identity import write_run_info
+
+        shas = run_dirs.git_shas(_ws_path().parent)
+        extra = {
+            "machine": machine or run_dirs.machine_name(),
+            "session_id": session_id or None,
+            "config": _session_config(session_path),
+            "t_start": datetime.datetime.now().astimezone().timestamp(),
+            "git": shas,
+        }
+        info = write_run_info(
+            output_dir,
+            robot=robot_name,
+            platform=platform_id,
+            session=pathlib.Path(str(session_path)).stem,
+            experiment=experiment,
+            commit=shas.get("superproject"),
+            run_id=run_id,
+            extra=extra,
+        )
+        click.secho(f"Run id: {info['run_id']}", fg="green")
+        return info
+    except Exception as e:  # never block a launch on bookkeeping
+        click.secho(f"Could not write run_info.json: {e}", fg="yellow")
+        return None
+
+
+def _mission_bag_list(session_path, platform_id):
+    """The mission bag list for this session: base | spot | phoenix ('' if none).
+
+    Picked by the session name (base_station* / spot* / phoenix*), else by the
+    platform id; never exits on an unknown platform (Husky ids vary: gauss, lewis...).
+    """
+    stem = pathlib.Path(str(session_path)).stem
+    name = next((n for prefix, n in MISSION_BAG_LISTS if stem.startswith(prefix)), None)
+    if name is None:
+        if platform_id == "base_station":
+            name = "base"
+        elif platform_id in SPOT_PLATFORM_IDS:
+            name = "spot"
+        else:
+            return ""
+    path = _ws_path() / "recording" / f"mission_{name}_topics.txt"
+    return name if path.exists() else ""
+
+
+def _mission_bag_lock(list_name, robot_name):
+    """record_topics --lock name: one base recorder per machine, whichever session
+    (base_station_console or base_station_*) starts first; one per robot otherwise."""
+    if not list_name:
+        return ""
+    return "base" if list_name == "base" else f"{list_name}_{robot_name}"
+
+
+def _write_mission_bag_topics(run_dir, list_name):
+    """``<run>/mission_bag_topics.txt`` (the base adds fleetlink's relay topics)."""
+    from dcist_launch_system import mission_bag
+
+    relay = None
+    if list_name == "base":
+        relay = mission_bag.relay_config_path(_ws_path())
+    try:
+        return mission_bag.write_run_topics(
+            run_dir, list_name, _ws_path() / "recording", relay
+        )
+    except Exception as e:  # never block a launch on the bag list
+        click.secho(
+            f"Mission bag list incomplete ({e}); using the static list", fg="yellow"
+        )
+        return mission_bag.write_run_topics(
+            run_dir, list_name, _ws_path() / "recording"
+        )
+
+
+def _run_env(run_id, run_dir, session_id="", mission_bag_list="", robot_name=""):
+    """Per-run environment for the panes (RUN_ENV_VARS)."""
+    run_dir = pathlib.Path(run_dir)
+    return {
+        "ADT4_RUN_DIR": str(run_dir),
+        "ADT4_RUN_ID": run_id,
+        "ADT4_SESSION_ID": session_id or "",
+        "ROS_LOG_DIR": str(run_dir / "ros_log"),
+        "PDDL_DUMP_DIR": str(run_dir / "omniplanner"),
+        "OMNIPLANNER_DUMP_DIR": str(run_dir / "omniplanner"),
+        # written at launch by _write_mission_bag_topics
+        "ADT4_MISSION_BAG_TOPICS": (
+            str(run_dir / "mission_bag_topics.txt") if mission_bag_list else ""
+        ),
+        "ADT4_MISSION_BAG_LOCK": _mission_bag_lock(mission_bag_list, robot_name),
+    }
+
+
+def _check_disk(output_dir, low=run_dirs.LOW_DISK_BYTES):
+    """Warn when the output filesystem has less than ``low`` bytes free."""
+    free = run_dirs.free_bytes(output_dir)
+    if free is not None and free < low:
+        click.secho(
+            f"WARNING: only {free / 1024**3:.0f} GB free under '{output_dir}' "
+            f"(< {low / 1024**3:.0f} GB): bags and logs may fill the disk",
+            fg="red",
+            bold=True,
+        )
+        return False
+    return True
 
 
 def _topology_path():
@@ -323,7 +538,7 @@ def _make_record_window(info: SessionInfo):
         sys.exit("invalid record topic file")
 
     click.secho(f"Recording topics from '{topic_path}'", fg="green")
-    output_path = info.output_path / "recorded_data"
+    output_path = info.run_dir / "recorded_data"
     cmd = f"ros2 run dcist_launch_system record_topics {output_path} {topic_path}"
     window_config = {
         "layout": "tiled",
@@ -501,7 +716,7 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
     "-o",
     envvar="ADT4_OUTPUT_DIR",
     type=click.Path(),
-    help="output for adt4",
+    help="experiment output dir; each launch adds runs/<run_id> (never deleted)",
 )
 @click.option(
     "--prior-map",
@@ -514,7 +729,17 @@ def _write_session_to_file(session_path, info: SessionInfo, fout, verbose=False)
 )
 @click.option("--sim-time", "-s", is_flag=True, help="use sim time")
 @click.option("--yes", "-y", is_flag=True, help="skip env variable check")
-@click.option("--force", "-f", is_flag=True, help="clear output if it exists")
+@click.option("--force", "-f", is_flag=True, help="with --wipe: do not ask")
+@click.option(
+    "--wipe",
+    is_flag=True,
+    help="delete the existing output dir (ALL its runs) before launching",
+)
+@click.option(
+    "--mission-bag/--no-mission-bag",
+    default=True,
+    help="record the mission topics (recording/mission_*_topics.txt) to <run>/mission_bag",
+)
 @click.option("--dry-run", "-d", is_flag=True, help="only show command")
 @click.option("--tmuxp-session-name", help="name to use instead of adt4_system")
 @click.option("--show-tmux", is_flag=True, help="show tmuxp contents before starting")
@@ -556,6 +781,8 @@ def main(
     sim_time,
     yes,
     force,
+    wipe,
+    mission_bag,
     dry_run,
     tmuxp_session_name,
     show_tmux,
@@ -574,9 +801,15 @@ def main(
     platform_id = platform_id or input("robot platform ID? ")
     output_dir = output_dir or input("output directory? ")
 
+    # the prior is resolved before this launch adds its run (-p X -o X: X's last map)
     prior_map = _resolve_prior_map(prior_map)
     session_path = _resolve_session_path(session_path)
-    output_dir = _resolve_output_dir(output_dir, force)
+    output_dir = _resolve_output_dir(output_dir, force, wipe, dry_run)
+    _check_disk(output_dir)
+    # created after the settings are confirmed (an aborted launch leaves nothing)
+    run_id = run_dirs.make_run_id()
+    run_dir = output_dir / run_dirs.RUNS_DIR / run_id
+    session_id = os.environ.get("ADT4_SESSION_ID", "")
 
     def _normalize_optional(opt_path: Optional[str]):
         return pathlib.Path(opt_path).expanduser().absolute() if opt_path else None
@@ -599,11 +832,6 @@ def main(
         else:
             click.secho(f"Bad rviz config: '{rviz_config}', using default", fg="yellow")
 
-    click.secho(f"Loading {session_path}...")
-    _show_vars(env)
-    if not yes:
-        click.confirm("Are the settings correct?", abort=True)
-
     info = SessionInfo(
         robot_name,
         output_dir,
@@ -618,10 +846,43 @@ def main(
         record=record,
         zenoh=zenoh,
         fleet_link=env["ADT4_FLEETLINK_MODE"],
-        session_env=_session_env(env),
+        run_path=run_dir,
     )
     if trajectory_args:
         info.trajectory_args = trajectory_args.split(" ")
+
+    mission_bag_list = (
+        _mission_bag_list(session_path, platform_id) if mission_bag else ""
+    )
+    run_env = _run_env(
+        run_id,
+        run_dir,
+        session_id,
+        mission_bag_list,
+        robot_name,
+    )
+    env.update(run_env)
+    info.session_env = {**_session_env(env), **run_env}
+
+    click.secho(f"Loading {session_path}...")
+    _show_vars(env)
+    if not yes:
+        click.confirm("Are the settings correct?", abort=True)
+
+    if not dry_run:
+        _make_run_dir(output_dir, run_id=run_id)
+        click.secho(f"Run dir: {run_dir}", fg="green")
+        if mission_bag_list:
+            _write_mission_bag_topics(run_dir, mission_bag_list)
+        _write_run_info(
+            run_dir,
+            robot_name,
+            platform_id,
+            session_path,
+            run_id=run_id,
+            experiment=output_dir.name,
+            session_id=session_id,
+        )
 
     with tempfile.NamedTemporaryFile("w+", suffix=".yaml") as fout:
         _write_session_to_file(session_path, info, fout, verbose=dry_run or show_tmux)
