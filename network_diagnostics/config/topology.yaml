@@ -44,6 +44,11 @@ machines:
       ready_topic: /gauss/dlio/odom_node/odom
       ready_desc: DLIO odometry
       timeout_s: 120
+      # DLIO calibrates its IMU for 3 s and publishes at once; wait 15 s with gauss
+      # still and require the estimate to hold before ADT4 starts
+      settle_s: 15
+      settle_max_move_m: 0.3
+      settle_max_z_m: 1.0
   lewis:
     role: robot
     platform_id: phoenix

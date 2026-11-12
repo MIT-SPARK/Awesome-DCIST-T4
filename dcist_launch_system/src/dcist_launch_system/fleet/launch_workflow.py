@@ -1364,7 +1364,13 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
 #   ready_topic  ADT4 launches on this robot once the topic publishes
 #   ready_desc   what the topic means, for the log ("DLIO odometry")
 #   timeout_s    how long to wait for ready_topic (default BRINGUP_TIMEOUT_S)
+#   settle_s     after ready_topic first publishes, wait this long with the robot still
+#                and check the estimate held (an odometry topic: nav_msgs/Odometry)
+#   settle_max_move_m  the position may move at most this much over settle_s (0.3)
+#   settle_max_z_m     |z| at the end of settle_s at most this (1.0; the estimate starts at 0)
 BRINGUP_TIMEOUT_S = 120.0
+SETTLE_MAX_MOVE_M = 0.3
+SETTLE_MAX_Z_M = 1.0
 BRINGUP_POLL_S = 3.0
 BRINGUP_PROBE_S = 8
 
@@ -1384,6 +1390,59 @@ def bringup_probe_command(topic: str, probe_s: int = BRINGUP_PROBE_S) -> str:
     )
 
 
+def bringup_position_command(topic: str, probe_s: int = BRINGUP_PROBE_S) -> str:
+    """Print one message's ``pose.pose.position`` (x/y/z lines) from an odometry topic."""
+    return (
+        "source /opt/ros/jazzy/setup.zsh >/dev/null 2>&1; "
+        f"RMW_IMPLEMENTATION=rmw_zenoh_cpp timeout -k 2 {int(probe_s)} "
+        f"ros2 topic echo --once --field pose.pose.position {shlex.quote(topic)} 2>/dev/null"
+    )
+
+
+def parse_position(out: str) -> tuple[float, float, float] | None:
+    vals = {}
+    for line in (out or "").splitlines():
+        k, _, v = line.partition(":")
+        if k.strip() in ("x", "y", "z"):
+            try:
+                vals[k.strip()] = float(v)
+            except ValueError:
+                return None
+    return (vals["x"], vals["y"], vals["z"]) if len(vals) == 3 else None
+
+
+def _position(m, topic, deps):
+    _, out, _ = deps.ssh(m["user"], m["ip"], bringup_position_command(topic), timeout=BRINGUP_PROBE_S + 5)
+    return parse_position(out)
+
+
+def _settle(m: dict, b: dict, cb, deps) -> str:
+    """Wait ``settle_s`` after the ready topic came up and check the estimate held still.
+
+    Returns ``("ready", "")`` or ``("unstable", reason)``."""
+    name, topic = m["name"], b["ready_topic"]
+    settle_s = float(b.get("settle_s") or 0)
+    what = b.get("ready_desc") or topic
+    max_move = float(b.get("settle_max_move_m") or SETTLE_MAX_MOVE_M)
+    max_z = float(b.get("settle_max_z_m") or SETTLE_MAX_Z_M)
+    cb.log("info", f"{name}: letting {what} settle for {int(settle_s)} s; keep {name} still")
+    p0 = _position(m, topic, deps)
+    start = deps.clock()
+    while deps.clock() - start < settle_s:
+        deps.sleep(min(BRINGUP_POLL_S, settle_s - (deps.clock() - start)))
+    p1 = _position(m, topic, deps)
+    if p0 is None or p1 is None:
+        cb.log("warn", f"{name}: could not read {topic} to check {what} settled")
+        return "unstable", f"{topic} could not be read after settling"
+    move = sum((a - c) ** 2 for a, c in zip(p0, p1)) ** 0.5
+    txt = f"moved {move:.2f} m in {int(settle_s)} s, z {p1[2]:+.2f} m"
+    if move > max_move or abs(p1[2]) > max_z:
+        cb.log("warn", f"{name}: {what} not stable: {txt} (limits {max_move} m, |z| {max_z} m)")
+        return "unstable", f"{what} not stable while still: {txt}"
+    cb.log("ok", f"{name}: {what} stable ({txt})")
+    return "ready", ""
+
+
 def bringup_dry_run_lines(cmds, topo) -> list[str]:
     lines = []
     for m, _ in cmds:
@@ -1400,17 +1459,25 @@ def bringup_dry_run_lines(cmds, topo) -> list[str]:
                 f"{m['name']}: wait up to {int(float(b.get('timeout_s') or BRINGUP_TIMEOUT_S))} s "
                 f"for {b['ready_topic']} before run-adt4"
             )
+            if b.get("settle_s"):
+                lines.append(
+                    f"{m['name']}: then {int(float(b['settle_s']))} s still; "
+                    f"{b['ready_topic']} must move <= {b.get('settle_max_move_m') or SETTLE_MAX_MOVE_M} m "
+                    f"(skipped when the stack was already running)"
+                )
     return lines
 
 
 def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
     """Start ``m``'s platform stack and wait for its ready topic.
 
-    Returns "ready", "timeout" or "failed".
+    Returns ``(status, reason)``: status "ready", "timeout", "unstable" or
+    "failed"; reason is set for "unstable".
     """
     name = m["name"]
     session = b.get("session")
     command = b.get("command")
+    started = False
     if command:
         running = False
         if session:
@@ -1431,10 +1498,11 @@ def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
                 != 0
             ):
                 cb.log("error", f"{name}: could not start {session or 'platform stack'} (rc={rc}) {err}")
-                return "failed"
+                return "failed", ""
+            started = True
     topic = b.get("ready_topic")
     if not topic:
-        return "ready"
+        return "ready", ""
     what = b.get("ready_desc") or topic
     timeout_s = float(b.get("timeout_s") or BRINGUP_TIMEOUT_S)
     cb.log("info", f"{name}: waiting for {what} ({topic}, up to {int(timeout_s)} s)...")
@@ -1445,9 +1513,13 @@ def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
         now = deps.clock()
         if rc == 0:
             cb.log("ok", f"{name}: {what} is up ({int(now - start)} s)")
-            return "ready"
+            if b.get("settle_s") and started:
+                return _settle(m, b, cb, deps)
+            if b.get("settle_s"):
+                cb.log("dim", f"{name}: '{session}' was already running; no settle wait")
+            return "ready", ""
         if now - start >= timeout_s:
-            return "timeout"
+            return "timeout", ""
         if now >= next_note:
             cb.log("dim", f"{name}: still waiting for {what} ({int(now - start)} s)")
             next_note = now + 15.0
@@ -1466,19 +1538,23 @@ def _bring_up_platforms(cmds, topo, cb, deps) -> set[str]:
     cb.log("heading", "Platform bring-up: " + ", ".join(m["name"] for m, _ in todo))
     results = deps.parallel(lambda mb: _bring_up_one(mb[0], mb[1], cb, deps), todo)
     skip = set()
-    for (m, b), res in results:
+    for (m, b), out in results:
+        if isinstance(out, Exception):
+            cb.log("error", f"{m['name']}: bring-up error: {out}")
+            out = ("failed", "")
+        res, reason = out
         if res == "ready":
             continue
-        if isinstance(res, Exception):
-            cb.log("error", f"{m['name']}: bring-up error: {res}")
-            res = "failed"
         what = b.get("ready_desc") or b.get("ready_topic") or "platform stack"
-        why = (
-            f"{what} did not come up ({b.get('ready_topic')} silent after "
-            f"{int(float(b.get('timeout_s') or BRINGUP_TIMEOUT_S))} s)"
-            if res == "timeout"
-            else f"{b.get('session') or 'the platform stack'} could not be started"
-        )
+        if res == "timeout":
+            why = (
+                f"{what} did not come up ({b.get('ready_topic')} silent after "
+                f"{int(float(b.get('timeout_s') or BRINGUP_TIMEOUT_S))} s)"
+            )
+        elif res == "unstable":
+            why = reason or f"{what} did not settle"
+        else:
+            why = f"{b.get('session') or 'the platform stack'} could not be started"
         answer = cb.confirm(
             Confirmation(
                 kind="bringup_not_ready",

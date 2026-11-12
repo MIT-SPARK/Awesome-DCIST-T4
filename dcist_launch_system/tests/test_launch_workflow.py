@@ -948,9 +948,10 @@ def run_bringup(plan, ssh, rec, entry=BRINGUP, clock=None):
 class ReadyAfter(FakeSsh):
     """The husky session is not running; the ready topic publishes after ``n`` probes."""
 
-    def __init__(self, n, session_running=False, start_rc=0):
+    def __init__(self, n, session_running=False, start_rc=0, positions=None):
         super().__init__()
         self.n = n
+        self.positions = list(positions or [])
         self.started = session_running
         self.start_rc = start_rc
 
@@ -961,6 +962,11 @@ class ReadyAfter(FakeSsh):
         if "tmuxp load -d" in cmd:
             self.started = self.start_rc == 0
             return self.start_rc, "", "boom" if self.start_rc else ""
+        if "--field pose.pose.position" in cmd:
+            p = self.positions.pop(0) if self.positions else (0.0, 0.0, 0.0)
+            if p is None:
+                return 1, "", ""
+            return 0, "x: %f\ny: %f\nz: %f\n---" % p, ""
         if "ros2 topic echo --once" in cmd:
             self.n -= 1
             return (0 if self.n < 0 else 1), "", ""
@@ -1066,3 +1072,78 @@ def test_gauss_bringup_in_topology():
     assert b["session"] == "husky"
     assert "tmuxp load -d" in b["command"] and "ROBOT_NAME=gauss" in b["command"]
     assert b["ready_topic"] == "/gauss/dlio/odom_node/odom"
+
+
+SETTLE = dict(BRINGUP, settle_s=15, settle_max_move_m=0.3, settle_max_z_m=1.0)
+
+
+def test_bringup_settle_waits_and_checks_the_estimate_held():
+    ssh = ReadyAfter(0, positions=[(0.0, 0.0, 0.0), (0.05, 0.02, 0.01)])
+    rec = Recorder()
+    clock = FakeClock()
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec, entry=SETTLE, clock=clock)
+    assert clock.t >= 15
+    probes = [i for i, (_, c) in enumerate(ssh.calls) if "--field pose.pose.position" in c]
+    launch = next(i for i, (_, c) in enumerate(ssh.calls) if "run-adt4" in c)
+    assert len(probes) == 2 and probes[-1] < launch
+    assert "DLIO odometry stable (moved 0.05 m in 15 s" in rec.text()
+    assert not rec.requests
+
+
+def test_bringup_settle_drift_asks():
+    ssh = ReadyAfter(0, positions=[(0.0, 0.0, 0.0), (0.4, 0.0, -1.2)])
+    rec = Recorder(answers=[False])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert not run_bringup(plan, ssh, rec, entry=SETTLE)
+    assert [r.kind for r in rec.requests] == ["bringup_not_ready"]
+    assert "not stable while still" in rec.requests[0].message
+    assert not any("run-adt4" in c for _, c in ssh.calls)
+
+
+def test_bringup_settle_z_limit_alone_asks():
+    ssh = ReadyAfter(0, positions=[(0.0, 0.0, -1.5), (0.0, 0.0, -1.5)])
+    rec = Recorder(answers=[True])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec, entry=SETTLE)
+    assert "z -1.50" in rec.requests[0].message
+    assert any("run-adt4" in c for _, c in ssh.calls)
+
+
+def test_bringup_settle_unreadable_asks():
+    ssh = ReadyAfter(0, positions=[None, None])
+    rec = Recorder(answers=[None])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert not run_bringup(plan, ssh, rec, entry=SETTLE)
+    assert "could not be read" in rec.requests[0].message
+
+
+def test_bringup_no_settle_when_stack_already_running():
+    ssh = ReadyAfter(0, session_running=True)
+    rec = Recorder()
+    clock = FakeClock()
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec, entry=SETTLE, clock=clock)
+    assert clock.t < 15
+    assert not any("--field pose.pose.position" in c for _, c in ssh.calls)
+    assert "no settle wait" in rec.text()
+
+
+def test_parse_position():
+    from dcist_launch_system.fleet.launch_workflow import parse_position
+
+    assert parse_position("x: 1.5\ny: -2.0\nz: 0.25\n---\n") == (1.5, -2.0, 0.25)
+    assert parse_position("") is None
+    assert parse_position("x: 1\ny: nan-ish\nz: 0") is None
+
+
+def test_gauss_settle_in_topology():
+    import pathlib
+
+    import yaml
+
+    topo = yaml.safe_load(
+        (pathlib.Path(__file__).resolve().parents[2] / "network_diagnostics/config/topology.yaml").read_text()
+    )
+    b = topo["machines"]["gauss"]["bringup"]
+    assert b["settle_s"] == 15
