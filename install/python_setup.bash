@@ -1,8 +1,9 @@
 #!/bin/bash
-# ./python_setup.sh [--no-roman] [--no-spark] [--no-console]
+# ./python_setup.sh [--no-roman] [--no-meridian] [--no-spark] [--no-console]
 
 ci_running=false
 install_roman=true
+install_meridian=true
 install_spark=true
 install_console=true
 
@@ -17,6 +18,10 @@ while :; do
             install_roman=false
             shift
             ;;
+        --no-meridian)
+            install_meridian=false
+            shift
+            ;;
         --no-spark)
             install_spark=false
             shift
@@ -26,7 +31,7 @@ while :; do
             shift
             ;;
         -h|-?|--help)
-            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark] [--no-console]"
+            echo "Usage: ./python_setup.sh [--no-roman] [--no-meridian] [--no-spark] [--no-console]"
             exit
             ;;
         *)
@@ -59,10 +64,13 @@ if [ "$install_roman" = true ]; then
     source $ADT4_ENV/roman/bin/activate
     pushd $ADT4_WS/src/awesome_dcist_t4/roman
 
-    # Build CLIPPER
     git submodule update --init --recursive
-    mkdir -p dependencies/clipper/build
-    pushd dependencies/clipper/build
+
+    # Build CLIPPER from meridian: its copy adds meridian's invariants to ROMAN's and both
+    # provide the clipperpy module, so only one can be installed
+    git -C $ADT4_WS/src/awesome_dcist_t4 submodule update --init --recursive meridian
+    mkdir -p $ADT4_WS/src/awesome_dcist_t4/meridian/third_party/clipper/build
+    pushd $ADT4_WS/src/awesome_dcist_t4/meridian/third_party/clipper/build
     cmake .. && make && make pip-install
     popd
 
@@ -84,6 +92,32 @@ if [ "$install_roman" = true ]; then
         echo "$MODEL_FILE already exists, skipping download."
     fi
     popd
+
+    ##################################
+    # Install Meridian (shares the ROMAN environment)
+    ##################################
+    if [ "$install_meridian" = true ]; then
+        pushd $ADT4_WS/src/awesome_dcist_t4/meridian
+        # cross-view place recognition (bundles its own weights)
+        pip install -e third_party/vpr
+        pip install -e .
+        popd
+
+        # Weights (set MERIDIAN_WEIGHTS=$ADT4_WS/weights); FastSAM-x.pt is downloaded above.
+        # The DINOv2 models are downloaded automatically on first use (~5.5 GB, needs internet)
+        pushd $ADT4_WS/weights
+        if [ ! -f sam_vit_l_0b3195.pth ]; then
+            wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth
+        else
+            echo "sam_vit_l_0b3195.pth already exists, skipping download."
+        fi
+        if [ ! -f yolov7.pt ]; then
+            wget https://github.com/WongKinYiu/yolov7/releases/download/v0.1/yolov7.pt
+        else
+            echo "yolov7.pt already exists, skipping download."
+        fi
+        popd
+    fi
 
     # clean up environment after install
     deactivate

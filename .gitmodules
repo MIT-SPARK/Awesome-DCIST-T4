@@ -69,3 +69,6 @@
 [submodule "adt4_console"]
 	path = adt4_console
 	url = git@github.com:harelb/adt4_console.git
+[submodule "meridian"]
+	path = meridian
+	url = git@github.com:mit-acl/meridian.git
