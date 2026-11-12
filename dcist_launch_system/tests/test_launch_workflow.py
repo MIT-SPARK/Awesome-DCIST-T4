@@ -898,3 +898,171 @@ def test_robots_only_move_aside_runs_in_a_shell(tmp_path):
     (d / "runs").mkdir(parents=True)
     out = subprocess.run(["bash", "-c", move_aside_command(str(d))], capture_output=True, text=True).stdout
     assert out == "" and (d / "runs").is_dir()
+
+
+# --- platform bring-up (machines.<robot>.bringup) -------------------------------
+
+BRINGUP = {
+    "session": "husky",
+    "command": "ROBOT_NAME=smaug tmuxp load -d ~/husky.yaml",
+    "ready_topic": "/smaug/dlio/odom_node/odom",
+    "ready_desc": "DLIO odometry",
+    "timeout_s": 30,
+}
+
+
+def _bringup_topo(entry=BRINGUP):
+    topo = dict(TOPO)
+    topo["machines"] = {"smaug": {"role": "robot", "bringup": dict(entry)}}
+    return topo
+
+
+class FakeClock:
+    def __init__(self):
+        self.t = 0.0
+
+    def __call__(self):
+        return self.t
+
+    def sleep(self, s):
+        self.t += s
+
+
+def run_bringup(plan, ssh, rec, entry=BRINGUP, clock=None):
+    clock = clock or FakeClock()
+    deps = make_deps(ssh)
+    deps.clock = clock
+    deps.sleep = clock.sleep
+    plan.preflight = False
+    return run_launch(
+        plan,
+        topo=_bringup_topo(entry),
+        active_network="silvus",
+        runtime_config=RUNTIME,
+        output_root=OUT,
+        callbacks=rec,
+        deps=deps,
+    )
+
+
+class ReadyAfter(FakeSsh):
+    """The husky session is not running; the ready topic publishes after ``n`` probes."""
+
+    def __init__(self, n, session_running=False, start_rc=0):
+        super().__init__()
+        self.n = n
+        self.started = session_running
+        self.start_rc = start_rc
+
+    def __call__(self, user, ip, cmd, timeout=5):
+        self.calls.append((ip, cmd))
+        if "tmux has-session -t husky" in cmd:
+            return (0 if self.started else 1), "", ""
+        if "tmuxp load -d" in cmd:
+            self.started = self.start_rc == 0
+            return self.start_rc, "", "boom" if self.start_rc else ""
+        if "ros2 topic echo --once" in cmd:
+            self.n -= 1
+            return (0 if self.n < 0 else 1), "", ""
+        if "_prev-" in cmd:  # robots-only move-aside: nothing to move
+            return 0, "", ""
+        return 0 if "run-adt4" in cmd else 1, "", ""
+
+
+def _order(ssh, *needles):
+    idx = []
+    for needle in needles:
+        idx.append(next(i for i, (_, c) in enumerate(ssh.calls) if needle in c))
+    return idx
+
+
+def test_bringup_starts_stack_and_waits_for_ready_topic_before_run_adt4():
+    ssh = ReadyAfter(3)
+    rec = Recorder()
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec)
+    start, first_probe, launch = _order(ssh, "tmuxp load -d", "ros2 topic echo --once", "run-adt4")
+    assert start < first_probe < launch
+    assert sum("ros2 topic echo --once" in c for _, c in ssh.calls) == 4
+    assert "smaug: DLIO odometry is up" in rec.text()
+    assert not rec.requests
+
+
+def test_bringup_leaves_running_session_alone():
+    ssh = ReadyAfter(0, session_running=True)
+    rec = Recorder()
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec)
+    assert not any("tmuxp load -d" in c for _, c in ssh.calls)
+    assert "'husky' already running, left alone" in rec.text()
+
+
+def test_bringup_timeout_asks_and_skips_robot_on_no():
+    ssh = ReadyAfter(10**6)
+    rec = Recorder(answers=[False])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert not run_bringup(plan, ssh, rec)
+    assert [r.kind for r in rec.requests] == ["bringup_not_ready"]
+    assert "DLIO odometry did not come up" in rec.requests[0].message
+    assert not any("run-adt4" in c for _, c in ssh.calls)
+
+
+def test_bringup_timeout_launch_anyway():
+    ssh = ReadyAfter(10**6)
+    rec = Recorder(answers=[True])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec)
+    assert any("run-adt4" in c for _, c in ssh.calls)
+
+
+def test_bringup_start_failure_asks():
+    ssh = ReadyAfter(0, start_rc=1)
+    rec = Recorder(answers=[None])
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    assert not run_bringup(plan, ssh, rec)
+    assert "could not be started" in rec.requests[0].message
+    assert not any("ros2 topic echo" in c for _, c in ssh.calls)
+    assert not any("run-adt4" in c for _, c in ssh.calls)
+
+
+def test_bringup_only_for_robots_with_an_entry():
+    ssh = ReadyAfter(0)
+    rec = Recorder()
+    plan = LaunchPlan(robots=["topaz"], session="spot-default", experiment="e1")
+    assert run_bringup(plan, ssh, rec)
+    assert not any("tmuxp load" in c or "topic echo" in c for _, c in ssh.calls)
+
+
+def test_bringup_in_robots_only_relaunch():
+    ssh = ReadyAfter(1)
+    rec = Recorder()
+    plan = LaunchPlan(
+        robots=["smaug"], session="spot-default", experiment="e1",
+        base_station="willow", robots_only=True,
+    )  # fmt: skip
+    assert run_bringup(plan, ssh, rec)
+    start, launch = _order(ssh, "tmuxp load -d", "run-adt4")
+    assert start < launch
+
+
+def test_bringup_dry_run_lines():
+    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
+    lines = dry_run_lines(plan, RUNTIME, OUT, _bringup_topo())
+    text = "\n".join(lines)
+    assert "smaug: start husky unless running: ROBOT_NAME=smaug tmuxp load -d" in text
+    assert "wait up to 30 s for /smaug/dlio/odom_node/odom before run-adt4" in text
+    assert text.index("tmuxp load -d") < text.index("run-adt4")
+
+
+def test_gauss_bringup_in_topology():
+    import pathlib
+
+    import yaml
+
+    topo = yaml.safe_load(
+        (pathlib.Path(__file__).resolve().parents[2] / "network_diagnostics/config/topology.yaml").read_text()
+    )
+    b = topo["machines"]["gauss"]["bringup"]
+    assert b["session"] == "husky"
+    assert "tmuxp load -d" in b["command"] and "ROBOT_NAME=gauss" in b["command"]
+    assert b["ready_topic"] == "/gauss/dlio/odom_node/odom"

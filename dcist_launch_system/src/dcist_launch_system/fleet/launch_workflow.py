@@ -10,7 +10,9 @@ the web console all drive the exact same sequence:
               robots that already hold a run with the prior's run_id and the
               same map; then verify every machine's prior against the source
     Phase 1.5 detect / kill an existing ``adt4_system`` tmux session
-    Phase 2   detect / remove an existing output dir (typed confirm if >= 1 GB)
+    Phase 2   detect / remove an existing output dir (typed confirm if >= 1 GB),
+              start each robot's platform stack (topology ``machines.<robot>.bringup``,
+              e.g. gauss's husky sensors + DLIO) and wait for its ready topic,
               then ``run-adt4`` on each robot
     Phase 3   launch the base station session (nohup) and verify its tmux session
 
@@ -131,7 +133,7 @@ def with_link_mode(topo: dict | None, mode: str | None) -> dict | None:
 
 @dataclass
 class Confirmation:
-    kind: str  # "kill_sessions" | "overwrite_output"
+    kind: str  # "kill_sessions" | "overwrite_output" | "bringup_not_ready"
     message: str
     required_text: str | None = None  # typed confirmation (e.g. "confirm")
     yes_label: str = "Yes"
@@ -573,6 +575,7 @@ def dry_run_lines(
             f"Existing {output_root}/{plan.experiment} on a robot (without per-run dirs) "
             f"is moved aside to {plan.experiment}_prev-<time>, never deleted"
         )
+    lines += bringup_dry_run_lines(cmds, topo)
     lines += [f'ssh {m["user"]}@{m["ip"]} "{cmd}"' for m, cmd in cmds]
     if is_base_only(plan):
         bs = runtime_config[plan.base_station]
@@ -600,6 +603,7 @@ class LaunchDeps:
     session_rviz: Callable = session_launches_rviz
     parallel: Callable = run_parallel
     sleep: Callable = time.sleep
+    clock: Callable = time.monotonic
     local_ips: Callable = get_local_ips
     # scan(machine, root, only=None) -> run_scan identity entries, or None when the
     # machine cannot be scanned (then Phase 1 falls back to comparing names)
@@ -1139,15 +1143,7 @@ def run_launch(
         return False
 
     cb.log("heading", ("Phase 2: " if plan.prior_path else "") + "Launching...")
-    all_ok = True
-    for m, cmd in cmds:
-        cb.log("info", f"Launching on {m['name']}...")
-        rc, _, err = deps.ssh(m["user"], m["ip"], cmd, timeout=30)
-        if rc == 0:
-            cb.log("ok", f"{m['name']}: launched")
-        else:
-            all_ok = False
-            cb.log("error", f"{m['name']}: FAILED (rc={rc}) {err}")
+    all_ok = _launch_robots(cmds, topo, cb, deps)
 
     # Phase 3: base station
     if bs_machine and not bs_is_robot:
@@ -1356,8 +1352,157 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
         cmds = build_robot_commands(plan, runtime_config, output_root, topo, prior_overrides=overrides)
 
     cb.log("heading", "Phase 2: Launching robots...")
-    all_ok = True
+    all_ok = _launch_robots(cmds, topo, cb, deps)
+    cb.log("heading", "Launch sequence complete.")
+    return all_ok
+
+
+# --- platform bring-up: a robot's own stack, started before ADT4 ---------------
+# topology ``machines.<robot>.bringup``:
+#   command      shell command that starts the stack (detached), e.g. a tmuxp load -d
+#   session      its tmux session; when already running the command is not rerun
+#   ready_topic  ADT4 launches on this robot once the topic publishes
+#   ready_desc   what the topic means, for the log ("DLIO odometry")
+#   timeout_s    how long to wait for ready_topic (default BRINGUP_TIMEOUT_S)
+BRINGUP_TIMEOUT_S = 120.0
+BRINGUP_POLL_S = 3.0
+BRINGUP_PROBE_S = 8
+
+
+def robot_bringup(topo: dict | None, name: str) -> dict | None:
+    """``name``'s platform bring-up entry from the topology, or None."""
+    b = (((topo or {}).get("machines") or {}).get(name) or {}).get("bringup")
+    return b if isinstance(b, dict) and (b.get("command") or b.get("ready_topic")) else None
+
+
+def bringup_probe_command(topic: str, probe_s: int = BRINGUP_PROBE_S) -> str:
+    """Exit 0 once one message arrives on ``topic`` (the robot's login shell is zsh)."""
+    return (
+        "source /opt/ros/jazzy/setup.zsh >/dev/null 2>&1; "
+        f"RMW_IMPLEMENTATION=rmw_zenoh_cpp timeout -k 2 {int(probe_s)} "
+        f"ros2 topic echo --once {shlex.quote(topic)} >/dev/null 2>&1"
+    )
+
+
+def bringup_dry_run_lines(cmds, topo) -> list[str]:
+    lines = []
+    for m, _ in cmds:
+        b = robot_bringup(topo, m["name"])
+        if not b:
+            continue
+        if b.get("command"):
+            how = f"start {b.get('session') or 'platform stack'}"
+            if b.get("session"):
+                how += " unless running"
+            lines.append(f"{m['name']}: {how}: {b['command']}")
+        if b.get("ready_topic"):
+            lines.append(
+                f"{m['name']}: wait up to {int(float(b.get('timeout_s') or BRINGUP_TIMEOUT_S))} s "
+                f"for {b['ready_topic']} before run-adt4"
+            )
+    return lines
+
+
+def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
+    """Start ``m``'s platform stack and wait for its ready topic.
+
+    Returns "ready", "timeout" or "failed".
+    """
+    name = m["name"]
+    session = b.get("session")
+    command = b.get("command")
+    if command:
+        running = False
+        if session:
+            rc, _, _ = deps.ssh(
+                m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session)} 2>/dev/null", timeout=5
+            )
+            running = rc == 0
+        if running:
+            cb.log("dim", f"{name}: '{session}' already running, left alone")
+        else:
+            cb.log("info", f"{name}: starting {session or 'platform stack'}: {command}")
+            rc, _, err = deps.ssh(m["user"], m["ip"], command, timeout=30)
+            if rc != 0 or (
+                session
+                and deps.ssh(
+                    m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session)} 2>/dev/null", timeout=5
+                )[0]
+                != 0
+            ):
+                cb.log("error", f"{name}: could not start {session or 'platform stack'} (rc={rc}) {err}")
+                return "failed"
+    topic = b.get("ready_topic")
+    if not topic:
+        return "ready"
+    what = b.get("ready_desc") or topic
+    timeout_s = float(b.get("timeout_s") or BRINGUP_TIMEOUT_S)
+    cb.log("info", f"{name}: waiting for {what} ({topic}, up to {int(timeout_s)} s)...")
+    start = deps.clock()
+    next_note = start + 15.0
+    while True:
+        rc, _, _ = deps.ssh(m["user"], m["ip"], bringup_probe_command(topic), timeout=BRINGUP_PROBE_S + 5)
+        now = deps.clock()
+        if rc == 0:
+            cb.log("ok", f"{name}: {what} is up ({int(now - start)} s)")
+            return "ready"
+        if now - start >= timeout_s:
+            return "timeout"
+        if now >= next_note:
+            cb.log("dim", f"{name}: still waiting for {what} ({int(now - start)} s)")
+            next_note = now + 15.0
+        deps.sleep(BRINGUP_POLL_S)
+
+
+def _bring_up_platforms(cmds, topo, cb, deps) -> set[str]:
+    """Bring up every robot's platform stack before ADT4 (in parallel).
+
+    Returns the robots not to launch: their stack failed to start, or its ready
+    topic stayed silent and the user chose not to launch anyway.
+    """
+    todo = [(m, b) for m, _ in cmds if (b := robot_bringup(topo, m["name"]))]
+    if not todo:
+        return set()
+    cb.log("heading", "Platform bring-up: " + ", ".join(m["name"] for m, _ in todo))
+    results = deps.parallel(lambda mb: _bring_up_one(mb[0], mb[1], cb, deps), todo)
+    skip = set()
+    for (m, b), res in results:
+        if res == "ready":
+            continue
+        if isinstance(res, Exception):
+            cb.log("error", f"{m['name']}: bring-up error: {res}")
+            res = "failed"
+        what = b.get("ready_desc") or b.get("ready_topic") or "platform stack"
+        why = (
+            f"{what} did not come up ({b.get('ready_topic')} silent after "
+            f"{int(float(b.get('timeout_s') or BRINGUP_TIMEOUT_S))} s)"
+            if res == "timeout"
+            else f"{b.get('session') or 'the platform stack'} could not be started"
+        )
+        answer = cb.confirm(
+            Confirmation(
+                kind="bringup_not_ready",
+                message=f"{m['name']}: {why}.\n\nLaunch ADT4 on {m['name']} anyway?",
+                yes_label="Yes, launch anyway",
+                no_label=f"No, skip {m['name']}",
+                detail={"machine": m["name"], "result": res, "topic": b.get("ready_topic")},
+            )
+        )
+        if answer:
+            cb.log("warn", f"{m['name']}: {why}; launching anyway")
+        else:
+            cb.log("error", f"{m['name']}: {why}; not launched")
+            skip.add(m["name"])
+    return skip
+
+
+def _launch_robots(cmds, topo, cb, deps) -> bool:
+    """Platform bring-up, then ``run-adt4`` on each robot."""
+    skip = _bring_up_platforms(cmds, topo, cb, deps)
+    all_ok = not skip
     for m, cmd in cmds:
+        if m["name"] in skip:
+            continue
         cb.log("info", f"Launching on {m['name']}...")
         rc, _, err = deps.ssh(m["user"], m["ip"], cmd, timeout=30)
         if rc == 0:
@@ -1365,7 +1510,6 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
         else:
             all_ok = False
             cb.log("error", f"{m['name']}: FAILED (rc={rc}) {err}")
-    cb.log("heading", "Launch sequence complete.")
     return all_ok
 
 

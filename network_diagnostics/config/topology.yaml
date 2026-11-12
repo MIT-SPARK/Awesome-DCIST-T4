@@ -36,6 +36,14 @@ machines:
     platform_id: phoenix
     platform_type: phoenix
     desc: Husky Jockey
+    # husky team's stack (husky_odom: Ouster, Microstrain, URDF, ptpd, DLIO), started
+    # before ADT4; the launch waits for DLIO odometry before run-adt4
+    bringup:
+      session: husky
+      command: ROBOT_NAME=gauss ~/.local/bin/tmuxp load -d ~/ws2/husky_ws/src/husky/tmux/adt4.yaml
+      ready_topic: /gauss/dlio/odom_node/odom
+      ready_desc: DLIO odometry
+      timeout_s: 120
   lewis:
     role: robot
     platform_id: phoenix
