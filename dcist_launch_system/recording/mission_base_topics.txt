@@ -1,9 +1,13 @@
 # Mission bag, base station (run-adt4 mission_bag window; record_topics syntax:
 # '#' comments, '# optional' = may stay silent in a mission, '*' = one name segment).
-# Message-level mission topics only: no images, point clouds or scene graphs
-# (hydra/backend/dsg is MBs every 5 s in heracles sessions; the DSG is saved by dsg_saver).
-# Robot TF reaches the base on /<base>/tf (fleetlink-bridge in fleetlink mode, tf_relay
-# in router mode): map -> <robot>/base_link at 5 Hz per robot.
+# run-adt4 appends every topic the fleetlink base bridge publishes on the base, derived
+# from fleetlink/relay.yaml at launch (dcist_launch_system.mission_bag), and writes the
+# result to <run>/mission_bag_topics.txt. Relay topics listed here keep the marker given
+# here. Not recordable here: the DSG, mesh, camera video and image-store frames that
+# fleetlink carries reach the console over zenoh, not as ROS topics.
+#
+# all robots' TF as relayed to the base (fleetlink-bridge in fleetlink mode, tf_relay in
+# router mode): map -> <robot>/base_link at 5 Hz per robot, plus their static transforms
 /${ADT4_ROBOT_NAME}/tf
 /${ADT4_ROBOT_NAME}/tf_static
 # goals: operator / chat -> goal_manager -> planner plugin
@@ -33,23 +37,19 @@
 /${ADT4_ROBOT_NAME}/omniplanner_node/map_version  # optional: repair sessions
 /${ADT4_ROBOT_NAME}/omniplanner_node/map_epoch  # optional: repair sessions
 /${ADT4_ROBOT_NAME}/omniplanner_node/progress_alert  # optional
-/*/spot_executor_node/pause  # optional
-/*/spot_executor_node/resume  # optional
-/*/spot_executor_node/stop  # optional
-# execution, relayed up from the robots
-/plan_progress
-/action_done
-/*/spot_executor_node/action_result
-/*/spot_executor_node/teleop_state
-/*/spot_executor_node/manipulation_request  # optional: a few hundred kB per grasp request
+# grasping: the robot's approval request (candidate images + depth, a few hundred kB per
+# request) and the operator's answer (console / RViz panel)
+/*/spot_executor_node/manipulation_request
+/*/spot_executor_node/pick_confirmation
+# relay topics that are legitimately quiet in some sessions (the rest of relay.yaml is
+# appended at launch)
 /*/manual_mode  # optional: Husky only
-# change detection and scene changes
 /awcd_changes  # optional: relocalize_awcd only
+/*/change_detection/state  # optional: relocalize_awcd only
+# base-side change detection and scene changes
 /${ADT4_ROBOT_NAME}/awcd_base_station/reconciled_changes  # optional
 /scene_graph/changes  # optional
 /scene_graph/changes_applied  # optional
-/*/change_detection/state  # optional: relocalize_awcd only
-/*/labelspace
-# link and system health
+# link health (fleetlink-bridge) and system status
 /fleetlink/link_status  # optional: fleetlink mode only
 /global/ros_system_monitor/table_in

@@ -99,4 +99,4 @@ windows:
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
-      - "if [ -n \"$ADT4_MISSION_BAG_TOPICS\" ] && [ -n \"$ADT4_RUN_DIR\" ]; then ros2 run dcist_launch_system record_topics \"$ADT4_RUN_DIR/mission_bag\" \"$ADT4_MISSION_BAG_TOPICS\" --storage mcap --preset zstd_fast --max-bag-duration 600; else echo \"mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)\"; fi"
+      - "if [ -n \"$ADT4_MISSION_BAG_TOPICS\" ] && [ -n \"$ADT4_RUN_DIR\" ]; then ros2 run dcist_launch_system record_topics \"$ADT4_RUN_DIR/mission_bag\" \"$ADT4_MISSION_BAG_TOPICS\" --storage mcap --preset zstd_fast --max-bag-duration 600 --lock \"${ADT4_MISSION_BAG_LOCK:-mission_bag}\"; else echo \"mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)\"; fi"

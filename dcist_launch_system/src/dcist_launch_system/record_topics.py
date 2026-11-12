@@ -16,8 +16,16 @@ Clean stop: the recorder runs in its own process group and this wrapper turns
 SIGINT, SIGTERM and SIGHUP into one SIGINT to it, then waits for it to exit. Ctrl-C in
 the tmux pane and ``tmux kill-session`` (SIGHUP) both close the bag with its
 metadata.yaml written; nothing kills the recorder after a timeout.
+
+One recorder per lock name (``--lock NAME``, e.g. ``base``): an exclusive flock on
+``~/.cache/adt4/mission_bag_<NAME>.lock``, held by the recorder for as long as it runs.
+A second recorder with the same name (e.g. the base_station_console session and a
+base_station_* session on the same machine) waits until the first one stops, then
+records into its own output: never two at once, and no gap when the first session
+ends before the second.
 """
 
+import fcntl
 import os
 import re
 import signal
@@ -27,13 +35,15 @@ import sys
 import click
 
 
-def parse_topic_file(path):
+def parse_topic_file(path, expand=True):
     """``[(topic, optional)]`` from a topic file (see module doc)."""
     out = []
     with open(path, "r") as fin:
         for line in fin:
             topic, _, comment = line.partition("#")
-            topic = os.path.expandvars(topic.strip())
+            topic = topic.strip()
+            if expand:
+                topic = os.path.expandvars(topic)
             if not topic:
                 continue
             optional = comment.strip().lower().startswith("optional")
@@ -76,7 +86,39 @@ def _default_signals():
         signal.signal(sig, signal.SIG_DFL)
 
 
-def supervise(cmd):
+def lock_path(name):
+    return os.path.join(
+        os.path.expanduser("~"), ".cache", "adt4", f"mission_bag_{name}.lock"
+    )
+
+
+def acquire_lock(name, output, wait=True, log=print):
+    """An fd holding the exclusive lock ``name`` (blocks while another holds it)."""
+    path = lock_path(name)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        try:
+            holder = os.pread(fd, 4096, 0).decode(errors="replace").strip()
+        except OSError:
+            holder = ""
+        if not wait:
+            os.close(fd)
+            return None
+        log(
+            f"Another mission bag '{name}' is recording on this machine "
+            f"({holder or 'unknown'}); waiting for it to stop before recording",
+            flush=True,
+        )
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    os.ftruncate(fd, 0)
+    os.pwrite(fd, f"pid {os.getpid()} -> {output}\n".encode(), 0)
+    return fd
+
+
+def supervise(cmd, pass_fds=()):
     """Run ``cmd`` in its own process group; forward stop signals as SIGINT; wait."""
     child = []
     pending = []
@@ -93,7 +135,12 @@ def supervise(cmd):
     for sig in STOP_SIGNALS:
         signal.signal(sig, forward)
     child.append(
-        subprocess.Popen(cmd, start_new_session=True, preexec_fn=_default_signals)
+        subprocess.Popen(
+            cmd,
+            start_new_session=True,
+            preexec_fn=_default_signals,
+            pass_fds=tuple(pass_fds),
+        )
     )
     if pending:
         forward(pending[0], None)
@@ -113,8 +160,15 @@ def supervise(cmd):
     "--max-bag-duration", type=int, default=None, help="split every N seconds"
 )
 @click.option("--max-bag-size", type=int, default=None, help="split every N bytes")
+@click.option(
+    "--lock",
+    default=None,
+    help="one recorder per NAME on this machine; a second one waits (see module doc)",
+)
 @click.option("--dry-run", is_flag=True, help="print the command only")
-def main(output, topic_file, storage, preset, max_bag_duration, max_bag_size, dry_run):
+def main(
+    output, topic_file, storage, preset, max_bag_duration, max_bag_size, lock, dry_run
+):
     """Wrap rosbag record with topics from file"""
     topics = [t for t, _ in parse_topic_file(topic_file)]
     if not topics:
@@ -123,7 +177,13 @@ def main(output, topic_file, storage, preset, max_bag_duration, max_bag_size, dr
     print(f"Running: '{' '.join(cmd)}'", flush=True)
     if dry_run:
         return
-    sys.exit(supervise(cmd))
+    fds = ()
+    if lock:
+        # the recorder inherits the lock: it stays held while the bag is open, even
+        # if this wrapper dies first
+        fds = (acquire_lock(lock, output),)
+        print(f"Recording (lock '{lock}' held)", flush=True)
+    sys.exit(supervise(cmd, pass_fds=fds))
 
 
 if __name__ == "__main__":

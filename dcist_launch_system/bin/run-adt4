@@ -63,6 +63,7 @@ RUN_ENV_VARS = (
     "PDDL_DUMP_DIR",
     "OMNIPLANNER_DUMP_DIR",
     "ADT4_MISSION_BAG_TOPICS",
+    "ADT4_MISSION_BAG_LOCK",
 )
 
 # recording/mission_<name>_topics.txt recorded by the mission_bag window, by session
@@ -325,8 +326,8 @@ def _write_run_info(
         return None
 
 
-def _mission_bag_topics(session_path, platform_id):
-    """recording/mission_<name>_topics.txt for this session ('' if none).
+def _mission_bag_list(session_path, platform_id):
+    """The mission bag list for this session: base | spot | phoenix ('' if none).
 
     Picked by the session name (base_station* / spot* / phoenix*), else by the
     platform id; never exits on an unknown platform (Husky ids vary: gauss, lewis...).
@@ -341,10 +342,38 @@ def _mission_bag_topics(session_path, platform_id):
         else:
             return ""
     path = _ws_path() / "recording" / f"mission_{name}_topics.txt"
-    return str(path) if path.exists() else ""
+    return name if path.exists() else ""
 
 
-def _run_env(run_id, run_dir, session_id="", mission_bag_topics=""):
+def _mission_bag_lock(list_name, robot_name):
+    """record_topics --lock name: one base recorder per machine, whichever session
+    (base_station_console or base_station_*) starts first; one per robot otherwise."""
+    if not list_name:
+        return ""
+    return "base" if list_name == "base" else f"{list_name}_{robot_name}"
+
+
+def _write_mission_bag_topics(run_dir, list_name):
+    """``<run>/mission_bag_topics.txt`` (the base adds fleetlink's relay topics)."""
+    from dcist_launch_system import mission_bag
+
+    relay = None
+    if list_name == "base":
+        relay = mission_bag.relay_config_path(_ws_path())
+    try:
+        return mission_bag.write_run_topics(
+            run_dir, list_name, _ws_path() / "recording", relay
+        )
+    except Exception as e:  # never block a launch on the bag list
+        click.secho(
+            f"Mission bag list incomplete ({e}); using the static list", fg="yellow"
+        )
+        return mission_bag.write_run_topics(
+            run_dir, list_name, _ws_path() / "recording"
+        )
+
+
+def _run_env(run_id, run_dir, session_id="", mission_bag_list="", robot_name=""):
     """Per-run environment for the panes (RUN_ENV_VARS)."""
     run_dir = pathlib.Path(run_dir)
     return {
@@ -354,7 +383,11 @@ def _run_env(run_id, run_dir, session_id="", mission_bag_topics=""):
         "ROS_LOG_DIR": str(run_dir / "ros_log"),
         "PDDL_DUMP_DIR": str(run_dir / "omniplanner"),
         "OMNIPLANNER_DUMP_DIR": str(run_dir / "omniplanner"),
-        "ADT4_MISSION_BAG_TOPICS": mission_bag_topics,
+        # written at launch by _write_mission_bag_topics
+        "ADT4_MISSION_BAG_TOPICS": (
+            str(run_dir / "mission_bag_topics.txt") if mission_bag_list else ""
+        ),
+        "ADT4_MISSION_BAG_LOCK": _mission_bag_lock(mission_bag_list, robot_name),
     }
 
 
@@ -810,11 +843,15 @@ def main(
     if trajectory_args:
         info.trajectory_args = trajectory_args.split(" ")
 
+    mission_bag_list = (
+        _mission_bag_list(session_path, platform_id) if mission_bag else ""
+    )
     run_env = _run_env(
         run_id,
         run_dir,
         session_id,
-        _mission_bag_topics(session_path, platform_id) if mission_bag else "",
+        mission_bag_list,
+        robot_name,
     )
     env.update(run_env)
     info.session_env = {**_session_env(env), **run_env}
@@ -827,6 +864,8 @@ def main(
     if not dry_run:
         _make_run_dir(output_dir, run_id=run_id)
         click.secho(f"Run dir: {run_dir}", fg="green")
+        if mission_bag_list:
+            _write_mission_bag_topics(run_dir, mission_bag_list)
         _write_run_info(
             run_dir,
             robot_name,

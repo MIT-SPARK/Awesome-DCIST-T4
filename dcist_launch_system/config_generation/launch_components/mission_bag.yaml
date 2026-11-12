@@ -1,15 +1,19 @@
 ---
-# Mission bag: the message-level mission topics (plans, results, progress, guards, TF,
-# change detection, status; no images or point clouds) recorded on every machine for the
-# whole session, beside the optional full `run-adt4 -r` recording. run-adt4 sets
-# ADT4_RUN_DIR (this launch's runs/<run_id>) and ADT4_MISSION_BAG_TOPICS
-# (recording/mission_{base,spot,phoenix}_topics.txt by session; empty with
-# --no-mission-bag). mcap with zstd chunk compression, split every 10 min. Ctrl-C and
-# tmux kill-session both close the bag cleanly (record_topics forwards them as SIGINT).
+# Mission bag: the message-level mission topics (plans, results, progress, guards, grasp
+# requests/answers, TF, change detection, status; no camera streams or point clouds)
+# recorded on every machine for the whole session, beside the optional full
+# `run-adt4 -r` recording. run-adt4 sets ADT4_RUN_DIR (this launch's runs/<run_id>),
+# ADT4_MISSION_BAG_TOPICS (<run>/mission_bag_topics.txt, written at launch from
+# recording/mission_{base,spot,phoenix}_topics.txt; the base adds every topic of
+# fleetlink/relay.yaml; empty with --no-mission-bag) and ADT4_MISSION_BAG_LOCK (base on
+# the base station, <list>_<robot> on robots): only one recorder per lock runs on a
+# machine, a second one (base_station_console + base_station_*) waits until the first
+# stops. mcap with zstd chunk compression, split every 10 min. Ctrl-C and tmux
+# kill-session both close the bag cleanly (record_topics forwards them as SIGINT).
 windows:
   - window_name: mission_bag
     shell_command_before: source ${ADT4_WS}/install/setup.zsh
     layout: tiled
     panes:
       - if [ -n "$ADT4_MISSION_BAG_TOPICS" ] && [ -n "$ADT4_RUN_DIR" ]; then ros2 run dcist_launch_system record_topics "$ADT4_RUN_DIR/mission_bag" "$ADT4_MISSION_BAG_TOPICS" --storage mcap --preset zstd_fast
-        --max-bag-duration 600; else echo "mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)"; fi
+        --max-bag-duration 600 --lock "${ADT4_MISSION_BAG_LOCK:-mission_bag}"; else echo "mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)"; fi

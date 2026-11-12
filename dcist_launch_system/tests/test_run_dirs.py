@@ -217,7 +217,13 @@ def test_session_env_carries_the_run(launch, tmp_path, monkeypatch):
     assert senv["ADT4_SESSION_ID"] == "s1"
     assert senv["ROS_LOG_DIR"] == f"{run}/ros_log"
     assert senv["PDDL_DUMP_DIR"] == senv["OMNIPLANNER_DUMP_DIR"] == f"{run}/omniplanner"
-    assert senv["ADT4_MISSION_BAG_TOPICS"] == str(RECORDING / "mission_spot_topics.txt")
+    assert senv["ADT4_MISSION_BAG_TOPICS"] == f"{run}/mission_bag_topics.txt"
+    assert senv["ADT4_MISSION_BAG_LOCK"] == "spot_euclid"
+    # the run keeps the list it recorded
+    assert (
+        pathlib.Path(senv["ADT4_MISSION_BAG_TOPICS"]).read_text()
+        == (RECORDING / "mission_spot_topics.txt").read_text()
+    )
     # the fleet link values still reach the session (earlier run-adt4 fix)
     assert senv["ADT4_FLEETLINK_MODE"] == "router"
     assert any(w["window_name"] == "mission_bag" for w in session["windows"])
@@ -229,22 +235,85 @@ def test_session_id_is_empty_when_unset(launch, tmp_path):
 
 
 @pytest.mark.parametrize(
-    "session,platform,expected",
+    "session,platform,robot,expected,lock",
     [
-        ("base_station_web_repair-default", "base_station", "mission_base_topics.txt"),
-        ("spot_relocalize-relocalize", "topaz", "mission_spot_topics.txt"),
-        ("phoenix_relocalize-relocalize", "gauss", "mission_phoenix_topics.txt"),
+        ("base_station_web_repair-default", "base_station", "willow", "base", "base"),
+        ("base_station_console-default", "base", "willow", "base", "base"),
+        ("spot_relocalize-relocalize", "topaz", "hamilton", "spot", "spot_hamilton"),
+        ("phoenix_relocalize-relocalize", "gauss", "gauss", "phoenix", "phoenix_gauss"),
     ],
 )
-def test_mission_bag_list_by_session(launch, tmp_path, session, platform, expected):
-    r, s, _ = launch("-o", str(tmp_path / "e"), session=session, platform=platform)
+def test_mission_bag_list_by_session(
+    launch, tmp_path, session, platform, robot, expected, lock
+):
+    r, s, env = launch(
+        "-o", str(tmp_path / "e"), session=session, platform=platform, robot=robot
+    )
     assert r.exit_code == 0, r.output
-    assert s["environment"]["ADT4_MISSION_BAG_TOPICS"] == str(RECORDING / expected)
+    senv = s["environment"]
+    assert senv["ADT4_MISSION_BAG_LOCK"] == lock
+    text = pathlib.Path(senv["ADT4_MISSION_BAG_TOPICS"]).read_text()
+    static = (RECORDING / f"mission_{expected}_topics.txt").read_text()
+    assert text.startswith(static)
+    assert ("derived at launch" in text) == (expected == "base")
+
+
+def test_base_list_has_every_topic_the_fleetlink_bridge_publishes(launch, tmp_path):
+    """Every relay.yaml up row (base_topic else topic) and down row, every robot."""
+    _, s, _ = launch(
+        "-o",
+        str(tmp_path / "e"),
+        session="base_station_web_repair-default",
+        platform="base_station",
+        robot="willow",
+    )
+    path = s["environment"]["ADT4_MISSION_BAG_TOPICS"]
+    recorded = dict(record_topics.parse_topic_file(path, expand=False))
+    relay = yaml.safe_load((PKG / "fleetlink" / "relay.yaml").read_text())
+    expected = set()
+    for row in relay["topics"]:
+        name = row.get("base_topic") if row["dir"] == "up" else None
+        expected.add((name or row["topic"]).replace("{robot}", "*"))
+    assert expected <= set(recorded)
+    # the relayed TF and the bridge's own status
+    assert {"/${ADT4_ROBOT_NAME}/tf", "/${ADT4_ROBOT_NAME}/tf_static"} <= set(recorded)
+    assert "/fleetlink/link_status" in recorded
+    # plan_progress goes up as /plan_progress; the per-robot name is not on the base
+    assert "/*/spot_executor_node/plan_progress" not in recorded
+    # an up row is required unless the static list says otherwise
+    assert recorded["/*/spot_executor_node/action_result"] is False
+    assert recorded["/*/manual_mode"] is True
+
+
+def test_relay_topics_follow_relay_yaml(tmp_path):
+    from dcist_launch_system import mission_bag
+
+    relay = tmp_path / "relay.yaml"
+    relay.write_text(
+        yaml.dump(
+            {
+                "topics": [
+                    {"topic": "/{robot}/new/up", "type": "a/msg/B", "dir": "up"},
+                    {"topic": "/{robot}/x", "base_topic": "/x_all", "dir": "up"},
+                    {"topic": "/{robot}/cmd", "dir": "down", "platform": ["spot"]},
+                ]
+            }
+        )
+    )
+    assert [(t, o) for t, o, _ in mission_bag.relay_base_topics(relay)] == [
+        ("/*/new/up", False),
+        ("/x_all", False),
+        ("/*/cmd", True),
+    ]
+    text = mission_bag.compose("base", RECORDING, relay)
+    assert "/*/new/up  # relay up" in text and "/x_all" in text
 
 
 def test_no_mission_bag_clears_the_list(launch, tmp_path):
-    _, session, _ = launch("-o", str(tmp_path / "e"), "--no-mission-bag")
+    _, session, env = launch("-o", str(tmp_path / "e"), "--no-mission-bag")
     assert session["environment"]["ADT4_MISSION_BAG_TOPICS"] == ""
+    assert session["environment"]["ADT4_MISSION_BAG_LOCK"] == ""
+    assert not (pathlib.Path(env["ADT4_RUN_DIR"]) / "mission_bag_topics.txt").exists()
 
 
 def test_record_window_writes_into_the_run(launch, tmp_path):
@@ -352,11 +421,40 @@ def test_mission_topic_lists_parse(name, monkeypatch):
     assert len(names) == len(set(names))
     for t, _ in topics:
         assert t.startswith("/") and " " not in t and "$" not in t
-    # nothing heavy: no images or point clouds in a mission bag
+    # nothing heavy: no camera streams, point clouds or scene graphs (the grasp images
+    # are one latched message per grasp)
     import re
 
-    heavy = re.compile(r"image|/points$|_points$|lidar|depth|/dsg$|dsg_mesh")
+    heavy = re.compile(
+        r"image_rect|image_raw|compressed|points$|lidar|depth|/dsg$|dsg_mesh"
+    )
     assert not [t for t, _ in topics if heavy.search(t)]
+
+
+GRASP = ("manipulation_request", "pick_confirmation")
+
+
+@pytest.mark.parametrize("name", ["base", "spot"])
+def test_grasp_topics_are_recorded_and_required(name):
+    topics = record_topics.parse_topic_file(
+        RECORDING / f"mission_{name}_topics.txt", expand=False
+    )
+    for g in GRASP:
+        [(t, optional)] = [x for x in topics if x[0].endswith(f"/{g}")]
+        assert optional is False, t
+
+
+def test_spot_records_the_reduced_tf():
+    names = [
+        t
+        for t, _ in record_topics.parse_topic_file(
+            RECORDING / "mission_spot_topics.txt", expand=False
+        )
+    ]
+    assert "/${ADT4_ROBOT_NAME}/network/tf" in names
+    assert "/${ADT4_ROBOT_NAME}/network/tf_static" in names
+    assert "/${ADT4_ROBOT_NAME}/tf" not in names
+    assert "/${ADT4_ROBOT_NAME}/spot_executor_node/semantic_hand_image" in names
 
 
 def test_parse_topic_file_comments_optional_and_vars(tmp_path, monkeypatch):
@@ -460,10 +558,6 @@ def test_every_base_spot_phoenix_session_has_a_mission_bag():
             continue
         with open(TMUX / f"{name}.yaml") as f:
             windows = [w["window_name"] for w in yaml.safe_load(f)["windows"]]
-        if name.startswith("base_station_console"):
-            # console only (no planner); a base_station_* session beside it records
-            assert "mission_bag" not in windows
-            continue
         assert windows.count("mission_bag") == 1, name
         checked += 1
     assert checked > 20
@@ -479,6 +573,42 @@ def test_mission_bag_pane_records_mcap_zstd_in_10_min_splits():
         'record_topics "$ADT4_RUN_DIR/mission_bag" "$ADT4_MISSION_BAG_TOPICS"' in pane
     )
     assert "--storage mcap --preset zstd_fast --max-bag-duration 600" in pane
+    assert '--lock "${ADT4_MISSION_BAG_LOCK:-mission_bag}"' in pane
+
+
+def test_lock_allows_one_recorder_per_name(tmp_path, monkeypatch):
+    """base_station_console + base_station_* on one machine: never two base bags."""
+    import threading
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    first = record_topics.acquire_lock("base", "/run1/mission_bag")
+    assert first is not None
+    assert record_topics.acquire_lock("base", "/x", wait=False) is None
+    # another name (a robot on the same dev box) is independent
+    other = record_topics.acquire_lock("spot_euclid", "/y", wait=False)
+    assert other is not None
+    os.close(other)
+
+    got, messages = [], []
+
+    def second():
+        got.append(
+            record_topics.acquire_lock(
+                "base", "/run2/mission_bag", log=lambda *a, **k: messages.append(a[0])
+            )
+        )
+
+    t = threading.Thread(target=second)
+    t.start()
+    time.sleep(0.3)
+    assert not got and "pid" in messages[0] and "/run1/mission_bag" in messages[0]
+    os.close(first)  # the first recorder stops: the waiting one takes over
+    t.join(timeout=5)
+    assert got and got[0] is not None
+    assert (
+        "/run2/mission_bag" in pathlib.Path(record_topics.lock_path("base")).read_text()
+    )
+    os.close(got[0])
 
 
 def test_per_run_outputs_use_the_run_dir():
