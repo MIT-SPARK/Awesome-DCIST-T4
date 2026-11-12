@@ -260,7 +260,7 @@ machines:
     addresses:                 # overlay
       mit_wifi: "198.51.100.3"
       silvus: "203.0.113.3"
-  sequia:
+  sequoia:
     role: base_station
     desc: "Base station"
     addresses:                 # overlay

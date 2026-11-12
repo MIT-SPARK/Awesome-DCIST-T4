@@ -65,9 +65,9 @@ machines:
   willow:
     role: base_station
     desc: RRG base station
-  sequia:
+  sequoia:
     role: base_station
-    desc: Sequia base station
+    desc: Sequoia base station
 silvus_radios:
   # mgmt_subnet and radios (mgmt_ip, node_id) are in the overlay.
   api_endpoint: /cgi-bin/streamscape_api
