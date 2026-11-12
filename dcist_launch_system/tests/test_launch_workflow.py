@@ -577,3 +577,25 @@ def test_base_station_command_drops_leaked_tmux_session_vars():
     cmd = build_base_station_command(RUNTIME["willow"], "b", OUT, "e1")
     assert "env -u config -u logging_key -u sim_time " in cmd
     assert cmd.index("env -u") < cmd.index("nohup")
+
+
+def test_robots_get_the_prior_without_its_image_store_the_base_with_it():
+    # prior made on willow (the base): smaug (robot) copies it without image_store/
+    plan = LaunchPlan(
+        robots=["smaug"],
+        session="spot-relocalize",
+        experiment="e",
+        mode="relocalize",
+        prior_path="~/adt4_output/p",
+        prior_source="willow",
+        base_station="willow",
+        bs_session="base_station-default",
+    )
+    excludes = []
+    rsync = lambda *a, **k: excludes.append(k.get("exclude")) or (True, "direct", "ok")
+    assert run(plan, FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")}), Recorder(), rsync=rsync) is True
+    assert excludes and all("image_store/" in e for e in excludes)
+    # prior made on smaug: the base station copies it with its images
+    excludes.clear()
+    run(_reloc_plan("smaug"), FakeSsh({}), Recorder(), rsync=rsync)
+    assert excludes and all("image_store/" not in e for e in excludes)
