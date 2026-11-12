@@ -159,4 +159,6 @@ def test_session_env_overrides_a_leaked_parent_config(run_adt4, tmp_path):
     got = run_adt4._session_file_env(session, parent)
     assert got["config"] == "grstaps_repair"
     assert got["logging_key"] == "base_station_web_grstaps_repair-grstaps_repair"
-    assert got["sim_time"] == "false" and got["ADT4_PRIOR_MAP"] == "/maps/p"
+    assert got["sim_time"] == "false"
+    # other values are left to the pane shell (tmuxp would paste them raw)
+    assert "ADT4_PRIOR_MAP" not in got

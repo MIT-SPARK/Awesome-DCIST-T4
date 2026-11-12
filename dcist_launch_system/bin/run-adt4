@@ -263,6 +263,9 @@ def _show_vars(env):
     rich.print(table)
 
 
+SESSION_IDENTITY_VARS = ("config", "logging_key", "sim_time")
+
+
 def _session_file_env(session_file, env):
     """The session file's ``environment`` values, expanded against ``env`` as tmuxp would.
 
@@ -277,7 +280,10 @@ def _session_file_env(session_file, env):
         contents = yaml.safe_load(f) or {}
     out = {}
     for key, value in (contents.get("environment") or {}).items():
-        if value is None:
+        # only the session-identity values a parent ADT4 session leaks; everything else
+        # stays for the pane shell to expand (tmuxp would paste values like
+        # ADT4_MONITOR_CONFIG's "{...}" raw into commands, a zsh parse error)
+        if value is None or key not in SESSION_IDENTITY_VARS:
             continue
         out[str(key)] = re.sub(
             r"\$\{?(\w+)\}?", lambda m: env.get(m.group(1), m.group(0)), str(value)
