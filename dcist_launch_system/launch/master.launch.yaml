@@ -406,6 +406,10 @@ launch:
       exec: goal_manager_node
       name: goal_manager
       pyenv: $(var spark_env)
+      # The robots list (and each robot's type) the planner uses: a Husky is
+      # stopped with an empty Path, not through spot_executor_node.
+      param:
+        - {name: plugin_config_path, value: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_plugins.yaml}
       remap:
         - {from: ~/commanded_goal, to: /$(var robot_name)/commanded_goal}
         - {from: ~/planner_goal, to: /$(var robot_name)/omniplanner_node/$(var planner_goal_topic)}
@@ -421,6 +425,8 @@ launch:
         - {from: ~/replan_request, to: /$(var robot_name)/omniplanner_node/replan_request}
         # The planner's map version: a goal the plan covers is replanned once the map changed.
         - {from: ~/map_version, to: /$(var robot_name)/omniplanner_node/map_version}
+        # The map's epoch: a reload of the database, after which nothing achieved counts.
+        - {from: ~/map_epoch, to: /$(var robot_name)/omniplanner_node/map_epoch}
         # Messages for the operator: the rviz instruction panel, and a topic for other UIs.
         - {from: ~/operator_display, to: rviz2_node/llm_response}
         - {from: ~/operator_alert, to: /$(var robot_name)/plan_repair/alert}
@@ -457,7 +463,26 @@ launch:
         --config-utilities-yaml {mesh_frame: map, mesh_filepath: $(env ADT4_PRIOR_MAP)/hydra/backend/mesh.ply}
 
   # AWCD base station (merges changed objects from all robots; optionally draws them into rviz)
+  # It resolves removed objects in the prior DSG on awcd_prior_dsg_topic. That is
+  # hydra/backend/dsg by default, which is the prior file when prior_dsg_publisher
+  # runs. With heracles, hydra/backend/dsg is the edited map, so the repair configs
+  # set launch_awcd_prior_dsg_publisher:=true and a dedicated awcd_prior_dsg_topic.
   - arg: {name: launch_awcd_base_station, default: 'false'}
+  - arg: {name: awcd_prior_dsg_topic, default: hydra/backend/dsg}
+  - arg: {name: launch_awcd_prior_dsg_publisher, default: 'false'}
+  # (spark_env: the system spark_dsg can be too old to load the prior file)
+  - pyenv_node:
+      if: $(var launch_awcd_prior_dsg_publisher)
+      pkg: hydra_ros
+      exec: dsg_file_publisher
+      name: awcd_prior_dsg_publisher
+      pyenv: $(var spark_env)
+      # Sent once, latched (the base station subscribes transient local).
+      args: $(env ADT4_PRIOR_MAP)/hydra/backend/dsg.json --frame map
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+      remap:
+        - {from: dsg, to: $(var awcd_prior_dsg_topic)}
   - pyenv_node:
       if: $(var launch_awcd_base_station)
       pkg: dcist_launch_system
@@ -468,7 +493,7 @@ launch:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/awcd_base_station.yaml, allow_substs: true}
       remap:
-        - {from: ~/dsg_in, to: hydra/backend/dsg}
+        - {from: ~/dsg_in, to: $(var awcd_prior_dsg_topic)}
 
   # DSG Saver
   - arg: {name: launch_dsg_saver, default: 'false'}

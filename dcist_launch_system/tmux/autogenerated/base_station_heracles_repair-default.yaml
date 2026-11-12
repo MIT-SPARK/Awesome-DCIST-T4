@@ -16,57 +16,55 @@ environment:
   HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
   ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
   ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
-  ADT4_MONITOR_CONFIG: "{nodes_to_track: {dsg_saver: {}, fleetlink_bridge: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}"
+  ADT4_MONITOR_CONFIG: '{nodes_to_track: {dsg_saver: {}, fleetlink_bridge: {}, nlu_rviz_instruction_panel: {}, omniplanner: {}, tf_relay: {}}}'
   ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
   config: default
   logging_key: base_station_heracles_repair-default
 options:
   default-command: /bin/zsh
 windows:
-  - window_name: core
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py
-      - "ros2 service call /${ADT4_ROBOT_NAME}/hydra/shutdown std_srvs/Empty && ros2 service call /${ADT4_ROBOT_NAME}/roman/shutdown std_srvs/Empty \\"
-  - window_name: status
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ros2 run ros_system_monitor ros_system_monitor --params $ADT4_MONITOR_CONFIG --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r '~/table_out:=/global/ros_system_monitor/table_in'
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true
-  - window_name: prior_dsg
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ADT4_NEO4J_SEED=${ADT4_NEO4J_SEED:-true} ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true launch_heracles_state_updater:=true launch_scene_change_writer:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
-      - "cd $ADT4_DLS_PKG/../dsg_updater/dsg_updater/examples && source $ADT4_ENV/spark_env/bin/activate && ./update_robot_holding_object_state.py"
-      - "cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg_repair && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py"
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_awcd_base_station:=true launch_awcd_scene_change_bridge:=true
-  - window_name: planning
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true ${ADT4_RVIZ_CONFIG:+rviz_config:=$ADT4_RVIZ_CONFIG}
-      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_omniplanner_repair:=true
-  - window_name: global_status
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes: [ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global]
-  - window_name: tf_relay
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo "tf_relay not started (fleetlink mode, fleetlink-bridge relays robot TF)"; else ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true; fi
-  - window_name: fleetlink_base
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes:
-      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi
-      - if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi
-  - window_name: console
-    shell_command_before: source ${ADT4_WS}/install/setup.zsh
-    layout: tiled
-    panes: ["ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}"]
+- window_name: core
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''python3 $ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/scripts/show_environment.py''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 service call /${ADT4_ROBOT_NAME}/hydra/shutdown std_srvs/Empty && ros2 service call /${ADT4_ROBOT_NAME}/roman/shutdown std_srvs/Empty''"''"'' ADT4_PANE_PREFILL=1 exec zsh'''
+- window_name: status
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 run ros_system_monitor ros_system_monitor --params "$ADT4_MONITOR_CONFIG" --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r ''"''"''~/table_out:=/global/ros_system_monitor/table_in''"''"''; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 run ros_system_monitor ros_system_monitor --params "$ADT4_MONITOR_CONFIG" --name $ADT4_ROBOT_NAME --ros-args -r __ns:=/$ADT4_ROBOT_NAME -r ''"''"''"''"''"''"''"''"''~/table_out:=/global/ros_system_monitor/table_in''"''"''"''"''"''"''"''"''''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_analyzer:=true''"''"'' exec zsh'''
+- window_name: prior_dsg
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && _seed=${ADT4_NEO4J_SEED:-true}; export ADT4_NEO4J_SEED=false; ADT4_NEO4J_SEED=$_seed ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true launch_heracles_state_updater:=true launch_scene_change_writer:=true; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''_seed=${ADT4_NEO4J_SEED:-true}; export ADT4_NEO4J_SEED=false; ADT4_NEO4J_SEED=$_seed ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_heracles_publisher:=true launch_heracles_state_updater:=true launch_scene_change_writer:=true''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra_visualizer:=true''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && cd $ADT4_DLS_PKG/../dsg_updater/dsg_updater/examples && source $ADT4_ENV/spark_env/bin/activate && ./update_robot_holding_object_state.py; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''cd $ADT4_DLS_PKG/../dsg_updater/dsg_updater/examples && source $ADT4_ENV/spark_env/bin/activate && ./update_robot_holding_object_state.py''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg_repair && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''cd $ADT4_DLS_PKG/../heracles_agents/examples/chatdsg_repair && source $ADT4_ENV/spark_env/bin/activate && ./chatdsg.py''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_awcd_base_station:=true launch_awcd_scene_change_bridge:=true launch_awcd_prior_dsg_publisher:=true awcd_prior_dsg_topic:=awcd_base_station/prior_dsg; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_awcd_base_station:=true launch_awcd_scene_change_bridge:=true launch_awcd_prior_dsg_publisher:=true awcd_prior_dsg_topic:=awcd_base_station/prior_dsg''"''"'' exec zsh'''
+- window_name: planning
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true ${ADT4_RVIZ_CONFIG:+rviz_config:=$ADT4_RVIZ_CONFIG}; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_rviz:=true ${ADT4_RVIZ_CONFIG:+rviz_config:=$ADT4_RVIZ_CONFIG}''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_omniplanner_repair:=true; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_omniplanner_repair:=true''"''"'' exec zsh'''
+- window_name: global_status
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 run ros_system_monitor ros_system_monitor --ros-args -r __ns:=/global''"''"'' exec zsh'''
+- window_name: tf_relay
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo "tf_relay not started (fleetlink mode, fleetlink-bridge relays robot TF)"; else ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then echo "tf_relay not started (fleetlink mode, fleetlink-bridge relays robot TF)"; else ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tf_relay:=true; fi''"''"'' exec zsh'''
+- window_name: fleetlink_base
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo "fleetlink-router already running on port ${ADT4_FLEETLINK_PORT:-7450} (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo "fleetlink-router already running on port ${ADT4_FLEETLINK_PORT:-7450} (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if pgrep -f "lib/fleetlink/[f]leetlink-bridge" >/dev/null; then echo "fleetlink-bridge already running (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if pgrep -f "lib/fleetlink/[f]leetlink-bridge" >/dev/null; then echo "fleetlink-bridge already running (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi''"''"'' exec zsh'''
+- window_name: console
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} ${ADT4_NETWORK:+--network=$ADT4_NETWORK} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} ${ADT4_NETWORK:+--network=$ADT4_NETWORK} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}''"''"'' exec zsh'''
+- window_name: openset_query
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-store-root $HOME/adt4_output/live; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-store-root $HOME/adt4_output/live; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi''"''"'' exec zsh'''

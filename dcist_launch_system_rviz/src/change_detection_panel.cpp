@@ -2,6 +2,7 @@
 
 #include <QHBoxLayout>
 #include <QMetaObject>
+#include <QStringList>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <rviz_common/display_context.hpp>
@@ -19,6 +20,9 @@ bool endsWith(const std::string& s, const std::string& suffix) {
   return s.size() >= suffix.size() && !s.compare(s.size() - suffix.size(), suffix.size(), suffix);
 }
 const QString kAll = "All";
+const QString kGeneralKey = "";  // results not about one robot, e.g. "No robots found."
+const QString kClearKey = "base station";
+const QString kSceneGraphKey = "scene graph";
 
 }  // namespace
 
@@ -50,6 +54,7 @@ ChangeDetectionPanel::ChangeDetectionPanel(QWidget* parent) : Panel(parent) {
   status_label_ = new QLabel("No robots found.");
   status_label_->setTextFormat(Qt::RichText);
   result_label_ = new QLabel;
+  result_label_->setTextFormat(Qt::RichText);
   result_label_->setWordWrap(true);
 
   auto* layout = new QVBoxLayout;
@@ -138,8 +143,9 @@ void ChangeDetectionPanel::addRobot(const QString& name, const std::string& ns) 
 }
 
 void ChangeDetectionPanel::sendToSelected(const std::string& command, const std::string& then) {
+  clearResults();
   if (robots_.empty()) {
-    setResult("No robots found.");
+    setResult(kGeneralKey, false, QString::fromStdString(command) + ": no robots found.");
     return;
   }
   const auto selected = robot_box_->currentText();
@@ -158,12 +164,12 @@ void ChangeDetectionPanel::send(const QString& robot_name,
   const auto label = robot_name + "/" + QString::fromStdString(command);
   auto it = robots_.find(robot_name);
   if (it == robots_.end()) {
-    setResult(label + ": unknown robot");
+    setResult(robot_name, false, label + ": unknown robot");
     return;
   }
   auto client = it->second.clients.at(command);
   if (!client->service_is_ready()) {
-    setResult(label + ": service not available");
+    setResult(robot_name, false, label + ": service not available");
     return;
   }
 
@@ -175,7 +181,7 @@ void ChangeDetectionPanel::send(const QString& robot_name,
         const auto text = label + ": " + QString::fromStdString(response->message);
         const bool success = response->success;
         postToGui([this, robot_name, text, success, then]() {
-          setResult(text);
+          setResult(robot_name, success, text);
           if (success && !then.empty()) {
             send(robot_name, then, "");
           }
@@ -184,8 +190,9 @@ void ChangeDetectionPanel::send(const QString& robot_name,
 }
 
 void ChangeDetectionPanel::onClearBaseStation() {
+  clearResults();
   if (!clear_client_ || !clear_client_->service_is_ready()) {
-    setResult("Clear base station: service not available");
+    setResult(kClearKey, false, "Clear base station: service not available");
     return;
   }
   // Empty = all robots, including ones the base station knows but this panel never discovered.
@@ -196,9 +203,11 @@ void ChangeDetectionPanel::onClearBaseStation() {
   }
   clear_client_->async_send_request(
       request, [this, selected](rclcpp::Client<ClearRobots>::SharedFuture future) {
+        const auto response = future.get();
         const auto text = "Clear base station (" + selected +
-                          "): " + QString::fromStdString(future.get()->message);
-        postToGui([this, text]() { setResult(text); });
+                          "): " + QString::fromStdString(response->message);
+        const bool success = response->success;
+        postToGui([this, text, success]() { setResult(kClearKey, success, text); });
       });
 }
 
@@ -211,7 +220,7 @@ void ChangeDetectionPanel::resetSceneGraphIfAll() {
 
 void ChangeDetectionPanel::resetSceneGraph() {
   if (!scene_reset_client_ || !scene_reset_client_->service_is_ready()) {
-    setResult("Reset scene graph: scene change writer not available");
+    setResult(kSceneGraphKey, false, "Reset scene graph: scene change writer not available");
     return;
   }
   scene_reset_client_->async_send_request(
@@ -220,7 +229,8 @@ void ChangeDetectionPanel::resetSceneGraph() {
         const auto response = future.get();
         const auto text = QString("Reset scene graph: ") +
                           QString::fromStdString(response->message);
-        postToGui([this, text]() { setResult(text); });
+        const bool success = response->success;
+        postToGui([this, text, success]() { setResult(kSceneGraphKey, success, text); });
       });
 }
 
@@ -228,7 +238,45 @@ void ChangeDetectionPanel::postToGui(std::function<void()> fn) {
   QMetaObject::invokeMethod(this, std::move(fn), Qt::QueuedConnection);
 }
 
-void ChangeDetectionPanel::setResult(const QString& text) { result_label_->setText(text); }
+rclcpp::Logger ChangeDetectionPanel::logger() const {
+  return node_ ? node_->get_logger().get_child("change_detection_panel")
+               : rclcpp::get_logger("change_detection_panel");
+}
+
+void ChangeDetectionPanel::clearResults() {
+  results_.clear();
+  renderResults();
+}
+
+void ChangeDetectionPanel::setResult(const QString& key, bool success, const QString& text) {
+  const auto line = text.toStdString();
+  if (success) {
+    RCLCPP_INFO(logger(), "%s", line.c_str());
+  } else {
+    RCLCPP_WARN(logger(), "FAILED: %s", line.c_str());
+  }
+  results_[key] = {success, text};
+  renderResults();
+}
+
+void ChangeDetectionPanel::renderResults() {
+  QStringList failed;
+  QStringList succeeded;
+  for (const auto& [key, result] : results_) {
+    const auto escaped = result.text.toHtmlEscaped();
+    if (result.success) {
+      succeeded << escaped;
+    } else {
+      failed << "<span style='color:red'>&#10007; " + escaped + "</span>";
+    }
+  }
+  if (!failed.isEmpty() && !succeeded.isEmpty()) {
+    failed.prepend(QString("<b>%1 of %2 failed</b>")
+                       .arg(failed.size())
+                       .arg(failed.size() + succeeded.size()));
+  }
+  result_label_->setText((failed + succeeded).join("<br>"));
+}
 
 void ChangeDetectionPanel::updateStatus() {
   if (robots_.empty()) {

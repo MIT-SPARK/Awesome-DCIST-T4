@@ -48,10 +48,12 @@ def test_console_settings_forwarded_and_token_redacted(
 ):
     monkeypatch.setenv("ADT4_CONSOLE_TOKEN", "test-secret")
     monkeypatch.setenv("ADT4_CONSOLE_PORT", "18090")
+    monkeypatch.setenv("ADT4_NETWORK", "silvus")
     session = write_session(run_adt4, tmp_path, verbose=True)
     assert yaml.safe_load(session.read_text())["environment"] == {
         "ADT4_CONSOLE_TOKEN": "test-secret",
         "ADT4_CONSOLE_PORT": "18090",
+        "ADT4_NETWORK": "silvus",
     }
     output = capsys.readouterr().out
     assert "test-secret" not in output
@@ -65,6 +67,7 @@ def test_unset_settings_clear_stale_server_values(run_adt4, tmp_path, monkeypatc
     assert yaml.safe_load(session.read_text())["environment"] == {
         "ADT4_CONSOLE_TOKEN": "",
         "ADT4_CONSOLE_PORT": "",
+        "ADT4_NETWORK": "",
     }
 
 
@@ -92,6 +95,7 @@ def test_console_pane_receives_settings_on_existing_server(
     }
     monkeypatch.setenv("ADT4_CONSOLE_TOKEN", "test-secret")
     monkeypatch.setenv("ADT4_CONSOLE_PORT", "18090")
+    monkeypatch.setenv("ADT4_NETWORK", "silvus")
     output = tmp_path / "pane.json"
     code = (
         "import os,json,pathlib; pathlib.Path("
@@ -134,8 +138,27 @@ def test_console_pane_receives_settings_on_existing_server(
         assert json.loads(output.read_text()) == {
             "ADT4_CONSOLE_TOKEN": "test-secret",
             "ADT4_CONSOLE_PORT": "18090",
+            "ADT4_NETWORK": "silvus",
         }
     finally:
         subprocess.run(
             ["tmux", "-L", socket, "kill-server"], capture_output=True, timeout=10
         )
+
+
+def test_session_env_overrides_a_leaked_parent_config(run_adt4, tmp_path):
+    # run-adt4 started from a shell inside another ADT4 tmux session inherits its
+    # config/logging_key; tmuxp must expand the session file's own values instead
+    session = tmp_path / "s.yaml"
+    session.write_text(
+        "environment:\n  config: grstaps_repair\n  logging_key: base_station_web_grstaps_repair-grstaps_repair\n"
+        "  sim_time: $ADT4_SIM_TIME\n  ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP\n"
+    )
+    parent = {"config": "default", "logging_key": "base_station_console-default",
+              "ADT4_SIM_TIME": "false", "ADT4_PRIOR_MAP": "/maps/p"}
+    got = run_adt4._session_file_env(session, parent)
+    assert got["config"] == "grstaps_repair"
+    assert got["logging_key"] == "base_station_web_grstaps_repair-grstaps_repair"
+    assert got["sim_time"] == "false"
+    # other values are left to the pane shell (tmuxp would paste them raw)
+    assert "ADT4_PRIOR_MAP" not in got

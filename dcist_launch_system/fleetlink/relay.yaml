@@ -8,6 +8,7 @@
 #
 # topics:  one entry per ROS topic that crosses the radio.
 #   topic          name pattern, usually "/{robot}/..."
+#   base_topic     optional base-side publication alias for up topics (requires fleetlink fanout support)
 #   type           ROS message type (pkg/msg/Name). Type-hash mismatch => message rejected.
 #   dir            down = base -> robot, up = robot -> base. A topic must appear in ONE
 #                  direction only (validation rejects both; this is the loop prevention).
@@ -157,6 +158,34 @@ topics:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
+  # Plan ordering across robots (GRSTAPS-X): each executor's READY/DONE reports
+  # go up on its private plan_progress topic, the base republishes them on the
+  # shared /plan_progress (base_topic), and that topic goes down to every Spot.
+  # Downlink messages never feed a private uplink, so this does not create a
+  # relay echo loop. Needs the executor uplink from robustrobotics/spot_tools#67
+  # and fleetlink's base_topic (harelb/fleetlink#2); robot_executor_msgs must be
+  # rebuilt to the same version on the base station and every robot.
+  - topic: /{robot}/spot_executor_node/plan_progress
+    base_topic: /plan_progress
+    type: robot_executor_msgs/msg/PlanProgressMsg
+    dir: up
+    mode: reliable
+    cls: C0
+    rate_hz:
+    ttl_s:
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 100}
+    platform: [spot]
+  - topic: /plan_progress
+    type: robot_executor_msgs/msg/PlanProgressMsg
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz:
+    ttl_s:
+    replay_on_resync: true
+    qos: {reliability: reliable, durability: transient_local, depth: 100}
+    platform: [spot]
   # finished actions for the plan repair node (omniplanner_repair_node); one topic for the
   # whole fleet, the message carries robot_name
   - topic: /action_done
@@ -170,12 +199,15 @@ topics:
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
   # manipulation approval request (spot_executor_node -> operator UIs): JPEG candidate images
-  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters
+  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters.
+  # priority high: the robot waits on the operator, so it rides the C2 lane (zenoh DATA_HIGH,
+  # ahead of mesh/video/store) and the agent holds its C2-C6 queues until it is acked (<= 10 s)
   - topic: /{robot}/spot_executor_node/manipulation_request
     type: nlu_interface_rviz/msg/ManipulationApprovalRequest
     dir: up
     mode: latest_reliable
-    cls: C3
+    cls: C2
+    priority: high
     rate_hz:
     ttl_s: 120
     replay_on_resync: false

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Start the base station's web console on its own (no prior map, no planner): the
+# base_station_console session = the minimum to launch robots from the console - console +
+# fleetlink router/bridge (the robots dial in to it), started by run-adt4 like any other
+# session (local zenoh router, fleetlink env from topology.yaml).
+#
+#   start-adt4-console [run-adt4 options...]      e.g.  start-adt4-console -p ~/adt4_output/<map>
+#
+# Network: silvus when this machine is on Silvus (see below), else auto-detected.
+# Defaults: robot name $ADT4_ROBOT_NAME (else the hostname), output dir
+# ~/adt4_output/console_<YYYYMMDD_HHMMSS>; any option given here wins over them.
+# The console listens on all interfaces (http://<this machine>:${ADT4_CONSOLE_PORT:-8090}), and
+# the fleetlink router on all interfaces at ADT4_FLEETLINK_PORT (topology.yaml), so no network
+# interface needs to be chosen. It runs in its own tmux session `adt4_console`, so a
+# base_station_* session (adt4_system) can start later beside it: that session's console pane
+# finds port 8090 taken and exits, and its fleetlink router/bridge panes see the running ones
+# and do not start a second copy. Stop it with `tmux kill-session -t adt4_console`.
+# run-adt4 imports dcist_launch_system, so the workspace has to be sourced
+if [ -z "${ADT4_WS:-}" ]; then
+  echo "start-adt4-console: set ADT4_WS (the colcon workspace, e.g. ~/dcist_ws)" >&2
+  exit 1
+fi
+source /opt/ros/jazzy/setup.bash
+source "$ADT4_WS/install/setup.bash"
+set -eo pipefail
+# The console's SSH/launch network: silvus whenever this machine is on the Silvus subnet
+# (subnet from the private fleet-address overlay), else detected as usual. ADT4_NETWORK=<net>
+# overrides (e.g. ADT4_NETWORK=mit_wifi start-adt4-console).
+if [ -z "${ADT4_NETWORK:-}" ]; then
+  ADT4_NETWORK=$(python3 - <<'PY' 2>/dev/null || true
+import ipaddress, subprocess
+from dcist_launch_system import fleet_helpers as fh
+subnet = ((fh.load_topology().get("networks") or {}).get("silvus") or {}).get("subnet")
+if subnet:
+    net = ipaddress.ip_network(subnet, strict=False)
+    out = subprocess.run(["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True).stdout
+    if any(ipaddress.ip_interface(w).ip in net for w in out.split() if "/" in w and w[0].isdigit()):
+        print("silvus")
+PY
+)
+fi
+if [ -n "${ADT4_NETWORK:-}" ]; then
+  export ADT4_NETWORK
+  echo "start-adt4-console: console network $ADT4_NETWORK"
+fi
+name="${ADT4_ROBOT_NAME:-$(hostname -s)}"
+out="$HOME/adt4_output/console_$(date +%Y%m%d_%H%M%S)"
+exec run-adt4 base_station_console-default -n "$name" -c "${ADT4_PLATFORM_ID:-base}" -o "$out" -y \
+  --tmuxp-session-name adt4_console "$@"

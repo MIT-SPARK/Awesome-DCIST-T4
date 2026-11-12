@@ -140,7 +140,14 @@ class AwcdBaseStationNode(Node):
         if self.declare_parameter("visualization.enabled", True).value:
             self.outputs.append(AwcdVisualizer(self, self.target_frame))
 
-        self.dsg_sub = DsgSubscriber(self, "~/dsg_in", self._on_dsg)
+        # Latched, as every DSG publisher sends it: a prior file published once,
+        # before this node subscribed, still arrives.
+        self.dsg_sub = DsgSubscriber(
+            self,
+            "~/dsg_in",
+            self._on_dsg,
+            qos=QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
         # Robots publish latched, so a cleared or reconnecting robot's last message is replayed.
         self.changes_sub = self.create_subscription(
             AwcdChanges,

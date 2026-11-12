@@ -1,4 +1,9 @@
 ---
+environment:
+  # every Spot camera for the fleetlink agent (fleetlink.yaml `cameras`); relative to /<robot>.
+  # Spot cameras come straight from spot_sensors' JPEG topics: stills pass through undecoded and
+  # nothing depends on a lazy image_transport republisher noticing a late subscriber.
+  ADT4_FLEETLINK_CAMERAS: "['rgb=${ADT4_ROBOT_NAME}_zed/rgb/image_rect_color','overlay=semantic_overlay/image_raw','frontleft=frontleft/color/image_raw/compressed','frontright=frontright/color/image_raw/compressed','left=left/color/image_raw/compressed','right=right/color/image_raw/compressed','back=back/color/image_raw/compressed','hand=hand/color/image_raw/compressed']"
 nodes_to_monitor:
   spot_executor: {}
 windows:

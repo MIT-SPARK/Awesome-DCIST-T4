@@ -1,0 +1,30 @@
+nodes_to_monitor:
+  fleetlink_bridge: {}
+session_name: adt4_system
+suppress_history: false
+environment:
+  sim_time: $ADT4_SIM_TIME
+  ADT4_PRIOR_MAP: $ADT4_PRIOR_MAP
+  ADT4_OUTPUT_DIR: $ADT4_OUTPUT_DIR
+  HERACLES_NEO4J_USERNAME: $ADT4_NEO4J_USERNAME
+  HERACLES_NEO4J_PASSWORD: $ADT4_NEO4J_PASSWORD
+  HERACLES_OPENAI_API_KEY: $ADT4_OPENAI_API_KEY
+  HERACLES_EVALUATION_PATH: $ADT4_HERACLES_AGENTS_PATH
+  ADT4_ORIGIN_UTM: $ADT4_ORIGIN_UTM
+  ADT4_TF_NETWORK_MODE: $ADT4_TF_NETWORK_MODE
+  ADT4_MONITOR_CONFIG: '{nodes_to_track: {fleetlink_bridge: {}}}'
+  ADT4_ROBOT_NAME: $ADT4_ROBOT_NAME
+  config: default
+  logging_key: base_station_console-default
+options:
+  default-command: /bin/zsh
+windows:
+- window_name: fleetlink_base
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo "fleetlink-router already running on port ${ADT4_FLEETLINK_PORT:-7450} (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if ss -ltn | grep -q ":${ADT4_FLEETLINK_PORT:-7450} "; then echo "fleetlink-router already running on port ${ADT4_FLEETLINK_PORT:-7450} (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}; else echo "fleetlink-router not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi''"''"'' exec zsh'''
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && if pgrep -f "lib/fleetlink/[f]leetlink-bridge" >/dev/null; then echo "fleetlink-bridge already running (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''if pgrep -f "lib/fleetlink/[f]leetlink-bridge" >/dev/null; then echo "fleetlink-bridge already running (start-adt4-console session?), not starting another"; elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ros2 run fleetlink fleetlink-bridge --ros-args -r /tf:=/$ADT4_ROBOT_NAME/tf -r /tf_static:=/$ADT4_ROBOT_NAME/tf_static -r "~/node_status:=/$ADT4_ROBOT_NAME/ros_system_monitor/node_diagnostic_collector" -p use_sim_time:=$sim_time -p zenoh_connect:=${ADT4_FLEETLINK_CONNECT:-tcp/127.0.0.1:7450} -p topology:=${ADT4_TOPOLOGY:-$ADT4_WS/src/awesome_dcist_t4/network_diagnostics/config/topology.yaml} -p relay_config:=$(ros2 pkg prefix dcist_launch_system)/share/dcist_launch_system/fleetlink/relay.yaml -p base_name:=$ADT4_ROBOT_NAME; else echo "fleetlink-bridge not started (ADT4_FLEETLINK_MODE=$ADT4_FLEETLINK_MODE, router mode)"; fi''"''"'' exec zsh'''
+- window_name: console
+  layout: tiled
+  panes:
+  - shell: 'zsh -ic ''trap : INT; source ${ADT4_WS}/install/setup.zsh && ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} ${ADT4_NETWORK:+--network=$ADT4_NETWORK} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}; _adt4_zd="${ADT4_WS}/src/awesome_dcist_t4/dcist_launch_system/config_generation/pane_shell"; [[ -r $_adt4_zd/.zshrc ]] && export _ADT4_ZDOTDIR="${ZDOTDIR-}" ZDOTDIR=$_adt4_zd; ADT4_PANE_CMD=''"''"''ros2 run adt4_console adt4-console ${ADT4_PRIOR_MAP:+--map=prior=$ADT4_PRIOR_MAP} ${ADT4_NETWORK:+--network=$ADT4_NETWORK} --neo4j live=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687}''"''"'' exec zsh'''

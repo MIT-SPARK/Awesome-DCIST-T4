@@ -139,6 +139,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_SIM\_TIME                   | Use sim time? true/false                                          |
 | ADT4\_OPENAI\_API\_KEY            | OpenAI API Key                                                    |
 | ADT4\_DEEPGRAM\_API\_KEY          | Deepgram API Key                                                  |
+| ADT4\_FLEET\_ADDRESSES           | Private fleet address overlay (see "Fleet addresses (private)")  |
 | ADT4\_HERACLES\_AGENTS\_PATH      | Path to heracles\_agents package                                  |
 | ADT4\_HERACLES\_IP                | IP Address of the scene graph database (e.g. 127.0.0.1)           |
 | ADT4\_HERACLES\_PORT              | Port of the scene graph database (e.g. 7687)                      |
@@ -158,6 +159,7 @@ You should periodically rerun the python setup script to make sure everything is
 | ADT4\_FLEETLINK\_CAMERAS          | Camera topics the agent serves (default: the ZED RGB and semantic overlay)|
 | ADT4\_CONSOLE\_PORT              | Port of the web console (default: 8090; optional)                 |
 | ADT4\_CONSOLE\_TOKEN             | Token the web console requires from browsers (optional; see below)|
+| ADT4\_OPENSET\_QUERY\_PORT       | Port of the openset\_query object search server (default: 8077; optional)|
 | MAKEFLAGS="-j 4"                  | # of parallel jobs for colcon build                               |
 
 The `ADT4_FLEETLINK_*` variables are optional: `run-adt4` derives mode, connect and port
@@ -182,37 +184,47 @@ database before publishing it. `seed_dsg_path` is set to
 including robot poses and holding relationships, and restarts the map version at
 1. Use it at the start of a fresh run. Set `ADT4_NEO4J_SEED=false` when restarting
 the publisher during a mission to preserve the current database and recorded
-changes. The publisher defaults to `false`; the `heracles_prior_dsg_repair`
-launch component defaults to `true` unless the variable is explicitly set.
+changes. The publisher defaults to `false`.
+
+The `heracles_prior_dsg_repair*` launch components seed once per session: the
+publisher pane seeds the first time it runs (unless `ADT4_NEO4J_SEED=false` is
+set), then sets `ADT4_NEO4J_SEED=false` in that pane's shell. Restarting the pane
+mid-run (Ctrl-C, Up, Enter) therefore keeps the database. To reseed on purpose,
+run `export ADT4_NEO4J_SEED=true` in the pane and re-run the command; a new tmux
+session seeds again.
 If the seed file is missing, the publisher logs an error and retains the existing
 database.
+
+In those components the AWCD base station reads the prior map file from
+`awcd_base_station/prior_dsg` (`launch_awcd_prior_dsg_publisher:=true`), not the
+edited heracles map on `hydra/backend/dsg`, so an applied removal is not mistaken
+for a withdrawn one.
 
 The state updater tracks the robots listed under `robots:` in the config's
 `omniplanner_plugins.yaml`, the same robots the planner plans for. For each one
 it updates the pose and exposes `/<robot>/update_holding_state`. Robots without
 an available transform are skipped for pose updates.
 
-### Silvus Network Computer IPs
+### Fleet addresses (private)
 
-| Hostname      | Description           | IP              |
-|---------------|-----------------------|-----------------|
-| euclid        | Jasper Jockey         | 192.168.100.3    |
-| hamilton      | Topaz Jockey          | 192.168.100.2    |
-| samoyed       | ARL Husky             | 192.168.100.62  |
-| apollo        | ARL Spot              | 192.168.100.13  |
-| russell       | Aaron's laptop        | 192.168.100.101  |
-| bonsai        | RRG dev computer      | ???.???.??.???  |
-| willow        | RRG base station      | 192.168.100.100  |
+The fleet's machines, roles and platforms are in
+[`network_diagnostics/config/topology.yaml`](network_diagnostics/config/topology.yaml).
+Their IP addresses, the network subnets and the Silvus radio management IPs are
+not in this public repo: they live in the private repo
+`robustrobotics/adt4_fleet_addresses`, in `fleet_addresses.yaml`, which has the same
+layout and is deep-merged over topology.yaml by `fleet-adt4` and the
+`network_diagnostics` scripts. On a fleet machine:
 
-### MIT Network Computer IPs
-| Hostname      | Description           | IP              |
-|---------------|-----------------------|-----------------|
-| euclid        | Jasper Jockey         | 10.29.219.68    |
-| hamilton      | Topaz Jockey          | 10.29.225.80    |
-| russell       | Aaron's laptop        | 10.29.129.166   |
-| bonsai        | RRG dev computer      | ???.???.??.???  |
-| willow        | RRG base station      | 10.29.170.228   |
-| gauss         | ACL husky laptop      | 10.29.242.128   |
+```bash
+git clone git@github.com:robustrobotics/adt4_fleet_addresses.git ~/.config/adt4/fleet_addresses
+echo 'export ADT4_FLEET_ADDRESSES=~/.config/adt4/fleet_addresses/fleet_addresses.yaml' >> ~/.zshrc
+```
+
+`~/.config/adt4/fleet_addresses/fleet_addresses.yaml` is also used without the env var.
+[`network_diagnostics/config/fleet_addresses.example.yaml`](network_diagnostics/config/fleet_addresses.example.yaml)
+shows the layout with documentation addresses. Edit addresses in that file (or in the
+`fleet-adt4` config screen, which saves them there), never in topology.yaml. Sim and
+single-machine runs do not need it.
 
 ## Running in the Field
 
@@ -410,6 +422,26 @@ Links with `?token=<token>` still work, and API clients send `Authorization: Bea
 `run-adt4` forwards the token and port to the console session even when the tmux
 server is already running. Dry-run output redacts the token.
 
+### Open-vocabulary object search (openset_query)
+
+The `openset_query` submodule ([harelb/openset_query](https://github.com/harelb/openset_query))
+is a SAM3 query server that finds objects in the robots' keyframe images from a text query; the
+console then adds the objects you pick to the map. It runs on the base station only, in an
+`openset_query` window of the heracles base station sessions (`base_station_heracles`,
+`base_station_heracles_repair`, `base_station_grstaps_heracles_repair`), and reads the same
+live Neo4j map as the console. The console hides the feature while the server is not running.
+
+Install it with `bash install/python_setup.bash --openset-query` (off by default; it creates
+its own venv at `$ADT4_ENV/sam3`; the server keeps its models on the GPU). The model weights
+come from Hugging Face: `google/siglip2-so400m-patch16-naflex` downloads freely, but
+`facebook/sam3` is gated, so either accept its license on huggingface.co, run
+`$ADT4_ENV/sam3/bin/hf auth login` and then `bash openset_query/setup_env.sh --weights`, or copy
+`~/.cache/huggingface/hub/models--facebook--sam3` from a machine that has it. A missing model
+does not fail the install; `bash openset_query/setup_env.sh --check` reports what is missing. The server listens on
+`ADT4_OPENSET_QUERY_PORT` (default 8077); the console finds it at `SAM3_QUERY_SERVER_URL`
+(default `http://127.0.0.1:8077`), so set both when changing the port. See the
+[openset_query README](https://github.com/harelb/openset_query#readme) for details.
+
 
 
 ## Tools & Utilities
@@ -555,14 +587,14 @@ To connect multiple Zenoh routers across laptops, copy
 to a location of your choosing (e.g., your home directory) and modify the
 `connect` block to include the endpoint(s) that the other host's `Zenoh router(s)`
 is listening on. For example, if another `Zenoh router` is listening on IP address
-`192.168.1.1` and port `7447` (the default) on its host, modify the config file to connect to
+`192.0.2.1` and port `7447` (the default) on its host, modify the config file to connect to
 this router as shown below:
 
 ```json5
 /// ... preceding parts of the config file.
 {
   connect: {
-    endpoints: ["tcp/192.168.1.1:7447"],
+    endpoints: ["tcp/192.0.2.1:7447"],
   },
 }
 /// ... following parts of the config file.

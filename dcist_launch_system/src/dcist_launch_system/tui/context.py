@@ -17,6 +17,9 @@ class TuiContext:
     active_network: str
     topology_path: str | None
     output_root: str
+    # Private fleet-address overlay merged into ``topo`` (None if none was found);
+    # the topology editor saves addresses here, never into topology.yaml.
+    addresses_path: str | None = None
     runtime_config: dict[str, dict] = field(default_factory=dict)
     _deleted_machines: set[str] = field(default_factory=set)
     _local_ips: set[str] = field(default_factory=set)

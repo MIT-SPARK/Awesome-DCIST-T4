@@ -19,6 +19,10 @@ launch_configs:
   # Same repair flow, but the goal manager forwards to the GRSTAPS-X plugin.
   plan_prior_repair_grstaps: [main, prior_dsg, planning_repair_grstaps]
   plan_prior_heracles_repair_grstaps: [main, heracles_prior_dsg_repair_grstaps, planning_repair_grstaps]
+  # web console instead of RViz (rviz-free base station: no RViz or RViz-only visualizer nodes)
+  plan_prior_web: [main, prior_dsg_web, planning_web]
+  plan_prior_web_heracles_repair: [main, heracles_prior_dsg_repair_web, planning_repair_web]
+  plan_prior_web_heracles_repair_grstaps: [main, heracles_prior_dsg_repair_grstaps_web, planning_repair_web_grstaps]
 # Configs build the set of rosparams that will be loaded
 configs:
   default: []
@@ -36,10 +40,14 @@ configs:
   # contributes no overrides and the overlay has to stand alone anyway.
   grstaps_repair: [prior_dsg]
   image_logging: []
+  # indoor ranges/windows + image logging (keyframe archives and tracks for the image store)
+  indoor_image_logging: [indoor, image_logging]
 # Variant names shown first in run-adt4 session selection
 important_variants:
   - base_station-default
   - base_station_heracles-default
+  - base_station_web-default
+  - base_station_web_repair-default
   - phoenix-default
   - phoenix_relocalize-relocalize
   - spot-default
@@ -52,20 +60,40 @@ experiments:
   base_station:
     launch_config: [plan_prior, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
+  # Console only (no prior map, no planner): the minimum to launch and watch robots from the web
+  # console - the console (on the base station's Neo4j map, like the base_station_*heracles*/web_repair
+  # consoles) and the fleetlink router + bridge the robots dial in to. Started by
+  # start-adt4-console in its own tmux session (adt4_console); a base_station_* session can be
+  # started beside it later (it does not start a second console, router or bridge).
+  base_station_console:
+    launch_config: [fleetlink_base, console_neo4j]
+    config: [default]
+  # web console base stations (no RViz): planning on a prior map, viewed and commanded from the console
+  base_station_web:
+    launch_config: [plan_prior_web, multi_status, tf_relay, fleetlink_base, console]
+    config: [default]
+  # + heracles (prior map in Neo4j), plan repair and SAM3 object search
+  base_station_web_repair:
+    launch_config: [plan_prior_web_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    config: [default]
+  # same, planning with GRSTAPS-X (needs `itags` on PATH and ADT4_GUROBI_LICENSE)
+  base_station_web_grstaps_repair:
+    launch_config: [plan_prior_web_heracles_repair_grstaps, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
+    config: [grstaps_repair]
   base_station_heracles:
-    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j]
+    launch_config: [plan_prior_heracles, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
     config: [default]
   base_station_repair:
     launch_config: [plan_prior_repair, multi_status, tf_relay, fleetlink_base, console]
     config: [default]
   base_station_heracles_repair:
-    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j]
+    launch_config: [plan_prior_heracles_repair, multi_status, tf_relay, fleetlink_base, console_neo4j, openset_query]
     config: [default]
 
   # spot configs — require Spot hardware or bag playback
   spot:
     launch_config: [map, spot_real, sensors]
-    config: [default, indoor, image_logging]
+    config: [default, indoor, image_logging, indoor_image_logging]
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, relocalize_awcd]
@@ -80,7 +108,7 @@ experiments:
     config: [default]
   spot_bag:
     launch_config: [bag_map, spot_bag]
-    config: [default, indoor, image_logging]
+    config: [default, indoor, image_logging, indoor_image_logging]
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
@@ -124,7 +152,7 @@ experiments:
     launch_config: [plan_prior_heracles_repair_grstaps, spot_sim]
     config: [grstaps_repair]
   base_station_grstaps_heracles_repair:
-    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j]
+    launch_config: [plan_prior_heracles_repair_grstaps, multi_status, fleetlink_base, console_neo4j, openset_query]
     config: [grstaps_repair]
   spot_prior_dsg:
     launch_config: [plan_prior, spot_sim]

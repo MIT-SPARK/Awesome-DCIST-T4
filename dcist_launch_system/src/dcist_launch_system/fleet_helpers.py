@@ -1,13 +1,16 @@
 """Shared helpers for fleet-adt4: topology loading, SSH, rsync, and remote queries."""
 
 import base64
+import importlib.util
 import ipaddress
 import json
+import logging
 import pathlib
 import re
 import shlex
 import shutil
 import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
@@ -20,6 +23,39 @@ _DEFAULT_TOPOLOGY = (
 )
 
 _DEFAULT_OUTPUT_ROOT = "~/adt4_output"
+
+_log = logging.getLogger(__name__)
+
+
+def _import_topology_merge():
+    """Import network_diagnostics/scripts/topology_merge.py, the one implementation
+    of the public-topology + private-address merge (shared with the shell tools)."""
+    path = _DEFAULT_TOPOLOGY.parents[1] / "scripts" / "topology_merge.py"
+    spec = importlib.util.spec_from_file_location("adt4_topology_merge", path)
+    if spec is None or not path.is_file():
+        raise ImportError(f"topology_merge.py not found at {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+try:
+    topology_merge = _import_topology_merge()
+except ImportError as _e:  # only load_topology/save_topology need it
+    topology_merge = None
+    _topology_merge_error = _e
+
+
+def _merge_module():
+    if topology_merge is None:
+        raise ImportError(
+            "fleet_helpers needs network_diagnostics/scripts/topology_merge.py "
+            f"from the ADT4 source tree: {_topology_merge_error}"
+        )
+    return topology_merge
+
+
+_warned_no_overlay = False
 
 
 def _quote_path(path):
@@ -61,11 +97,46 @@ def get_local_ips():
     return _local_ips_cache
 
 
-def load_topology(path=None):
-    """Parse topology.yaml and return the dict."""
-    path = pathlib.Path(path) if path else _DEFAULT_TOPOLOGY
-    with open(path) as f:
-        return yaml.safe_load(f)
+def find_addresses_path(addresses_path=None):
+    """Return the private fleet-address overlay that ``load_topology`` would use.
+
+    ``addresses_path`` if given, else ``$ADT4_FLEET_ADDRESSES``, else
+    ``~/.config/adt4/fleet_addresses/fleet_addresses.yaml`` if it exists, else
+    None.  Raises FileNotFoundError for an explicit path that does not exist.
+    """
+    return _merge_module().find_addresses_path(addresses_path)
+
+
+def load_topology(path=None, addresses_path=None):
+    """Load topology.yaml merged with the private fleet-address overlay.
+
+    topology.yaml (public) has the machines, roles, networks and ports; the
+    overlay (robustrobotics/adt4_fleet_addresses, see ``find_addresses_path``)
+    has the network subnets, machine addresses and Silvus radio management IPs,
+    and is deep-merged over it.  Without an overlay the public topology is
+    returned and a warning is logged once: no machine will resolve to an IP.
+    """
+    global _warned_no_overlay
+    overlay = find_addresses_path(addresses_path)
+    if overlay is None and not _warned_no_overlay:
+        _warned_no_overlay = True
+        _log.warning(_merge_module().NO_OVERLAY_MESSAGE)
+    return _merge_module().load_merged_topology(
+        pathlib.Path(path) if path else _DEFAULT_TOPOLOGY, overlay
+    )
+
+
+def save_topology(topo, path=None, addresses_path=None):
+    """Save ``topo`` split in two: public keys to topology.yaml (``path``), the
+    private address keys to the overlay (``addresses_path``, mode 0600).
+
+    With no ``addresses_path`` only the public part is written and the
+    addresses are not saved anywhere; they never go into topology.yaml.
+    Returns ``(public, private)``.
+    """
+    return _merge_module().save_split(
+        topo, pathlib.Path(path) if path else _DEFAULT_TOPOLOGY, addresses_path
+    )
 
 
 # How robots and the base station talk (topology fleet_defaults.fleet_link):
@@ -99,6 +170,8 @@ def detect_network(topology):
                     continue
 
     for net_name, net_info in topology.get("networks", {}).items():
+        if not (net_info or {}).get("subnet"):
+            continue  # no address overlay loaded
         subnet = ipaddress.ip_network(net_info["subnet"], strict=False)
         for lip in local_ips:
             if ipaddress.ip_address(lip) in subnet:
@@ -434,7 +507,8 @@ def list_remote_experiments(user, ip, output_root=_DEFAULT_OUTPUT_ROOT):
 def hash_remote_experiment(user, ip, output_root, experiment):
     """Compute md5sums of map files in a remote experiment directory.
 
-    Returns dict of {relative_path: md5hash} or empty dict on failure.
+    ``.adt4_origin.json`` (present only on a transferred copy) is left out, so a
+    copy compares equal to its source.  Returns dict of {relative_path: md5hash} or empty dict on failure.
     """
     exp_path = f"{output_root}/{experiment}"
     q_path = _quote_path(exp_path)
@@ -443,6 +517,7 @@ def hash_remote_experiment(user, ip, output_root, experiment):
         f"  cd {q_path} && "
         f"  find . -type f \\( -name '*.json' -o -name '*.pkl' -o -name '*.sparkdsg' "
         f"    -o -name '*.ply' -o -name '*.csv' -o -name '*.bson' \\) "
+        f"    ! -name .adt4_origin.json "
         f"    -exec md5sum {{}} + 2>/dev/null | sort; "
         f"fi"
     )
@@ -458,25 +533,21 @@ def hash_remote_experiment(user, ip, output_root, experiment):
     return hashes
 
 
-def get_remote_status(user, ip, silvus_ips=None, platform_type=None):
+def get_remote_status(user, ip, silvus_ips=None, platform_type=None, robot=None):
     """Get system status from a remote machine.
 
     Returns dict with keys: tmux_sessions, ros2_procs, load, disk, radio.
-    platform_type: if "spot", queries Spot robot battery via ROS 2 topic instead of sysfs.
+    platform_type: "spot" / "phoenix" query the robot's battery over ROS 2 instead
+    of sysfs (see :func:`status_platform`); phoenix needs ``robot`` (its namespace).
     """
-    # Spot robots don't expose battery via /sys/class/power_supply; query the ROS 2 topic.
+    # Robots don't expose battery via /sys/class/power_supply; query the ROS 2 topic.
     if platform_type == "spot":
-        bat_cmd = (
-            "echo '---BAT---'; "
-            "(source /opt/ros/humble/setup.bash 2>/dev/null; "
-            "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
-            "timeout 4 ros2 topic echo /spot/status/battery_states --once "
-            "--no-daemon 2>/dev/null | "
-            r"python3 -c \""
-            r"import sys,re; d=sys.stdin.read(); "
-            r"m=re.search(r'charge_percentage: ([0-9.]+)', d); "
-            r"print(str(int(float(m.group(1))*100))+'%' if m else 'N/A')"
-            r"\" 2>/dev/null) || echo 'N/A'"
+        bat_cmd = _ros_battery_cmd(
+            "/spot/status/battery_states", "charge_percentage", "percent", "Spot"
+        )
+    elif platform_type == "phoenix" and robot:
+        bat_cmd = _ros_battery_cmd(
+            f"/{robot}/platform/bms/state", "percentage", "fraction", "bms"
         )
     else:
         bat_cmd = (
@@ -618,7 +689,7 @@ def generate_zenoh_endpoints(topology, network, machine_name, robot_filter=None)
     Base stations get connect endpoints to robots on the network (star topology).
     Robots get no connect endpoints — base stations connect to them.
     If robot_filter is set (list of robot names), only those robots are included.
-    Returns list of endpoint strings, e.g. ["tcp/192.168.100.3:7447"].
+    Returns list of endpoint strings, e.g. ["tcp/203.0.113.3:7447"].
 
     In fleetlink mode (``fleet_defaults.fleet_link: fleetlink``) every machine
     gets ``[]``: no rmw_zenohd router links cross the radio, each ROS graph
@@ -1317,17 +1388,34 @@ def generate_namespaced_rviz(robot_name, template_path=None, output_path=None):
     return str(output_path)
 
 
-def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
+def _iface_in_subnet(ip_addr_output, subnet):
+    """Return the first interface in ``ip -4 -o addr show`` output with an
+    address in ``subnet``, or None."""
+    if not subnet:
+        return None
+    net = ipaddress.ip_network(subnet, strict=False)
+    for line in ip_addr_output.splitlines():
+        m = re.match(r"\s*\d+:\s+(\S+)\s+inet\s+(\d+\.\d+\.\d+\.\d+)", line)
+        if m and ipaddress.ip_address(m.group(2)) in net:
+            return m.group(1)
+    return None
+
+
+def check_silvus_route(
+    user=None, ip=None, mgmt_subnet="172.20.0.0/16", silvus_subnet=None
+):
     """Check if a route to the Silvus management subnet exists.
 
+    ``mgmt_subnet`` defaults to the Silvus factory management subnet.
+    ``silvus_subnet`` is the Silvus data network (``networks.silvus.subnet`` in
+    the merged topology); the interface with an address in it is reported as
+    ``silvus_iface`` (None if ``silvus_subnet`` is not given).
     If user/ip are None, checks locally. Otherwise checks via SSH.
     Returns dict: {has_route: bool, interface: str or None, silvus_iface: str or None}
     """
-    # Find the silvus data interface (192.168.100.x) and check for mgmt route
     cmd = (
-        "iface=$(ip -4 -o addr show | grep '192\\.168\\.100\\.' | awk '{print $2}' | head -1); "
-        f"route=$(ip route show {mgmt_subnet} 2>/dev/null | head -1); "
-        'echo "$iface|$route"'
+        "ip -4 -o addr show; echo '--route--'; "
+        f"ip route show {shlex.quote(mgmt_subnet)} 2>/dev/null | head -1"
     )
     if user and ip:
         rc, out, _ = ssh_cmd(user, ip, cmd, timeout=5)
@@ -1345,9 +1433,9 @@ def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
     if rc != 0 or not out:
         return {"has_route": False, "interface": None, "silvus_iface": None}
 
-    parts = out.strip().split("|", 1)
-    silvus_iface = parts[0].strip() if parts[0].strip() else None
-    route_line = parts[1].strip() if len(parts) > 1 else ""
+    addrs, _, route_line = out.partition("--route--")
+    silvus_iface = _iface_in_subnet(addrs, silvus_subnet)
+    route_line = route_line.strip()
     has_route = bool(route_line)
 
     return {
@@ -1358,17 +1446,19 @@ def check_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16"):
     }
 
 
-def add_silvus_route(user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=None):
+def add_silvus_route(
+    user=None, ip=None, mgmt_subnet="172.20.0.0/16", interface=None, silvus_subnet=None
+):
     """Add a route to the Silvus management subnet via the Silvus data interface.
 
     If user/ip are None, runs locally. Otherwise runs via SSH.
     Requires sudo. Returns (success: bool, message: str).
     """
     if not interface:
-        info = check_silvus_route(user, ip, mgmt_subnet)
+        info = check_silvus_route(user, ip, mgmt_subnet, silvus_subnet)
         interface = info.get("silvus_iface")
         if not interface:
-            return False, "No Silvus interface found (no 192.168.100.x address)"
+            return False, f"No Silvus interface found (no address in {silvus_subnet})"
         if info["has_route"]:
             return True, f"Route already exists: {info['route_info']}"
 
@@ -1499,14 +1589,18 @@ except Exception as e:
 
 
 def get_silvus_radio_details(topology):
-    """Query all Silvus radios directly via HTTP from the local machine.
+    """Query all Silvus radios directly from the local machine.
+
+    Each radio is tried at its ``mgmt_ip``; when that does not answer (no route
+    to the management subnet, or a subnet clash), through the local radio
+    dongle at its IPv6 link-local address (found by MAC, matched by node id).
 
     Returns dict[radio_name → info] where info has:
-      node_id, mgmt_ip, battery, routing_tree, rssi, link_stats, snr_stats, error
+      node_id, mgmt_ip, via, battery, routing_tree, rssi, link_stats, snr_stats,
+      link_quality ({neighbour node_id: value}), clients ([{mac, ip}] of the
+      computers on the radio's ethernet port, the radio itself excluded), error
     Radios are labeled by their name in topology["silvus_radios"]["radios"].
     """
-    import urllib.request as _urlreq
-
     radios = topology.get("silvus_radios", {}).get("radios", {})
     if not radios:
         return {}
@@ -1515,58 +1609,87 @@ def get_silvus_radio_details(topology):
     for radio_name, radio_cfg in radios.items():
         mgmt_ip = radio_cfg.get("mgmt_ip")
         topo_node_id = radio_cfg.get("node_id")
-        if not mgmt_ip:
+        if not mgmt_ip and topo_node_id is None:
             continue
+        attempts = []
+        resp_data, via = None, None
 
-        url = f"http://{mgmt_ip}/cgi-bin/streamscape_api"
-        batch = [
-            {"jsonrpc": "2.0", "method": "nodeid", "params": [], "id": 1},
-            {"jsonrpc": "2.0", "method": "routing_tree", "params": [], "id": 2},
-            {"jsonrpc": "2.0", "method": "battery_percent", "params": [], "id": 3},
-            {"jsonrpc": "2.0", "method": "rssi", "params": [], "id": 4},
-            {"jsonrpc": "2.0", "method": "link_stats", "params": [], "id": 5},
-            {"jsonrpc": "2.0", "method": "snr_stats", "params": [], "id": 6},
-        ]
-        try:
-            req = _urlreq.Request(
-                url,
-                data=json.dumps(batch).encode(),
-                headers={"Content-Type": "application/json"},
-            )
-            with _urlreq.urlopen(req, timeout=3) as resp:
-                resp_data = json.loads(resp.read())
-            parsed = {}
-            for r in resp_data:
-                rid = r.get("id", 0)
-                parsed[rid] = r.get("result") if "error" not in r else None
+        def via_mgmt():
+            nonlocal resp_data, via
+            try:
+                resp_data, via = silvus_rpc(mgmt_ip, _SILVUS_BATCH, 1.5), mgmt_ip
+            except Exception as e:
+                attempts.append(f"{mgmt_ip}: {e}")
 
-            nid_raw = parsed.get(1)
-            node_id = int(nid_raw[0]) if nid_raw else topo_node_id
+        def via_dongle():
+            nonlocal resp_data, via
+            iface, by_node = _silvus_link_local_by_node(topology)
+            if iface and int(topo_node_id) not in by_node:
+                iface, by_node = _silvus_link_local_by_node(topology, refresh=True)
+            addr = by_node.get(int(topo_node_id))
+            if not addr:
+                attempts.append(
+                    f"not seen on the radio dongle ({iface})" if iface
+                    else "no local interface on the silvus network (radio dongle unplugged?)"
+                )  # fmt: skip
+                return
+            try:
+                resp_data, via = silvus_rpc(addr, _SILVUS_BATCH, 3.0, iface), f"{addr}%{iface}"
+            except Exception as e:
+                attempts.append(f"{addr}%{iface}: {e}")
 
-            bat_raw = parsed.get(3)
-            battery = float(bat_raw[0]) if bat_raw else None
-
-            results[radio_name] = {
-                "node_id": node_id,
-                "mgmt_ip": mgmt_ip,
-                "battery": battery,
-                "routing_tree": [int(x) for x in (parsed.get(2) or [])],
-                "rssi": parsed.get(4),
-                "link_stats": parsed.get(5),
-                "snr_stats": parsed.get(6),
-                "error": None,
-            }
-        except Exception as e:
+        # a radio already found on the dongle is asked there first (its mgmt IP
+        # is usually what failed), else the mgmt IP first
+        known = topo_node_id is not None and int(topo_node_id) in _SILVUS_LL_CACHE["by_node"]
+        order = ([via_dongle] if topo_node_id is not None else []) + ([via_mgmt] if mgmt_ip else [])
+        if not known:
+            order.reverse()
+        for step in order:
+            if resp_data is None:
+                step()
+        if resp_data is None:
             results[radio_name] = {
                 "node_id": topo_node_id,
                 "mgmt_ip": mgmt_ip,
+                "via": None,
                 "battery": None,
                 "routing_tree": [],
                 "rssi": None,
                 "link_stats": None,
                 "snr_stats": None,
-                "error": str(e),
+                "link_quality": {},
+                "clients": [],
+                "error": "; ".join(attempts) or "unreachable",
             }
+            continue
+
+        parsed = {}
+        for r in resp_data:
+            rid = r.get("id", 0)
+            parsed[rid] = r.get("result") if "error" not in r else None
+
+        nid_raw = parsed.get(1)
+        node_id = int(nid_raw[0]) if nid_raw else topo_node_id
+
+        bat_raw = parsed.get(3)
+        battery = float(bat_raw[0]) if bat_raw else None
+
+        results[radio_name] = {
+            "node_id": node_id,
+            "mgmt_ip": mgmt_ip,
+            "via": via,
+            "battery": battery,
+            "routing_tree": [int(x) for x in (parsed.get(2) or [])],
+            "rssi": parsed.get(4),
+            "link_stats": parsed.get(5),
+            "snr_stats": parsed.get(6),
+            "link_quality": parse_network_status(parsed.get(7)),
+            "clients": [
+                c for c in parsed.get(8) or []
+                if isinstance(c, dict) and not str(c.get("mac", "")).lower().startswith(SILVUS_OUI)
+            ],  # fmt: skip
+            "error": None,
+        }
 
     return results
 
@@ -1744,3 +1867,384 @@ def run_iperf3_test(
                     server.kill()
                 except Exception:
                     pass
+
+
+# --- fleet core helpers (from the 2026-11-10 robot-test branch) ---
+
+def platform_of(machine):
+    """A topology machine's platform: ``platform_type``, missing → spot, husky → phoenix.
+
+    The shared rule (``fleetlink.relay_ros.platform_of``); the fallback keeps the
+    fleet tooling working where fleetlink is not installed.
+    """
+    try:
+        from fleetlink.relay_ros import platform_of as _platform_of
+    except ImportError:
+        p = str((machine or {}).get("platform_type") or "spot").lower()
+        return {"husky": "phoenix"}.get(p, p)
+    return _platform_of(machine)
+
+
+def status_platform(machine, topology=None):
+    """``platform_type`` for :func:`get_remote_status`: a robot's platform by the
+    shared rule (its topology entry first), None for any other machine."""
+    if (machine or {}).get("role") != "robot":
+        return None
+    entry = ((topology or {}).get("machines") or {}).get(machine.get("name"))
+    return platform_of(entry or machine)
+
+
+def validate_topology(topology):
+    """Consistency checks on a topology dict; returns a list of problems (empty = ok).
+
+    * no two machines share an address on the same network;
+    * no two robots share a ``color`` (colors are optional);
+    * ``fleet_defaults.fleet_link`` is one of FLEET_LINK_MODES;
+    * ``fleet_defaults.fleetlink_base`` names a base_station;
+    * ``zenoh.fleetlink_port`` is an int.
+    """
+    problems = []
+    machines = topology.get("machines") or {}
+    seen = {}  # (network, address) -> machine
+    for name, m in sorted(machines.items()):
+        for net, addr in sorted(((m or {}).get("addresses") or {}).items()):
+            other = seen.setdefault((net, str(addr)), name)
+            if other != name:
+                problems.append(f"duplicate {net} address {addr}: {other} and {name}")
+    colors = {}
+    for name, m in sorted(machines.items()):
+        m = m or {}
+        if m.get("role") != "robot" or not m.get("color"):
+            continue
+        c = str(m["color"]).lower()
+        other = colors.setdefault(c, name)
+        if other != name:
+            problems.append(f"duplicate robot color {m['color']}: {other} and {name}")
+    defaults = topology.get("fleet_defaults") or {}
+    mode = defaults.get("fleet_link", "router")
+    if mode not in FLEET_LINK_MODES:
+        problems.append(
+            f"fleet_defaults.fleet_link must be one of {list(FLEET_LINK_MODES)}, "
+            f"got {mode!r}"
+        )
+    base = defaults.get("fleetlink_base")
+    if base is not None:
+        if base not in machines:
+            problems.append(f"fleet_defaults.fleetlink_base {base!r} is not a machine")
+        elif (machines[base] or {}).get("role") != "base_station":
+            problems.append(
+                f"fleet_defaults.fleetlink_base {base!r} is not a base_station"
+            )
+    elif mode == "fleetlink":
+        problems.append("fleet_link is 'fleetlink' but fleetlink_base is not set")
+    port = (topology.get("zenoh") or {}).get("fleetlink_port")
+    if port is not None and (not isinstance(port, int) or isinstance(port, bool)):
+        problems.append(f"zenoh.fleetlink_port must be an int, got {port!r}")
+    networks = topology.get("networks") or {}
+    for net in (topology.get("zenoh") or {}).get("fleetlink_networks") or []:
+        if net not in networks:
+            problems.append(f"zenoh.fleetlink_networks: unknown network {net!r}")
+    return problems
+
+
+_ROS_BATTERY_PY = r"""
+import re, sys
+field, scale, state = sys.argv[1:4]
+d = sys.stdin.read()
+m = re.search(r"^[\s-]*" + field + r":\s*([0-9.eE+-]+)\s*$", d, re.M)
+if not m:
+    print("N/A")
+    sys.exit()
+v = float(m.group(1))
+print(int(round(v * 100 if scale == "fraction" else v)))
+if state == "bms":
+    s = re.search(r"^\s*power_supply_status:\s*(\d+)", d, re.M)
+    names = {1: "Charging", 2: "Discharging", 3: "Not charging", 4: "Full"}
+    state = names.get(int(s.group(1)) if s else 0, "Unknown")
+print(state)
+"""
+
+
+def _ros_battery_cmd(topic, field, scale, state):
+    """Shell snippet: ``---BAT---`` then the battery read from one message of ``topic``."""
+    script = base64.b64encode(_ROS_BATTERY_PY.encode()).decode()
+    return (
+        "echo '---BAT---'; "
+        "(source /opt/ros/jazzy/setup.bash 2>/dev/null || source /opt/ros/humble/setup.bash 2>/dev/null; "
+        "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
+        f"timeout 4 ros2 topic echo {shlex.quote(topic)} --once "
+        "--no-daemon 2>/dev/null | "
+        f"python3 -c \"$(echo {script} | base64 -d)\" "
+        f"{shlex.quote(field)} {scale} {shlex.quote(state)} 2>/dev/null) || echo 'N/A'"
+    )
+
+
+def link_network(topology, override=None, active=None):
+    """The network robot <-> base links use.
+
+    The launch's choice (``override``), else ``zenoh.connect_network``, else the
+    network the launching machine is on (``active``; router mode's old behaviour).
+    Names not in ``networks`` are skipped. SSH and the console keep using the
+    active network: only the robot links follow this.
+    """
+    nets = (topology or {}).get("networks") or {}
+    zconf = (topology or {}).get("zenoh") or {}
+    for cand in (override, zconf.get("connect_network")):
+        if cand and cand in nets:
+            return cand
+    return active
+
+
+SHUTDOWN_SERVICES = ("hydra/shutdown", "roman/shutdown")
+
+
+_SHELLS = {"zsh", "bash", "sh", "-zsh", "-bash"}
+
+
+_REQUEST_MARK = "requester: making request"
+
+
+_WAITING_MARK = "waiting for service to become available"
+
+
+def shutdown_command(robot=None):
+    """The shell command the core window's shutdown pane holds (core.yaml)."""
+    ns = robot or "${ADT4_ROBOT_NAME}"
+    return " && ".join(
+        f"ros2 service call /{ns}/{srv} std_srvs/srv/Empty" for srv in SHUTDOWN_SERVICES
+    )
+
+
+def find_shutdown_pane(user, ip, session="adt4_system", window="core"):
+    """Locate the core window's shutdown pane.
+
+    Returns ``(target, current_command, error)``: the pane whose start command
+    (pane_shell puts the prepared command there as ADT4_PANE_CMD) or visible
+    content mentions ``hydra/shutdown``, else pane 1 of the window (core.yaml:
+    pane 0 = show_environment, pane 1 = shutdown).
+    """
+    fmt = "#{pane_index}\t#{pane_current_command}\t#{pane_start_command}"
+    win = shlex.quote(f"{session}:{window}")
+    rc, out, err = ssh_cmd(
+        user, ip, f"tmux list-panes -t {win} -F {shlex.quote(fmt)}", timeout=5
+    )
+    if rc != 0:
+        return None, None, f"no tmux window {session}:{window}: {err or out}"
+    panes = []
+    for line in out.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) >= 2 and parts[0].strip().isdigit():
+            panes.append(
+                (parts[0].strip(), parts[1], parts[2] if len(parts) > 2 else "")
+            )
+    if not panes:
+        return None, None, f"tmux window {session}:{window} has no panes"
+    for idx, cur, start in panes:
+        if "hydra/shutdown" in start:
+            return f"{window}.{idx}", cur, None
+    for idx, cur, _ in panes:
+        rc, text, _ = ssh_cmd(
+            user,
+            ip,
+            f"tmux capture-pane -p -t {shlex.quote(f'{session}:{window}.{idx}')}",
+        )
+        if rc == 0 and "hydra/shutdown" in text:
+            return f"{window}.{idx}", cur, None
+    for idx, cur, _ in panes:
+        if idx == "1":
+            return f"{window}.1", cur, None
+    return None, None, f"no shutdown pane in {session}:{window}"
+
+
+def _capture(user, ip, target):
+    rc, text, _ = ssh_cmd(
+        user, ip, f"tmux capture-pane -p -S -300 -t {shlex.quote(target)}", timeout=5
+    )
+    return text if rc == 0 else ""
+
+
+def stop_save_via_tmux(
+    user, ip, robot=None, session="adt4_system", verify_timeout=8.0, sleep=time.sleep
+):
+    """Run the shutdown services from the robot's core shutdown pane over ssh.
+
+    Retypes the command (works whether or not the prepared prompt was already
+    used), presses Enter and verifies that ``ros2 service call`` made its
+    request.  Returns ``(ok, message)``.
+    """
+    target, cur, err = find_shutdown_pane(user, ip, session)
+    if target is None:
+        return False, err
+    full = f"{session}:{target}"
+    q = shlex.quote(full)
+    if cur and cur not in _SHELLS:
+        # e.g. an earlier `ros2 service call` still waiting for its service
+        ssh_cmd(user, ip, f"tmux send-keys -t {q} C-c", timeout=5)
+        sleep(1.0)
+    before = _capture(user, ip, full)
+    n_req, n_wait = before.count(_REQUEST_MARK), before.count(_WAITING_MARK)
+    cmd = shutdown_command(robot)
+    rc, out, e = ssh_cmd(
+        user,
+        ip,
+        f"tmux send-keys -t {q} C-u && tmux send-keys -t {q} -l {shlex.quote(cmd)}"
+        f" && tmux send-keys -t {q} Enter",
+        timeout=5,
+    )
+    if rc != 0:
+        return False, f"send-keys to {target} failed: {e or out}"
+    deadline = time.monotonic() + verify_timeout
+    while True:
+        sleep(1.0)
+        text = _capture(user, ip, full)
+        if text.count(_REQUEST_MARK) > n_req:
+            return True, f"shutdown requested from pane {target} ({cmd})"
+        if text.count(_WAITING_MARK) > n_wait:
+            return False, (
+                f"pane {target}: hydra/shutdown is not available "
+                "(is the stack running?); the call keeps waiting in the pane"
+            )
+        if time.monotonic() >= deadline:
+            return False, f"keys sent to pane {target} but no service request seen"
+
+
+SILVUS_OUI = "c4:7c:8d"  # MAC prefix of Silvus radios
+
+
+_SILVUS_LL_CACHE = {"t": 0.0, "iface": None, "by_node": {}}
+
+
+_SILVUS_LL_TTL_S = 120.0
+
+
+def silvus_interface(topology, network="silvus"):
+    """The local interface with an address on ``network`` (the radio's USB
+    ethernet dongle), or None."""
+    subnet_str = (topology.get("networks", {}).get(network) or {}).get("subnet")
+    if not subnet_str:
+        return None
+    subnet = ipaddress.ip_network(subnet_str, strict=False)
+    try:
+        out = subprocess.run(
+            ["ip", "-o", "-4", "addr", "show"], capture_output=True, text=True, timeout=5
+        ).stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 4 and parts[2] == "inet":
+            try:
+                if ipaddress.ip_interface(parts[3]).ip in subnet:
+                    return parts[1]
+            except ValueError:
+                pass
+    return None
+
+
+def silvus_link_locals(iface):
+    """IPv6 link-local addresses of the Silvus radios bridged onto ``iface``.
+
+    The radios answer an all-nodes ping on the dongle's segment with no route or
+    address setup; their MACs carry Silvus' OUI.
+    """
+    try:
+        subprocess.run(
+            ["ping", "-6", "-c", "2", "-i", "0.2", "-W", "1", f"ff02::1%{iface}"],
+            capture_output=True, timeout=5,
+        )  # fmt: skip
+        out = subprocess.run(
+            ["ip", "-6", "neigh", "show", "dev", iface],
+            capture_output=True, text=True, timeout=5,
+        ).stdout  # fmt: skip
+    except Exception:
+        return []
+    addrs = []
+    for line in out.splitlines():
+        parts = line.split()
+        if (
+            parts
+            and parts[0].startswith("fe80:")
+            and "lladdr" in parts
+            and parts[parts.index("lladdr") + 1].lower().startswith(SILVUS_OUI)
+        ):
+            addrs.append(parts[0])
+    return addrs
+
+
+def silvus_rpc(host, payload, timeout=3.0, iface=None):
+    """POST a JSON-RPC payload to a radio's streamscape API; parsed JSON back.
+
+    ``host``: an IPv4 address, or an IPv6 link-local address reached through
+    ``iface``. (urllib puts the ``%iface`` zone in the Host header, which the
+    radio rejects with 400, so the request is made by hand.)
+    """
+    import http.client
+
+    target = f"{host}%{iface}" if iface else host
+    conn = http.client.HTTPConnection(target, 80, timeout=timeout)
+    try:
+        conn.request(
+            "POST",
+            "/cgi-bin/streamscape_api",
+            body=json.dumps(payload).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Host": f"[{host}]" if ":" in host else host,
+            },
+        )
+        resp = conn.getresponse()
+        if resp.status != 200:
+            raise OSError(f"HTTP {resp.status} from radio {host}")
+        return json.loads(resp.read())
+    finally:
+        conn.close()
+
+
+def _silvus_link_local_by_node(topology, refresh=False):
+    """``(iface, {node_id: link-local addr})`` of the radios on the local dongle
+    (cached for a couple of minutes)."""
+    c = _SILVUS_LL_CACHE
+    if not refresh and c["iface"] and time.time() - c["t"] < _SILVUS_LL_TTL_S:
+        return c["iface"], c["by_node"]
+    iface = silvus_interface(topology)
+    by_node = {}
+    if iface:
+        for addr in silvus_link_locals(iface):
+            try:
+                r = silvus_rpc(addr, {"jsonrpc": "2.0", "method": "nodeid", "id": 1}, 2.0, iface)
+                by_node[int(r["result"][0])] = addr
+            except Exception:
+                pass
+    c.update(t=time.time(), iface=iface, by_node=by_node)
+    return iface, by_node
+
+
+def parse_network_status(raw):
+    """``network_status`` -> ``{neighbour node_id: link value}``.
+
+    StreamScape 5 returns ``[self, nbr, value, nbr, value, ...]`` (value ~50 for
+    radios a few metres apart, tracking signal quality: SNR-like, in dB).
+    """
+    if not isinstance(raw, list) or len(raw) < 3:
+        return {}
+    out = {}
+    rest = raw[1:]
+    for i in range(0, len(rest) - 1, 2):
+        try:
+            out[int(rest[i])] = float(rest[i + 1])
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+_SILVUS_BATCH = [
+    {"jsonrpc": "2.0", "method": "nodeid", "params": [], "id": 1},
+    {"jsonrpc": "2.0", "method": "routing_tree", "params": [], "id": 2},
+    {"jsonrpc": "2.0", "method": "battery_percent", "params": [], "id": 3},
+    {"jsonrpc": "2.0", "method": "rssi", "params": [], "id": 4},
+    {"jsonrpc": "2.0", "method": "link_stats", "params": [], "id": 5},
+    {"jsonrpc": "2.0", "method": "snr_stats", "params": [], "id": 6},
+    {"jsonrpc": "2.0", "method": "network_status", "params": [], "id": 7},
+    {"jsonrpc": "2.0", "method": "read_client_list", "params": [], "id": 8},
+]
+
