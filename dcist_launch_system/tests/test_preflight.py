@@ -355,7 +355,7 @@ def test_prior_verified_on_every_machine_and_mismatch_is_named():
     # gauss's copy has the run id but another map: launch re-copies it, then verifies;
     # the fake rsync changes nothing, so the verification still finds it stale
     rec = Rec(answers=[False])
-    ok = launch(plan(mode="relocalize", prior_path=SRC_PRIOR, prior_source="willow", session="spot-relocalize"), ScriptSsh({}), rec, scan)
+    ok = launch(plan(mode="relocalize", prior_path=SRC_PRIOR, prior_source="willow", session="spot-relocalize", sessions={"phoenix": "phoenix-relocalize"}), ScriptSsh({}), rec, scan)
     assert ok is False
     assert "gauss: prior_map_x has the prior's run id but a different map" in rec.text()
     [req] = rec.requests
@@ -367,7 +367,7 @@ def test_prior_verified_on_every_machine_and_mismatch_is_named():
 def test_matching_prior_copies_need_no_confirmation():
     copies = {("willow", "map_x"): _entry(), ("hamilton", "prior_map_x"): _entry(), ("gauss", "prior_map_x"): _entry()}
     rec = Rec()
-    ok = launch(plan(mode="relocalize", prior_path=SRC_PRIOR, prior_source="willow", session="spot-relocalize"), ScriptSsh({}), rec, make_scan(copies))
+    ok = launch(plan(mode="relocalize", prior_path=SRC_PRIOR, prior_source="willow", session="spot-relocalize", sessions={"phoenix": "phoenix-relocalize"}), ScriptSsh({}), rec, make_scan(copies))
     assert ok is True and rec.requests == []
     assert "Prior map: GO" in rec.text()
     assert "already present as prior_map_x" in rec.text()

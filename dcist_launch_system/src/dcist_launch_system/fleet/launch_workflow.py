@@ -14,6 +14,13 @@ the web console all drive the exact same sequence:
               then ``run-adt4`` on each robot
     Phase 3   launch the base station session (nohup) and verify its tmux session
 
+A robots-only plan (``LaunchPlan.robots_only``, restart one robot or a subset)
+never touches the base station: no zenoh deploy, no base session check or
+relaunch.  Its robots' running sessions are stopped cleanly (Ctrl-C every pane,
+so recordings close their bags, then kill), an existing output dir is moved
+aside instead of deleted, and a base station without a running session is only
+a warning.
+
 Front-ends supply a :class:`LaunchCallbacks` implementation; every user prompt
 goes through ``callbacks.confirm`` which blocks the worker thread until the
 front-end answers (``True`` / ``False``) or gives up (``None``).
@@ -95,11 +102,15 @@ class LaunchPlan:
     # platform ("spot" | "phoenix", see platform_of) -> session; a robot whose
     # platform is listed runs that session, the others ``session``
     sessions: dict[str, str] = field(default_factory=dict)
+    # (re)launch only ``robots``: the base station's session, zenoh config and
+    # fleetlink router/bridge are left alone; ``base_station`` is only the
+    # reference for the checks and the "is the base running" warning
+    robots_only: bool = False
 
 
 def is_base_only(plan: LaunchPlan) -> bool:
     """No robots, only the base station's session (restart just the base)."""
-    return not plan.robots and bool(plan.base_station and plan.bs_session)
+    return not plan.robots and not plan.robots_only and bool(plan.base_station and plan.bs_session)
 
 
 def with_link_mode(topo: dict | None, mode: str | None) -> dict | None:
@@ -249,6 +260,61 @@ def check_session_modes(plan: "LaunchPlan", runtime_config: dict, topo: dict | N
         )
 
 
+def session_platform(session: str | None) -> str | None:
+    """The platform a robot session is made for, by its experiment name
+    (``<experiment>-<config>``): ``spot*`` -> spot, ``phoenix*`` -> phoenix;
+    ``None`` for any other session (base station, hand-made), which is not checked."""
+    exp = str(session or "").removesuffix(".yaml").partition("-")[0]
+    for platform in ("spot", "phoenix"):
+        if exp.startswith(platform):
+            return platform
+    return None
+
+
+def platform_equivalent(
+    session: str | None,
+    platform: str,
+    topo: dict | None = None,
+    mode: str | None = None,
+    available=None,
+) -> str | None:
+    """``session`` for a robot of ``platform``: itself when it fits (or belongs to
+    no platform); else the other platform's same session (``spot_relocalize-X`` <->
+    ``phoenix_relocalize-X``) when that session file exists; else the platform's
+    preset (``fleet_defaults.sessions``) for the session's launch mode (or
+    ``mode``); ``None`` when there is no equivalent."""
+    own = session_platform(session)
+    if own is None or own == platform:
+        return session
+    name = str(session).removesuffix(".yaml")
+    swapped = platform + name[len(own):]
+    if swapped in (list_sessions() if available is None else available):
+        return swapped
+    presets = ((topo or {}).get("fleet_defaults") or {}).get("sessions") or {}
+    preset = (presets.get(session_mode(session) or mode) or {}).get(platform)
+    if preset and session_platform(preset) in (None, platform):
+        return preset
+    return None
+
+
+def check_session_platforms(plan: "LaunchPlan", runtime_config: dict, topo: dict | None) -> None:
+    """Refuse a robot session made for another platform: a phoenix (Husky) robot
+    never runs a spot_* session and a Spot never a phoenix_* one."""
+    bad = []
+    for r in plan.robots:
+        if r not in runtime_config:
+            continue
+        s = robot_session(plan, runtime_config[r], topo)
+        sp, rp = session_platform(s), robot_platform(topo, runtime_config[r])
+        if sp and sp != rp:
+            bad.append(f"{r} (platform {rp}) would run {s} (a {sp} session)")
+    if bad:
+        raise LaunchError(
+            "Session does not match the robot's platform: " + "; ".join(bad)
+            + ". Pick a session of each robot's platform."
+        )
+
+
 def robot_platform(topo: dict | None, machine: dict) -> str:
     """``machine``'s platform by the shared rule (``platform_type`` from its
     topology entry, else from ``machine``; missing → spot, husky → phoenix).
@@ -265,9 +331,13 @@ def robot_session(plan: LaunchPlan, machine: dict, topo: dict | None) -> str:
     per-platform presets in ``fleet_defaults.sessions`` (the launch mode's first),
     each robot gets that preset for *its* platform instead, so a hamilton + gauss
     launch runs spot-default on hamilton and phoenix-default on gauss.  Any other
-    session (picked by hand) runs on every robot as given.
+    session (picked by hand, or a legacy single session from launch memory) runs
+    on robots of its platform as given and maps to the other platform's
+    equivalent (:func:`platform_equivalent`) on the others; one without an
+    equivalent is returned as is and refused by :func:`check_session_platforms`.
     """
-    per_platform = (plan.sessions or {}).get(robot_platform(topo, machine))
+    platform = robot_platform(topo, machine)
+    per_platform = (plan.sessions or {}).get(platform)
     if per_platform:
         return per_platform
     sessions = ((topo or {}).get("fleet_defaults") or {}).get("sessions") or {}
@@ -275,8 +345,8 @@ def robot_session(plan: LaunchPlan, machine: dict, topo: dict | None) -> str:
     for mode in modes:
         by_platform = sessions.get(mode) or {}
         if plan.session in by_platform.values():
-            return by_platform.get(robot_platform(topo, machine)) or plan.session
-    return plan.session
+            return by_platform.get(platform) or plan.session
+    return platform_equivalent(plan.session, platform, topo, plan.mode) or plan.session
 
 
 def default_selection(topo: dict, runtime_config: dict, mode: str, robots, local_ips):
@@ -381,6 +451,7 @@ def build_robot_commands(
                 "No session selected"
                 + (f" for {', '.join(unset)} robots." if plan.sessions else ".")
             )
+    check_session_platforms(plan, runtime_config, topo)
     check_session_modes(plan, runtime_config, topo)
 
     # A prior that lives on a source machine reaches the others as prior_<name>
@@ -487,6 +558,20 @@ def dry_run_lines(
                 )
         lines.append(
             f"Prior map path on targets: {prior_dest_path(plan.prior_path, output_root)}"
+        )
+    if plan.robots_only:
+        bs = plan.base_station or "the base station"
+        lines.append(
+            f"Robots only: {bs}'s session, zenoh config and fleetlink router/bridge "
+            "are not touched"
+        )
+        lines.append(
+            f"Stop '{TMUX_SESSION_NAME}' on {', '.join(m['name'] for m, _ in cmds)} if running "
+            "(Ctrl-C every pane so recordings close, then kill)"
+        )
+        lines.append(
+            f"Existing {output_root}/{plan.experiment} on a robot (without per-run dirs) "
+            f"is moved aside to {plan.experiment}_prev-<time>, never deleted"
         )
     lines += [f'ssh {m["user"]}@{m["ip"]} "{cmd}"' for m, cmd in cmds]
     if is_base_only(plan):
@@ -910,6 +995,8 @@ def run_launch(
     except LaunchError as e:
         cb.log("warn", str(e))
         return False
+    if plan.robots_only:
+        return _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps)
 
     bs_machine = runtime_config.get(plan.base_station) if plan.base_station else None
     if bs_machine and not plan.bs_session:
@@ -1068,6 +1155,216 @@ def run_launch(
             plan, bs_machine, output_root, cb, deps, topo, prior_path=bs_prior
         )
 
+    cb.log("heading", "Launch sequence complete.")
+    return all_ok
+
+
+# robots-only relaunch: how long a robot's panes get to exit after Ctrl-C (bags
+# close, hydra / ROMAN stop) before its session is killed
+ROBOT_STOP_WAIT_S = 30.0
+ROBOT_STOP_POLL_S = 2.0
+_SHELLS = {"zsh", "bash", "sh", "fish", "dash"}
+
+
+def _stop_session_cleanly(m, cb, deps, wait_s=ROBOT_STOP_WAIT_S, poll_s=ROBOT_STOP_POLL_S) -> bool:
+    """Ctrl-C every pane of ``m``'s ``adt4_system`` session (a recording pane
+    closes its bag), wait up to ``wait_s`` for the panes to drop back to their
+    shells, then kill the session.  True once it is gone."""
+    s = TMUX_SESSION_NAME
+    rc, _, _ = deps.ssh(
+        m["user"], m["ip"],
+        f"tmux has-session -t {s} 2>/dev/null && "
+        f"for p in $(tmux list-panes -s -t {s} -F '#{{pane_id}}'); do tmux send-keys -t $p C-c; done",
+        timeout=10,
+    )  # fmt: skip
+    if rc != 0:
+        cb.log("dim", f"{m['name']}: no '{s}' session running")
+        return True
+    cb.log("info", f"{m['name']}: sent Ctrl-C to every pane of '{s}'; waiting up to {wait_s:.0f} s")
+    waited = 0.0
+    busy: list[str] = []
+    while waited < wait_s:
+        deps.sleep(poll_s)
+        waited += poll_s
+        rc, out, _ = deps.ssh(
+            m["user"], m["ip"], f"tmux list-panes -s -t {s} -F '#{{pane_current_command}}'", timeout=10
+        )
+        busy = [c for c in (out or "").split() if c not in _SHELLS] if rc == 0 else []
+        if not busy:
+            cb.log("ok", f"{m['name']}: every pane exited after {waited:.0f} s")
+            break
+    else:
+        cb.log("warn", f"{m['name']}: still running after {wait_s:.0f} s ({', '.join(sorted(set(busy)))}); killing")
+    rc, out, err = deps.ssh(m["user"], m["ip"], f"tmux kill-session -t {s}", timeout=10)
+    if rc != 0 and "can't find session" not in (err or out or ""):
+        rc2, _, _ = deps.ssh(m["user"], m["ip"], f"tmux has-session -t {s} 2>/dev/null", timeout=5)
+        if rc2 == 0:
+            cb.log("error", f"{m['name']}: could not kill '{s}': {err or out or rc}")
+            return False
+    cb.log("ok", f"{m['name']}: '{s}' stopped")
+    return True
+
+
+def move_aside_command(out_dir: str) -> str:
+    """Shell: move an existing ``out_dir`` to ``<out_dir>_prev-<time>`` and print
+    ``MOVED <new path>``.  A dir with per-run subdirs (``runs/``, run-adt4 that
+    keeps every run in ``<exp>/runs/<run_id>``) is left in place."""
+    return (
+        f"d={_quote_path(out_dir)}; "
+        'if [ -d "$d" ] && [ ! -e "$d/runs" ]; then '
+        'n="${d}_prev-$(date +%Y%m%d-%H%M%S)"; '
+        'while [ -e "$n" ]; do n="${n}x"; done; '
+        'mv "$d" "$n" && echo "MOVED $n"; fi'
+    )
+
+
+def _move_aside_outputs(cmds, out_dir, cb, deps) -> dict | None:
+    """Robots-only relaunch: keep every robot's previous run.  Returns robot ->
+    new path of the moved dir ({} when nothing moved); None when a move failed."""
+    moved = {}
+    for m, _ in cmds:
+        rc, out, err = deps.ssh(m["user"], m["ip"], move_aside_command(out_dir), timeout=30)
+        line = next((ln for ln in (out or "").splitlines() if ln.startswith("MOVED ")), None)
+        if rc != 0:
+            cb.log("error", f"{m['name']}: could not move {out_dir} aside: {err or out or rc}")
+            return None
+        if line:
+            moved[m["name"]] = line[len("MOVED "):].strip()
+            cb.log("info", f"{m['name']}: kept the previous run: {out_dir} -> {moved[m['name']]}")
+    return moved
+
+
+def _base_running(bs, cb, deps) -> bool | None:
+    try:
+        rc, out, _ = deps.ssh(
+            bs["user"], bs["ip"], f"tmux has-session -t {TMUX_SESSION_NAME} 2>/dev/null && echo OK", timeout=5
+        )
+    except Exception:  # noqa: BLE001
+        return None
+    return "OK" in (out or "")
+
+
+def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) -> bool:
+    """(Re)launch ``plan.robots`` only; see the module docstring."""
+    bs = runtime_config.get(plan.base_station) if plan.base_station else None
+    names = [m["name"] for m, _ in cmds]
+    cb.log(
+        "heading",
+        f"Robots only: (re)launching {', '.join(names)}; the base station is not touched",
+    )
+    if bs is None:
+        cb.log("warn", "No base station picked: robots need the base station for planning")
+    else:
+        up = _base_running(bs, cb, deps)
+        if up is False:
+            cb.log(
+                "warn",
+                f"{bs['name']}: no '{TMUX_SESSION_NAME}' session running. The robots launch "
+                "anyway, but need the base station for planning; start it from Launch "
+                "(base station only)",
+            )
+        elif up is None:
+            cb.log("warn", f"{bs['name']}: cannot tell whether its session runs")
+        else:
+            cb.log("dim", f"{bs['name']}: base station session running, left alone")
+    if fleet_link_mode(topo) != "fleetlink":
+        cb.log(
+            "warn",
+            "router mode: the base's zenoh router is not reconfigured; it links to the "
+            "robots of its last full launch",
+        )
+
+    if plan.preflight and not _run_preflight(
+        [m for m, _ in cmds], topo, output_root, bs, cb, deps
+    ):
+        return False
+
+    # Phase 1: prior map on the robots (none of the base station's)
+    overrides = {}
+    default_dest = prior_dest_path(plan.prior_path, output_root) if plan.prior_path else ""
+    if plan.prior_path and plan.prior_source:
+        cb.log("heading", "Phase 1: Ensuring the prior map on the robots...")
+        prior_entry = prior_identity(plan.prior_path, plan.prior_source, runtime_config, deps)
+        for m, _ in cmds:
+            if m["name"] == plan.prior_source:
+                continue
+            path = ensure_prior_on(
+                plan.prior_path, plan.prior_source, m, runtime_config, output_root, cb,
+                deps, prior_entry, images=False,
+            )  # fmt: skip
+            if not path:
+                cb.log("error", f"ABORT: could not transfer prior to {m['name']}")
+                return False
+            if path != default_dest:
+                overrides[m["name"]] = path
+        if plan.preflight:
+            loads = {
+                m["name"]: (m, plan.prior_path if m["name"] == plan.prior_source else overrides.get(m["name"], default_dest))
+                for m, _ in cmds
+            }  # fmt: skip
+            if not _verify_prior_maps(plan, runtime_config, loads, cb, deps):
+                return False
+
+    # Phase 1.5: stop the robots' running sessions cleanly
+    def check(m):
+        rc, out, _ = deps.ssh(
+            m["user"], m["ip"],
+            f"tmux has-session -t {TMUX_SESSION_NAME} 2>/dev/null && "
+            f"(tmux show-environment -t {TMUX_SESSION_NAME} ADT4_OUTPUT_DIR 2>/dev/null; true)",
+            timeout=5,
+        )  # fmt: skip
+        return (m["name"], _running_experiment(out)) if rc == 0 else None
+
+    running = dict(r for _, r in deps.parallel(check, [m for m, _ in cmds]) if isinstance(r, tuple))
+    if running:
+        what = [f"{n} (running {e})" if e else n for n, e in running.items()]
+        answer = cb.confirm(
+            Confirmation(
+                kind="kill_sessions",
+                message=(
+                    f"Session '{TMUX_SESSION_NAME}' is running on {', '.join(what)}.\n\n"
+                    "Stop it (Ctrl-C every pane, recordings close their bags) and relaunch? "
+                    "The base station is not touched."
+                ),
+                yes_label="Yes, Stop and relaunch",
+                no_label="No, Abort",
+                detail={"machines": list(running), "experiments": running},
+            )
+        )
+        if not answer:
+            cb.log("error", "Launch aborted by user.")
+            return False
+        stopped = deps.parallel(
+            lambda m: _stop_session_cleanly(m, cb, deps), [m for m, _ in cmds if m["name"] in running]
+        )
+        failed = [m["name"] for m, ok in stopped if ok is not True]
+        if failed:
+            cb.log("error", f"ABORT: could not stop the session on {', '.join(failed)}")
+            return False
+
+    # Phase 2: keep the previous output, then launch
+    out_dir = f"{output_root}/{plan.experiment}"
+    moved = _move_aside_outputs(cmds, out_dir, cb, deps)
+    if moved is None:
+        return False
+    for name, new in moved.items():
+        # a prior inside the moved dir (a robot relocalizing on its own last run)
+        rprior = overrides.get(name) or (plan.prior_path if name == plan.prior_source else default_dest)
+        if rprior and (rprior == out_dir or rprior.startswith(out_dir + "/")):
+            overrides[name] = new + rprior[len(out_dir):]
+    if overrides:
+        cmds = build_robot_commands(plan, runtime_config, output_root, topo, prior_overrides=overrides)
+
+    cb.log("heading", "Phase 2: Launching robots...")
+    all_ok = True
+    for m, cmd in cmds:
+        cb.log("info", f"Launching on {m['name']}...")
+        rc, _, err = deps.ssh(m["user"], m["ip"], cmd, timeout=30)
+        if rc == 0:
+            cb.log("ok", f"{m['name']}: launched")
+        else:
+            all_ok = False
+            cb.log("error", f"{m['name']}: FAILED (rc={rc}) {err}")
     cb.log("heading", "Launch sequence complete.")
     return all_ok
 
