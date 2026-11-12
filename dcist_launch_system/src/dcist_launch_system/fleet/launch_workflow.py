@@ -472,8 +472,11 @@ def ensure_prior_on(
     cb,
     deps,
     prior_entry: dict | None = None,
+    images: bool = True,
 ):
     """Make the prior map available on ``target``; returns its path there (None = failed).
+
+    ``images`` False (robots) leaves the prior's ``image_store/`` out of the copy.
 
     With the prior's identity (``prior_entry``) the target's runs are matched by
     run_id: a run already holding it (the original, an earlier ``prior_*`` copy, a
@@ -501,7 +504,7 @@ def ensure_prior_on(
                     )
                     return _transfer_prior(
                         prior_path, prior_source, target, path, runtime_config, cb, deps,
-                        prior_entry,
+                        prior_entry, images,
                     )  # fmt: skip
                 cb.log(
                     "dim",
@@ -519,7 +522,9 @@ def ensure_prior_on(
                     f"{target['name']}: {same} has the prior's files (copied before "
                     "copies were labelled); labelled it, no transfer",
                 )
-                _mark_origin(deps, target, path, prior_entry, prior_source)
+                _mark_origin(
+                    deps, target, path, prior_entry, prior_source, "all" if images else "none"
+                )
                 cb.progress(target["name"], 100)
                 return path
             cb.log(
@@ -529,7 +534,7 @@ def ensure_prior_on(
             )
             return _transfer_prior(
                 prior_path, prior_source, target, path, runtime_config, cb, deps,
-                prior_entry,
+                prior_entry, images,
             )  # fmt: skip
         existing = {r["name"]: ri.entry_ids(r) for r in runs if r.get("name")}
         dest_name, status = ri.choose_dest_name(dest_name, existing, prior_id)
@@ -554,8 +559,9 @@ def ensure_prior_on(
             return dest_path
 
     return _transfer_prior(
-        prior_path, prior_source, target, dest_path, runtime_config, cb, deps, prior_entry
-    )
+        prior_path, prior_source, target, dest_path, runtime_config, cb, deps, prior_entry,
+        images,
+    )  # fmt: skip
 
 
 def _copy_map_differs(deps, target, output_root, name, prior_entry) -> bool:
@@ -597,11 +603,17 @@ def _unlabelled_copy(deps, target, output_root, runs, dest_name, prior_entry):
     return None, None
 
 
-def _mark_origin(deps, target, dest_path, prior_entry, prior_source):
+# A robot never reads the prior's image store (only the base's heracles/console do),
+# and it is most of a map's size (5.3 of 5.6 GB for b45): robots get the map without it.
+ROBOT_PRIOR_EXCLUDES = ["recorded_data/", "image_store/", "image_store.partial/"]
+BASE_PRIOR_EXCLUDES = ["recorded_data/"]
+
+
+def _mark_origin(deps, target, dest_path, prior_entry, prior_source, images="all"):
     """Write ``.adt4_origin.json`` so the next launch finds the copy by run_id."""
     from dcist_launch_system.fleet import run_identity as ri
 
-    origin = ri.make_origin(dict(prior_entry), prior_source, "all", "none")
+    origin = ri.make_origin(dict(prior_entry), prior_source, images, "none")
     deps.ssh(
         target["user"],
         target["ip"],
@@ -611,8 +623,9 @@ def _mark_origin(deps, target, dest_path, prior_entry, prior_source):
 
 
 def _transfer_prior(
-    prior_path, prior_source, target, dest_path, runtime_config, cb, deps, prior_entry
-):
+    prior_path, prior_source, target, dest_path, runtime_config, cb, deps, prior_entry,
+    images=True,
+):  # fmt: skip
     from dcist_launch_system.fleet import run_identity as ri
 
     dest_name = pathlib.Path(dest_path).name
@@ -631,14 +644,16 @@ def _transfer_prior(
         target["ip"],
         dest_path,
         relay=False,
-        exclude=["recorded_data/"],
+        exclude=list(BASE_PRIOR_EXCLUDES if images else ROBOT_PRIOR_EXCLUDES),
         progress_callback=lambda pct: cb.progress(target["name"], pct),
     )
     if not ok:
         cb.log("error", f"{target['name']}: prior map transfer FAILED: {msg}")
         return None
     if prior_id:  # mark the copy so the next launch finds it by run_id
-        _mark_origin(deps, target, dest_path, prior_entry, prior_source)
+        _mark_origin(
+            deps, target, dest_path, prior_entry, prior_source, "all" if images else "none"
+        )
     cb.progress(target["name"], 100)
     cb.log("ok", f"{target['name']}: prior map transferred to {dest_name} ({method})")
     return dest_path
@@ -877,6 +892,7 @@ def run_launch(
                 cb,
                 deps,
                 prior_entry,
+                images=False,
             )
             if not path:
                 cb.log("error", f"ABORT: could not transfer prior to {m['name']}")
