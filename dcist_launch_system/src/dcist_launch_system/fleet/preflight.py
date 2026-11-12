@@ -124,9 +124,9 @@ if git -C "$repo" rev-parse HEAD >/dev/null 2>&1; then
   printf '@@V|%s|%s|%s|%s\n' "$head" "$dirty" "$subs" "$branch"
 else c code nogo "no git checkout at $repo"; fi
 if command -v nvidia-smi >/dev/null 2>&1; then
-  apps=$(timeout 5 nvidia-smi --query-compute-apps=pid,process_name --format=csv,noheader 2>/dev/null | tr '\n' ';' | sed 's/;$//')
+  apps=$(timeout -k 2 5 nvidia-smi --query-compute-apps=pid,process_name --format=csv,noheader 2>/dev/null | tr '\n' ';' | sed 's/;$//')
   if [ -n "$apps" ]; then c gpu warn "GPU already in use: $apps"
-  else c gpu go "$(timeout 5 nvidia-smi -L 2>/dev/null | head -1 | cut -c1-60)"; fi
+  else c gpu go "$(timeout -k 2 5 nvidia-smi -L 2>/dev/null | head -1 | cut -c1-60)"; fi
 fi
 """
 
@@ -192,11 +192,11 @@ _SPOT = r"""
 ip="$ADT4_BOSDYN_IP"
 if [ -z "$ip" ]; then c spot_reach nogo "ADT4_BOSDYN_IP is not set on this robot"
 elif ! ping -c1 -W2 "$ip" >/dev/null 2>&1; then c spot_reach nogo "Spot does not answer ping at $ip"
-elif ! timeout 3 bash -c "</dev/tcp/$ip/443" 2>/dev/null; then c spot_reach nogo "Spot at $ip answers ping but not its API port 443"
+elif ! timeout -k 2 3 bash -c "</dev/tcp/$ip/443" 2>/dev/null; then c spot_reach nogo "Spot at $ip answers ping but not its API port 443"
 else
   c spot_reach go "Spot reachable at $ip"
   py=python3; [ -x "$ADT4_ENV/spark_env/bin/python" ] && py="$ADT4_ENV/spark_env/bin/python"
-  r=$(echo __SPOT_PY__ | base64 -d | ADT4_BOSDYN_IP="$ip" timeout 20 "$py" - __BAT_NOGO__ 2>/dev/null | tail -1)
+  r=$(echo __SPOT_PY__ | base64 -d | ADT4_BOSDYN_IP="$ip" timeout -k 2 20 "$py" - __BAT_NOGO__ 2>/dev/null | tail -1)
   [ -z "$r" ] && r="warn|Spot SDK check did not answer"
   c spot_state "${r%%|*}" "${r#*|}"
 fi
@@ -218,7 +218,7 @@ for u in __UNITS__; do [ "$(systemctl is-active "$u" 2>/dev/null)" = active ] ||
 if [ -n "$down" ]; then c clearpath nogo "not active:$down"; else c clearpath go "__UNITS__ active"; fi
 (
   ros_src
-  bat=$(timeout 5 ros2 topic echo /__ROBOT__/platform/bms/state --once --no-daemon 2>/dev/null | sed -n 's/^percentage:[[:space:]]*//p' | head -1)
+  bat=$(timeout -k 2 5 ros2 topic echo /__ROBOT__/platform/bms/state --once --no-daemon 2>/dev/null | sed -n 's/^percentage:[[:space:]]*//p' | head -1)
   if [ -z "$bat" ]; then c battery warn "no message on /__ROBOT__/platform/bms/state"
   else
     pct=$(python3 -c "print(int(round(float('$bat')*100)))" 2>/dev/null)
@@ -227,7 +227,7 @@ if [ -n "$down" ]; then c clearpath nogo "not active:$down"; else c clearpath go
     elif [ "$pct" -lt __BAT_WARN__ ]; then c battery warn "battery ${pct}%"
     else c battery go "battery ${pct}%"; fi
   fi
-  es=$(timeout 5 ros2 topic echo /__ROBOT__/platform/emergency_stop --once --no-daemon 2>/dev/null | sed -n 's/^data:[[:space:]]*//p' | head -1)
+  es=$(timeout -k 2 5 ros2 topic echo /__ROBOT__/platform/emergency_stop --once --no-daemon 2>/dev/null | sed -n 's/^data:[[:space:]]*//p' | head -1)
   case "$es" in
     false) c estop go "emergency stop released" ;;
     true) c estop nogo "emergency stop pressed" ;;

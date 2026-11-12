@@ -386,3 +386,16 @@ def test_manifest_has_map_digest(tmp_path):
     assert a["map_digest"] == b["map_digest"] and a["digest"] != b["digest"]
     (tmp_path / "roman/map.pkl").write_text("another map")
     assert run_scan.manifest(str(tmp_path))["map_digest"] != a["map_digest"]
+
+
+def test_every_remote_timeout_kills_a_command_that_ignores_sigterm():
+    # `timeout N cmd` only sends SIGTERM; a ros2 CLI blocked in rmw_zenoh ignores it and
+    # hangs the whole check script past SSH_TIMEOUT ("SSH timeout" while ssh works).
+    import re
+
+    from dcist_launch_system.fleet import preflight
+
+    src = open(preflight.__file__).read()
+    plain = re.findall(r"\btimeout (?!-k )\d+ ", src)
+    assert plain == [], f"timeout without -k in preflight scripts: {plain}"
+    assert "timeout -k 2 5 ros2 topic echo" in src
