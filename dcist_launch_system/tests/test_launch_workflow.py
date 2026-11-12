@@ -599,3 +599,5 @@ def test_robots_get_the_prior_without_its_image_store_the_base_with_it():
     excludes.clear()
     run(_reloc_plan("smaug"), FakeSsh({}), Recorder(), rsync=rsync)
     assert excludes and all("image_store/" not in e for e in excludes)
+    # neither copies a run's bags or ROS logs
+    assert all({"mission_bag/", "ros_log/", "recorded_data/"} <= set(e) for e in excludes)

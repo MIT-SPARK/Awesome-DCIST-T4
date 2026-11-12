@@ -128,3 +128,14 @@ def test_plan_progress_fans_out_without_relaying_its_downlink_back_up(
         assert all(
             entry.topic != downlink.topic for entry in resolved.out_topics("robot")
         )
+
+
+def test_mission_id_goes_down_latched_to_every_robot(relay_config_class):
+    cfg = relay_config_class.load(RELAY_YAML)
+    for robot, platform in (("euclid", "spot"), ("hamilton", "spot"), ("gauss", "phoenix")):
+        res = cfg.resolve(robot, platform, base="willow")
+        e = res.topics["/global/mission/current"]
+        assert e.topic == "/global/mission/current"  # same name on every robot
+        assert e.type == "std_msgs/msg/String" and e.dir == "down"
+        assert e.mode == "latest_reliable" and e.replay_on_resync
+        assert e.qos["durability"] == "transient_local" and e.ttl_s is None
