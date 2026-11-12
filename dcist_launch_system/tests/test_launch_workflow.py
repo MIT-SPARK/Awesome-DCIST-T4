@@ -465,3 +465,127 @@ def test_default_selection_per_robot_platform():
     # a robot missing from the topology's machines: its runtime entry, else spot
     sel = default_selection(TOPO, RUNTIME, "mapping", None, set())
     assert sel["sessions"] == {"smaug": "spot-default", "topaz": "spot-default"}
+
+
+# --- base station only / per-platform sessions -----------------------------------
+
+PP_RUNTIME = {
+    **RUNTIME,
+    "gauss": {
+        "name": "gauss",
+        "role": "robot",
+        "ip": "10.0.0.3",
+        "user": "swarm",
+        "platform_id": "gauss",
+        "online": True,
+    },
+}
+PP_TOPO = {
+    **TOPO,
+    "machines": {
+        "smaug": {"platform_type": "spot"},
+        "topaz": {"platform_type": "spot"},
+        "gauss": {"platform_type": "husky"},
+    },
+}
+
+
+def _base_only_plan(**kw):
+    return LaunchPlan(
+        robots=[], session="", experiment="e", base_station="willow",
+        bs_session="base_station_web-default", **kw,
+    )  # fmt: skip
+
+
+def test_base_only_plan_validates_and_dry_runs_only_the_base_command():
+    from dcist_launch_system.fleet.launch_workflow import is_base_only, validate_plan
+
+    plan = _base_only_plan()
+    assert is_base_only(plan)
+    assert validate_plan(plan, RUNTIME, OUT) == []
+    lines = dry_run_lines(plan, RUNTIME, OUT)
+    ssh_lines = [line for line in lines if line.startswith("ssh ")]
+    assert len(ssh_lines) == 1
+    assert ssh_lines[0].startswith('ssh rrg@10.0.0.9 "')
+    assert "run-adt4 base_station_web-default -n willow" in ssh_lines[0]
+    # no base station: still "No robots"
+    with pytest.raises(LaunchError, match="No robots"):
+        validate_plan(LaunchPlan(robots=[], session="", experiment="e"), RUNTIME, OUT)
+    with pytest.raises(LaunchError, match="requires a prior"):
+        validate_plan(_base_only_plan(mode="relocalize"), RUNTIME, OUT)
+
+
+def test_base_only_dry_run_with_a_robot_prior_transfers_it_to_the_base():
+    plan = _base_only_plan(mode="relocalize", prior_path="~/adt4_output/p", prior_source="smaug")
+    lines = dry_run_lines(plan, RUNTIME, OUT)
+    assert "Transfer prior map: smaug -> willow" in lines
+    assert " -p ~/adt4_output/prior_p" in lines[-1]
+
+
+def test_base_only_launch_touches_only_the_base_station():
+    # an adt4_system session runs on the base: confirm, kill it, relaunch it
+    ssh = FakeSsh({"2>/dev/null": (0, "ADT4_OUTPUT_DIR=/x/old\nOK", "", "10.0.0.9")})
+    rec = Recorder(answers=[True])
+    seen = {}
+    deps = make_deps(ssh)
+    deps.zenoh_endpoints = lambda topo, net, name, robot_filter=None: seen.setdefault("f", robot_filter) or []
+    plan = _base_only_plan(preflight=False)
+    assert run_launch(plan, topo=TOPO, active_network="silvus", runtime_config=RUNTIME, output_root=OUT, callbacks=rec, deps=deps)
+    assert ssh.cmds_for("10.0.0.1") == [] and ssh.cmds_for("10.0.0.2") == []
+    [req] = rec.requests
+    assert req.detail["machines"] == ["willow"]
+    cmds = ssh.cmds_for("10.0.0.9")
+    assert any("kill-session" in c for c in cmds)
+    assert sum("nohup" in c for c in cmds) == 1
+    # the restarted base still links to every robot
+    assert sorted(seen["f"]) == ["smaug", "topaz"]
+
+
+def test_base_only_preflight_checks_only_the_base(monkeypatch):
+    from dcist_launch_system.fleet import preflight as pf
+
+    checked = []
+    monkeypatch.setattr(pf, "run_checks", lambda machines, *a, **k: checked.extend(m["name"] for m in machines) or [])
+    ssh = FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")})
+    plan = _base_only_plan(preflight=True)
+    assert run_launch(plan, topo=TOPO, active_network="silvus", runtime_config=RUNTIME, output_root=OUT, callbacks=Recorder(), deps=make_deps(ssh))
+    assert checked == ["willow"]
+
+
+def test_mixed_platforms_get_their_own_sessions():
+    plan = LaunchPlan(
+        robots=["smaug", "gauss"],
+        session="",
+        sessions={"spot": "spot_relocalize-relocalize", "phoenix": "phoenix_relocalize-relocalize"},
+        experiment="e",
+        mode="relocalize",
+        prior_path="~/adt4_output/p",
+    )
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
+    assert "run-adt4 spot_relocalize-relocalize -n smaug" in cmds["smaug"]
+    assert "run-adt4 phoenix_relocalize-relocalize -n gauss" in cmds["gauss"]
+    assert all(" -p ~/adt4_output/p" in c for c in cmds.values())
+    # a platform with no session: named in the error
+    plan.sessions = {"spot": "spot-default"}
+    with pytest.raises(LaunchError, match="phoenix"):
+        build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+    # ...unless ``session`` covers it
+    plan.session = "phoenix-default"
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
+    assert "run-adt4 spot-default" in cmds["smaug"] and "run-adt4 phoenix-default" in cmds["gauss"]
+
+
+def test_single_session_still_runs_on_every_robot():
+    plan = LaunchPlan(robots=["smaug", "gauss"], session="my-custom", experiment="e")
+    cmds = [c for _, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)]
+    assert all("run-adt4 my-custom " in c for c in cmds)
+    # a per-platform preset still maps to each robot's platform (old behaviour)
+    plan.session = "spot-default"
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
+    assert "run-adt4 phoenix-default" in cmds["gauss"]
+
+
+def test_base_station_command_drops_leaked_tmux_session_vars():
+    cmd = build_base_station_command(RUNTIME["willow"], "b", OUT, "e1")
+    assert "env -u config -u logging_key -u sim_time " in cmd
+    assert cmd.index("env -u") < cmd.index("nohup")
