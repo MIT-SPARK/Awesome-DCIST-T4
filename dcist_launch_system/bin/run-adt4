@@ -508,7 +508,15 @@ def _session_file_env(session_file, env):
 
 def _run_session(session_path, env, tmuxp_args, dry_run):
     env = {**env, **_session_file_env(session_path, env)}
-    cmd = [shutil.which("tmuxp"), "load", str(session_path)]
+    # pip --user installs (gauss) put tmuxp in ~/.local/bin, which is not on PATH for
+    # the non-interactive ssh command the console launches robots with.
+    tmuxp = shutil.which("tmuxp") or shutil.which(
+        "tmuxp", path=os.path.expanduser("~/.local/bin")
+    )
+    if not tmuxp:
+        click.secho("tmuxp not found (PATH or ~/.local/bin)", fg="red")
+        return 1
+    cmd = [tmuxp, "load", str(session_path)]
     if tmuxp_args:
         cmd += shlex.split(tmuxp_args)
 

@@ -557,8 +557,8 @@ def test_mixed_platforms_get_their_own_sessions():
     plan.sessions = {"spot": "spot-default"}
     with pytest.raises(LaunchError, match="phoenix"):
         build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
-    # ...unless ``session`` covers it
-    plan.session = "phoenix-default"
+    # ...unless ``session`` covers it (mapping sessions: a mapping launch)
+    plan.session, plan.mode = "phoenix-default", "mapping"
     cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
     assert "run-adt4 spot-default" in cmds["smaug"] and "run-adt4 phoenix-default" in cmds["gauss"]
 
@@ -601,3 +601,94 @@ def test_robots_get_the_prior_without_its_image_store_the_base_with_it():
     assert excludes and all("image_store/" not in e for e in excludes)
     # neither copies a run's bags or ROS logs
     assert all({"mission_bag/", "ros_log/", "recorded_data/"} <= set(e) for e in excludes)
+
+
+
+
+# --- session vs launch mode ------------------------------------------------------
+
+
+def test_session_mode_from_the_experiment_manifest():
+    from dcist_launch_system.fleet.launch_workflow import session_mode, session_modes
+
+    for s in ("spot_relocalize-relocalize", "phoenix_relocalize-relocalize_awcd",
+              "spot_bag_relocalize-relocalize", "phoenix_bag_relocalize-relocalize"):
+        assert session_mode(s) == "relocalize", s
+    for s in ("spot-default", "spot-indoor_image_logging", "phoenix-default",
+              "spot_bag-indoor", "phoenix_bag-default", "spot_regions-indoor_regions"):
+        assert session_mode(s) == "mapping", s
+    # base station / planning sessions, made-up names, configs an experiment lacks
+    for s in ("base_station_web_repair-default", "spot_prior_dsg-prior_dsg", "my-custom",
+              "spot-relocalize", "nodash", "", None):
+        assert session_mode(s) is None, s
+    assert session_modes(["spot-default", "base_station-default", "spot_relocalize-relocalize"]) == {
+        "spot-default": "mapping",
+        "spot_relocalize-relocalize": "relocalize",
+    }
+
+
+def test_relocalize_mode_refuses_a_mapping_session():
+    # the 2026-11-11 field run: relocalize + a remembered mapping session
+    plan = LaunchPlan(
+        robots=["smaug", "topaz"], session="spot-indoor_image_logging", experiment="e",
+        mode="relocalize", prior_path="~/adt4_output/p", prior_source="willow",
+    )  # fmt: skip
+    with pytest.raises(LaunchError, match=r"relocalize.*smaug would run spot-indoor_image_logging \(a mapping session\)"):
+        build_robot_commands(plan, RUNTIME, OUT, TOPO)
+    from dcist_launch_system.fleet.launch_workflow import validate_plan
+
+    with pytest.raises(LaunchError, match="topaz"):
+        validate_plan(plan, RUNTIME, OUT, TOPO)
+    with pytest.raises(LaunchError, match="mapping session"):
+        dry_run_lines(plan, RUNTIME, OUT, TOPO)
+    rec = Recorder()
+    ssh = FakeSsh()
+    assert not run(plan, ssh, rec)
+    assert "mapping session" in rec.text() and ssh.calls == []
+    plan.session = "spot_relocalize-relocalize"
+    assert len(build_robot_commands(plan, RUNTIME, OUT, TOPO)) == 2
+
+
+def test_mapping_mode_refuses_a_relocalize_session():
+    plan = LaunchPlan(robots=["smaug"], session="spot_relocalize-relocalize", experiment="e",
+                      mode="mapping", prior_path="~/p")  # fmt: skip
+    with pytest.raises(LaunchError, match=r"mapping but smaug would run spot_relocalize-relocalize \(a relocalize session\)"):
+        build_robot_commands(plan, RUNTIME, OUT)
+    # no mode (manual / old clients): not checked
+    plan.mode = None
+    assert build_robot_commands(plan, RUNTIME, OUT)
+    # a session the manifest does not know: not checked
+    plan.mode, plan.session = "mapping", "my-custom"
+    assert build_robot_commands(plan, RUNTIME, OUT)
+
+
+def test_per_platform_sessions_are_checked_per_robot():
+    plan = LaunchPlan(
+        robots=["smaug", "gauss"], session="",
+        sessions={"spot": "spot_relocalize-relocalize", "phoenix": "phoenix-default"},
+        experiment="e", mode="relocalize", prior_path="~/adt4_output/p",
+    )  # fmt: skip
+    with pytest.raises(LaunchError) as e:
+        build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+    assert "gauss would run phoenix-default" in str(e.value) and "smaug" not in str(e.value)
+    plan.sessions["phoenix"] = "phoenix_relocalize-relocalize"
+    assert len(build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)) == 2
+    # relocalize still needs a prior
+    plan.prior_path = ""
+    with pytest.raises(LaunchError, match="requires a prior"):
+        build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+
+
+def test_legacy_single_mapping_preset_in_relocalize_mode_is_refused():
+    # the mapping preset maps to each robot's platform: still a mapping session
+    plan = LaunchPlan(robots=["smaug", "gauss"], session="spot-default", experiment="e",
+                      mode="relocalize", prior_path="~/p")  # fmt: skip
+    topo = {**PP_TOPO, "fleet_defaults": {**TOPO["fleet_defaults"], "sessions": {
+        "mapping": {"spot": "spot-default", "phoenix": "phoenix-default"},
+        "relocalize": {"spot": "spot_relocalize-relocalize", "phoenix": "phoenix_relocalize-relocalize"},
+    }}}  # fmt: skip
+    with pytest.raises(LaunchError, match="gauss would run phoenix-default"):
+        build_robot_commands(plan, PP_RUNTIME, OUT, topo)
+    plan.session = "spot_relocalize-relocalize"
+    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, topo)}
+    assert "run-adt4 phoenix_relocalize-relocalize" in cmds["gauss"]
