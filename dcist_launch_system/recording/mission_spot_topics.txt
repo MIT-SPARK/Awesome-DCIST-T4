@@ -1,0 +1,35 @@
+# Mission bag, Spot (run-adt4 mission_bag window; record_topics syntax:
+# '#' comments, '# optional' = may stay silent in a mission, '*' = one name segment).
+# Message-level mission topics only: no images, point clouds or scene graphs
+# (the full sensor recording is run-adt4 -r with spot_topics.txt).
+/${ADT4_ROBOT_NAME}/tf
+/${ADT4_ROBOT_NAME}/tf_static
+/${ADT4_ROBOT_NAME}/odom
+# plan in, execution out (spot_executor_node)
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/spot_executor_node/action_result
+/${ADT4_ROBOT_NAME}/spot_executor_node/plan_progress
+/${ADT4_ROBOT_NAME}/spot_executor_node/runtime_guards
+/${ADT4_ROBOT_NAME}/spot_executor_node/teleop_state
+/${ADT4_ROBOT_NAME}/spot_executor_node/takeover  # optional: lease takeovers only
+/${ADT4_ROBOT_NAME}/spot_executor_node/manipulation_request  # optional: a few hundred kB per grasp request
+/${ADT4_ROBOT_NAME}/spot_executor_node/pick_confirmation  # optional
+/${ADT4_ROBOT_NAME}/spot_executor_node/pause  # optional
+/${ADT4_ROBOT_NAME}/spot_executor_node/resume  # optional
+/${ADT4_ROBOT_NAME}/spot_executor_node/stop  # optional
+/${ADT4_ROBOT_NAME}/spot_executor_node/cmd_vel  # optional: console teleop
+/${ADT4_ROBOT_NAME}/spot_executor_node/mlp_path_publisher
+/${ADT4_ROBOT_NAME}/spot_executor_node/mlp_target_publisher
+/${ADT4_ROBOT_NAME}/spot_executor_node/smooth_path_publisher  # optional
+/plan_progress
+/action_done
+# localization against the prior (ROMAN, hydra_multi)
+/${ADT4_ROBOT_NAME}/roman/roman_lc/loop_closure  # optional: rare
+/${ADT4_ROBOT_NAME}/roman/roman_lc/pose_graph_update  # optional: rare
+# status and change detection
+/${ADT4_ROBOT_NAME}/ros_system_monitor/hydra/status
+/${ADT4_ROBOT_NAME}/ros_system_monitor/hydra_multi/status  # optional: relocalize only
+/${ADT4_ROBOT_NAME}/ros_system_monitor/semantic_inference/status  # optional
+/global/ros_system_monitor/table_in
+/${ADT4_ROBOT_NAME}/change_detection/state  # optional: relocalize_awcd only
+/awcd_changes  # optional: relocalize_awcd only

@@ -66,7 +66,7 @@ Configure and start experiment sessions across the fleet.
 1. Press `m` (mapping) or `r` (relocalize) to auto-populate defaults from `topology.yaml`
 2. Verify the robot and session selections
 3. Select a base station (optional) and its session
-4. Enter an experiment name (output saved to `~/adt4_output/<name>/`)
+4. Enter an experiment name (output saved to `~/adt4_output/<name>/runs/<run_id>/`, with `~/adt4_output/<name>/latest` pointing at the newest run)
 5. For relocalize mode: select a prior map from the fleet or enter a custom path
 6. Press `d` to preview the SSH commands (dry run), or `g` to launch
 
@@ -87,7 +87,7 @@ When you press `g`, the launch proceeds in phases:
 1. **Phase 0** — Deploy Zenoh `connect.endpoints` to the base station
 2. **Phase 1** — Transfer prior maps to robots that need them (relocalize only)
 3. **Phase 1.5** — Kill any existing conflicting tmux sessions (prompts for confirmation)
-4. **Phase 2** — Check for existing output directories (prompts to overwrite if found)
+4. **Phase 2** — Check for existing output directories (an existing experiment keeps its earlier runs; each launch adds a new `runs/<run_id>`)
 5. **Phase 2/3** — SSH into each robot and start `run-adt4`; then launch base station session
 
 ### Auto-Population (Presets)

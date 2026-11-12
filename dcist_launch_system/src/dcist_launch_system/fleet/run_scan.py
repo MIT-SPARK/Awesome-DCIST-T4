@@ -20,6 +20,15 @@ realpath + creation time (older runs; nothing is written) -- plus ``origin`` (th
 metadata, if any) and ``manifest`` (a digest of the run's files outside the image store
 and rosbags, which a copy made with ``rsync -a`` reproduces exactly) used to tell an
 in-sync copy from an outdated one.
+
+Per-run layout (``fleet.run_dirs``): run-adt4 writes each launch to
+``<experiment>/runs/<run_id>/`` and points ``<experiment>/latest`` at it.  A listing
+entry is still one experiment dir (what the Maps page lists and transfers), but its
+contents -- subdirs, DSG files, image store, run_info, manifest -- are those of the
+run ``latest`` resolves to (``content_dir``); ``run_dir`` names that run (None for a
+flat legacy dir) and ``runs`` counts them.  ``size_bytes`` covers every run.  Readers
+of an entry's files must use ``run_dir`` when it is set
+(``<run_dir>/hydra/backend/dsg.json``), or ``<path>/latest/...``.
 """
 
 import base64
@@ -56,11 +65,31 @@ ORIGIN = ".adt4_origin.json"
 # index is fingerprinted separately) and the raw image logs it is built from are not
 # sent with a packed transfer, bags are not copied by default, and the origin file
 # exists only on a copy
-MANIFEST_SKIP_DIRS = {STORE_DIR, "recorded_data", "image_store.partial"}
+MANIFEST_SKIP_DIRS = {STORE_DIR, "recorded_data", "mission_bag", "ros_log", "image_store.partial"}
 MANIFEST_SKIP_REL = set(RAW_LOG_DIRS)  # relative to the run dir
 MANIFEST_SKIP_FILES = {ORIGIN}
 MANIFEST_MAX_FILES = 50000
 MAP_DIRS = ("hydra/", "roman/")  # the map a relocalize loads (manifest map_digest)
+
+
+LATEST = "latest"  # fleet.run_dirs.LATEST (this file must stay self-contained)
+RUNS_DIR = "runs"
+
+
+def content_dir(run):
+    """The directory holding an experiment's files: ``<run>/latest`` resolved
+    (per-run layout), else ``run`` itself (a run dir or a flat legacy dir)."""
+    link = os.path.join(run, LATEST)
+    if os.path.isdir(link):
+        return os.path.realpath(link)
+    return run
+
+
+def _count_runs(run):
+    try:
+        return sum(1 for e in os.scandir(os.path.join(run, RUNS_DIR)) if e.is_dir(follow_symlinks=False))
+    except OSError:
+        return 0
 
 
 def _mtime(path):
@@ -305,9 +334,14 @@ def fallback_identity(run, host=None):
     }
 
 
-def run_identity(run):
-    """``(identity, origin)`` of a run dir (see module doc)."""
-    info = _read_json(os.path.join(run, RUN_INFO))
+def run_identity(run, data=None):
+    """``(identity, origin)`` of a run dir (see module doc).
+
+    ``data``: where its run_info.json lives (``content_dir``); the origin record of a
+    copy is always at the top of the copied dir.
+    """
+    data = data or run
+    info = _read_json(os.path.join(data, RUN_INFO))
     origin = _read_json(os.path.join(run, ORIGIN))
     if origin is not None and not origin.get("run_id"):
         origin = None
@@ -317,7 +351,7 @@ def run_identity(run):
     elif origin is not None:
         ident = {"run_id": origin["run_id"], "source": "origin"}
     else:
-        ident = fallback_identity(run)
+        ident = fallback_identity(data)
     return ident, origin
 
 
@@ -392,24 +426,27 @@ def scan_identity(run, with_manifest=False):
     made before copies recorded their origin.
     """
     name = os.path.basename(run.rstrip("/"))
+    data = content_dir(run)
     try:
-        subdirs = sorted(e.name for e in os.scandir(run) if e.is_dir(follow_symlinks=False))
+        subdirs = sorted(e.name for e in os.scandir(data) if e.is_dir(follow_symlinks=False))
     except OSError:
         subdirs = []
-    ident, origin = run_identity(run)
+    ident, origin = run_identity(run, data)
     entry = {"name": name, "path": run, "subdirs": subdirs, "identity": ident, "origin": origin}
+    entry["run_dir"] = data if data != run else None
     if with_manifest:
-        entry["manifest"] = manifest(run)
-        entry["dsg_sig"] = dsg_signature(run)
+        entry["manifest"] = manifest(data)
+        entry["dsg_sig"] = dsg_signature(data)
     return entry
 
 
 def scan_run(run, known=None, measure=True, timeout=None):
     """One run directory -> listing entry (see module doc)."""
     name = os.path.basename(run.rstrip("/"))
+    data = content_dir(run)
     try:
         subdirs = sorted(
-            e.name for e in os.scandir(run) if e.is_dir(follow_symlinks=False)
+            e.name for e in os.scandir(data) if e.is_dir(follow_symlinks=False)
         )
     except OSError:
         subdirs = []
@@ -418,22 +455,24 @@ def scan_run(run, known=None, measure=True, timeout=None):
         "path": run,
         "subdirs": subdirs,
         "mtime": _mtime(run),
+        "run_dir": data if data != run else None,
+        "runs": _count_runs(run),
     }
     try:
         entry["ctime"] = os.stat(run).st_ctime
     except OSError:
         entry["ctime"] = None
     for key, rel in DSG_FILES.items():
-        entry[key] = os.path.isfile(os.path.join(run, rel))
+        entry[key] = os.path.isfile(os.path.join(data, rel))
     if entry["has_dsg"]:
-        entry["dsg_mtime"] = _mtime(os.path.join(run, DSG_FILES["has_dsg"]))
-    store = store_info(os.path.join(run, STORE_DIR), run)
+        entry["dsg_mtime"] = _mtime(os.path.join(data, DSG_FILES["has_dsg"]))
+    store = store_info(os.path.join(data, STORE_DIR), data)
     entry["has_image_store"] = store is not None
     entry["image_store"] = store
-    entry["identity"], entry["origin"] = run_identity(run)
-    entry["manifest"] = manifest(run)
+    entry["identity"], entry["origin"] = run_identity(run, data)
+    entry["manifest"] = manifest(data)
     entry["store_fingerprint"] = store_fingerprint(store)
-    sessions = os.path.join(run, "sessions")
+    sessions = os.path.join(data, "sessions")
     if os.path.isdir(sessions):
         try:
             entry["sessions"] = sum(
@@ -441,7 +480,10 @@ def scan_run(run, known=None, measure=True, timeout=None):
             )
         except OSError:
             entry["sessions"] = 0
-    sig = signature(run, subdirs)
+    sig = signature(data, subdirs)
+    if data != run:  # a new run (runs/, latest) changes the experiment too
+        times = [sig] + [_mtime(p) or 0.0 for p in (run, os.path.join(run, RUNS_DIR))]
+        sig = round(max(times), 3)
     entry["signature"] = sig
     cached = (known or {}).get(name)
     sizes = None
@@ -449,6 +491,10 @@ def scan_run(run, known=None, measure=True, timeout=None):
         sizes = (cached[1], cached[2])
     elif measure:
         sizes = _du_tree(run, timeout)
+        if sizes is not None and data != run:
+            # the store sits in the latest run, below du's depth-1 listing of run
+            store_sizes = _du_tree(data, timeout) if store is not None else None
+            sizes = (sizes[0], store_sizes[1] if store_sizes else None)
     if sizes is None:
         entry["size_bytes"] = None
         entry["size_pending"] = True

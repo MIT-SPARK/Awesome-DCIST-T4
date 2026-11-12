@@ -444,7 +444,10 @@ def verify(ctx, experiment, machine):
 )
 @click.option("--base-station", is_flag=True, help="Also launch base station on willow")
 @click.option(
-    "--force", "-f", is_flag=True, help="Overwrite existing output directories"
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Delete existing output directories (ALL their runs) first (run-adt4 --wipe)",
 )
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
 @click.option("--dry-run", "-d", is_flag=True, help="Show commands without executing")
@@ -484,7 +487,8 @@ def launch(
     table.add_column("Prior Map")
 
     cmds = []
-    force_flag = " -f" if force else ""
+    # run-adt4 keeps earlier runs (runs/<run_id>); -f asks it to wipe them first
+    force_flag = " --wipe -f" if force else ""
     for m, sess in targets:
         output_dir = f"{fc.output_root}/{experiment}"
         prior_flag = f" -p {_quote_path(prior_map)}" if prior_map else ""

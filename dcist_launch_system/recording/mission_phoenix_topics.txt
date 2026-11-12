@@ -1,0 +1,30 @@
+# Mission bag, Husky / phoenix (run-adt4 mission_bag window; record_topics syntax:
+# '#' comments, '# optional' = may stay silent in a mission, '*' = one name segment).
+# Message-level mission topics only: no images or point clouds (the full sensor
+# recording is run-adt4 -r with phoenix_topics.txt). Guard topics are the ones the
+# fleetlink agent reads for PhoenixGuards / phoenix_progress.
+/${ADT4_ROBOT_NAME}/tf
+/${ADT4_ROBOT_NAME}/tf_static
+/${ADT4_ROBOT_NAME}/dlio/odom_node/odom
+# plan in (nav_msgs/Path), executor trajectories, commands
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/mrp/trajectories
+/${ADT4_ROBOT_NAME}/platform/cmd_vel
+/${ADT4_ROBOT_NAME}/joy_teleop/cmd_vel  # optional
+/${ADT4_ROBOT_NAME}/twist_marker_server/cmd_vel  # optional: console teleop
+# guards
+/${ADT4_ROBOT_NAME}/manual_mode
+/${ADT4_ROBOT_NAME}/platform/bms/state
+/${ADT4_ROBOT_NAME}/platform/emergency_stop
+/${ADT4_ROBOT_NAME}/platform/safety_stop
+/${ADT4_ROBOT_NAME}/platform/mcu/status
+# localization against the prior (ROMAN, hydra_multi)
+/${ADT4_ROBOT_NAME}/roman/roman_lc/loop_closure  # optional: rare
+/${ADT4_ROBOT_NAME}/roman/roman_lc/pose_graph_update  # optional: rare
+# status and change detection
+/${ADT4_ROBOT_NAME}/ros_system_monitor/hydra/status
+/${ADT4_ROBOT_NAME}/ros_system_monitor/hydra_multi/status  # optional: relocalize only
+/${ADT4_ROBOT_NAME}/ros_system_monitor/semantic_inference/status  # optional
+/global/ros_system_monitor/table_in
+/${ADT4_ROBOT_NAME}/change_detection/state  # optional: relocalize_awcd only
+/awcd_changes  # optional: relocalize_awcd only

@@ -345,35 +345,23 @@ def test_session_conflict_accepted_kills_then_launches():
     assert kill < launch
 
 
-def test_small_existing_output_asks_plain_confirm_then_removes():
+@pytest.mark.parametrize("size", [1024, 3 * 1024**3])
+def test_existing_output_is_kept_and_launch_proceeds(size):
+    # run-adt4 adds runs/<run_id> under an existing experiment dir: no prompt, no rm -rf
     ssh = FakeSsh(
         {
             "echo EXISTS": (0, "EXISTS", "", "10.0.0.1"),
-            "du -sb": (0, "1024\n", "", "10.0.0.1"),
+            "du -sb": (0, str(size), "", "10.0.0.1"),
         }
     )
-    rec = Recorder(answers=[True])
+    rec = Recorder()
     plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e")
     assert run(plan, ssh, rec) is True
-    [req] = rec.requests
-    assert req.kind == "overwrite_output" and req.required_text is None
-    assert any(c.startswith("rm -rf") for c in ssh.cmds_for("10.0.0.1"))
-
-
-def test_large_existing_output_requires_typed_confirm():
-    ssh = FakeSsh(
-        {
-            "echo EXISTS": (0, "EXISTS", "", "10.0.0.1"),
-            "du -sb": (0, str(3 * 1024**3), "", "10.0.0.1"),
-        }
-    )
-    rec = Recorder(answers=[None])  # timed out / closed
-    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e")
-    assert run(plan, ssh, rec) is False
-    [req] = rec.requests
-    assert req.required_text == "confirm" and req.detail["bytes"] == 3 * 1024**3
-    assert not any(c.startswith("rm -rf") for c in ssh.cmds_for("10.0.0.1"))
-    assert "timed out" in rec.text()
+    assert rec.requests == []
+    cmds = ssh.cmds_for("10.0.0.1")
+    assert not any(c.startswith("rm -rf") for c in cmds)
+    assert any("run-adt4" in c for c in cmds)
+    assert "earlier runs are kept" in rec.text()
 
 
 def test_prior_transfer_skipped_when_present_and_aborts_on_failure():

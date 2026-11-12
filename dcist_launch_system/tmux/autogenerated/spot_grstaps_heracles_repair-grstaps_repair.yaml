@@ -58,3 +58,8 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_spot_state_publisher:=true launch_calibration_publisher:=true launch_spot_base_link:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_static_map_to_robot_map:=true launch_static_robot_map_to_odom:=true
       - ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/$ADT4_ROBOT_NAME/spot_executor_node/cmd_vel
+  - window_name: mission_bag
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - "if [ -n \"$ADT4_MISSION_BAG_TOPICS\" ] && [ -n \"$ADT4_RUN_DIR\" ]; then ros2 run dcist_launch_system record_topics \"$ADT4_RUN_DIR/mission_bag\" \"$ADT4_MISSION_BAG_TOPICS\" --storage mcap --preset zstd_fast --max-bag-duration 600; else echo \"mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)\"; fi"

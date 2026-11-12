@@ -9,6 +9,8 @@ ADT4_VARS = [
     "ADT4_ROBOT_NAME",
     "ADT4_PLATFORM_ID",
     "ADT4_OUTPUT_DIR",
+    "ADT4_RUN_DIR",
+    "ADT4_SESSION_ID",
     "ADT4_PRIOR_MAP",
     "ADT4_SIM_TIME",
 ]

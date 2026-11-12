@@ -1,0 +1,55 @@
+# Mission bag, base station (run-adt4 mission_bag window; record_topics syntax:
+# '#' comments, '# optional' = may stay silent in a mission, '*' = one name segment).
+# Message-level mission topics only: no images, point clouds or scene graphs
+# (hydra/backend/dsg is MBs every 5 s in heracles sessions; the DSG is saved by dsg_saver).
+# Robot TF reaches the base on /<base>/tf (fleetlink-bridge in fleetlink mode, tf_relay
+# in router mode): map -> <robot>/base_link at 5 Hz per robot.
+/${ADT4_ROBOT_NAME}/tf
+/${ADT4_ROBOT_NAME}/tf_static
+# goals: operator / chat -> goal_manager -> planner plugin
+/${ADT4_ROBOT_NAME}/commanded_goal  # optional: no goal sent yet
+/${ADT4_ROBOT_NAME}/omniplanner_node/*/pddl_goal  # optional: one plugin per mission
+/${ADT4_ROBOT_NAME}/omniplanner_node/goto_points/goto_points_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/tsp_planner/solve_tsp_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/language_planner/language_goal  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/grstaps_planner/grstaps_goal  # optional
+# plans and planner state
+/*/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_viz_out
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_status
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_failed  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_robots
+/${ADT4_ROBOT_NAME}/omniplanner_node/robot_platforms
+/${ADT4_ROBOT_NAME}/omniplanner_node/task_schedule  # optional: GRSTAPS only
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_visited_pois_all  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/plan_covered_pois  # optional
+/*/omniplanner_node/plan_visited_pois  # optional
+/*/omniplanner_node/path_status  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/rviz2_node/llm_response  # optional
+# goal manager and plan repair
+/${ADT4_ROBOT_NAME}/goal_manager/robot_plan_states
+/${ADT4_ROBOT_NAME}/plan_repair/alert  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/replan_request  # optional
+/${ADT4_ROBOT_NAME}/omniplanner_node/map_version  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/omniplanner_node/map_epoch  # optional: repair sessions
+/${ADT4_ROBOT_NAME}/omniplanner_node/progress_alert  # optional
+/*/spot_executor_node/pause  # optional
+/*/spot_executor_node/resume  # optional
+/*/spot_executor_node/stop  # optional
+# execution, relayed up from the robots
+/plan_progress
+/action_done
+/*/spot_executor_node/action_result
+/*/spot_executor_node/teleop_state
+/*/spot_executor_node/manipulation_request  # optional: a few hundred kB per grasp request
+/*/manual_mode  # optional: Husky only
+# change detection and scene changes
+/awcd_changes  # optional: relocalize_awcd only
+/${ADT4_ROBOT_NAME}/awcd_base_station/reconciled_changes  # optional
+/scene_graph/changes  # optional
+/scene_graph/changes_applied  # optional
+/*/change_detection/state  # optional: relocalize_awcd only
+/*/labelspace
+# link and system health
+/fleetlink/link_status  # optional: fleetlink mode only
+/global/ros_system_monitor/table_in

@@ -62,7 +62,7 @@ active_window:
     store_every_n_frames: 1
   live_accumulated_bounding_box: true
   forward_intermediate_inputs: true
-  track_logger: {log_path: $<env ADT4_OUTPUT_DIR>/tracks, max_images_per_object: 1, save_depth: true}
+  track_logger: {log_path: $<var output_dir>/tracks, max_images_per_object: 1, save_depth: true}
 frontend:
   type: GraphBuilder
   serialize_dsg_mesh: false
@@ -109,7 +109,7 @@ frontend:
       - type: TraversabilityVisualizer
   keyframe_selector:
     type: KeyframeSelector
-    log_path: $<env ADT4_OUTPUT_DIR>/keyframes
+    log_path: $<var output_dir>/keyframes
     save_fields: [color, depth]
     keyframe_policy: {type: DistancePolicy, min_pose_separation: 0.25, rotation_separation_weight: 0.0, min_time_separation_s: 0.0, max_time_separation_s: 2.0}
 backend:

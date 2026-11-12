@@ -58,3 +58,8 @@ windows:
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_ntrip:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_zed:=true
       - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_tx_rx:=true
+  - window_name: mission_bag
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - "if [ -n \"$ADT4_MISSION_BAG_TOPICS\" ] && [ -n \"$ADT4_RUN_DIR\" ]; then ros2 run dcist_launch_system record_topics \"$ADT4_RUN_DIR/mission_bag\" \"$ADT4_MISSION_BAG_TOPICS\" --storage mcap --preset zstd_fast --max-bag-duration 600; else echo \"mission bag off (run-adt4 --no-mission-bag, or no ADT4_RUN_DIR / topic list)\"; fi"
