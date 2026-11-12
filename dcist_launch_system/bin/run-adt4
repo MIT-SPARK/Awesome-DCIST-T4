@@ -4,6 +4,7 @@ import atexit
 import enum
 import os
 import pathlib
+import re
 import readline
 import shlex
 import shutil
@@ -262,7 +263,30 @@ def _show_vars(env):
     rich.print(table)
 
 
+def _session_file_env(session_file, env):
+    """The session file's ``environment`` values, expanded against ``env`` as tmuxp would.
+
+    tmuxp expands ``$VAR`` in pane commands from the *calling* process environment, not
+    the session's ``environment``. A run-adt4 started from a shell inside another ADT4
+    tmux session (e.g. the console's) inherits that session's ``config`` /
+    ``logging_key`` / ``sim_time``, and every pane then ran with the wrong config (a
+    grstaps_repair session started its planner with ``conf_name:=default``). Setting the
+    session's own values in the tmuxp environment makes the expansion match.
+    """
+    with open(session_file) as f:
+        contents = yaml.safe_load(f) or {}
+    out = {}
+    for key, value in (contents.get("environment") or {}).items():
+        if value is None:
+            continue
+        out[str(key)] = re.sub(
+            r"\$\{?(\w+)\}?", lambda m: env.get(m.group(1), m.group(0)), str(value)
+        )
+    return out
+
+
 def _run_session(session_path, env, tmuxp_args, dry_run):
+    env = {**env, **_session_file_env(session_path, env)}
     cmd = [shutil.which("tmuxp"), "load", str(session_path)]
     if tmuxp_args:
         cmd += shlex.split(tmuxp_args)
