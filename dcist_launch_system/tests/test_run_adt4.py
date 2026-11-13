@@ -124,20 +124,20 @@ def test_expand_pane_shells_like_tmuxp(run_adt4, tmp_path):
             }
         )
     )
-    env = {"config": "grstaps_repair", "ADT4_ROBOT_NAME": "willow", "QUOTED": "\"a b\"",
+    env = {"config": "relocalize_awcd", "ADT4_ROBOT_NAME": "willow", "QUOTED": "\"a b\"",
            "ADT4_WS": "/ws", "_adt4_zd": "never"}  # fmt: skip
     run_adt4._expand_pane_shells(session, env)
     shell = yaml.safe_load(session.read_text())["windows"][0]["panes"][0]["shell"]
     script = _script(shell)
     assert script.startswith(
-        "source /ws/install/setup.zsh && ros2 launch x conf_name:=grstaps_repair "
+        "source /ws/install/setup.zsh && ros2 launch x conf_name:=relocalize_awcd "
         'robot_name:=willow seed=${ADT4_NEO4J_SEED:-true} other=$NOT_SET quote="a b"; '
     ), script
     assert "$_adt4_zd/.zshrc" in script  # the pane's own variables stay
     assert '_adt4_zd="/ws/src/awesome_dcist_t4/dcist_launch_system/' in script
     # the history entry is expanded the same way (it was the typed text before)
     assert gc.pane_command({"shell": shell}).startswith(
-        "ros2 launch x conf_name:=grstaps"
+        "ros2 launch x conf_name:=relocalize_awcd"
     )
     ret = subprocess.run(["zsh", "-f", "-n", "-c", script], capture_output=True)
     assert ret.returncode == 0, ret.stderr

@@ -236,7 +236,7 @@ def _window(name, window):
         "base_station_heracles-default",
         "base_station_repair-default",
         "base_station_heracles_repair-default",
-        "base_station_grstaps_heracles_repair-grstaps_repair",
+        "base_station_web_repair-default",
     ],
 )
 def test_base_sessions_have_fleetlink_base_window(name):
@@ -298,7 +298,7 @@ def test_robot_sessions_have_fleetlink_agent(name):
     [
         "spot_prior_dsg-prior_dsg",
         "spot_prior_dsg_heracles_repair-prior_dsg",
-        "spot_grstaps-grstaps",
+        "spot_prior_dsg_repair-prior_dsg",
     ],
 )
 def test_single_machine_sims_have_no_fleetlink(name):
