@@ -34,7 +34,7 @@ from dcist_launch_system.fleet_helpers import (
     get_silvus_link_quality,
     get_silvus_radio_details,
     run_parallel,
-    send_tmux_keys,
+    stop_save_via_tmux,
 )
 from dcist_launch_system.tui.context import TuiContext
 from dcist_launch_system.tui.screens.bandwidth import BandwidthSelectScreen
@@ -288,13 +288,15 @@ class MonitorScreen(ModalScreen):
         detail.update(t)
 
     def action_stop_save(self):
-        """Send shutdown signal to all online robots via tmux."""
+        """Run hydra/shutdown + roman/shutdown on every online robot (core pane)."""
         log = self.query_one("#monitor_log", RichLog)
         online_machines = [
-            m for m in self.ctx.runtime_config.values() if m.get("online", False)
+            m
+            for m in self.ctx.runtime_config.values()
+            if m.get("online", False) and m.get("role") == "robot"
         ]
         if not online_machines:
-            log.write("[red]No online machines to stop.[/]")
+            log.write("[red]No online robots to stop.[/]")
             return
 
         names = ", ".join(
@@ -304,7 +306,7 @@ class MonitorScreen(ModalScreen):
 
         def do_stop():
             def stop_one(m):
-                ok, msg = send_tmux_keys(m["user"], m["ip"])
+                ok, msg = stop_save_via_tmux(m["user"], m["ip"], robot=m["name"])
                 return m["name"], ok, msg
 
             return run_parallel(stop_one, online_machines)

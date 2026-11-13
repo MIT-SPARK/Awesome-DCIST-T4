@@ -1054,7 +1054,7 @@ def patch_zenoh_config_local(endpoints, template_path=None):
     return tmp.name
 
 
-def send_tmux_keys(user, ip, session="adt4_system", target="core.2", keys="Enter"):
+def send_tmux_keys(user, ip, session="adt4_system", target="core.1", keys="Enter"):
     """Send keys to a tmux pane on a remote machine via SSH.
 
     Returns (success: bool, message: str).
@@ -1065,6 +1065,116 @@ def send_tmux_keys(user, ip, session="adt4_system", target="core.2", keys="Enter
     if rc == 0:
         return True, "Keys sent"
     return False, f"Failed: {err or stdout}"
+
+
+# Stop & save: the robot stack's map savers.  Hydra's ~/shutdown (ianvs
+# spinAndWait) only flags the node to exit; hydra then saves the DSG/mesh and
+# exits.  ROMAN's roman/shutdown pickles the map before it answers.
+SHUTDOWN_SERVICES = ("hydra/shutdown", "roman/shutdown")
+_REQUEST_MARK = "requester: making request"
+_WAITING_MARK = "waiting for service to become available"
+
+
+def shutdown_command(robot=None):
+    """The shell command the core window's shutdown pane holds (core.yaml)."""
+    ns = robot or "${ADT4_ROBOT_NAME}"
+    return " && ".join(
+        f"ros2 service call /{ns}/{srv} std_srvs/srv/Empty" for srv in SHUTDOWN_SERVICES
+    )
+
+
+def find_shutdown_pane(user, ip, session="adt4_system", window="core"):
+    """Locate the core window's shutdown pane.
+
+    Returns ``(target, current_command, error)``: the pane whose start command
+    or visible content mentions ``hydra/shutdown``, else pane 1 of the window
+    (core.yaml: pane 0 = show_environment, pane 1 = shutdown).
+    """
+    fmt = "#{pane_index}\t#{pane_current_command}\t#{pane_start_command}"
+    win = shlex.quote(f"{session}:{window}")
+    rc, out, err = ssh_cmd(
+        user, ip, f"tmux list-panes -t {win} -F {shlex.quote(fmt)}", timeout=5
+    )
+    if rc != 0:
+        return None, None, f"no tmux window {session}:{window}: {err or out}"
+    panes = []
+    for line in out.splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) >= 2 and parts[0].strip().isdigit():
+            panes.append(
+                (parts[0].strip(), parts[1], parts[2] if len(parts) > 2 else "")
+            )
+    if not panes:
+        return None, None, f"tmux window {session}:{window} has no panes"
+    for idx, cur, start in panes:
+        if "hydra/shutdown" in start:
+            return f"{window}.{idx}", cur, None
+    for idx, cur, _ in panes:
+        rc, text, _ = ssh_cmd(
+            user,
+            ip,
+            f"tmux capture-pane -p -t {shlex.quote(f'{session}:{window}.{idx}')}",
+        )
+        if rc == 0 and "hydra/shutdown" in text:
+            return f"{window}.{idx}", cur, None
+    for idx, cur, _ in panes:
+        if idx == "1":
+            return f"{window}.1", cur, None
+    return None, None, f"no shutdown pane in {session}:{window}"
+
+
+def _capture(user, ip, target):
+    rc, text, _ = ssh_cmd(
+        user, ip, f"tmux capture-pane -p -S -300 -t {shlex.quote(target)}", timeout=5
+    )
+    return text if rc == 0 else ""
+
+
+def stop_save_via_tmux(
+    user, ip, robot=None, session="adt4_system", verify_timeout=8.0, sleep=time.sleep
+):
+    """Run the shutdown services from the robot's core shutdown pane over ssh.
+
+    Interrupts whatever the pane holds, retypes the command (works whether or
+    not the prepared command was already used), presses Enter and verifies
+    that ``ros2 service call`` made its request.  Returns ``(ok, message)``.
+    """
+    target, _, err = find_shutdown_pane(user, ip, session)
+    if target is None:
+        return False, err
+    full = f"{session}:{target}"
+    q = shlex.quote(full)
+    # Ctrl-C clears both an earlier `ros2 service call` still waiting for its
+    # service and the shell's pending continuation line: core.yaml's shutdown
+    # command ends in a backslash, so the pane waits at a "> " prompt, and
+    # typing there would append the new command to the prepared one.
+    ssh_cmd(user, ip, f"tmux send-keys -t {q} C-c", timeout=5)
+    sleep(1.0)
+    before = _capture(user, ip, full)
+    n_req, n_wait = before.count(_REQUEST_MARK), before.count(_WAITING_MARK)
+    cmd = shutdown_command(robot)
+    rc, out, e = ssh_cmd(
+        user,
+        ip,
+        f"tmux send-keys -t {q} C-u && tmux send-keys -t {q} -l {shlex.quote(cmd)}"
+        f" && tmux send-keys -t {q} Enter",
+        timeout=5,
+    )
+    if rc != 0:
+        return False, f"send-keys to {target} failed: {e or out}"
+    deadline = time.monotonic() + verify_timeout
+    while True:
+        sleep(1.0)
+        text = _capture(user, ip, full)
+        if text.count(_REQUEST_MARK) > n_req:
+            return True, f"shutdown requested from pane {target} ({cmd})"
+        if text.count(_WAITING_MARK) > n_wait:
+            return False, (
+                f"pane {target}: hydra/shutdown is not available "
+                "(is the stack running?); the call keeps waiting in the pane"
+            )
+        if time.monotonic() >= deadline:
+            return False, f"keys sent to pane {target} but no service request seen"
 
 
 def check_zenoh_config(user, ip):
