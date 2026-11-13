@@ -105,6 +105,10 @@ def test_neo4j_base_sessions_run_openset_query():
             # without the sam3 venv the pane prints a hint instead of a traceback
             assert pane.startswith("if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]")
             assert "openset_query not installed" in pane
+            # live images only from the console's current run (its state file), never
+            # a shared mirror folder holding earlier runs in their own frames
+            assert "--live-state $HOME/adt4_output/console_live.json" in pane
+            assert "--live-store-root" not in pane and "adt4_output/live" not in pane
             # credentials come from the session (HERACLES_NEO4J_USERNAME/PASSWORD)
             assert "HERACLES_NEO4J_PASSWORD" not in pane
             assert (

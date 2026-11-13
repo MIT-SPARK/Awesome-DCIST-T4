@@ -5,8 +5,11 @@
 # only; install with install/python_setup.bash --openset-query (venv $ADT4_ENV/sam3).
 # Reads the same live Neo4j map as console_neo4j (ADT4_HERACLES_IP/PORT; credentials
 # from HERACLES_NEO4J_USERNAME/PASSWORD, set from ADT4_NEO4J_USERNAME/PASSWORD by the
-# session) and the console's live image-store mirrors, which the console writes under
-# ~/adt4_output/live (its --output-root default, independent of ADT4_OUTPUT_DIR).
+# session) and the current run's live image-store mirrors. The console writes those
+# under its own run's output directory and lists them, with each robot's
+# relocalization, in ~/adt4_output/console_live.json (a fixed place: the console runs
+# in its own session with another ADT4_OUTPUT_DIR). Only those mirrors are searched,
+# placed in the prior map while the robot is relocalized; earlier runs' mirrors never are.
 # HF_HUB_OFFLINE=1: model weights come from the local Hugging Face cache only.
 windows:
   - window_name: openset_query
@@ -14,4 +17,4 @@ windows:
     layout: tiled
     panes:
       - if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server
-        --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-store-root $HOME/adt4_output/live; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi
+        --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-state $HOME/adt4_output/console_live.json; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi
