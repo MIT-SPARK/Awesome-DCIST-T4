@@ -1,0 +1,4 @@
+# <ssh target> <output dir name under ~/adt4_output> <topic file prefix in dcist_launch_system/recording/>
+rrg@<base-station-ip> base_run1 base_station
+swarm@<spot-ip> run1 spot
+swarm@<husky-ip> run1 phoenix
