@@ -282,7 +282,7 @@ def _session_file_env(session_file, env):
     the session's ``environment``. A run-adt4 started from a shell inside another ADT4
     tmux session (e.g. the console's) inherits that session's ``config`` /
     ``logging_key`` / ``sim_time``, and every pane then ran with the wrong config (a
-    grstaps_repair session started its planner with ``conf_name:=default``). Setting the
+    prior_dsg session started its planner with ``conf_name:=default``). Setting the
     session's own values in the tmuxp environment makes the expansion match.
     """
     with open(session_file) as f:

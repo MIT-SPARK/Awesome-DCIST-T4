@@ -1,8 +1,0 @@
----
-# Private: needs an SSH key with access. Kept out of packages.yaml so that CI
-# and anyone without access can still import the rest.
-repositories:
-  grstapsx:  # GRSTAPS-X task allocation for omniplanner's grstaps_planner
-    type: git
-    url: git@github.com:jinwoop/grstapsx.git  # private: needs an SSH key with access
-    version: feature/colcon

@@ -72,16 +72,6 @@ bash src/awesome_dcist_t4/semantic_inference/install/setup.sh
 ```
 You can find more details about the set up [here](https://github.com/MIT-SPARK/semantic_inference/blob/ros2/docs/closed_set.md#getting-dependencies).
 
-The GRSTAPS-X solver used by the `*grstaps*` experiments is a private repo,
-so it is imported separately (this needs an SSH key with access to it):
-```bash
-vcs import src < src/awesome_dcist_t4/install/grstaps_packages.yaml
-rosdep install --from-paths src/grstapsx --ignore-src -r -y --rosdistro jazzy
-```
-This clones it to `src/grstapsx`, and `colcon build` then downloads Gurobi and
-installs the `itags` solver. It does need a Gurobi license activated once on the machine that runs
-the planner; see the [OmniPlanner GRSTAPS-X setup](omniplanner/README.md#setup).
-
 You probably want to add some scripts to your path for convenience:
 ```bash
 echo 'export PATH=$PATH:$ADT4_WS/src/awesome_dcist_t4/dcist_launch_system/bin' >> ~/.zshrc
@@ -428,7 +418,7 @@ The `openset_query` submodule ([harelb/openset_query](https://github.com/harelb/
 is a SAM3 query server that finds objects in the robots' keyframe images from a text query; the
 console then adds the objects you pick to the map. It runs on the base station only, in an
 `openset_query` window of the heracles base station sessions (`base_station_heracles`,
-`base_station_heracles_repair`, `base_station_grstaps_heracles_repair`), and reads the same
+`base_station_heracles_repair`, `base_station_web_repair`), and reads the same
 live Neo4j map as the console. The console hides the feature while the server is not running.
 
 Install it with `bash install/python_setup.bash --openset-query` (off by default; it creates

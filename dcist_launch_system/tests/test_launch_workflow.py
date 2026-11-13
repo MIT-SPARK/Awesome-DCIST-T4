@@ -738,7 +738,7 @@ NOV11_MEMORY = {
     "robots": ["gauss"],
     "session": "spot_relocalize-relocalize_awcd",
     "sessions": {},
-    "bs_session": "base_station_web_grstaps_repair-grstaps_repair",
+    "bs_session": "base_station_web_repair-default",
     "base_only": False,
     "base_station": "willow",
     "experiment": "reloc_awcd",
@@ -764,7 +764,7 @@ def test_session_platform_by_experiment_name():
     assert platform_equivalent("spot-default", "spot") == "spot-default"
     # no phoenix twin: the platform's preset for the session's mode
     assert platform_equivalent("spot-indoor", "phoenix", NOV11_TOPO) == "phoenix-default"
-    assert platform_equivalent("spot_grstaps-grstaps", "phoenix", {}) is None
+    assert platform_equivalent("spot_prior_dsg-prior_dsg", "phoenix", {}) is None
 
 
 def test_nov11_launch_memory_resolves_gauss_to_its_phoenix_session():
@@ -788,8 +788,8 @@ def test_session_of_another_platform_is_refused_dry_run_included():
     with pytest.raises(LaunchError, match=re.escape(msg)):
         dry_run_lines(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
     # a spot session with no phoenix equivalent, picked by hand
-    plan = _nov11_plan(session="spot_grstaps-grstaps", mode=None, sessions={})
-    with pytest.raises(LaunchError, match="gauss .platform phoenix. would run spot_grstaps-grstaps"):
+    plan = _nov11_plan(session="spot_prior_dsg-prior_dsg", mode=None, sessions={})
+    with pytest.raises(LaunchError, match="gauss .platform phoenix. would run spot_prior_dsg-prior_dsg"):
         build_robot_commands(plan, NOV11_RUNTIME, OUT, {"machines": NOV11_TOPO["machines"]})
     plan = _nov11_plan(robots=["hamilton"], sessions={"spot": "phoenix-default"}, mode="mapping", prior_path="")
     with pytest.raises(LaunchError, match="hamilton .platform spot. would run phoenix-default"):
