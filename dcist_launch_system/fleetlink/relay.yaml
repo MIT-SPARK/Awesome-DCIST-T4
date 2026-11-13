@@ -256,6 +256,18 @@ topics:
     platform: [phoenix, husky]
 
   # ---------------------------------------------------------------- console overlays (up), low rate
+  # GPS fix (every platform; the Spot / Husky GPS driver publishes /{robot}/fix). The web
+  # console can show it next to the relocalized pose (off by default in the UI). 1 Hz, C3:
+  # best effort, dropped first when the radio is congested.
+  - topic: /{robot}/fix
+    type: sensor_msgs/msg/NavSatFix
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 1.0
+    ttl_s: 5
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
   # phoenix (Husky) navigation stack (phoenix-r2 navigation_nexus / arl_mppi), as in
   # mit_launch/rviz/gauss_mppi_debug.rviz: the MPPI short-range plan, its reference
   # trajectory, the sampled-rollout debug markers and the mid-range plan. Frame: the local
