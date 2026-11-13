@@ -114,11 +114,15 @@ def test_relay_yaml_teleop_entries(relay_config_class):
 
 
 def test_relay_yaml_console_overlay_rows(relay_config_class):
-    """The phoenix MPPI / mid-range markers only on phoenix; low rate, best
-    effort (C3), never replayed."""
+    """GPS fix on every platform; the phoenix MPPI / mid-range markers only on
+    phoenix; all low rate, best effort (C3), never replayed."""
     cfg = relay_config_class.load(RELAY_YAML)
     spot = cfg.resolve("euclid", "spot", base="willow")
     phx = cfg.resolve("gauss", "phoenix", base="willow")
+    for robot, res in (("euclid", spot), ("gauss", phx)):
+        fix = res.topics[f"/{robot}/fix"]
+        assert fix.type == "sensor_msgs/msg/NavSatFix" and fix.dir == "up"
+        assert fix.mode == "latest" and fix.cls == "C3" and fix.rate_hz <= 1.0
     markers = {
         "srp_interface/plan": "visualization_msgs/msg/Marker",
         "srp/reference_trajectory": "visualization_msgs/msg/Marker",
