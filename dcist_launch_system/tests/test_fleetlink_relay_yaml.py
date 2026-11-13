@@ -111,3 +111,22 @@ def test_relay_yaml_teleop_entries(relay_config_class):
         assert f"/gauss/spot_executor_node/{srv}" not in husky.services
     st = spot.topics["/euclid/spot_executor_node/teleop_state"]
     assert st.dir == "up" and st.type == "std_msgs/msg/String"
+
+
+def test_relay_yaml_console_overlay_rows(relay_config_class):
+    """The phoenix MPPI / mid-range markers only on phoenix; low rate, best
+    effort (C3), never replayed."""
+    cfg = relay_config_class.load(RELAY_YAML)
+    spot = cfg.resolve("euclid", "spot", base="willow")
+    phx = cfg.resolve("gauss", "phoenix", base="willow")
+    markers = {
+        "srp_interface/plan": "visualization_msgs/msg/Marker",
+        "srp/reference_trajectory": "visualization_msgs/msg/Marker",
+        "srp_interface/debug": "visualization_msgs/msg/MarkerArray",
+        "mrp_interface/plan": "visualization_msgs/msg/Marker",
+    }
+    for suffix, typ in markers.items():
+        t = phx.topics[f"/gauss/{suffix}"]
+        assert t.type == typ and t.dir == "up" and t.mode == "latest"
+        assert t.cls == "C3" and t.rate_hz <= 1.0 and not t.replay_on_resync
+        assert f"/euclid/{suffix}" not in spot.topics
