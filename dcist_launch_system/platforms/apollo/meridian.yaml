@@ -1,0 +1,4 @@
+# run-meridian settings for the apollo Spot (merged over resource/meridian/base.yaml)
+run_meridian:
+  body_frame: ${ROBOT}/body
+  odom_topic: /${ROBOT}/odom

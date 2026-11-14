@@ -1,0 +1,56 @@
+---
+# Base meridian params for run-meridian (cross-view localization of an ADT4 bag against an
+# aerial image).
+#
+# run-meridian merges platforms/<platform>/meridian.yaml and any --params overrides over this
+# file, fills in ${ROBOT} and ${BAG} (other ${VARS} come from the environment) and adds:
+#   - segment_mapping_data.camera_pose_data: odometry and the body -> camera extrinsic, from
+#     the platform's run_meridian section and the bag's TF
+#   - cross_view_localization_data: the aerial image and the optional ground truth
+# Sections left empty use meridian's defaults.
+#
+# run_meridian is read by run-meridian binary, not meridian package. Odometry is the pose of 
+# body_frame in odom_frame, from odom_topic if the bag has it, otherwise from the bag's TF. 
+# The body -> camera extrinsic is looked up from the bag's TF, and meridian reports the 
+# trajectory of body_frame.
+run_meridian:
+  odom_frame: ${ROBOT}/odom
+  body_frame:  # set by the platform
+  odom_topic:  # set by the platform
+  camera_frame: ${ROBOT}_zed_left_camera_optical_frame
+segment_mapping: {}
+segment_mapping_data:
+  img_data:
+    type: bag
+    path: ${BAG}
+    topic: /${ROBOT}/${ROBOT}_zed/rgb/image_rect_color
+    camera_info_topic: /${ROBOT}/${ROBOT}_zed/rgb/camera_info
+    compressed: false
+    color_space: bgr8
+  depth_data:
+    type: bag
+    path: ${BAG}
+    topic: /${ROBOT}/${ROBOT}_zed/depth/depth_registered
+    camera_info_topic: /${ROBOT}/${ROBOT}_zed/depth/camera_info
+    compressed: false
+  depth_scale: 1.0  # ZED depth is in meters
+  max_time: 20.0  # seconds of the bag to load at a time
+segmenter:
+  weights_path: ${ADT4_WS}/weights/FastSAM-x.pt
+  yolo_weights_path: ${ADT4_WS}/weights/yolov7.pt
+  vpr_ckpt: ${ADT4_WS}/weights/cvmnet_k64.pt  # copied from meridian's vpr submodule
+ground_submap: {}
+segment_to_primitive_conversion: {}
+ground_segmenter: {}
+cross_view_matching:
+  matching_mode: vpr
+aerial_patch: {}
+primitive_match: {}
+register: {}
+cross_view_rpgo:
+  # allow several loop closures per ground submap
+  single_lc_per_ground_sm: false
+  single_lc_per_ground_aerial_pair: false
+cross_view_incremental: {}
+cross_view_visualization: {}
+cross_view_place_recognition: {}

@@ -1,0 +1,278 @@
+#!/usr/bin/env python3
+"""Estimate a robot's trajectory from an ADT4 bag with meridian cross-view localization."""
+
+import os
+import pathlib
+import sys
+
+# meridian is installed in the ROMAN environment: re-exec with its Python before importing it
+if not os.environ.get("_RUN_MERIDIAN_REEXEC"):
+    _adt4_env = os.environ.get("ADT4_ENV", "")
+    if _adt4_env:
+        _roman_env = pathlib.Path(_adt4_env) / "roman"
+        _roman_python = _roman_env / "bin" / "python3"
+        if _roman_python.exists() and sys.prefix != str(_roman_env):
+            os.environ["_RUN_MERIDIAN_REEXEC"] = "1"
+            os.execv(str(_roman_python), [str(_roman_python)] + sys.argv)
+
+import copy  # noqa: E402
+import shutil  # noqa: E402
+import string  # noqa: E402
+
+import click  # noqa: E402
+import yaml  # noqa: E402
+
+PKG_PATH = pathlib.Path(__file__).absolute().parent.parent
+BASE_PARAMS = PKG_PATH / "resource" / "meridian" / "base.yaml"
+PLATFORMS_PATH = PKG_PATH / "platforms"
+POSE_TIME_TOL_S = 10.0
+
+
+def _info(msg):
+    click.secho(f"[INFO] {msg}", fg="green")
+
+
+def _error(msg):
+    click.secho(f"[ERROR] {msg}", fg="red")
+    sys.exit(1)
+
+
+def _normalize_path(path):
+    return pathlib.Path(path).expanduser().absolute()
+
+
+def _resolve_output(output, force):
+    output = _normalize_path(output)
+    if output.exists():
+        if not force:
+            click.confirm(f"Output '{output}' exists! Remove?", abort=True)
+        _info(f"Clearing previous output: '{output}'")
+        shutil.rmtree(output)
+    output.mkdir(parents=True)
+    return output
+
+
+def _load_yaml(path):
+    with open(path, "r") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _merge(base, override):
+    """Recursively merge override into a copy of base (lists and values are replaced)."""
+    merged = copy.deepcopy(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _merge(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _substitute(value, variables):
+    """Fill ${VAR} / $VAR in every string of value from variables."""
+    if isinstance(value, dict):
+        return {k: _substitute(v, variables) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_substitute(v, variables) for v in value]
+    if isinstance(value, str):
+        try:
+            return string.Template(value).substitute(variables)
+        except KeyError as e:
+            _error(f"Undefined variable {e} in meridian param '{value}'")
+    return value
+
+
+def _platform_params(platform):
+    path = PLATFORMS_PATH / platform / "meridian.yaml"
+    if not path.exists():
+        known = sorted(x.parent.name for x in PLATFORMS_PATH.glob("*/meridian.yaml"))
+        _error(f"No meridian config for platform '{platform}' ({path}); known: {known}")
+    _info(f"Using platform config: {path}")
+    return _load_yaml(path)
+
+
+def _bag_topics(bag):
+    from rosbags.highlevel import AnyReader
+
+    with AnyReader([bag]) as reader:
+        return {c.topic for c in reader.connections}
+
+
+def _camera_pose_data(settings, bag, topics, robot):
+    """Odometry (pose of the body frame) with the body -> camera extrinsic from the bag's TF."""
+    for key in ["odom_frame", "body_frame", "camera_frame"]:
+        if not settings.get(key):
+            _error(f"run_meridian.{key} is not set (see the platform's meridian.yaml)")
+
+    # ADT4 bags recorded since TF was namespaced by robot have /<robot>/tf(_static)
+    namespaced = f"/{robot}/tf_static" in topics or f"/{robot}/tf" in topics
+    tf_kwargs = {"tf_topic_namespace": robot} if namespaced else {}
+    extrinsic = {
+        "parent_frame": settings["body_frame"],
+        "child_frame": settings["camera_frame"],
+        **tf_kwargs,
+    }
+
+    odom_topic = settings.get("odom_topic")
+    if odom_topic and odom_topic in topics:
+        _info(f"Odometry: {odom_topic}")
+        pose_data = {"type": "bag", "path": str(bag), "topic": odom_topic}
+    else:
+        tf_topic = f"/{robot}/tf" if namespaced else "/tf"
+        _info(
+            f"Odometry: {settings['odom_frame']} -> {settings['body_frame']} from {tf_topic}"
+        )
+        pose_data = {
+            "type": "bag_tf",
+            "path": str(bag),
+            "parent_frame": settings["odom_frame"],
+            "child_frame": settings["body_frame"],
+            **tf_kwargs,
+        }
+    pose_data["time_tol"] = POSE_TIME_TOL_S
+    pose_data["T_postmultiply"] = extrinsic
+    return pose_data
+
+
+@click.command()
+@click.argument("bag", type=click.Path(exists=True))
+@click.option(
+    "-o", "--output", required=True, type=click.Path(), help="output directory"
+)
+@click.option(
+    "-r",
+    "--robot",
+    envvar="ADT4_ROBOT_NAME",
+    required=True,
+    help="robot name (topic and frame prefix, default: $ADT4_ROBOT_NAME)",
+)
+@click.option(
+    "-p",
+    "--platform",
+    default=None,
+    help="platform (platforms/<platform>/meridian.yaml, default: the robot name)",
+)
+@click.option(
+    "--aerial-img", required=True, type=click.Path(exists=True), help="aerial GeoTIFF"
+)
+@click.option(
+    "--aerial-primitives",
+    required=True,
+    type=click.Path(exists=True, file_okay=False),
+    help="aerial primitives directory made by meridian for the aerial image",
+)
+@click.option(
+    "--gt",
+    default=None,
+    type=click.Path(exists=True),
+    help="ground truth body trajectory CSV (#timestamp_kf,x,y,z,qw,qx,qy,qz in the "
+    "aerial frame) to evaluate against",
+)
+@click.option(
+    "--params",
+    "extra_params",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="meridian params yaml merged over the defaults (repeatable)",
+)
+@click.option("-f", "--force", is_flag=True, help="clear output if it exists")
+@click.option("-d", "--debug", is_flag=True, help="meridian INFO logging")
+@click.option(
+    "-v",
+    "--viz",
+    is_flag=True,
+    help="save meridian's per-ground-submap visualizations to incremental/viz/",
+)
+def main(
+    bag,
+    output,
+    robot,
+    platform,
+    aerial_img,
+    aerial_primitives,
+    gt,
+    extra_params,
+    force,
+    debug,
+    viz,
+):
+    """
+    Localize ROBOT's camera in BAG against an aerial image with meridian's incremental
+    cross-view localization and write the robot's trajectory in the aerial image's UTM frame.
+
+    \b
+    Params: resource/meridian/base.yaml, then platforms/<platform>/meridian.yaml, then each
+    --params file. The aerial primitives must already exist (made with meridian for this
+    aerial image).
+
+    \b
+    Output:
+        trajectory.csv          body trajectory (#timestamp_kf,x,y,z,qw,qx,qy,qz, UTM)
+        meridian_params.yaml    the params meridian was run with
+        params.yaml, incremental/, localization/, ...  meridian's outputs
+    """
+    bag = _normalize_path(bag)
+    platform = platform if platform is not None else robot
+    params = _merge(_load_yaml(BASE_PARAMS), _platform_params(platform))
+    for path in extra_params:
+        _info(f"Merging params: {path}")
+        params = _merge(params, _load_yaml(path))
+    variables = {**os.environ, "ROBOT": robot, "BAG": str(bag)}
+    params = _substitute(params, variables)
+
+    settings = params.pop("run_meridian", {})
+    topics = _bag_topics(bag)
+    image_topic = params["segment_mapping_data"]["img_data"]["topic"]
+    if image_topic not in topics:
+        _error(f"Image topic {image_topic} is not in {bag} (wrong --robot?)")
+
+    params["segment_mapping_data"]["camera_pose_data"] = _camera_pose_data(
+        settings, bag, topics, robot
+    )
+    loc_data = params.setdefault("cross_view_localization_data", {})
+    loc_data["aerial_img_path"] = str(_normalize_path(aerial_img))
+    loc_data["aerial_primitives_dir"] = str(_normalize_path(aerial_primitives))
+    if gt is not None:
+        loc_data["gt_pose_data"] = {
+            "type": "csv",
+            # robotdatapy's default csv_options read this (#timestamp_kf,x,y,z,qw,qx,qy,qz) format
+            "path": str(_normalize_path(gt)),
+            "interp": True,
+            "time_tol": POSE_TIME_TOL_S,
+            # ground truth is of the body: look up the camera extrinsic in the bag too
+            "T_postmultiply": {
+                **params["segment_mapping_data"]["camera_pose_data"]["T_postmultiply"],
+                "path": str(bag),
+            },
+        }
+
+    output = _resolve_output(output, force)
+    params_path = output / "meridian_params.yaml"
+    with params_path.open("w") as fout:
+        yaml.safe_dump(params, fout, sort_keys=False)
+    _info(f"Wrote {params_path}")
+
+    if debug:
+        import logging
+
+        logging.basicConfig(
+            level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s"
+        )
+
+    from meridian.pipeline.cross_view_incremental import cross_view_incremental
+
+    _info(f"Running meridian on {bag} ({robot}, platform {platform})")
+    # the aerial primitives come from cross_view_localization_data.aerial_primitives_dir
+    cross_view_incremental(
+        str(params_path), str(output), aerial_dir=None, submap_viz=viz
+    )
+
+    trajectory = output / "localization" / "dense_trajectory_3d.csv"
+    if not trajectory.exists():
+        _error(f"meridian did not write {trajectory} (did it localize?)")
+    shutil.copy(trajectory, output / "trajectory.csv")
+    _info(f"Wrote {output / 'trajectory.csv'}")
+
+
+if __name__ == "__main__":
+    main()

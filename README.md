@@ -428,6 +428,17 @@ If you leave `save_path`, it will default to saving under `$ADT4_OUTPUT_DIR`
 
 Don't. But the script for this lives [here](dcist_launch_system/bin/run-offline-fusion).
 
+### Estimating a Trajectory with Meridian
+
+[`run-meridian`](dcist_launch_system/bin/run-meridian) localizes a robot's camera in a recorded bag against an aerial image with [meridian](meridian) and writes the robot's trajectory in the aerial image's UTM frame (`trajectory.csv`, which `run-adt4 --trajectory` can replay). The aerial primitives must already be made with meridian for that image.
+
+```
+run-meridian <bag> -r <robot> -p <platform> -o <output> \
+    --aerial-img <aerial GeoTIFF> --aerial-primitives <aerial primitives dir> [--gt <csv>] [--viz]
+```
+
+The params are [`resource/meridian/base.yaml`](dcist_launch_system/resource/meridian/base.yaml) merged with `platforms/<platform>/meridian.yaml` (`--platform` defaults to the robot name) and any `--params` files. The camera extrinsic is looked up from the bag's TF.
+
 ## Configuring Parameters
 
 This section will give some technical explanation about how parameters are

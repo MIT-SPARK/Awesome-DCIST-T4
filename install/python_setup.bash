@@ -98,13 +98,15 @@ if [ "$install_roman" = true ]; then
     ##################################
     if [ "$install_meridian" = true ]; then
         pushd $ADT4_WS/src/awesome_dcist_t4/meridian
-        # cross-view place recognition (bundles its own weights)
+        # cross-view place recognition
         pip install -e third_party/vpr
         pip install -e .
         popd
 
         # Weights (set MERIDIAN_WEIGHTS=$ADT4_WS/weights); FastSAM-x.pt is downloaded above.
         # The DINOv2 models are downloaded automatically on first use (~5.5 GB, needs internet)
+        # Place recognition weights ship in meridian's vpr submodule (segmenter.vpr_ckpt)
+        cp $ADT4_WS/src/awesome_dcist_t4/meridian/third_party/vpr/weights/*.pt $ADT4_WS/weights/
         pushd $ADT4_WS/weights
         if [ ! -f sam_vit_l_0b3195.pth ]; then
             wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth
