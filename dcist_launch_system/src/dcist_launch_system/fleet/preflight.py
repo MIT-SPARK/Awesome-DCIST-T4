@@ -243,7 +243,13 @@ def _b64(text: str) -> str:
     return base64.b64encode(text.encode()).decode()
 
 
-def machine_script(machine: dict, platform: str | None, topo: dict | None, output_root: str, base_addrs=()) -> str:
+def machine_script(
+    machine: dict,
+    platform: str | None,
+    topo: dict | None,
+    output_root: str,
+    base_addrs=(),
+) -> str:
     """The read-only check script for one machine (robot or base station)."""
     s = (
         _COMMON.replace("__VARS__", " ".join(_ENV_VARS))
@@ -254,11 +260,13 @@ def machine_script(machine: dict, platform: str | None, topo: dict | None, outpu
     s += _ROS_ENV
     if machine.get("role") == "robot":
         if base_addrs:
-            s += _BASE_LINK.replace("__BASE_ADDRS__", " ".join(shlex.quote(a) for a in base_addrs)).replace(
-                "__BASE_ADDRS_TEXT__", "/".join(base_addrs)
-            )
+            s += _BASE_LINK.replace(
+                "__BASE_ADDRS__", " ".join(shlex.quote(a) for a in base_addrs)
+            ).replace("__BASE_ADDRS_TEXT__", "/".join(base_addrs))
         if platform == "spot":
-            s += _SPOT.replace("__SPOT_PY__", _b64(_SPOT_PY)).replace("__BAT_NOGO__", str(BATTERY_NOGO_PCT))
+            s += _SPOT.replace("__SPOT_PY__", _b64(_SPOT_PY)).replace(
+                "__BAT_NOGO__", str(BATTERY_NOGO_PCT)
+            )
             s += _ZED.replace("__ZED__", ZED_USB_VENDOR)
         elif platform == "phoenix":
             robot = machine["name"]
@@ -277,7 +285,9 @@ def machine_script(machine: dict, platform: str | None, topo: dict | None, outpu
 # --- parsing / comparison -------------------------------------------------------
 
 
-def parse_output(machine: str, out: str) -> tuple[list[Check], dict | None, float | None]:
+def parse_output(
+    machine: str, out: str
+) -> tuple[list[Check], dict | None, float | None]:
     """``@@C`` checks, the ``@@V`` version dict and the ``@@T`` remote time."""
     checks, version, remote_t = [], None, None
     for line in (out or "").splitlines():
@@ -286,7 +296,9 @@ def parse_output(machine: str, out: str) -> tuple[list[Check], dict | None, floa
             if len(parts) == 4:
                 _, name, status, detail = parts
                 status = status if status in STATUSES else WARN
-                checks.append(Check(machine, name, status, detail.strip(), HINTS.get(name, "")))
+                checks.append(
+                    Check(machine, name, status, detail.strip(), HINTS.get(name, ""))
+                )
         elif line.startswith("@@V|"):
             parts = line.split("|")
             if len(parts) >= 4:
@@ -304,7 +316,9 @@ def parse_output(machine: str, out: str) -> tuple[list[Check], dict | None, floa
     return checks, version, remote_t
 
 
-def clock_check(machine: str, remote_t: float | None, t_returned: float) -> Check | None:
+def clock_check(
+    machine: str, remote_t: float | None, t_returned: float
+) -> Check | None:
     """Offset of the remote clock: its time printed just before exit vs when the
     output arrived here (the error is the one-way latency, ms on a LAN)."""
     if remote_t is None:
@@ -312,7 +326,13 @@ def clock_check(machine: str, remote_t: float | None, t_returned: float) -> Chec
     off = remote_t - t_returned
     a = abs(off)
     status = NOGO if a > CLOCK_NOGO_S else WARN if a > CLOCK_WARN_S else GO
-    return Check(machine, "clock", status, f"clock offset {off:+.2f} s vs this machine", HINTS["clock"])
+    return Check(
+        machine,
+        "clock",
+        status,
+        f"clock offset {off:+.2f} s vs this machine",
+        HINTS["clock"],
+    )
 
 
 def version_checks(versions: dict, reference: str | None) -> list[Check]:
@@ -337,22 +357,44 @@ def version_checks(versions: dict, reference: str | None) -> list[Check]:
             status = WARN
         else:
             status = GO
-        detail = "; ".join(problems) if problems else f"{short}, same as {ref_name}" if name != ref_name else f"{short} (reference)"
+        detail = (
+            "; ".join(problems)
+            if problems
+            else f"{short}, same as {ref_name}"
+            if name != ref_name
+            else f"{short} (reference)"
+        )
         out.append(Check(name, "code", status, detail, HINTS["code"]))
     return out
 
 
-def run_checks(machines: list[dict], topo: dict | None, output_root: str, deps, reference: str | None = None) -> list[Check]:
+def run_checks(
+    machines: list[dict],
+    topo: dict | None,
+    output_root: str,
+    deps,
+    reference: str | None = None,
+) -> list[Check]:
     """Run the checks on ``machines`` in parallel; returns every machine's checks."""
     from dcist_launch_system.fleet_helpers import fleetlink_base, platform_of
 
     machines_topo = (topo or {}).get("machines") or {}
     base = fleetlink_base(topo) or reference
-    base_addrs = list(((machines_topo.get(base) or {}).get("addresses") or {}).values()) if base else []
+    base_addrs = (
+        list(((machines_topo.get(base) or {}).get("addresses") or {}).values())
+        if base
+        else []
+    )
 
     def one(m):
-        platform = platform_of(machines_topo.get(m["name"]) or m) if m.get("role") == "robot" else None
-        script = machine_script(m, platform, topo, output_root, base_addrs if m["name"] != base else ())
+        platform = (
+            platform_of(machines_topo.get(m["name"]) or m)
+            if m.get("role") == "robot"
+            else None
+        )
+        script = machine_script(
+            m, platform, topo, output_root, base_addrs if m["name"] != base else ()
+        )
         rc, out, err = deps.ssh(m["user"], m["ip"], script, timeout=SSH_TIMEOUT)
         return rc, out, err, time.time()
 
@@ -362,8 +404,20 @@ def run_checks(machines: list[dict], topo: dict | None, output_root: str, deps, 
         name = m["name"]
         # the script always ends with @@T: without it the checks did not (all) run
         if isinstance(res, Exception) or "@@T|" not in (res[1] or ""):
-            why = str(res) if isinstance(res, Exception) else (res[2] or f"ssh exit {res[0]}, no check output")
-            checks.append(Check(name, "ssh", NOGO, f"cannot run checks: {why.strip()[:160]}", HINTS["ssh"]))
+            why = (
+                str(res)
+                if isinstance(res, Exception)
+                else (res[2] or f"ssh exit {res[0]}, no check output")
+            )
+            checks.append(
+                Check(
+                    name,
+                    "ssh",
+                    NOGO,
+                    f"cannot run checks: {why.strip()[:160]}",
+                    HINTS["ssh"],
+                )
+            )
             continue
         rc, out, _, t_ret = res
         cs, version, remote_t = parse_output(name, out)
@@ -392,10 +446,18 @@ def compare_prior(machine: str, path: str, source: dict, copy: dict | None) -> C
     matches; WARN when only the saved scene graph matches; NO-GO otherwise.
     """
     if copy is None:
-        return Check(machine, "prior", NOGO, f"prior map missing at {path}", HINTS["prior"])
+        return Check(
+            machine, "prior", NOGO, f"prior map missing at {path}", HINTS["prior"]
+        )
     missing = [d for d in ("hydra", "roman") if d not in (copy.get("subdirs") or [])]
     if missing:
-        return Check(machine, "prior", NOGO, f"{path} has no {'/'.join(missing)}/", HINTS["prior"])
+        return Check(
+            machine,
+            "prior",
+            NOGO,
+            f"{path} has no {'/'.join(missing)}/",
+            HINTS["prior"],
+        )
     s_map, s_all, s_dsg = _digests(source)
     c_map, c_all, c_dsg = _digests(copy)
     if s_map and c_map:
@@ -404,11 +466,25 @@ def compare_prior(machine: str, path: str, source: dict, copy: dict | None) -> C
     elif s_all and s_all == c_all:
         return Check(machine, "prior", GO, f"{path}: same files as the source", "")
     if s_dsg and s_dsg == c_dsg:
-        return Check(machine, "prior", WARN, f"{path}: same scene graph, other map files differ", HINTS["prior"])
-    return Check(machine, "prior", NOGO, f"{path} holds a different map than the source", HINTS["prior"])
+        return Check(
+            machine,
+            "prior",
+            WARN,
+            f"{path}: same scene graph, other map files differ",
+            HINTS["prior"],
+        )
+    return Check(
+        machine,
+        "prior",
+        NOGO,
+        f"{path} holds a different map than the source",
+        HINTS["prior"],
+    )
 
 
-def verify_prior(source_machine: dict, source_path: str, targets: dict, deps, scan) -> list[Check]:
+def verify_prior(
+    source_machine: dict, source_path: str, targets: dict, deps, scan
+) -> list[Check]:
     """``targets``: machine name -> (machine, prior path it will load).
 
     ``scan(machine, parent, [name], manifest=True)`` returns run_scan identity
@@ -422,7 +498,15 @@ def verify_prior(source_machine: dict, source_path: str, targets: dict, deps, sc
 
     src = entry(source_machine, source_path)
     if src is None:
-        return [Check(source_machine["name"], "prior", NOGO, f"cannot read the source prior {source_path}", HINTS["prior"])]
+        return [
+            Check(
+                source_machine["name"],
+                "prior",
+                NOGO,
+                f"cannot read the source prior {source_path}",
+                HINTS["prior"],
+            )
+        ]
     out = []
     for name, (m, path) in sorted(targets.items()):
         if name == source_machine["name"] and path == source_path:

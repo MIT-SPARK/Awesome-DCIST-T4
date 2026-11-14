@@ -58,11 +58,25 @@ def test_raw_logs_only(tmp_path):
 
 def test_indexed_store_counts_and_tail(tmp_path):
     run = _raw_run(tmp_path)
-    _store(run, tail={"live": True, "final": False, "heartbeat_wall": 1.0, "session": 42, "polls": 3})
+    _store(
+        run,
+        tail={
+            "live": True,
+            "final": False,
+            "heartbeat_wall": 1.0,
+            "session": 42,
+            "polls": 3,
+        },
+    )
     st = run_scan.scan_run(str(run), measure=False)["image_store"]
     assert st["indexed"] is True and st["frames"] == {"keyframe": 1, "object": 1}
     assert st["raw"]["keyframe_archives"] == 3
-    assert st["tail"] == {"live": True, "final": False, "heartbeat_wall": 1.0, "session": 42}
+    assert st["tail"] == {
+        "live": True,
+        "final": False,
+        "heartbeat_wall": 1.0,
+        "session": 42,
+    }
     assert st["check"]["ok"], st["check"]
 
 
@@ -74,7 +88,10 @@ def test_store_with_sub_keyframes_needs_convert(tmp_path):
     c.commit()
     c.close()
     st = run_scan.scan_run(str(run), measure=False)["image_store"]
-    assert st["needs_convert"] is True and st["frames"] == {"keyframe": 1, "subkeyframe": 1}
+    assert st["needs_convert"] is True and st["frames"] == {
+        "keyframe": 1,
+        "subkeyframe": 1,
+    }
     assert not st["check"]["ok"]
     assert "hydra-image-store-adt4 convert" in " ".join(st["check"]["problems"])
 

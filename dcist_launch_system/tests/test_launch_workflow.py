@@ -118,7 +118,9 @@ def make_deps(ssh, rsync=None):
 
 
 def run(plan, ssh, rec, rsync=None, preflight=False):
-    plan.preflight = preflight  # the preflight phase has its own tests (test_preflight.py)
+    plan.preflight = (
+        preflight  # the preflight phase has its own tests (test_preflight.py)
+    )
     return run_launch(
         plan,
         topo=TOPO,
@@ -242,15 +244,33 @@ def test_session_launches_rviz_from_the_tmuxp_files():
     assert session_launches_rviz(None) is True
 
 
-@pytest.mark.parametrize("bs_session,with_rviz", [("base_station-default", True), ("base_station_web_repair-default", False)])
+@pytest.mark.parametrize(
+    "bs_session,with_rviz",
+    [("base_station-default", True), ("base_station_web_repair-default", False)],
+)
 def test_rviz_config_only_for_sessions_with_rviz(bs_session, with_rviz):
     ssh = FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")})
     rec = Recorder()
     made = []
     deps = make_deps(ssh)
     deps.rviz = lambda name: made.append(name) or f"/tmp/dcist_{name}.rviz"
-    plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e", base_station="willow", bs_session=bs_session, preflight=False)
-    assert run_launch(plan, topo=TOPO, active_network="silvus", runtime_config=RUNTIME, output_root=OUT, callbacks=rec, deps=deps)
+    plan = LaunchPlan(
+        robots=["smaug"],
+        session="spot-default",
+        experiment="e",
+        base_station="willow",
+        bs_session=bs_session,
+        preflight=False,
+    )
+    assert run_launch(
+        plan,
+        topo=TOPO,
+        active_network="silvus",
+        runtime_config=RUNTIME,
+        output_root=OUT,
+        callbacks=rec,
+        deps=deps,
+    )
     (bs_cmd,) = [c for c in ssh.cmds_for("10.0.0.9") if "nohup" in c]
     assert ("--rviz-config" in bs_cmd) is with_rviz
     assert bool(made) is with_rviz
@@ -258,7 +278,11 @@ def test_rviz_config_only_for_sessions_with_rviz(bs_session, with_rviz):
 
 def test_base_station_command_passes_the_prior():
     cmd = build_base_station_command(
-        RUNTIME["willow"], "base_station-default", OUT, "e1", prior_path="~/adt4_output/p"
+        RUNTIME["willow"],
+        "base_station-default",
+        OUT,
+        "e1",
+        prior_path="~/adt4_output/p",
     )
     assert " -p ~/adt4_output/p" in cmd and "ADT4_NEO4J_SEED=true " in cmd
     plain = build_base_station_command(RUNTIME["willow"], "b", OUT, "e1")
@@ -291,14 +315,31 @@ def test_relocalize_base_station_gets_the_prior():
     ssh = FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")})
     calls = []
     rec = Recorder()
-    assert run(_reloc_plan("smaug"), ssh, rec, rsync=lambda *a, **k: calls.append(a) or (True, "direct", "ok")) is True
+    assert (
+        run(
+            _reloc_plan("smaug"),
+            ssh,
+            rec,
+            rsync=lambda *a, **k: calls.append(a) or (True, "direct", "ok"),
+        )
+        is True
+    )
     assert " -p ~/adt4_output/prior_p" in _bs_launch(ssh)
     assert rec.pct.get("willow") == 100
 
 
 def test_running_base_station_session_is_replaced():
     # a session left from the mapping run must not keep running with no prior
-    ssh = FakeSsh({"2>/dev/null": (0, "ADT4_OUTPUT_DIR=/home/rrg/adt4_output/map_1715\nOK", "", "10.0.0.9")})
+    ssh = FakeSsh(
+        {
+            "2>/dev/null": (
+                0,
+                "ADT4_OUTPUT_DIR=/home/rrg/adt4_output/map_1715\nOK",
+                "",
+                "10.0.0.9",
+            )
+        }
+    )
     rec = Recorder(answers=[True])
     assert run(_reloc_plan("willow"), ssh, rec) is True
     [req] = rec.requests
@@ -320,7 +361,9 @@ def test_base_station_session_hosting_the_launcher_is_left_alone(monkeypatch):
     rec = Recorder(answers=[True])
     run(_reloc_plan("willow"), ssh, rec)
     assert rec.requests == []
-    assert not any("kill-session" in c or "nohup" in c for c in ssh.cmds_for("10.0.0.9"))
+    assert not any(
+        "kill-session" in c or "nohup" in c for c in ssh.cmds_for("10.0.0.9")
+    )
     assert "restart the base station from a terminal" in rec.text()
 
 
@@ -438,7 +481,12 @@ def _sessions(plan, topo=MIXED_TOPO):
 
 
 def test_mixed_fleet_launch_runs_each_robots_platform_preset():
-    plan = LaunchPlan(robots=["hamilton", "gauss"], session="spot-default", experiment="e", mode="mapping")
+    plan = LaunchPlan(
+        robots=["hamilton", "gauss"],
+        session="spot-default",
+        experiment="e",
+        mode="mapping",
+    )
     assert _sessions(plan) == {"hamilton": "spot-default", "gauss": "phoenix-default"}
     # whichever preset the UI showed (the first robot's), and without a mode
     plan.session, plan.mode = "phoenix-default", None
@@ -448,9 +496,14 @@ def test_mixed_fleet_launch_runs_each_robots_platform_preset():
 
 
 def test_hand_picked_session_runs_on_robots_of_its_platform_and_maps_on_the_others():
-    plan = LaunchPlan(robots=["hamilton", "gauss"], session="spot_bag-default", experiment="e")
+    plan = LaunchPlan(
+        robots=["hamilton", "gauss"], session="spot_bag-default", experiment="e"
+    )
     # a Husky never runs a spot_* session: the phoenix equivalent instead
-    assert _sessions(plan) == {"hamilton": "spot_bag-default", "gauss": "phoenix_bag-default"}
+    assert _sessions(plan) == {
+        "hamilton": "spot_bag-default",
+        "gauss": "phoenix_bag-default",
+    }
     # a session that belongs to no platform runs on every robot as given
     plan.session = "custom-thing"
     assert _sessions(plan) == {"hamilton": "custom-thing", "gauss": "custom-thing"}
@@ -461,11 +514,16 @@ def test_hand_picked_session_runs_on_robots_of_its_platform_and_maps_on_the_othe
 
 
 def test_default_selection_per_robot_platform():
-    sel = default_selection(MIXED_TOPO, MIXED_RUNTIME, "mapping", ["gauss", "hamilton"], set())
+    sel = default_selection(
+        MIXED_TOPO, MIXED_RUNTIME, "mapping", ["gauss", "hamilton"], set()
+    )
     assert sel["session"] == "phoenix-default"  # the first robot's
     assert sel["sessions"] == {"gauss": "phoenix-default", "hamilton": "spot-default"}
     # platform_type wins over fleet_defaults.spot_platforms (platform ids)
-    topo = {**MIXED_TOPO, "fleet_defaults": {**TOPO["fleet_defaults"], "spot_platforms": ["samoyed"]}}
+    topo = {
+        **MIXED_TOPO,
+        "fleet_defaults": {**TOPO["fleet_defaults"], "spot_platforms": ["samoyed"]},
+    }
     sel = default_selection(topo, MIXED_RUNTIME, "mapping", ["gauss"], set())
     assert sel["session"] == "phoenix-default"
     # a robot missing from the topology's machines: its runtime entry, else spot
@@ -522,7 +580,9 @@ def test_base_only_plan_validates_and_dry_runs_only_the_base_command():
 
 
 def test_base_only_dry_run_with_a_robot_prior_transfers_it_to_the_base():
-    plan = _base_only_plan(mode="relocalize", prior_path="~/adt4_output/p", prior_source="smaug")
+    plan = _base_only_plan(
+        mode="relocalize", prior_path="~/adt4_output/p", prior_source="smaug"
+    )
     lines = dry_run_lines(plan, RUNTIME, OUT)
     assert "Transfer prior map: smaug -> willow" in lines
     assert " -p ~/adt4_output/prior_p" in lines[-1]
@@ -534,9 +594,20 @@ def test_base_only_launch_touches_only_the_base_station():
     rec = Recorder(answers=[True])
     seen = {}
     deps = make_deps(ssh)
-    deps.zenoh_endpoints = lambda topo, net, name, robot_filter=None: seen.setdefault("f", robot_filter) or []
+    deps.zenoh_endpoints = (
+        lambda topo, net, name, robot_filter=None: seen.setdefault("f", robot_filter)
+        or []
+    )
     plan = _base_only_plan(preflight=False)
-    assert run_launch(plan, topo=TOPO, active_network="silvus", runtime_config=RUNTIME, output_root=OUT, callbacks=rec, deps=deps)
+    assert run_launch(
+        plan,
+        topo=TOPO,
+        active_network="silvus",
+        runtime_config=RUNTIME,
+        output_root=OUT,
+        callbacks=rec,
+        deps=deps,
+    )
     assert ssh.cmds_for("10.0.0.1") == [] and ssh.cmds_for("10.0.0.2") == []
     [req] = rec.requests
     assert req.detail["machines"] == ["willow"]
@@ -551,10 +622,22 @@ def test_base_only_preflight_checks_only_the_base(monkeypatch):
     from dcist_launch_system.fleet import preflight as pf
 
     checked = []
-    monkeypatch.setattr(pf, "run_checks", lambda machines, *a, **k: checked.extend(m["name"] for m in machines) or [])
+    monkeypatch.setattr(
+        pf,
+        "run_checks",
+        lambda machines, *a, **k: checked.extend(m["name"] for m in machines) or [],
+    )
     ssh = FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")})
     plan = _base_only_plan(preflight=True)
-    assert run_launch(plan, topo=TOPO, active_network="silvus", runtime_config=RUNTIME, output_root=OUT, callbacks=Recorder(), deps=make_deps(ssh))
+    assert run_launch(
+        plan,
+        topo=TOPO,
+        active_network="silvus",
+        runtime_config=RUNTIME,
+        output_root=OUT,
+        callbacks=Recorder(),
+        deps=make_deps(ssh),
+    )
     assert checked == ["willow"]
 
 
@@ -562,12 +645,17 @@ def test_mixed_platforms_get_their_own_sessions():
     plan = LaunchPlan(
         robots=["smaug", "gauss"],
         session="",
-        sessions={"spot": "spot_relocalize-relocalize", "phoenix": "phoenix_relocalize-relocalize"},
+        sessions={
+            "spot": "spot_relocalize-relocalize",
+            "phoenix": "phoenix_relocalize-relocalize",
+        },
         experiment="e",
         mode="relocalize",
         prior_path="~/adt4_output/p",
     )
-    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
+    cmds = {
+        m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+    }
     assert "run-adt4 spot_relocalize-relocalize -n smaug" in cmds["smaug"]
     assert "run-adt4 phoenix_relocalize-relocalize -n gauss" in cmds["gauss"]
     assert all(" -p ~/adt4_output/p" in c for c in cmds.values())
@@ -577,8 +665,13 @@ def test_mixed_platforms_get_their_own_sessions():
         build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
     # ...unless ``session`` covers it (mapping sessions: a mapping launch)
     plan.session, plan.mode = "phoenix-default", "mapping"
-    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
-    assert "run-adt4 spot-default" in cmds["smaug"] and "run-adt4 phoenix-default" in cmds["gauss"]
+    cmds = {
+        m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+    }
+    assert (
+        "run-adt4 spot-default" in cmds["smaug"]
+        and "run-adt4 phoenix-default" in cmds["gauss"]
+    )
 
 
 def test_single_session_still_runs_on_every_robot():
@@ -587,7 +680,9 @@ def test_single_session_still_runs_on_every_robot():
     assert all("run-adt4 my-custom " in c for c in cmds)
     # a per-platform preset still maps to each robot's platform (old behaviour)
     plan.session = "spot-default"
-    cmds = {m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)}
+    cmds = {
+        m["name"]: c for m, c in build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
+    }
     assert "run-adt4 phoenix-default" in cmds["gauss"]
 
 
@@ -610,8 +705,20 @@ def test_robots_get_the_prior_without_its_image_store_the_base_with_it():
         bs_session="base_station-default",
     )
     excludes = []
-    rsync = lambda *a, **k: excludes.append(k.get("exclude")) or (True, "direct", "ok")
-    assert run(plan, FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")}), Recorder(), rsync=rsync) is True
+
+    def rsync(*a, **k):
+        excludes.append(k.get("exclude"))
+        return (True, "direct", "ok")
+
+    assert (
+        run(
+            plan,
+            FakeSsh({"&& echo OK": (0, "OK", "", "10.0.0.9")}),
+            Recorder(),
+            rsync=rsync,
+        )
+        is True
+    )
     assert excludes and all("image_store/" in e for e in excludes)
     # prior made on smaug: the base station copies it with its images
     excludes.clear()
@@ -625,17 +732,36 @@ def test_robots_get_the_prior_without_its_image_store_the_base_with_it():
 def test_session_mode_from_the_experiment_manifest():
     from dcist_launch_system.fleet.launch_workflow import session_mode, session_modes
 
-    for s in ("spot_relocalize-relocalize", "phoenix_relocalize-relocalize_awcd",
-              "spot_bag_relocalize-relocalize", "phoenix_bag_relocalize-relocalize"):
+    for s in (
+        "spot_relocalize-relocalize",
+        "phoenix_relocalize-relocalize_awcd",
+        "spot_bag_relocalize-relocalize",
+        "phoenix_bag_relocalize-relocalize",
+    ):
         assert session_mode(s) == "relocalize", s
-    for s in ("spot-default", "spot-indoor_image_logging", "phoenix-default",
-              "spot_bag-indoor", "phoenix_bag-default", "spot_regions-indoor_regions"):
+    for s in (
+        "spot-default",
+        "spot-indoor_image_logging",
+        "phoenix-default",
+        "spot_bag-indoor",
+        "phoenix_bag-default",
+        "spot_regions-indoor_regions",
+    ):
         assert session_mode(s) == "mapping", s
     # base station / planning sessions, made-up names, configs an experiment lacks
-    for s in ("base_station_web_repair-default", "spot_prior_dsg-prior_dsg", "my-custom",
-              "spot-relocalize", "nodash", "", None):
+    for s in (
+        "base_station_web_repair-default",
+        "spot_prior_dsg-prior_dsg",
+        "my-custom",
+        "spot-relocalize",
+        "nodash",
+        "",
+        None,
+    ):
         assert session_mode(s) is None, s
-    assert session_modes(["spot-default", "base_station-default", "spot_relocalize-relocalize"]) == {
+    assert session_modes(
+        ["spot-default", "base_station-default", "spot_relocalize-relocalize"]
+    ) == {
         "spot-default": "mapping",
         "spot_relocalize-relocalize": "relocalize",
     }
@@ -647,7 +773,10 @@ def test_relocalize_mode_refuses_a_mapping_session():
         robots=["smaug", "topaz"], session="spot-indoor_image_logging", experiment="e",
         mode="relocalize", prior_path="~/adt4_output/p", prior_source="willow",
     )  # fmt: skip
-    with pytest.raises(LaunchError, match=r"relocalize.*smaug would run spot-indoor_image_logging \(a mapping session\)"):
+    with pytest.raises(
+        LaunchError,
+        match=r"relocalize.*smaug would run spot-indoor_image_logging \(a mapping session\)",
+    ):
         build_robot_commands(plan, RUNTIME, OUT, TOPO)
     from dcist_launch_system.fleet.launch_workflow import validate_plan
 
@@ -666,7 +795,10 @@ def test_relocalize_mode_refuses_a_mapping_session():
 def test_mapping_mode_refuses_a_relocalize_session():
     plan = LaunchPlan(robots=["smaug"], session="spot_relocalize-relocalize", experiment="e",
                       mode="mapping", prior_path="~/p")  # fmt: skip
-    with pytest.raises(LaunchError, match=r"mapping but smaug would run spot_relocalize-relocalize \(a relocalize session\)"):
+    with pytest.raises(
+        LaunchError,
+        match=r"mapping but smaug would run spot_relocalize-relocalize \(a relocalize session\)",
+    ):
         build_robot_commands(plan, RUNTIME, OUT)
     # no mode (manual / old clients): not checked
     plan.mode = None
@@ -684,7 +816,9 @@ def test_per_platform_sessions_are_checked_per_robot():
     )  # fmt: skip
     with pytest.raises(LaunchError) as e:
         build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)
-    assert "gauss would run phoenix-default" in str(e.value) and "smaug" not in str(e.value)
+    assert "gauss would run phoenix-default" in str(e.value) and "smaug" not in str(
+        e.value
+    )
     plan.sessions["phoenix"] = "phoenix_relocalize-relocalize"
     assert len(build_robot_commands(plan, PP_RUNTIME, OUT, PP_TOPO)) == 2
     # relocalize still needs a prior
@@ -714,7 +848,10 @@ NOV11_TOPO = {
     "fleet_defaults": {
         "sessions": {
             "mapping": {"spot": "spot-default", "phoenix": "phoenix-default"},
-            "relocalize": {"spot": "spot_relocalize-relocalize", "phoenix": "phoenix_relocalize-relocalize"},
+            "relocalize": {
+                "spot": "spot_relocalize-relocalize",
+                "phoenix": "phoenix_relocalize-relocalize",
+            },
         },
         "base_station_session": "base_station_web_repair-default",
         "fleet_link": "fleetlink",
@@ -723,7 +860,11 @@ NOV11_TOPO = {
     "machines": {
         "euclid": {"role": "robot", "platform_id": "smaug", "platform_type": "spot"},
         "hamilton": {"role": "robot", "platform_id": "topaz", "platform_type": "spot"},
-        "gauss": {"role": "robot", "platform_id": "phoenix", "platform_type": "phoenix"},
+        "gauss": {
+            "role": "robot",
+            "platform_id": "phoenix",
+            "platform_type": "phoenix",
+        },
         "willow": {"role": "base_station"},
     },
 }
@@ -754,16 +895,27 @@ def _nov11_plan(**kw):
 
 
 def test_session_platform_by_experiment_name():
-    from dcist_launch_system.fleet.launch_workflow import platform_equivalent, session_platform
+    from dcist_launch_system.fleet.launch_workflow import (
+        platform_equivalent,
+        session_platform,
+    )
 
     assert session_platform("spot_relocalize-relocalize_awcd") == "spot"
     assert session_platform("phoenix-default") == "phoenix"
     assert session_platform("base_station_web-default") is None
-    assert platform_equivalent("spot_relocalize-relocalize_awcd", "phoenix") == "phoenix_relocalize-relocalize_awcd"
-    assert platform_equivalent("phoenix_relocalize-relocalize", "spot") == "spot_relocalize-relocalize"
+    assert (
+        platform_equivalent("spot_relocalize-relocalize_awcd", "phoenix")
+        == "phoenix_relocalize-relocalize_awcd"
+    )
+    assert (
+        platform_equivalent("phoenix_relocalize-relocalize", "spot")
+        == "spot_relocalize-relocalize"
+    )
     assert platform_equivalent("spot-default", "spot") == "spot-default"
     # no phoenix twin: the platform's preset for the session's mode
-    assert platform_equivalent("spot-indoor", "phoenix", NOV11_TOPO) == "phoenix-default"
+    assert (
+        platform_equivalent("spot-indoor", "phoenix", NOV11_TOPO) == "phoenix-default"
+    )
     assert platform_equivalent("spot_prior_dsg-prior_dsg", "phoenix", {}) is None
 
 
@@ -771,12 +923,21 @@ def test_nov11_launch_memory_resolves_gauss_to_its_phoenix_session():
     from dcist_launch_system.fleet.launch_workflow import robot_session
 
     plan = _nov11_plan()
-    assert robot_session(plan, NOV11_RUNTIME["gauss"], NOV11_TOPO) == "phoenix_relocalize-relocalize_awcd"
+    assert (
+        robot_session(plan, NOV11_RUNTIME["gauss"], NOV11_TOPO)
+        == "phoenix_relocalize-relocalize_awcd"
+    )
     [(m, cmd)] = build_robot_commands(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
-    assert m["name"] == "gauss" and "run-adt4 phoenix_relocalize-relocalize_awcd -n gauss -c phoenix" in cmd
+    assert (
+        m["name"] == "gauss"
+        and "run-adt4 phoenix_relocalize-relocalize_awcd -n gauss -c phoenix" in cmd
+    )
     # the Spots keep the spot session
     plan.robots = ["euclid", "gauss"]
-    cmds = {m["name"]: c for m, c in build_robot_commands(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)}
+    cmds = {
+        m["name"]: c
+        for m, c in build_robot_commands(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
+    }
     assert "run-adt4 spot_relocalize-relocalize_awcd -n euclid" in cmds["euclid"]
 
 
@@ -789,10 +950,21 @@ def test_session_of_another_platform_is_refused_dry_run_included():
         dry_run_lines(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
     # a spot session with no phoenix equivalent, picked by hand
     plan = _nov11_plan(session="spot_prior_dsg-prior_dsg", mode=None, sessions={})
-    with pytest.raises(LaunchError, match="gauss .platform phoenix. would run spot_prior_dsg-prior_dsg"):
-        build_robot_commands(plan, NOV11_RUNTIME, OUT, {"machines": NOV11_TOPO["machines"]})
-    plan = _nov11_plan(robots=["hamilton"], sessions={"spot": "phoenix-default"}, mode="mapping", prior_path="")
-    with pytest.raises(LaunchError, match="hamilton .platform spot. would run phoenix-default"):
+    with pytest.raises(
+        LaunchError, match="gauss .platform phoenix. would run spot_prior_dsg-prior_dsg"
+    ):
+        build_robot_commands(
+            plan, NOV11_RUNTIME, OUT, {"machines": NOV11_TOPO["machines"]}
+        )
+    plan = _nov11_plan(
+        robots=["hamilton"],
+        sessions={"spot": "phoenix-default"},
+        mode="mapping",
+        prior_path="",
+    )
+    with pytest.raises(
+        LaunchError, match="hamilton .platform spot. would run phoenix-default"
+    ):
         build_robot_commands(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
 
 
@@ -827,7 +999,11 @@ def test_robots_only_relaunch_never_touches_the_base_station():
     # willow: only read-only commands (is the base session running, the prior's identity)
     wcmds = ssh.cmds_for(willow)
     assert wcmds[0] == f"tmux has-session -t {TMUX_SESSION_NAME} 2>/dev/null && echo OK"
-    assert not any(k in c for c in wcmds for k in ("kill-session", "send-keys", "nohup", "run-adt4", "rm ", "mv "))
+    assert not any(
+        k in c
+        for c in wcmds
+        for k in ("kill-session", "send-keys", "nohup", "run-adt4", "rm ", "mv ")
+    )
     assert not any(ip not in (gauss, willow) for ip, _ in ssh.calls)
     cmds = ssh.cmds_for(gauss)
     i_stop = next(i for i, c in enumerate(cmds) if "send-keys" in c and "C-c" in c)
@@ -837,16 +1013,23 @@ def test_robots_only_relaunch_never_touches_the_base_station():
     assert i_stop < i_kill < i_move < i_run
     assert not any("rm -rf" in c for c in cmds)
     run_cmd = cmds[i_run]
-    assert "run-adt4 phoenix_relocalize-relocalize_awcd -n gauss" in run_cmd and " -f" not in run_cmd.split("--tmuxp")[0]
+    assert (
+        "run-adt4 phoenix_relocalize-relocalize_awcd -n gauss" in run_cmd
+        and " -f" not in run_cmd.split("--tmuxp")[0]
+    )
     [req] = rec.requests
     assert req.kind == "kill_sessions" and req.detail["machines"] == ["gauss"]
     assert "reloc_awcd_prev-20261111-2200" in rec.text()
 
 
 def test_robots_only_warns_without_a_running_base_but_launches():
-    ssh = FakeSsh({"&& echo OK": (1, "", "", "10.0.0.9"), "_prev-": (0, "", "", "10.0.0.13")})
+    ssh = FakeSsh(
+        {"&& echo OK": (1, "", "", "10.0.0.9"), "_prev-": (0, "", "", "10.0.0.13")}
+    )
     rec = Recorder()
-    plan = _nov11_plan(robots_only=True, prior_path="", mode="mapping", session="phoenix-default")
+    plan = _nov11_plan(
+        robots_only=True, prior_path="", mode="mapping", session="phoenix-default"
+    )
     assert _robots_only_run(plan, ssh, rec), rec.text()
     assert "need the base station for planning" in rec.text()
     assert rec.requests == []  # nothing running on gauss: no confirm
@@ -855,7 +1038,12 @@ def test_robots_only_warns_without_a_running_base_but_launches():
 def test_robots_only_prior_inside_the_moved_dir_follows_it():
     # gauss relocalizes on its own previous run, which is the output dir
     gauss = "10.0.0.13"
-    ssh = FakeSsh({"_prev-": (0, "MOVED /h/adt4_output/e_prev-1\n", "", gauss), "&& echo OK": (0, "OK", "", "10.0.0.9")})
+    ssh = FakeSsh(
+        {
+            "_prev-": (0, "MOVED /h/adt4_output/e_prev-1\n", "", gauss),
+            "&& echo OK": (0, "OK", "", "10.0.0.9"),
+        }
+    )
     rec = Recorder()
     plan = _nov11_plan(robots_only=True, experiment="e", prior_path=f"{OUT}/e", prior_source="gauss",
                        session="phoenix_relocalize-relocalize")  # fmt: skip
@@ -865,7 +1053,10 @@ def test_robots_only_prior_inside_the_moved_dir_follows_it():
 
 
 def test_robots_only_dry_run_and_validation():
-    from dcist_launch_system.fleet.launch_workflow import is_base_only, move_aside_command
+    from dcist_launch_system.fleet.launch_workflow import (
+        is_base_only,
+        move_aside_command,
+    )
 
     plan = _nov11_plan(robots_only=True)
     lines = dry_run_lines(plan, NOV11_RUNTIME, OUT, NOV11_TOPO)
@@ -879,7 +1070,9 @@ def test_robots_only_dry_run_and_validation():
     with pytest.raises(LaunchError, match="No robots"):
         dry_run_lines(empty, NOV11_RUNTIME, OUT, NOV11_TOPO)
     cmd = move_aside_command("~/adt4_output/e")
-    assert cmd.startswith("d=~/'adt4_output/e'; ") or cmd.startswith("d=~/adt4_output/e; ")
+    assert cmd.startswith("d=~/'adt4_output/e'; ") or cmd.startswith(
+        "d=~/adt4_output/e; "
+    )
     assert '[ ! -e "$d/runs" ]' in cmd and "rm " not in cmd
 
 
@@ -890,13 +1083,17 @@ def test_robots_only_move_aside_runs_in_a_shell(tmp_path):
 
     d = tmp_path / "e"
     (d / "hydra").mkdir(parents=True)
-    out = subprocess.run(["bash", "-c", move_aside_command(str(d))], capture_output=True, text=True).stdout
+    out = subprocess.run(
+        ["bash", "-c", move_aside_command(str(d))], capture_output=True, text=True
+    ).stdout
     assert out.startswith("MOVED ") and not d.exists()
     moved = out.split(" ", 1)[1].strip()
     assert (tmp_path / moved.rsplit("/", 1)[1] / "hydra").is_dir()
     # per-run layout: left for run-adt4 to add a run
     (d / "runs").mkdir(parents=True)
-    out = subprocess.run(["bash", "-c", move_aside_command(str(d))], capture_output=True, text=True).stdout
+    out = subprocess.run(
+        ["bash", "-c", move_aside_command(str(d))], capture_output=True, text=True
+    ).stdout
     assert out == "" and (d / "runs").is_dir()
 
 
@@ -987,7 +1184,9 @@ def test_bringup_starts_stack_and_waits_for_ready_topic_before_run_adt4():
     rec = Recorder()
     plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
     assert run_bringup(plan, ssh, rec)
-    start, first_probe, launch = _order(ssh, "tmuxp load -d", "ros2 topic echo --once", "run-adt4")
+    start, first_probe, launch = _order(
+        ssh, "tmuxp load -d", "ros2 topic echo --once", "run-adt4"
+    )
     assert start < first_probe < launch
     assert sum("ros2 topic echo --once" in c for _, c in ssh.calls) == 4
     assert "smaug: DLIO odometry is up" in rec.text()
@@ -1066,7 +1265,10 @@ def test_gauss_bringup_in_topology():
     import yaml
 
     topo = yaml.safe_load(
-        (pathlib.Path(__file__).resolve().parents[2] / "network_diagnostics/config/topology.yaml").read_text()
+        (
+            pathlib.Path(__file__).resolve().parents[2]
+            / "network_diagnostics/config/topology.yaml"
+        ).read_text()
     )
     b = topo["machines"]["gauss"]["bringup"]
     assert b["session"] == "husky"
@@ -1084,7 +1286,9 @@ def test_bringup_settle_waits_and_checks_the_estimate_held():
     plan = LaunchPlan(robots=["smaug"], session="spot-default", experiment="e1")
     assert run_bringup(plan, ssh, rec, entry=SETTLE, clock=clock)
     assert clock.t >= 15
-    probes = [i for i, (_, c) in enumerate(ssh.calls) if "--field pose.pose.position" in c]
+    probes = [
+        i for i, (_, c) in enumerate(ssh.calls) if "--field pose.pose.position" in c
+    ]
     launch = next(i for i, (_, c) in enumerate(ssh.calls) if "run-adt4" in c)
     assert len(probes) == 2 and probes[-1] < launch
     assert "DLIO odometry stable (moved 0.05 m in 15 s" in rec.text()
@@ -1143,7 +1347,10 @@ def test_gauss_settle_in_topology():
     import yaml
 
     topo = yaml.safe_load(
-        (pathlib.Path(__file__).resolve().parents[2] / "network_diagnostics/config/topology.yaml").read_text()
+        (
+            pathlib.Path(__file__).resolve().parents[2]
+            / "network_diagnostics/config/topology.yaml"
+        ).read_text()
     )
     b = topo["machines"]["gauss"]["bringup"]
     assert b["settle_s"] == 15

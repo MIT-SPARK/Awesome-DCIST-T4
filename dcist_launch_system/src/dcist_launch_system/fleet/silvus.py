@@ -135,11 +135,20 @@ def mesh_view(details: dict, topology: dict | None = None, local_ips=()) -> dict
             ab = matrix[a].get(b) if isinstance(matrix.get(a), dict) else None
             ba = matrix[b].get(a) if isinstance(matrix.get(b), dict) else None
             cells = [c for c in (ab, ba) if c is not None]
-            if not any(c.linked or c.link_db is not None or c.rssi_db is not None for c in cells):
+            if not any(
+                c.linked or c.link_db is not None or c.rssi_db is not None
+                for c in cells
+            ):
                 continue
             best = max(cells, key=lambda c: rank[c.quality])
+
             def val(c):
-                return None if c is None else (c.rssi_db if c.rssi_db is not None else c.link_db)
+                return (
+                    None
+                    if c is None
+                    else (c.rssi_db if c.rssi_db is not None else c.link_db)
+                )
+
             links.append({
                 "a": a, "b": b,
                 "ab": val(ab), "ba": val(ba),

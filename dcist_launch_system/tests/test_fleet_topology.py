@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from dcist_launch_system.fleet import zenohd
 from dcist_launch_system.fleet.topology import (
     apply_machine_edit,
@@ -9,8 +11,6 @@ from dcist_launch_system.fleet.topology import (
     save_topology,
 )
 from dcist_launch_system.fleet_helpers import load_topology
-
-import pytest
 
 TOPO_TEXT = """---
 # Fleet topology (hand-maintained)
@@ -96,12 +96,15 @@ def test_edit_keeps_comments_extra_keys_and_other_networks(tmp_path):
         "mit_wifi": "198.51.100.42",
     }
     assert (
-        runtime["euclid"]["ip"] == "198.51.100.42" and runtime["euclid"]["user"] == "swarm"
+        runtime["euclid"]["ip"] == "198.51.100.42"
+        and runtime["euclid"]["user"] == "swarm"
     )
 
     save_topology(p, topo, a)
     text = p.read_text()
-    assert "# Fleet topology (hand-maintained)" in text and "# base station laptop" in text
+    assert (
+        "# Fleet topology (hand-maintained)" in text and "# base station laptop" in text
+    )
     assert "Smaug Jockey v2" in text
     assert "addresses" not in text and "subnet" not in text  # public stays address-free
     addrs = a.read_text()

@@ -17,4 +17,5 @@ windows:
     layout: tiled
     panes:
       - if [ -x $ADT4_ENV/sam3/bin/openset-query-server ]; then HF_HUB_OFFLINE=1 HERACLES_NEO4J_URI=bolt://${ADT4_HERACLES_IP:-localhost}:${ADT4_HERACLES_PORT:-7687} $ADT4_ENV/sam3/bin/openset-query-server
-        --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-state $HOME/adt4_output/console_live.json; else echo "openset_query not installed (run install/python_setup.bash --openset-query)"; fi
+        --port ${ADT4_OPENSET_QUERY_PORT:-8077} --conf 0.25 --compile --live-state $HOME/adt4_output/console_live.json; else echo "openset_query not installed (run install/python_setup.bash --openset-query)";
+        fi

@@ -112,7 +112,11 @@ class LaunchPlan:
 
 def is_base_only(plan: LaunchPlan) -> bool:
     """No robots, only the base station's session (restart just the base)."""
-    return not plan.robots and not plan.robots_only and bool(plan.base_station and plan.bs_session)
+    return (
+        not plan.robots
+        and not plan.robots_only
+        and bool(plan.base_station and plan.bs_session)
+    )
 
 
 def with_link_mode(topo: dict | None, mode: str | None) -> dict | None:
@@ -123,9 +127,13 @@ def with_link_mode(topo: dict | None, mode: str | None) -> dict | None:
     if topo is None or not mode:
         return topo
     if mode not in FLEET_LINK_MODES:
-        raise LaunchError(f"unknown link mode {mode!r} (one of {', '.join(FLEET_LINK_MODES)})")
+        raise LaunchError(
+            f"unknown link mode {mode!r} (one of {', '.join(FLEET_LINK_MODES)})"
+        )
     if mode == "fleetlink" and not fleetlink_base(topo):
-        raise LaunchError("fleetlink mode needs fleet_defaults.fleetlink_base in the topology")
+        raise LaunchError(
+            "fleetlink mode needs fleet_defaults.fleetlink_base in the topology"
+        )
     out = dict(topo)
     out["fleet_defaults"] = {**(topo.get("fleet_defaults") or {}), "fleet_link": mode}
     return out
@@ -154,7 +162,9 @@ class LaunchCallbacks(Protocol):
     def local_zenohd_running(self) -> bool: ...
 
 
-def session_launches_rviz(session: str | None, tmux_dir: pathlib.Path = TMUX_DIR) -> bool:
+def session_launches_rviz(
+    session: str | None, tmux_dir: pathlib.Path = TMUX_DIR
+) -> bool:
     """Whether ``session``'s tmuxp file starts RViz (``launch_rviz:=true``); the
     web-console sessions do not, so they need no namespaced RViz config.  An
     unknown session counts as starting it (the config is harmless)."""
@@ -198,7 +208,9 @@ def _launch_groups(names, launch_configs: dict) -> set[str]:
     return out
 
 
-def session_mode(session: str | None, manifest: str | pathlib.Path = MANIFEST) -> str | None:
+def session_mode(
+    session: str | None, manifest: str | pathlib.Path = MANIFEST
+) -> str | None:
     """The launch mode a robot session belongs to: ``"relocalize"``, ``"mapping"``
     or ``None`` (a base-station / planning / unknown session).
 
@@ -220,7 +232,9 @@ def session_mode(session: str | None, manifest: str | pathlib.Path = MANIFEST) -
     entry = (m.get("experiments") or {}).get(exp)
     if not isinstance(entry, dict) or cfg not in _as_list(entry.get("config")):
         return None
-    groups = _launch_groups(_as_list(entry.get("launch_config")), m.get("launch_configs") or {})
+    groups = _launch_groups(
+        _as_list(entry.get("launch_config")), m.get("launch_configs") or {}
+    )
     if "relocalize" in groups:
         return "relocalize"
     if "robot_main" in groups:
@@ -239,7 +253,9 @@ def session_modes(sessions, manifest: str | pathlib.Path = MANIFEST) -> dict[str
     return out
 
 
-def check_session_modes(plan: "LaunchPlan", runtime_config: dict, topo: dict | None) -> None:
+def check_session_modes(
+    plan: "LaunchPlan", runtime_config: dict, topo: dict | None
+) -> None:
     """Refuse a robot session of the other launch mode: a mapping session never
     loads the prior (relocalize mode), a relocalize session needs one and does not
     build a fresh map (mapping mode).  A plan without a mode, or a session that is
@@ -256,9 +272,14 @@ def check_session_modes(plan: "LaunchPlan", runtime_config: dict, topo: dict | N
             bad.append(f"{r} would run {s} (a {mode} session)")
     if bad:
         raise LaunchError(
-            f"Launch mode is {plan.mode} but " + "; ".join(bad)
+            f"Launch mode is {plan.mode} but "
+            + "; ".join(bad)
             + f". Pick a {plan.mode} session"
-            + (" (e.g. spot_relocalize-relocalize)." if plan.mode == "relocalize" else ".")
+            + (
+                " (e.g. spot_relocalize-relocalize)."
+                if plan.mode == "relocalize"
+                else "."
+            )
         )
 
 
@@ -289,7 +310,7 @@ def platform_equivalent(
     if own is None or own == platform:
         return session
     name = str(session).removesuffix(".yaml")
-    swapped = platform + name[len(own):]
+    swapped = platform + name[len(own) :]
     if swapped in (list_sessions() if available is None else available):
         return swapped
     presets = ((topo or {}).get("fleet_defaults") or {}).get("sessions") or {}
@@ -299,7 +320,9 @@ def platform_equivalent(
     return None
 
 
-def check_session_platforms(plan: "LaunchPlan", runtime_config: dict, topo: dict | None) -> None:
+def check_session_platforms(
+    plan: "LaunchPlan", runtime_config: dict, topo: dict | None
+) -> None:
     """Refuse a robot session made for another platform: a phoenix (Husky) robot
     never runs a spot_* session and a Spot never a phoenix_* one."""
     bad = []
@@ -312,7 +335,8 @@ def check_session_platforms(plan: "LaunchPlan", runtime_config: dict, topo: dict
             bad.append(f"{r} (platform {rp}) would run {s} (a {sp} session)")
     if bad:
         raise LaunchError(
-            "Session does not match the robot's platform: " + "; ".join(bad)
+            "Session does not match the robot's platform: "
+            + "; ".join(bad)
             + ". Pick a session of each robot's platform."
         )
 
@@ -408,7 +432,9 @@ def prior_dest_path(prior_path: str, output_root: str) -> str:
     return f"{output_root}/prior_{pathlib.Path(prior_path).name}"
 
 
-def fleet_env_prefix(machine_name: str, topo: dict | None, network: str | None = None) -> str:
+def fleet_env_prefix(
+    machine_name: str, topo: dict | None, network: str | None = None
+) -> str:
     """``ADT4_FLEETLINK_MODE=<mode> `` carrying this launch's link mode to ``run-adt4``.
 
     run-adt4 takes only the mode from the environment and derives
@@ -548,8 +574,14 @@ def dry_run_lines(
     if topo is not None:
         net = link_network(topo, plan.link_network, active_network)
         mode = fleet_link_mode(topo)
-        how = "robots dial the fleetlink base" if mode == "fleetlink" else "base dials the robots"
-        lines.append(f"Robot links: {net or '?'}, {mode} mode ({how}); console/ssh: {active_network or '?'}")
+        how = (
+            "robots dial the fleetlink base"
+            if mode == "fleetlink"
+            else "base dials the robots"
+        )
+        lines.append(
+            f"Robot links: {net or '?'}, {mode} mode ({how}); console/ssh: {active_network or '?'}"
+        )
     if plan.prior_path and plan.prior_source:
         exp_name = pathlib.Path(plan.prior_path).name
         for m, _ in cmds:
@@ -583,9 +615,17 @@ def dry_run_lines(
         if prior and plan.prior_source and plan.prior_source != bs["name"]:
             lines.append(f"Transfer prior map: {plan.prior_source} -> {bs['name']}")
             prior = prior_dest_path(plan.prior_path, output_root)
-        lines.append(f"Base station only: restart '{TMUX_SESSION_NAME}' on {bs['name']}")
+        lines.append(
+            f"Base station only: restart '{TMUX_SESSION_NAME}' on {bs['name']}"
+        )
         cmd = build_base_station_command(
-            bs, plan.bs_session, output_root, plan.experiment, None, topo, prior_path=prior
+            bs,
+            plan.bs_session,
+            output_root,
+            plan.experiment,
+            None,
+            topo,
+            prior_path=prior,
         )
         lines.append(f'ssh {bs["user"]}@{bs["ip"]} "{cmd}"')
     return lines
@@ -704,7 +744,9 @@ def ensure_prior_on(
                 )
                 cb.progress(target["name"], 100)
                 return path
-        same, how = _unlabelled_copy(deps, target, output_root, runs, dest_name, prior_entry)
+        same, how = _unlabelled_copy(
+            deps, target, output_root, runs, dest_name, prior_entry
+        )
         if same is not None:
             path = f"{output_root}/{same}"
             if how == "same_files":
@@ -714,7 +756,12 @@ def ensure_prior_on(
                     "copies were labelled); labelled it, no transfer",
                 )
                 _mark_origin(
-                    deps, target, path, prior_entry, prior_source, "all" if images else "none"
+                    deps,
+                    target,
+                    path,
+                    prior_entry,
+                    prior_source,
+                    "all" if images else "none",
                 )
                 cb.progress(target["name"], 100)
                 return path
@@ -763,7 +810,9 @@ def _copy_map_differs(deps, target, output_root, name, prior_entry) -> bool:
     found = scan_identities(deps, target, output_root, [name], manifest=True)
     if not found or not (prior_entry or {}).get("manifest"):
         return False
-    return pf.compare_prior(target["name"], name, prior_entry, found[0]).status == pf.NOGO
+    return (
+        pf.compare_prior(target["name"], name, prior_entry, found[0]).status == pf.NOGO
+    )
 
 
 def _unlabelled_copy(deps, target, output_root, runs, dest_name, prior_entry):
@@ -778,7 +827,10 @@ def _unlabelled_copy(deps, target, output_root, runs, dest_name, prior_entry):
     names = [
         r["name"]
         for r in runs
-        if (r.get("name") == dest_name or str(r.get("name", "")).startswith(dest_name + "__"))
+        if (
+            r.get("name") == dest_name
+            or str(r.get("name", "")).startswith(dest_name + "__")
+        )
         and not r.get("origin")
         and (r.get("identity") or {}).get("source") == "fallback"
     ]
@@ -843,7 +895,12 @@ def _transfer_prior(
         return None
     if prior_id:  # mark the copy so the next launch finds it by run_id
         _mark_origin(
-            deps, target, dest_path, prior_entry, prior_source, "all" if images else "none"
+            deps,
+            target,
+            dest_path,
+            prior_entry,
+            prior_source,
+            "all" if images else "none",
         )
     cb.progress(target["name"], 100)
     cb.log("ok", f"{target['name']}: prior map transferred to {dest_name} ({method})")
@@ -1005,14 +1062,18 @@ def run_launch(
     bs_machine = runtime_config.get(plan.base_station) if plan.base_station else None
     if bs_machine and not plan.bs_session:
         bs_machine = None
-    bs_is_robot = bool(bs_machine) and any(m["name"] == bs_machine["name"] for m, _ in cmds)
+    bs_is_robot = bool(bs_machine) and any(
+        m["name"] == bs_machine["name"] for m, _ in cmds
+    )
     bs_prior = plan.prior_path
     if bs_machine and plan.prior_path and plan.prior_source:
         if bs_machine["name"] != plan.prior_source:
             bs_prior = prior_dest_path(plan.prior_path, output_root)
 
     if plan.preflight:
-        machines = [m for m, _ in cmds] + ([bs_machine] if bs_machine and not bs_is_robot else [])
+        machines = [m for m, _ in cmds] + (
+            [bs_machine] if bs_machine and not bs_is_robot else []
+        )
         if not _run_preflight(machines, topo, output_root, bs_machine, cb, deps):
             return False
 
@@ -1037,15 +1098,23 @@ def run_launch(
                 topo, net, bs_machine["name"], robot_filter=linked
             )
             if fleet_link_mode(topo) != "fleetlink":
-                cb.log("info", f"robot links over {net}: {', '.join(endpoints) or 'none'}")
-                addrs = {r: (topo.get("machines", {}).get(r) or {}).get("addresses") or {} for r in linked}
+                cb.log(
+                    "info", f"robot links over {net}: {', '.join(endpoints) or 'none'}"
+                )
+                addrs = {
+                    r: (topo.get("machines", {}).get(r) or {}).get("addresses") or {}
+                    for r in linked
+                }
                 missing = [r for r in linked if net not in addrs[r]]
                 if missing and net != active_network:
                     # no address on the link network: keep them reachable as before
                     endpoints += deps.zenoh_endpoints(
                         topo, active_network, bs_machine["name"], robot_filter=missing
                     )
-                    cb.log("warn", f"{', '.join(missing)}: no {net} address in topology; linking over {active_network}")
+                    cb.log(
+                        "warn",
+                        f"{', '.join(missing)}: no {net} address in topology; linking over {active_network}",
+                    )
             ok, msg = deps.deploy_zenoh(bs_machine["user"], bs_machine["ip"], endpoints)
             cb.log(
                 "ok" if ok else "error",
@@ -1104,14 +1173,24 @@ def run_launch(
                 prior_entry,
             )
             if not bs_prior:
-                cb.log("error", f"ABORT: could not transfer prior to {bs_machine['name']}")
+                cb.log(
+                    "error", f"ABORT: could not transfer prior to {bs_machine['name']}"
+                )
                 return False
         if overrides:
             cmds = build_robot_commands(
                 plan, runtime_config, output_root, topo, prior_overrides=overrides
             )
         if plan.preflight:
-            loads = {m["name"]: (m, plan.prior_path if m["name"] == plan.prior_source else overrides.get(m["name"], default_dest)) for m, _ in cmds}
+            loads = {
+                m["name"]: (
+                    m,
+                    plan.prior_path
+                    if m["name"] == plan.prior_source
+                    else overrides.get(m["name"], default_dest),
+                )
+                for m, _ in cmds
+            }
             if bs_machine and not bs_is_robot and bs_prior:
                 loads[bs_machine["name"]] = (bs_machine, bs_prior)
             if not _verify_prior_maps(plan, runtime_config, loads, cb, deps):
@@ -1162,7 +1241,9 @@ ROBOT_STOP_POLL_S = 2.0
 _SHELLS = {"zsh", "bash", "sh", "fish", "dash"}
 
 
-def _stop_session_cleanly(m, cb, deps, wait_s=ROBOT_STOP_WAIT_S, poll_s=ROBOT_STOP_POLL_S) -> bool:
+def _stop_session_cleanly(
+    m, cb, deps, wait_s=ROBOT_STOP_WAIT_S, poll_s=ROBOT_STOP_POLL_S
+) -> bool:
     """Ctrl-C every pane of ``m``'s ``adt4_system`` session (a recording pane
     closes its bag), wait up to ``wait_s`` for the panes to drop back to their
     shells, then kill the session.  True once it is gone."""
@@ -1176,24 +1257,35 @@ def _stop_session_cleanly(m, cb, deps, wait_s=ROBOT_STOP_WAIT_S, poll_s=ROBOT_ST
     if rc != 0:
         cb.log("dim", f"{m['name']}: no '{s}' session running")
         return True
-    cb.log("info", f"{m['name']}: sent Ctrl-C to every pane of '{s}'; waiting up to {wait_s:.0f} s")
+    cb.log(
+        "info",
+        f"{m['name']}: sent Ctrl-C to every pane of '{s}'; waiting up to {wait_s:.0f} s",
+    )
     waited = 0.0
     busy: list[str] = []
     while waited < wait_s:
         deps.sleep(poll_s)
         waited += poll_s
         rc, out, _ = deps.ssh(
-            m["user"], m["ip"], f"tmux list-panes -s -t {s} -F '#{{pane_current_command}}'", timeout=10
+            m["user"],
+            m["ip"],
+            f"tmux list-panes -s -t {s} -F '#{{pane_current_command}}'",
+            timeout=10,
         )
         busy = [c for c in (out or "").split() if c not in _SHELLS] if rc == 0 else []
         if not busy:
             cb.log("ok", f"{m['name']}: every pane exited after {waited:.0f} s")
             break
     else:
-        cb.log("warn", f"{m['name']}: still running after {wait_s:.0f} s ({', '.join(sorted(set(busy)))}); killing")
+        cb.log(
+            "warn",
+            f"{m['name']}: still running after {wait_s:.0f} s ({', '.join(sorted(set(busy)))}); killing",
+        )
     rc, out, err = deps.ssh(m["user"], m["ip"], f"tmux kill-session -t {s}", timeout=10)
     if rc != 0 and "can't find session" not in (err or out or ""):
-        rc2, _, _ = deps.ssh(m["user"], m["ip"], f"tmux has-session -t {s} 2>/dev/null", timeout=5)
+        rc2, _, _ = deps.ssh(
+            m["user"], m["ip"], f"tmux has-session -t {s} 2>/dev/null", timeout=5
+        )
         if rc2 == 0:
             cb.log("error", f"{m['name']}: could not kill '{s}': {err or out or rc}")
             return False
@@ -1219,21 +1311,34 @@ def _move_aside_outputs(cmds, out_dir, cb, deps) -> dict | None:
     new path of the moved dir ({} when nothing moved); None when a move failed."""
     moved = {}
     for m, _ in cmds:
-        rc, out, err = deps.ssh(m["user"], m["ip"], move_aside_command(out_dir), timeout=30)
-        line = next((ln for ln in (out or "").splitlines() if ln.startswith("MOVED ")), None)
+        rc, out, err = deps.ssh(
+            m["user"], m["ip"], move_aside_command(out_dir), timeout=30
+        )
+        line = next(
+            (ln for ln in (out or "").splitlines() if ln.startswith("MOVED ")), None
+        )
         if rc != 0:
-            cb.log("error", f"{m['name']}: could not move {out_dir} aside: {err or out or rc}")
+            cb.log(
+                "error",
+                f"{m['name']}: could not move {out_dir} aside: {err or out or rc}",
+            )
             return None
         if line:
-            moved[m["name"]] = line[len("MOVED "):].strip()
-            cb.log("info", f"{m['name']}: kept the previous run: {out_dir} -> {moved[m['name']]}")
+            moved[m["name"]] = line[len("MOVED ") :].strip()
+            cb.log(
+                "info",
+                f"{m['name']}: kept the previous run: {out_dir} -> {moved[m['name']]}",
+            )
     return moved
 
 
 def _base_running(bs, cb, deps) -> bool | None:
     try:
         rc, out, _ = deps.ssh(
-            bs["user"], bs["ip"], f"tmux has-session -t {TMUX_SESSION_NAME} 2>/dev/null && echo OK", timeout=5
+            bs["user"],
+            bs["ip"],
+            f"tmux has-session -t {TMUX_SESSION_NAME} 2>/dev/null && echo OK",
+            timeout=5,
         )
     except Exception:  # noqa: BLE001
         return None
@@ -1249,7 +1354,9 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
         f"Robots only: (re)launching {', '.join(names)}; the base station is not touched",
     )
     if bs is None:
-        cb.log("warn", "No base station picked: robots need the base station for planning")
+        cb.log(
+            "warn", "No base station picked: robots need the base station for planning"
+        )
     else:
         up = _base_running(bs, cb, deps)
         if up is False:
@@ -1277,10 +1384,14 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
 
     # Phase 1: prior map on the robots (none of the base station's)
     overrides = {}
-    default_dest = prior_dest_path(plan.prior_path, output_root) if plan.prior_path else ""
+    default_dest = (
+        prior_dest_path(plan.prior_path, output_root) if plan.prior_path else ""
+    )
     if plan.prior_path and plan.prior_source:
         cb.log("heading", "Phase 1: Ensuring the prior map on the robots...")
-        prior_entry = prior_identity(plan.prior_path, plan.prior_source, runtime_config, deps)
+        prior_entry = prior_identity(
+            plan.prior_path, plan.prior_source, runtime_config, deps
+        )
         for m, _ in cmds:
             if m["name"] == plan.prior_source:
                 continue
@@ -1311,7 +1422,9 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
         )  # fmt: skip
         return (m["name"], _running_experiment(out)) if rc == 0 else None
 
-    running = dict(r for _, r in deps.parallel(check, [m for m, _ in cmds]) if isinstance(r, tuple))
+    running = dict(
+        r for _, r in deps.parallel(check, [m for m, _ in cmds]) if isinstance(r, tuple)
+    )
     if running:
         what = [f"{n} (running {e})" if e else n for n, e in running.items()]
         answer = cb.confirm(
@@ -1331,7 +1444,8 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
             cb.log("error", "Launch aborted by user.")
             return False
         stopped = deps.parallel(
-            lambda m: _stop_session_cleanly(m, cb, deps), [m for m, _ in cmds if m["name"] in running]
+            lambda m: _stop_session_cleanly(m, cb, deps),
+            [m for m, _ in cmds if m["name"] in running],
         )
         failed = [m["name"] for m, ok in stopped if ok is not True]
         if failed:
@@ -1345,11 +1459,15 @@ def _run_robots_only(plan, cmds, topo, runtime_config, output_root, cb, deps) ->
         return False
     for name, new in moved.items():
         # a prior inside the moved dir (a robot relocalizing on its own last run)
-        rprior = overrides.get(name) or (plan.prior_path if name == plan.prior_source else default_dest)
+        rprior = overrides.get(name) or (
+            plan.prior_path if name == plan.prior_source else default_dest
+        )
         if rprior and (rprior == out_dir or rprior.startswith(out_dir + "/")):
-            overrides[name] = new + rprior[len(out_dir):]
+            overrides[name] = new + rprior[len(out_dir) :]
     if overrides:
-        cmds = build_robot_commands(plan, runtime_config, output_root, topo, prior_overrides=overrides)
+        cmds = build_robot_commands(
+            plan, runtime_config, output_root, topo, prior_overrides=overrides
+        )
 
     cb.log("heading", "Phase 2: Launching robots...")
     all_ok = _launch_robots(cmds, topo, cb, deps)
@@ -1378,7 +1496,11 @@ BRINGUP_PROBE_S = 8
 def robot_bringup(topo: dict | None, name: str) -> dict | None:
     """``name``'s platform bring-up entry from the topology, or None."""
     b = (((topo or {}).get("machines") or {}).get(name) or {}).get("bringup")
-    return b if isinstance(b, dict) and (b.get("command") or b.get("ready_topic")) else None
+    return (
+        b
+        if isinstance(b, dict) and (b.get("command") or b.get("ready_topic"))
+        else None
+    )
 
 
 def bringup_probe_command(topic: str, probe_s: int = BRINGUP_PROBE_S) -> str:
@@ -1412,7 +1534,9 @@ def parse_position(out: str) -> tuple[float, float, float] | None:
 
 
 def _position(m, topic, deps):
-    _, out, _ = deps.ssh(m["user"], m["ip"], bringup_position_command(topic), timeout=BRINGUP_PROBE_S + 5)
+    _, out, _ = deps.ssh(
+        m["user"], m["ip"], bringup_position_command(topic), timeout=BRINGUP_PROBE_S + 5
+    )
     return parse_position(out)
 
 
@@ -1425,7 +1549,10 @@ def _settle(m: dict, b: dict, cb, deps) -> str:
     what = b.get("ready_desc") or topic
     max_move = float(b.get("settle_max_move_m") or SETTLE_MAX_MOVE_M)
     max_z = float(b.get("settle_max_z_m") or SETTLE_MAX_Z_M)
-    cb.log("info", f"{name}: letting {what} settle for {int(settle_s)} s; keep {name} still")
+    cb.log(
+        "info",
+        f"{name}: letting {what} settle for {int(settle_s)} s; keep {name} still",
+    )
     p0 = _position(m, topic, deps)
     start = deps.clock()
     while deps.clock() - start < settle_s:
@@ -1437,7 +1564,10 @@ def _settle(m: dict, b: dict, cb, deps) -> str:
     move = sum((a - c) ** 2 for a, c in zip(p0, p1)) ** 0.5
     txt = f"moved {move:.2f} m in {int(settle_s)} s, z {p1[2]:+.2f} m"
     if move > max_move or abs(p1[2]) > max_z:
-        cb.log("warn", f"{name}: {what} not stable: {txt} (limits {max_move} m, |z| {max_z} m)")
+        cb.log(
+            "warn",
+            f"{name}: {what} not stable: {txt} (limits {max_move} m, |z| {max_z} m)",
+        )
         return "unstable", f"{what} not stable while still: {txt}"
     cb.log("ok", f"{name}: {what} stable ({txt})")
     return "ready", ""
@@ -1482,7 +1612,10 @@ def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
         running = False
         if session:
             rc, _, _ = deps.ssh(
-                m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session)} 2>/dev/null", timeout=5
+                m["user"],
+                m["ip"],
+                f"tmux has-session -t {shlex.quote(session)} 2>/dev/null",
+                timeout=5,
             )
             running = rc == 0
         if running:
@@ -1493,11 +1626,17 @@ def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
             if rc != 0 or (
                 session
                 and deps.ssh(
-                    m["user"], m["ip"], f"tmux has-session -t {shlex.quote(session)} 2>/dev/null", timeout=5
+                    m["user"],
+                    m["ip"],
+                    f"tmux has-session -t {shlex.quote(session)} 2>/dev/null",
+                    timeout=5,
                 )[0]
                 != 0
             ):
-                cb.log("error", f"{name}: could not start {session or 'platform stack'} (rc={rc}) {err}")
+                cb.log(
+                    "error",
+                    f"{name}: could not start {session or 'platform stack'} (rc={rc}) {err}",
+                )
                 return "failed", ""
             started = True
     topic = b.get("ready_topic")
@@ -1509,14 +1648,21 @@ def _bring_up_one(m: dict, b: dict, cb, deps) -> str:
     start = deps.clock()
     next_note = start + 15.0
     while True:
-        rc, _, _ = deps.ssh(m["user"], m["ip"], bringup_probe_command(topic), timeout=BRINGUP_PROBE_S + 5)
+        rc, _, _ = deps.ssh(
+            m["user"],
+            m["ip"],
+            bringup_probe_command(topic),
+            timeout=BRINGUP_PROBE_S + 5,
+        )
         now = deps.clock()
         if rc == 0:
             cb.log("ok", f"{name}: {what} is up ({int(now - start)} s)")
             if b.get("settle_s") and started:
                 return _settle(m, b, cb, deps)
             if b.get("settle_s"):
-                cb.log("dim", f"{name}: '{session}' was already running; no settle wait")
+                cb.log(
+                    "dim", f"{name}: '{session}' was already running; no settle wait"
+                )
             return "ready", ""
         if now - start >= timeout_s:
             return "timeout", ""
@@ -1561,7 +1707,11 @@ def _bring_up_platforms(cmds, topo, cb, deps) -> set[str]:
                 message=f"{m['name']}: {why}.\n\nLaunch ADT4 on {m['name']} anyway?",
                 yes_label="Yes, launch anyway",
                 no_label=f"No, skip {m['name']}",
-                detail={"machine": m["name"], "result": res, "topic": b.get("ready_topic")},
+                detail={
+                    "machine": m["name"],
+                    "result": res,
+                    "topic": b.get("ready_topic"),
+                },
             )
         )
         if answer:
@@ -1594,7 +1744,10 @@ _CHECK_LEVEL = {"go": "ok", "info": "dim", "warn": "warn", "nogo": "error"}
 
 def _log_checks(checks, cb) -> None:
     for c in checks:
-        cb.log(_CHECK_LEVEL.get(c.status, "info"), f"[{c.status.upper()}] {c.machine} / {c.name}: {c.detail}")
+        cb.log(
+            _CHECK_LEVEL.get(c.status, "info"),
+            f"[{c.status.upper()}] {c.machine} / {c.name}: {c.detail}",
+        )
 
 
 def _confirm_nogos(checks, stage, cb) -> bool:
@@ -1609,7 +1762,9 @@ def _confirm_nogos(checks, stage, cb) -> bool:
     if not answer:
         cb.log("error", f"Launch aborted: {stage} NO-GO not confirmed.")
         return False
-    cb.log("warn", f"{stage}: launching despite {len(issues)} NO-GO issue(s) (confirmed).")
+    cb.log(
+        "warn", f"{stage}: launching despite {len(issues)} NO-GO issue(s) (confirmed)."
+    )
     return True
 
 
@@ -1617,7 +1772,13 @@ def _run_preflight(machines, topo, output_root, bs_machine, cb, deps) -> bool:
     from dcist_launch_system.fleet import preflight as pf
 
     cb.log("heading", "Preflight: checking every machine...")
-    checks = pf.run_checks(machines, topo, output_root, deps, reference=bs_machine["name"] if bs_machine else None)
+    checks = pf.run_checks(
+        machines,
+        topo,
+        output_root,
+        deps,
+        reference=bs_machine["name"] if bs_machine else None,
+    )
     _log_checks(checks, cb)
     return _confirm_nogos(checks, "Preflight", cb)
 

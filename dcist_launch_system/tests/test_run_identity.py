@@ -6,12 +6,11 @@ import pathlib
 import subprocess
 
 import pytest
+from test_launch_workflow import OUT, RUNTIME, TOPO, FakeSsh, Recorder, make_deps
 
 from dcist_launch_system.fleet import run_identity as ri
 from dcist_launch_system.fleet import run_scan
 from dcist_launch_system.fleet.launch_workflow import LaunchPlan, run_launch
-
-from test_launch_workflow import OUT, RUNTIME, TOPO, FakeSsh, Recorder, make_deps
 
 
 def make_run(root: pathlib.Path, name: str) -> pathlib.Path:
@@ -28,7 +27,9 @@ def make_run(root: pathlib.Path, name: str) -> pathlib.Path:
 
 def test_write_run_info_creates_once_and_never_overwrites(tmp_path):
     run = tmp_path / "map_20261019_2308"
-    info = ri.write_run_info(run, robot="hamilton", platform="smaug", session="spot-default")
+    info = ri.write_run_info(
+        run, robot="hamilton", platform="smaug", session="spot-default"
+    )
     assert (run / "run_info.json").is_file()
     assert info["experiment"] == "map_20261019_2308" and info["robot"] == "hamilton"
     assert info["platform"] == "smaug" and info["session"] == "spot-default"
@@ -85,20 +86,32 @@ def test_scan_identity_run_info_origin_and_fallback(tmp_path):
     info = ri.write_run_info(a, robot="hamilton")
     b = make_run(tmp_path, "legacy")
     c = make_run(tmp_path, "copy__hamilton")
-    (c / ri.ORIGIN).write_text(json.dumps({"run_id": "abc", "source_machine": "hamilton"}))
+    (c / ri.ORIGIN).write_text(
+        json.dumps({"run_id": "abc", "source_machine": "hamilton"})
+    )
 
     ea = run_scan.scan_run(str(a), measure=False)
-    assert ea["identity"]["run_id"] == info["run_id"] and ea["identity"]["source"] == "run_info"
+    assert (
+        ea["identity"]["run_id"] == info["run_id"]
+        and ea["identity"]["source"] == "run_info"
+    )
     eb = run_scan.scan_run(str(b), measure=False)
-    assert eb["identity"]["source"] == "fallback" and eb["identity"]["run_id"].startswith("legacy-")
+    assert eb["identity"]["source"] == "fallback" and eb["identity"][
+        "run_id"
+    ].startswith("legacy-")
     # stable across scans, nothing written
-    assert run_scan.scan_run(str(b), measure=False)["identity"]["run_id"] == eb["identity"]["run_id"]
+    assert (
+        run_scan.scan_run(str(b), measure=False)["identity"]["run_id"]
+        == eb["identity"]["run_id"]
+    )
     assert sorted(os.listdir(b)) == ["hydra", "roman"]
     ec = run_scan.scan_run(str(c), measure=False)
     assert ec["identity"] == {"run_id": "abc", "source": "origin"}
     assert ec["origin"]["source_machine"] == "hamilton"
     light = run_scan.scan_root(str(tmp_path), light=True)
-    assert {r["name"]: r["identity"]["run_id"] for r in light}["with_info"] == info["run_id"]
+    assert {r["name"]: r["identity"]["run_id"] for r in light}["with_info"] == info[
+        "run_id"
+    ]
     assert "manifest" not in light[0]
 
 
@@ -111,7 +124,16 @@ def test_manifest_survives_rsync_and_ignores_store_and_origin(tmp_path):
     dst = tmp_path / "base" / "map_x__hamilton"
     dst.parent.mkdir()
     subprocess.run(
-        ["rsync", "-a", "--exclude", "recorded_data/", "--exclude", "/image_store/", f"{src}/", f"{dst}/"],
+        [
+            "rsync",
+            "-a",
+            "--exclude",
+            "recorded_data/",
+            "--exclude",
+            "/image_store/",
+            f"{src}/",
+            f"{dst}/",
+        ],
         check=True,
     )
     (dst / ri.ORIGIN).write_text("{}")
@@ -125,7 +147,9 @@ def test_manifest_survives_rsync_and_ignores_store_and_origin(tmp_path):
 
 
 def test_copy_name_appends_robot_unless_named():
-    assert ri.copy_name("map_20261019_2308", "hamilton") == "map_20261019_2308__hamilton"
+    assert (
+        ri.copy_name("map_20261019_2308", "hamilton") == "map_20261019_2308__hamilton"
+    )
     assert ri.copy_name("hamilton_floor6", "hamilton") == "hamilton_floor6"
     assert ri.copy_name("map_0730-Hamilton", "hamilton") == "map_0730-Hamilton"
     assert ri.copy_name("hamiltonian_test", "hamilton") == "hamiltonian_test__hamilton"
@@ -146,7 +170,15 @@ def test_choose_dest_name_collision_suffix():
 # --- pairing -----------------------------------------------------------------
 
 
-def _entry(name, rid, digest="d1", store="5:1:keyframe=5", path=None, origin=None, source="run_info"):
+def _entry(
+    name,
+    rid,
+    digest="d1",
+    store="5:1:keyframe=5",
+    path=None,
+    origin=None,
+    source="run_info",
+):
     return {
         "name": name,
         "path": path or f"~/adt4_output/{name}",
@@ -159,7 +191,13 @@ def _entry(name, rid, digest="d1", store="5:1:keyframe=5", path=None, origin=Non
     }
 
 
-def _origin(rid, digest="d1", store="5:1:keyframe=5", images="keyframes", path="/home/swarm/adt4_output/map_x"):
+def _origin(
+    rid,
+    digest="d1",
+    store="5:1:keyframe=5",
+    images="keyframes",
+    path="/home/swarm/adt4_output/map_x",
+):
     return {
         "run_id": rid,
         "source_machine": "hamilton",
@@ -182,14 +220,27 @@ def test_pair_states_in_sync_outdated_not_copied():
     willow = [
         _entry("map_x", "W"),  # the base's own run of the same experiment
         _entry("map_x__hamilton", "x", origin=_origin("A"), source="origin"),
-        _entry("map_y__hamilton", "x", origin=_origin("B", digest="d2"), source="origin"),
+        _entry(
+            "map_y__hamilton", "x", origin=_origin("B", digest="d2"), source="origin"
+        ),
         _entry("map_s__hamilton", "x", origin=_origin("D"), source="origin"),
-        _entry("from_offline__sequoia", "Q", origin=dict(_origin("Q"), source_machine="sequoia"), source="origin"),
+        _entry(
+            "from_offline__sequoia",
+            "Q",
+            origin=dict(_origin("Q"), source_machine="sequoia"),
+            source="origin",
+        ),
     ]
-    machines = {"hamilton": hamilton, "willow": willow, "gauss": {"error": "unreachable"}}
+    machines = {
+        "hamilton": hamilton,
+        "willow": willow,
+        "gauss": {"error": "unreachable"},
+    }
     ri.pair_copies(machines, "willow")
     st = {e["name"]: e["copy"] for e in hamilton}
-    assert st["map_x"]["state"] == "in_sync" and st["map_x"]["name"] == "map_x__hamilton"
+    assert (
+        st["map_x"]["state"] == "in_sync" and st["map_x"]["name"] == "map_x__hamilton"
+    )
     assert st["map_x"]["matched_by"] == "run_id"
     assert st["map_y"]["state"] == "outdated"  # robot changed files since the copy
     assert st["map_s"]["state"] == "outdated"  # robot added frames to its image store
@@ -210,10 +261,18 @@ def test_pair_by_origin_path_and_legacy_contents():
         # copy made before run ids: same name, own fallback id, identical files
         _entry("old_run", "legacy-9", source="fallback"),
         # origin written with a different id (fallback changed) but same source path
-        _entry("renamed_copy", "zzz", origin=_origin("zzz", path="/home/swarm/adt4_output/renamed"), source="origin"),
+        _entry(
+            "renamed_copy",
+            "zzz",
+            origin=_origin("zzz", path="/home/swarm/adt4_output/renamed"),
+            source="origin",
+        ),
     ]
     ri.pair_copies({"hamilton": hamilton, "willow": willow}, "willow")
-    assert hamilton[0]["copy"]["state"] == "in_sync" and hamilton[0]["copy"]["matched_by"] == "contents"
+    assert (
+        hamilton[0]["copy"]["state"] == "in_sync"
+        and hamilton[0]["copy"]["matched_by"] == "contents"
+    )
     assert hamilton[1]["copy"]["matched_by"] == "origin"
     assert willow[0]["copy_of"]["machine"] == "hamilton"
 
@@ -223,7 +282,9 @@ def test_store_needs_send():
     assert ri.store_needs_send(src, None, "keyframes", "fast")
     assert not ri.store_needs_send(src, _origin("A"), "keyframes", "fast")
     assert ri.store_needs_send(src, _origin("A"), "all", "fast")
-    assert ri.store_needs_send(dict(src, store_fingerprint="6:1:keyframe=6"), _origin("A"), "keyframes", "fast")
+    assert ri.store_needs_send(
+        dict(src, store_fingerprint="6:1:keyframe=6"), _origin("A"), "keyframes", "fast"
+    )
     assert not ri.store_needs_send(src, None, "none", "none")
 
 
@@ -231,7 +292,11 @@ def test_make_origin_fields():
     src = dict(_entry("map_x", "A"), size_bytes=10, signature=5.0)
     o = ri.make_origin(src, "hamilton", "keyframes", "fast")
     assert o["run_id"] == "A" and o["source_path"] == "/home/swarm/adt4_output/map_x"
-    assert o["manifest_digest"] == "d1" and o["source_size"] == 10 and o["robot"] == "hamilton"
+    assert (
+        o["manifest_digest"] == "d1"
+        and o["source_size"] == 10
+        and o["robot"] == "hamilton"
+    )
     o2 = ri.make_origin(src, "hamilton", "keyframes", "fast", previous=o)
     assert o2["first_transferred_at"] == o["transferred_at"]
 
@@ -273,7 +338,12 @@ def _deps(ssh, rsync, listings):
 
 
 def _ident(name, rid, subdirs=("hydra", "roman"), origin=None):
-    return {"name": name, "subdirs": list(subdirs), "identity": {"run_id": rid}, "origin": origin}
+    return {
+        "name": name,
+        "subdirs": list(subdirs),
+        "identity": {"run_id": rid},
+        "origin": origin,
+    }
 
 
 def test_launch_prior_phase_skips_machines_with_same_run_id():
@@ -294,14 +364,19 @@ def test_launch_prior_phase_skips_machines_with_same_run_id():
         runtime_config=RUNTIME,
         output_root=OUT,
         callbacks=rec,
-        deps=_deps(ssh, lambda *a, **k: rsyncs.append(a) or (True, "direct", "ok"), listings),
+        deps=_deps(
+            ssh, lambda *a, **k: rsyncs.append(a) or (True, "direct", "ok"), listings
+        ),
     )
     assert ok, rec.text()
     assert len(rsyncs) == 1 and rsyncs[0][5] == f"{OUT}/prior_map_x__hamilton__2"
     assert "smaug: prior run already present as map_x" in rec.text()
     assert "holds a different run" in rec.text()
     launch = {ip: c for ip, c in ssh.calls if "run-adt4" in c}
-    assert f"-p {OUT}/map_x " in launch["10.0.0.1"].replace("'", "") or "map_x -y" in launch["10.0.0.1"]
+    assert (
+        f"-p {OUT}/map_x " in launch["10.0.0.1"].replace("'", "")
+        or "map_x -y" in launch["10.0.0.1"]
+    )
     assert "prior_map_x__hamilton__2" in launch["10.0.0.2"]
     # the new copy on topaz was marked with the prior's run id
     marks = [c for ip, c in ssh.calls if ip == "10.0.0.2" and ri.ORIGIN in c]
@@ -368,14 +443,19 @@ def _launch(listings, rsyncs, ssh=None):
         runtime_config=RUNTIME,
         output_root=OUT,
         callbacks=rec,
-        deps=_deps(ssh, lambda *a, **k: rsyncs.append(a) or (True, "direct", "ok"), listings),
+        deps=_deps(
+            ssh, lambda *a, **k: rsyncs.append(a) or (True, "direct", "ok"), listings
+        ),
     )
     return ok, rec, ssh
 
 
 def test_unlabelled_copy_with_the_same_files_is_labelled_not_copied():
     # copied before copies recorded their origin: same files, own fallback id
-    listings = {"willow": [_source()], "topaz": [_legacy("prior_map_x__hamilton", "D", "100:5", "legacy-T")]}
+    listings = {
+        "willow": [_source()],
+        "topaz": [_legacy("prior_map_x__hamilton", "D", "100:5", "legacy-T")],
+    }
     rsyncs = []
     ok, rec, ssh = _launch(listings, rsyncs)
     assert ok, rec.text()
@@ -388,7 +468,10 @@ def test_unlabelled_copy_with_the_same_files_is_labelled_not_copied():
 
 def test_older_unlabelled_copy_is_updated_in_place():
     # same saved scene graph, other files differ (e.g. the source gained files since)
-    listings = {"willow": [_source()], "topaz": [_legacy("prior_map_x__hamilton", "OLD", "100:5", "legacy-T")]}
+    listings = {
+        "willow": [_source()],
+        "topaz": [_legacy("prior_map_x__hamilton", "OLD", "100:5", "legacy-T")],
+    }
     rsyncs = []
     ok, rec, ssh = _launch(listings, rsyncs)
     assert ok, rec.text()
@@ -398,7 +481,10 @@ def test_older_unlabelled_copy_is_updated_in_place():
 
 
 def test_unlabelled_dir_of_another_run_still_gets_a_new_name():
-    listings = {"willow": [_source()], "topaz": [_legacy("prior_map_x__hamilton", "OTHER", "7:7", "legacy-T")]}
+    listings = {
+        "willow": [_source()],
+        "topaz": [_legacy("prior_map_x__hamilton", "OTHER", "7:7", "legacy-T")],
+    }
     rsyncs = []
     ok, rec, _ = _launch(listings, rsyncs)
     assert ok and len(rsyncs) == 1 and rsyncs[0][5] == f"{OUT}/prior_map_x__hamilton__2"
@@ -410,7 +496,8 @@ def test_copies_record_the_source_manifest():
     rsyncs = []
     ok, rec, ssh = _launch(listings, rsyncs)
     mark = [c for ip, c in ssh.calls if ip == "10.0.0.2" and ri.ORIGIN in c][0]
-    import base64, re as _re
+    import base64
+    import re as _re
 
     blob = _re.search(r"echo (\S+) \| base64 -d", mark).group(1)
     origin = json.loads(base64.b64decode(blob))

@@ -1634,14 +1634,22 @@ def get_silvus_radio_details(topology):
                 )  # fmt: skip
                 return
             try:
-                resp_data, via = silvus_rpc(addr, _SILVUS_BATCH, 3.0, iface), f"{addr}%{iface}"
+                resp_data, via = (
+                    silvus_rpc(addr, _SILVUS_BATCH, 3.0, iface),
+                    f"{addr}%{iface}",
+                )
             except Exception as e:
                 attempts.append(f"{addr}%{iface}: {e}")
 
         # a radio already found on the dongle is asked there first (its mgmt IP
         # is usually what failed), else the mgmt IP first
-        known = topo_node_id is not None and int(topo_node_id) in _SILVUS_LL_CACHE["by_node"]
-        order = ([via_dongle] if topo_node_id is not None else []) + ([via_mgmt] if mgmt_ip else [])
+        known = (
+            topo_node_id is not None
+            and int(topo_node_id) in _SILVUS_LL_CACHE["by_node"]
+        )
+        order = ([via_dongle] if topo_node_id is not None else []) + (
+            [via_mgmt] if mgmt_ip else []
+        )
         if not known:
             order.reverse()
         for step in order:
@@ -1685,8 +1693,10 @@ def get_silvus_radio_details(topology):
             "snr_stats": parsed.get(6),
             "link_quality": parse_network_status(parsed.get(7)),
             "clients": [
-                c for c in parsed.get(8) or []
-                if isinstance(c, dict) and not str(c.get("mac", "")).lower().startswith(SILVUS_OUI)
+                c
+                for c in parsed.get(8) or []
+                if isinstance(c, dict)
+                and not str(c.get("mac", "")).lower().startswith(SILVUS_OUI)
             ],  # fmt: skip
             "error": None,
         }
@@ -1871,6 +1881,7 @@ def run_iperf3_test(
 
 # --- fleet core helpers (from the 2026-11-10 robot-test branch) ---
 
+
 def platform_of(machine):
     """A topology machine's platform: ``platform_type``, missing → spot, husky → phoenix.
 
@@ -1974,7 +1985,7 @@ def _ros_battery_cmd(topic, field, scale, state):
         "source ~/dcist_ws/install/setup.bash 2>/dev/null; "
         f"timeout 4 ros2 topic echo {shlex.quote(topic)} --once "
         "--no-daemon 2>/dev/null | "
-        f"python3 -c \"$(echo {script} | base64 -d)\" "
+        f'python3 -c "$(echo {script} | base64 -d)" '
         f"{shlex.quote(field)} {scale} {shlex.quote(state)} 2>/dev/null) || echo 'N/A'"
     )
 
@@ -2126,7 +2137,10 @@ def silvus_interface(topology, network="silvus"):
     subnet = ipaddress.ip_network(subnet_str, strict=False)
     try:
         out = subprocess.run(
-            ["ip", "-o", "-4", "addr", "show"], capture_output=True, text=True, timeout=5
+            ["ip", "-o", "-4", "addr", "show"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         ).stdout
     except Exception:
         return None
@@ -2211,7 +2225,9 @@ def _silvus_link_local_by_node(topology, refresh=False):
     if iface:
         for addr in silvus_link_locals(iface):
             try:
-                r = silvus_rpc(addr, {"jsonrpc": "2.0", "method": "nodeid", "id": 1}, 2.0, iface)
+                r = silvus_rpc(
+                    addr, {"jsonrpc": "2.0", "method": "nodeid", "id": 1}, 2.0, iface
+                )
                 by_node[int(r["result"][0])] = addr
             except Exception:
                 pass
@@ -2247,4 +2263,3 @@ _SILVUS_BATCH = [
     {"jsonrpc": "2.0", "method": "network_status", "params": [], "id": 7},
     {"jsonrpc": "2.0", "method": "read_client_list", "params": [], "id": 8},
 ]
-

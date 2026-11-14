@@ -132,7 +132,9 @@ def _connect_ro(db):
     last = None
     for opts in ("mode=ro", "mode=ro&immutable=1"):
         try:
-            conn = sqlite3.connect("file:%s?%s" % (quote(db), opts), uri=True, timeout=2)
+            conn = sqlite3.connect(
+                "file:%s?%s" % (quote(db), opts), uri=True, timeout=2
+            )
             conn.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone()
             return conn
         except sqlite3.Error as e:
@@ -156,7 +158,9 @@ def raw_log_info(run):
     zips = tracks = 0
     try:
         if kf_dir:
-            zips = sum(1 for e in os.scandir(kf_dir) if e.name.endswith(".zip") and e.is_file())
+            zips = sum(
+                1 for e in os.scandir(kf_dir) if e.name.endswith(".zip") and e.is_file()
+            )
         if tr_dir:
             tracks = sum(
                 1 for e in os.scandir(tr_dir)
@@ -164,13 +168,17 @@ def raw_log_info(run):
             )  # fmt: skip
     except OSError:
         pass
-    events = os.path.isdir(os.path.join(run, "events")) or os.path.isdir(os.path.join(run, "hydra", "events"))
+    events = os.path.isdir(os.path.join(run, "events")) or os.path.isdir(
+        os.path.join(run, "hydra", "events")
+    )
     return {"keyframe_archives": zips, "tracks": tracks, "events": events}
 
 
 def _tail_state(conn):
     try:
-        row = conn.execute("SELECT value FROM meta WHERE key = 'indexer.tail'").fetchone()
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'indexer.tail'"
+        ).fetchone()
         return json.loads(row[0]) if row else None
     except (sqlite3.Error, ValueError):
         return None
@@ -191,18 +199,28 @@ def store_info(store_dir, run=None):
             return None
         return {"indexed": False, "raw": raw, "frames": {}, "frames_total": 0, "observations": 0,
                 "sensors": 0, "check": {"ok": True, "problems": []}}  # fmt: skip
-    info = {"frames": {}, "frames_total": 0, "observations": 0, "sensors": 0, "indexed": True}
+    info = {
+        "frames": {},
+        "frames_total": 0,
+        "observations": 0,
+        "sensors": 0,
+        "indexed": True,
+    }
     if raw is not None:
         info["raw"] = raw
     problems = []
     try:
         conn = _connect_ro(db)
     except sqlite3.Error as e:
-        return dict(info, check={"ok": False, "problems": ["cannot open index: %s" % e]})
+        return dict(
+            info, check={"ok": False, "problems": ["cannot open index: %s" % e]}
+        )
     try:
         one = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
         try:
-            version = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+            version = conn.execute(
+                "SELECT value FROM meta WHERE key = 'schema_version'"
+            ).fetchone()
             info["schema_version"] = version[0] if version else None
             if not version:
                 problems.append("no schema_version")
@@ -219,7 +237,9 @@ def store_info(store_dir, run=None):
             )
         tail = _tail_state(conn)
         if tail:
-            info["tail"] = {k: tail.get(k) for k in ("live", "final", "heartbeat_wall", "session")}
+            info["tail"] = {
+                k: tail.get(k) for k in ("live", "final", "heartbeat_wall", "session")
+            }
         info["observations"] = one("SELECT COUNT(*) FROM observations")
         info["sensors"] = one("SELECT COUNT(*) FROM sensors")
         orphans = one(
@@ -227,7 +247,9 @@ def store_info(store_dir, run=None):
         )
         if orphans:
             problems.append("%d frames without sensor" % orphans)
-        unanchored = one("SELECT COUNT(*) FROM frames WHERE kind = 0 AND anchor_node_id IS NULL")
+        unanchored = one(
+            "SELECT COUNT(*) FROM frames WHERE kind = 0 AND anchor_node_id IS NULL"
+        )
         info["keyframes_unanchored"] = unanchored
         if unanchored:
             problems.append("%d keyframes unanchored" % unanchored)
@@ -239,9 +261,13 @@ def store_info(store_dir, run=None):
                 "ORDER BY frame_id %s LIMIT %d" % (order, CHECK_SAMPLES)
             ).fetchall()
         paths = {p for row in refs for p in row if p}
-        missing = sorted(p for p in paths if not os.path.exists(os.path.join(store_dir, p)))
+        missing = sorted(
+            p for p in paths if not os.path.exists(os.path.join(store_dir, p))
+        )
         if missing:
-            problems.append("%d/%d sampled image files missing" % (len(missing), len(paths)))
+            problems.append(
+                "%d/%d sampled image files missing" % (len(missing), len(paths))
+            )
         info["sampled_files"] = len(paths)
     except sqlite3.Error as e:
         problems.append("query failed: %s" % e)
@@ -295,7 +321,9 @@ def fallback_identity(run, host=None):
             if born:
                 break
     if not born:
-        born = _mtime(os.path.join(run, "hydra", "hydra_config.yaml")) or _mtime(run) or 0
+        born = (
+            _mtime(os.path.join(run, "hydra", "hydra_config.yaml")) or _mtime(run) or 0
+        )
     key = "%s|%s|%d" % (host, real, int(born))
     return {
         "run_id": "legacy-" + hashlib.sha1(key.encode()).hexdigest()[:20],
@@ -349,14 +377,26 @@ def manifest(run):
             rows.append("%s\t%d\t%d" % (rel, st.st_size, int(st.st_mtime)))
             newest = max(newest, st.st_mtime)
         if len(rows) > MANIFEST_MAX_FILES:
-            return {"digest": None, "map_digest": None, "files": len(rows), "newest": round(newest, 3)}
+            return {
+                "digest": None,
+                "map_digest": None,
+                "files": len(rows),
+                "newest": round(newest, 3),
+            }
     rows.sort()
     digest = hashlib.sha1("\n".join(rows).encode()).hexdigest()
     # the map alone (what a relocalize loads as the prior), so a copy that gained or
     # lost unrelated files still shows the same map
     map_rows = [r for r in rows if r.startswith(MAP_DIRS)]
-    map_digest = hashlib.sha1("\n".join(map_rows).encode()).hexdigest() if map_rows else None
-    return {"digest": digest, "map_digest": map_digest, "files": len(rows), "newest": round(newest, 3)}
+    map_digest = (
+        hashlib.sha1("\n".join(map_rows).encode()).hexdigest() if map_rows else None
+    )
+    return {
+        "digest": digest,
+        "map_digest": map_digest,
+        "files": len(rows),
+        "newest": round(newest, 3),
+    }
 
 
 def store_fingerprint(store):
@@ -393,11 +433,19 @@ def scan_identity(run, with_manifest=False):
     """
     name = os.path.basename(run.rstrip("/"))
     try:
-        subdirs = sorted(e.name for e in os.scandir(run) if e.is_dir(follow_symlinks=False))
+        subdirs = sorted(
+            e.name for e in os.scandir(run) if e.is_dir(follow_symlinks=False)
+        )
     except OSError:
         subdirs = []
     ident, origin = run_identity(run)
-    entry = {"name": name, "path": run, "subdirs": subdirs, "identity": ident, "origin": origin}
+    entry = {
+        "name": name,
+        "path": run,
+        "subdirs": subdirs,
+        "identity": ident,
+        "origin": origin,
+    }
     if with_manifest:
         entry["manifest"] = manifest(run)
         entry["dsg_sig"] = dsg_signature(run)
@@ -437,7 +485,9 @@ def scan_run(run, known=None, measure=True, timeout=None):
     if os.path.isdir(sessions):
         try:
             entry["sessions"] = sum(
-                1 for s in os.listdir(sessions) if os.path.isdir(os.path.join(sessions, s, STORE_DIR))
+                1
+                for s in os.listdir(sessions)
+                if os.path.isdir(os.path.join(sessions, s, STORE_DIR))
             )
         except OSError:
             entry["sessions"] = 0
@@ -460,7 +510,9 @@ def scan_run(run, known=None, measure=True, timeout=None):
     return entry
 
 
-def scan_root(root, known=None, budget=None, only=None, extra=(), light=False, with_manifest=False):
+def scan_root(
+    root, known=None, budget=None, only=None, extra=(), light=False, with_manifest=False
+):
     """Every run directory under ``root`` (plus ``extra`` absolute run dirs).
 
     ``light``: identity only (``scan_identity``), for launch-time prior lookups.
@@ -469,7 +521,9 @@ def scan_root(root, known=None, budget=None, only=None, extra=(), light=False, w
     runs = []
     try:
         runs = sorted(
-            e.path for e in os.scandir(root) if e.is_dir() and not e.name.startswith(".")
+            e.path
+            for e in os.scandir(root)
+            if e.is_dir() and not e.name.startswith(".")
         )
     except OSError:
         pass
@@ -487,14 +541,28 @@ def scan_root(root, known=None, budget=None, only=None, extra=(), light=False, w
             try:
                 out.append(scan_identity(run, with_manifest))
             except Exception as e:  # noqa: BLE001
-                out.append({"name": os.path.basename(run), "path": run, "subdirs": [], "error": str(e)})
+                out.append(
+                    {
+                        "name": os.path.basename(run),
+                        "path": run,
+                        "subdirs": [],
+                        "error": str(e),
+                    }
+                )
             continue
         left = None if deadline is None else deadline - time.monotonic()
         measure = left is None or left > 0.05
         try:
             out.append(scan_run(run, known, measure=measure, timeout=left))
         except Exception as e:  # noqa: BLE001 - one bad run must not hide the rest
-            out.append({"name": os.path.basename(run), "path": run, "subdirs": [], "error": str(e)})
+            out.append(
+                {
+                    "name": os.path.basename(run),
+                    "path": run,
+                    "subdirs": [],
+                    "error": str(e),
+                }
+            )
     return out
 
 

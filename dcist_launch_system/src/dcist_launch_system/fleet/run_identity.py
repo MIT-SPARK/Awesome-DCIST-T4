@@ -235,7 +235,9 @@ def make_origin(
     return origin
 
 
-def store_needs_send(source_entry: dict, origin: dict | None, images: str, compression: str) -> bool:
+def store_needs_send(
+    source_entry: dict, origin: dict | None, images: str, compression: str
+) -> bool:
     """Does the image store have to be (re)packed for this transfer?"""
     if images == "none" or not source_entry.get("has_image_store", True):
         return False
@@ -246,7 +248,9 @@ def store_needs_send(source_entry: dict, origin: dict | None, images: str, compr
     return origin.get("store_fingerprint") != source_entry.get("store_fingerprint")
 
 
-def copy_state(source_entry: dict, origin: dict | None, copy_entry: dict | None = None) -> str:
+def copy_state(
+    source_entry: dict, origin: dict | None, copy_entry: dict | None = None
+) -> str:
     """``in_sync`` when the source still matches what was copied, else ``outdated``.
 
     With an origin record: the source's file manifest digest and image store
@@ -259,7 +263,9 @@ def copy_state(source_entry: dict, origin: dict | None, copy_entry: dict | None 
     if origin:
         if origin.get("manifest_digest") != src_digest:
             return OUTDATED
-        if origin.get("images", "none") != "none" and source_entry.get("has_image_store"):
+        if origin.get("images", "none") != "none" and source_entry.get(
+            "has_image_store"
+        ):
             if origin.get("store_fingerprint") != source_entry.get("store_fingerprint"):
                 return OUTDATED
         return IN_SYNC
@@ -285,7 +291,9 @@ def _legacy_candidate(entry: dict, base_by_name: dict) -> dict | None:
     return None
 
 
-def find_copy(entry: dict, machine: str, base_entries: list) -> tuple[dict | None, str | None]:
+def find_copy(
+    entry: dict, machine: str, base_entries: list
+) -> tuple[dict | None, str | None]:
     """The base copy of ``machine``'s run ``entry`` and how it was matched."""
     rid = canonical_id(entry)
     src_path = entry.get("abs_path") or entry.get("path")
@@ -298,7 +306,10 @@ def find_copy(entry: dict, machine: str, base_entries: list) -> tuple[dict | Non
             return b, "run_id"
     for b in base_entries:
         origin = b.get("origin") or {}
-        if origin.get("source_machine") == machine and origin.get("source_path") == src_path:
+        if (
+            origin.get("source_machine") == machine
+            and origin.get("source_path") == src_path
+        ):
             return b, "origin"
     cand = _legacy_candidate(entry, {b.get("name"): b for b in base_entries})
     if cand is not None:
@@ -351,7 +362,9 @@ def pair_copies(machines: dict, base: str) -> None:
         if origin and id(b) not in claimed:
             b["copy_of"] = {
                 "machine": origin.get("source_machine"),
-                "name": os.path.basename(str(origin.get("source_path") or "").rstrip("/")),
+                "name": os.path.basename(
+                    str(origin.get("source_path") or "").rstrip("/")
+                ),
                 "path": origin.get("source_path"),
                 "state": UNKNOWN,
                 "matched_by": "origin",
@@ -363,6 +376,12 @@ def remote_write_command(path: str, data: dict) -> str:
     import base64
     import shlex
 
-    blob = base64.b64encode((json.dumps(data, indent=2, sort_keys=True) + "\n").encode()).decode()
-    p = '"$HOME"' + shlex.quote(path[1:]) if path.startswith("~/") else shlex.quote(path)
-    return f'echo {blob} | base64 -d > {p}.tmp && mv -f {p}.tmp {p}'
+    blob = base64.b64encode(
+        (json.dumps(data, indent=2, sort_keys=True) + "\n").encode()
+    ).decode()
+    p = (
+        '"$HOME"' + shlex.quote(path[1:])
+        if path.startswith("~/")
+        else shlex.quote(path)
+    )
+    return f"echo {blob} | base64 -d > {p}.tmp && mv -f {p}.tmp {p}"

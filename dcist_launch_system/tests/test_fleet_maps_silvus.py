@@ -112,10 +112,15 @@ def test_radios_unreachable_by_mgmt_ip_are_asked_through_the_dongle(monkeypatch)
     monkeypatch.setattr(fh, "silvus_rpc", rpc)
     monkeypatch.setattr(fh, "silvus_interface", lambda topo: "enx0")
     monkeypatch.setattr(fh, "silvus_link_locals", lambda iface: list(lls))
-    monkeypatch.setattr(fh, "_SILVUS_LL_CACHE", {"t": 0.0, "iface": None, "by_node": {}})
+    monkeypatch.setattr(
+        fh, "_SILVUS_LL_CACHE", {"t": 0.0, "iface": None, "by_node": {}}
+    )
     d = fh.get_silvus_radio_details(_radios_topo())
     assert d["radio_a"]["error"] is None and d["radio_a"]["via"] == "fe80::1%enx0"
-    assert d["radio_a"]["link_quality"] == {310308: 36.0} and d["radio_a"]["battery"] == 97.5
+    assert (
+        d["radio_a"]["link_quality"] == {310308: 36.0}
+        and d["radio_a"]["battery"] == 97.5
+    )
     assert d["radio_b"]["via"] == "fe80::2%enx0"
     # next refresh goes straight to the dongle (no mgmt-IP timeouts)
     calls.clear()
@@ -124,9 +129,13 @@ def test_radios_unreachable_by_mgmt_ip_are_asked_through_the_dongle(monkeypatch)
 
 
 def test_radio_missing_everywhere_reports_why(monkeypatch):
-    monkeypatch.setattr(fh, "silvus_rpc", lambda *a, **k: (_ for _ in ()).throw(OSError("timed out")))
+    monkeypatch.setattr(
+        fh, "silvus_rpc", lambda *a, **k: (_ for _ in ()).throw(OSError("timed out"))
+    )
     monkeypatch.setattr(fh, "silvus_interface", lambda topo: None)
-    monkeypatch.setattr(fh, "_SILVUS_LL_CACHE", {"t": 0.0, "iface": None, "by_node": {}})
+    monkeypatch.setattr(
+        fh, "_SILVUS_LL_CACHE", {"t": 0.0, "iface": None, "by_node": {}}
+    )
     d = fh.get_silvus_radio_details(_radios_topo())
     assert "192.0.2.95: timed out" in d["radio_a"]["error"]
     assert "radio dongle unplugged" in d["radio_a"]["error"]
@@ -146,7 +155,22 @@ def test_mesh_view_names_hosts_and_pairs_links():
                          "hamilton": {"addresses": {"silvus": "203.0.113.2"}}}}  # fmt: skip
     v = mesh_view(details, topo, local_ips=["203.0.113.100", "198.51.100.250"])
     radios = {r["name"]: r for r in v["radios"]}
-    assert radios["r_w"]["hosts"] == [{"ip": "203.0.113.100", "machine": "willow"}] and radios["r_w"]["local"]
-    assert radios["r_h"]["hosts"][0]["machine"] == "hamilton" and not radios["r_h"]["local"]
+    assert (
+        radios["r_w"]["hosts"] == [{"ip": "203.0.113.100", "machine": "willow"}]
+        and radios["r_w"]["local"]
+    )
+    assert (
+        radios["r_h"]["hosts"][0]["machine"] == "hamilton"
+        and not radios["r_h"]["local"]
+    )
     assert radios["r_x"]["error"] == "timed out"
-    assert v["links"] == [{"a": "r_h", "b": "r_w", "ab": 38.0, "ba": 40.0, "unit": "dB", "quality": "good"}]
+    assert v["links"] == [
+        {
+            "a": "r_h",
+            "b": "r_w",
+            "ab": 38.0,
+            "ba": 40.0,
+            "unit": "dB",
+            "quality": "good",
+        }
+    ]
