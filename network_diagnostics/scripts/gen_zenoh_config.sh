@@ -3,7 +3,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOPOLOGY="${SCRIPT_DIR}/../config/topology.yaml"
+# topology.yaml merged with the private fleet address overlay ($ADT4_FLEET_ADDRESSES);
+# falls back to the public file (no addresses) if the merge fails.
+TOPOLOGY="$(python3 "${SCRIPT_DIR}/topology_merge.py" --out "${XDG_RUNTIME_DIR:-/tmp}/adt4_topology_$(id -u).yaml")" \
+    || TOPOLOGY="${SCRIPT_DIR}/../config/topology.yaml"
 
 usage() {
     echo "Usage: $(basename "$0") --network <silvus|mit_wifi|penn_wifi>"

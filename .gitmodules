@@ -22,7 +22,6 @@
 [submodule "spot_tools"]
 	path = spot_tools
 	url = git@github.com:robustrobotics/spot_tools.git
-	branch = feature/plan-repair-preemption
 [submodule "roman"]
 	path = roman
 	url = git@github.com:mit-acl/ROMAN.git
@@ -69,3 +68,6 @@
 [submodule "adt4_console"]
 	path = adt4_console
 	url = git@github.com:harelb/adt4_console.git
+[submodule "openset_query"]
+	path = openset_query
+	url = git@github.com:harelb/openset_query.git

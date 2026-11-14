@@ -31,12 +31,16 @@ from dcist_launch_system.fleet_helpers import (
 
 
 class TestLoadTopology:
-    def test_loads_real_file(self, topology_path):
-        topo = load_topology(topology_path)
+    def test_loads_real_file(self, topology_path, example_addresses_path):
+        topo = load_topology(topology_path, example_addresses_path)
         assert "machines" in topo
         assert "networks" in topo
         assert "ssh" in topo
         assert "euclid" in topo["machines"]
+        assert topo["machines"]["euclid"]["role"] == "robot"
+        assert topo["machines"]["euclid"]["addresses"]["silvus"] == "203.0.113.3"
+        assert topo["networks"]["silvus"]["subnet"] == "203.0.113.0/24"
+        assert list(topo["networks"]) == ["mit_wifi", "penn_wifi", "silvus"]
 
     def test_missing_file_raises(self, tmp_path):
         with pytest.raises(FileNotFoundError):
@@ -60,21 +64,21 @@ class TestDetectNetwork:
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_detects_mit_wifi(self, mock_run, sample_topology):
         mock_run.return_value = MagicMock(
-            stdout="2: wlan0    inet 10.29.5.42/24 brd 10.29.5.255 scope global\n"
+            stdout="2: wlan0    inet 198.51.100.42/24 brd 198.51.100.255 scope global\n"
         )
         assert detect_network(sample_topology) == "mit_wifi"
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_detects_silvus(self, mock_run, sample_topology):
         mock_run.return_value = MagicMock(
-            stdout="3: eth1    inet 192.168.100.50/24 brd 192.168.100.255 scope global\n"
+            stdout="3: eth1    inet 203.0.113.50/24 brd 203.0.113.255 scope global\n"
         )
         assert detect_network(sample_topology) == "silvus"
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_returns_none_for_unknown(self, mock_run, sample_topology):
         mock_run.return_value = MagicMock(
-            stdout="2: eth0    inet 172.16.0.5/24 brd 172.16.0.255 scope global\n"
+            stdout="2: eth0    inet 192.0.2.5/24 brd 192.0.2.255 scope global\n"
         )
         assert detect_network(sample_topology) is None
 
@@ -83,8 +87,8 @@ class TestDetectNetwork:
         mock_run.return_value = MagicMock(
             stdout=(
                 "1: lo    inet 127.0.0.1/8 scope host lo\n"
-                "2: eth0    inet 172.16.0.5/24 brd 172.16.0.255 scope global\n"
-                "3: wlan0    inet 192.168.100.7/24 brd 192.168.100.255 scope global\n"
+                "2: eth0    inet 192.0.2.5/24 brd 192.0.2.255 scope global\n"
+                "3: wlan0    inet 203.0.113.7/24 brd 203.0.113.255 scope global\n"
             )
         )
         assert detect_network(sample_topology) == "silvus"
@@ -156,22 +160,22 @@ class TestPingHost:
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ping_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0)
-        assert ping_host("10.29.1.1") is True
+        assert ping_host("198.51.100.1") is True
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ping_failure(self, mock_run):
         mock_run.return_value = MagicMock(returncode=1)
-        assert ping_host("10.29.1.1") is False
+        assert ping_host("198.51.100.1") is False
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ping_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="ping", timeout=4)
-        assert ping_host("10.29.1.1") is False
+        assert ping_host("198.51.100.1") is False
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ping_os_error(self, mock_run):
         mock_run.side_effect = OSError("No route to host")
-        assert ping_host("10.29.1.1") is False
+        assert ping_host("198.51.100.1") is False
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +187,7 @@ class TestSshCmd:
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ssh_success(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="euclid", stderr="")
-        rc, out, err = ssh_cmd("swarm", "10.29.1.1", "hostname")
+        rc, out, err = ssh_cmd("swarm", "198.51.100.1", "hostname")
         assert rc == 0
         assert out == "euclid"
 
@@ -192,27 +196,27 @@ class TestSshCmd:
         mock_run.return_value = MagicMock(
             returncode=255, stdout="", stderr="Connection refused"
         )
-        rc, out, err = ssh_cmd("swarm", "10.29.1.1", "hostname")
+        rc, out, err = ssh_cmd("swarm", "198.51.100.1", "hostname")
         assert rc == 255
         assert "refused" in err.lower()
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ssh_timeout(self, mock_run):
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="ssh", timeout=15)
-        rc, out, err = ssh_cmd("swarm", "10.29.1.1", "hostname")
+        rc, out, err = ssh_cmd("swarm", "198.51.100.1", "hostname")
         assert rc == -1
         assert "timeout" in err.lower()
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ssh_os_error(self, mock_run):
         mock_run.side_effect = OSError("ssh not found")
-        rc, out, err = ssh_cmd("swarm", "10.29.1.1", "hostname")
+        rc, out, err = ssh_cmd("swarm", "198.51.100.1", "hostname")
         assert rc == -1
 
     @patch("dcist_launch_system.fleet_helpers.subprocess.run")
     def test_ssh_batch_mode_flag(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        ssh_cmd("swarm", "10.29.1.1", "hostname")
+        ssh_cmd("swarm", "198.51.100.1", "hostname")
         args = mock_run.call_args[0][0]
         assert "BatchMode=yes" in " ".join(args)
 
@@ -231,7 +235,7 @@ class TestListRemoteExperiments:
             "03202026_mapping|hydra,roman|800M",
             "",
         )
-        result = list_remote_experiments("swarm", "10.29.1.1")
+        result = list_remote_experiments("swarm", "198.51.100.1")
         assert len(result) == 2
         assert result[0]["name"] == "03192026_atak_test"
         assert result[0]["subdirs"] == ["hydra", "roman", "spot_executor"]
@@ -241,19 +245,19 @@ class TestListRemoteExperiments:
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_empty_output(self, mock_ssh):
         mock_ssh.return_value = (0, "", "")
-        result = list_remote_experiments("swarm", "10.29.1.1")
+        result = list_remote_experiments("swarm", "198.51.100.1")
         assert result == []
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_ssh_failure(self, mock_ssh):
         mock_ssh.return_value = (1, "", "Connection refused")
-        result = list_remote_experiments("swarm", "10.29.1.1")
+        result = list_remote_experiments("swarm", "198.51.100.1")
         assert result == []
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_experiment_with_no_subdirs(self, mock_ssh):
         mock_ssh.return_value = (0, "empty_exp||50M", "")
-        result = list_remote_experiments("swarm", "10.29.1.1")
+        result = list_remote_experiments("swarm", "198.51.100.1")
         assert len(result) == 1
         assert result[0]["subdirs"] == []
         assert result[0]["size"] == "50M"
@@ -273,7 +277,7 @@ class TestHashRemoteExperiment:
             "",
         )
         result = hash_remote_experiment(
-            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+            "swarm", "198.51.100.1", "~/adt4_output", "test_exp"
         )
         assert result["./hydra/scene_graph.json"] == "abc123def456"
         assert result["./roman/map.pkl"] == "789012345678"
@@ -282,7 +286,7 @@ class TestHashRemoteExperiment:
     def test_empty_on_failure(self, mock_ssh):
         mock_ssh.return_value = (1, "", "No such directory")
         result = hash_remote_experiment(
-            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+            "swarm", "198.51.100.1", "~/adt4_output", "test_exp"
         )
         assert result == {}
 
@@ -290,7 +294,7 @@ class TestHashRemoteExperiment:
     def test_empty_experiment(self, mock_ssh):
         mock_ssh.return_value = (0, "", "")
         result = hash_remote_experiment(
-            "swarm", "10.29.1.1", "~/adt4_output", "test_exp"
+            "swarm", "198.51.100.1", "~/adt4_output", "test_exp"
         )
         assert result == {}
 
@@ -315,7 +319,7 @@ class TestGetRemoteStatus:
             "50G / 200G (75% used)",
             "",
         )
-        result = get_remote_status("swarm", "10.29.1.1")
+        result = get_remote_status("swarm", "198.51.100.1")
         assert "adt4_system" in result["tmux_sessions"]
         assert result["ros2_procs"] == "42"
         assert "0.50" in result["load"]
@@ -328,14 +332,14 @@ class TestGetRemoteStatus:
             "---TMUX---\nnone\n---ROS2---\n0\n---LOAD---\n0.10, 0.05, 0.01\n---DISK---\n100G / 200G (50% used)",
             "",
         )
-        result = get_remote_status("swarm", "10.29.1.1")
+        result = get_remote_status("swarm", "198.51.100.1")
         assert result["tmux_sessions"] == "none"
         assert result["ros2_procs"] == "0"
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_ssh_failure(self, mock_ssh):
         mock_ssh.return_value = (-1, "", "SSH timeout")
-        result = get_remote_status("swarm", "10.29.1.1")
+        result = get_remote_status("swarm", "198.51.100.1")
         assert result["tmux_sessions"] == "N/A"
         assert result["ros2_procs"] == "N/A"
 
@@ -466,12 +470,12 @@ class TestCheckZenohPort:
     def test_port_open(self, mock_conn):
         mock_conn.return_value.__enter__ = MagicMock()
         mock_conn.return_value.__exit__ = MagicMock(return_value=False)
-        assert check_zenoh_port("10.29.1.1", 7447) is True
+        assert check_zenoh_port("198.51.100.1", 7447) is True
 
     @patch("socket.create_connection")
     def test_port_closed(self, mock_conn):
         mock_conn.side_effect = ConnectionRefusedError("refused")
-        assert check_zenoh_port("10.29.1.1", 7447) is False
+        assert check_zenoh_port("198.51.100.1", 7447) is False
 
 
 # ---------------------------------------------------------------------------
@@ -551,12 +555,12 @@ class TestCheckZenohConfig:
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_config_exists(self, mock_ssh):
         mock_ssh.return_value = (0, "OK", "")
-        assert check_zenoh_config("swarm", "10.29.1.1") is True
+        assert check_zenoh_config("swarm", "198.51.100.1") is True
 
     @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
     def test_config_missing(self, mock_ssh):
         mock_ssh.return_value = (1, "", "")
-        assert check_zenoh_config("swarm", "10.29.1.1") is False
+        assert check_zenoh_config("swarm", "198.51.100.1") is False
 
 
 # ---------------------------------------------------------------------------
@@ -613,7 +617,7 @@ class TestDeployZenohConfig:
             (0, "exists", ""),  # check exists
             (0, "OK", ""),  # run update script
         ]
-        ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
+        ok, msg = deploy_zenoh_config("swarm", "198.51.100.1", ["tcp/192.0.2.1:7447"])
         assert ok is True
         assert "Updated" in msg
 
@@ -623,7 +627,7 @@ class TestDeployZenohConfig:
             (0, "", ""),  # backup
             (1, "", ""),  # check exists fails
         ]
-        ok, msg = deploy_zenoh_config("swarm", "10.29.1.1", ["tcp/10.0.0.1:7447"])
+        ok, msg = deploy_zenoh_config("swarm", "198.51.100.1", ["tcp/192.0.2.1:7447"])
         assert ok is False
         assert "No" in msg or "not" in msg.lower() or "found" in msg.lower()
 
@@ -635,7 +639,7 @@ class TestDeployZenohConfig:
             (0, "OK", ""),  # run update script
         ]
         deploy_zenoh_config(
-            "swarm", "10.29.1.1", ["tcp/10.0.0.1:7447", "tcp/10.0.0.2:7447"]
+            "swarm", "198.51.100.1", ["tcp/192.0.2.1:7447", "tcp/192.0.2.2:7447"]
         )
         # The third ssh_cmd call contains the remote command with base64-encoded endpoints
         third_call_cmd = mock_ssh.call_args_list[2][0][2]
@@ -651,8 +655,8 @@ class TestDeployZenohConfig:
             except Exception:
                 pass
         all_decoded = " ".join(decoded_parts)
-        assert "10.0.0.1:7447" in all_decoded
-        assert "10.0.0.2:7447" in all_decoded
+        assert "192.0.2.1:7447" in all_decoded
+        assert "192.0.2.2:7447" in all_decoded
 
 
 # ---------------------------------------------------------------------------
@@ -663,13 +667,13 @@ class TestDeployZenohConfig:
 class TestPatchZenohConfigLocal:
     def test_patches_connect_endpoints(self, tmp_path, zenoh_template):
         result = patch_zenoh_config_local(
-            ["tcp/10.0.0.1:7447"], listen_port=7447, template_path=zenoh_template
+            ["tcp/192.0.2.1:7447"], listen_port=7447, template_path=zenoh_template
         )
         assert result is not None
         import pathlib
 
         content = pathlib.Path(result).read_text()
-        assert "10.0.0.1:7447" in content
+        assert "192.0.2.1:7447" in content
 
     def test_patches_listen_port(self, tmp_path, zenoh_template):
         result = patch_zenoh_config_local(
@@ -683,7 +687,43 @@ class TestPatchZenohConfigLocal:
 
     def test_missing_template_returns_none(self, tmp_path):
         result = patch_zenoh_config_local(
-            ["tcp/10.0.0.1:7447"],
+            ["tcp/192.0.2.1:7447"],
             template_path=tmp_path / "nonexistent.json5",
         )
         assert result is None
+
+
+# ---------------------------------------------------------------------------
+# check_silvus_route: the Silvus interface comes from the topology's subnet
+# ---------------------------------------------------------------------------
+
+
+class TestCheckSilvusRoute:
+    _OUT = (
+        "1: lo    inet 127.0.0.1/8 scope host lo\n"
+        "2: wlan0    inet 198.51.100.42/24 brd 198.51.100.255 scope global\n"
+        "5: enx0011    inet 203.0.113.3/24 brd 203.0.113.255 scope global\n"
+        "--route--\n"
+        "172.20.0.0/16 dev enx0011 scope link"
+    )
+
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_finds_iface_in_silvus_subnet(self, mock_ssh):
+        from dcist_launch_system.fleet_helpers import check_silvus_route
+
+        mock_ssh.return_value = (0, self._OUT, "")
+        info = check_silvus_route(
+            "swarm", "198.51.100.1", silvus_subnet="203.0.113.0/24"
+        )
+        assert info["silvus_iface"] == "enx0011"
+        assert info["has_route"] is True
+        assert info["route_info"].startswith("172.20.0.0/16")
+
+    @patch("dcist_launch_system.fleet_helpers.ssh_cmd")
+    def test_no_subnet_no_iface(self, mock_ssh):
+        from dcist_launch_system.fleet_helpers import check_silvus_route
+
+        mock_ssh.return_value = (0, self._OUT, "")
+        info = check_silvus_route("swarm", "198.51.100.1")
+        assert info["silvus_iface"] is None
+        assert info["has_route"] is True
