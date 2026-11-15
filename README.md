@@ -439,6 +439,19 @@ run-meridian <bag> -r <robot> -p <platform> -o <output> \
 
 The params are [`resource/meridian/base.yaml`](dcist_launch_system/resource/meridian/base.yaml) merged with `platforms/<platform>/meridian.yaml` (`--platform` defaults to the robot name) and any `--params` files. The camera extrinsic is looked up from the bag's TF.
 
+### Fusing Meridian Trajectories
+
+[`run-meridian-fusion`](dcist_launch_system/bin/run-meridian-fusion) corrects the trajectories of several `run-meridian` outputs (localized against the same aerial image) with ground-to-ground loop closures and brings their heights together. It writes one trajectory per run (`trajectories/<run>.csv`) for `run-adt4 --trajectory`.
+
+```
+run-meridian-fusion <run-meridian output> <run-meridian output> ... -o <output> [--localization]
+```
+
+- Ground submaps within 20 m of each other (`--pair-dist`) in meridian's solutions are registered with ROMAN's point-cloud ICP, starting from the solutions' relative pose. Closures ICP rejects (fitness below 0.2, `--icp-min-fitness`, or a move over 1.5 m / 10 deg) are dropped.
+- The ICP clouds are re-aggregated from each run's depth images (the depth topic in its meridian `params.yaml`, up to 5 m depth, `--max-depth`). The first fusion of a run reads its bag and caches the clouds as `depth_clouds.npz` in the run directory (`--depth-cache` to put them elsewhere).
+- A 2D pose graph combines each run's odometry, meridian's aerial loop closures and the ground-to-ground closures. Heights are then solved jointly, with equal heights wherever runs pass close to each other.
+- It starts from meridian's `localization/rerun` solution (`--localization` for `localization/`) and reports errors against the ground truth of runs made with `--gt`.
+
 ## Configuring Parameters
 
 This section will give some technical explanation about how parameters are

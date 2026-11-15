@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""Fuse the trajectories of several run-meridian outputs with ground-to-ground loop closures."""
+
+import os
+import pathlib
+import sys
+
+# meridian and ROMAN are installed in the ROMAN environment: re-exec with its Python before importing them
+if not os.environ.get("_RUN_MERIDIAN_FUSION_REEXEC"):
+    _adt4_env = os.environ.get("ADT4_ENV", "")
+    if _adt4_env:
+        _roman_env = pathlib.Path(_adt4_env) / "roman"
+        _roman_python = _roman_env / "bin" / "python3"
+        if _roman_python.exists() and sys.prefix != str(_roman_env):
+            os.environ["_RUN_MERIDIAN_FUSION_REEXEC"] = "1"
+            os.execv(str(_roman_python), [str(_roman_python)] + sys.argv)
+
+import dataclasses  # noqa: E402
+import pickle  # noqa: E402
+import shutil  # noqa: E402
+import time  # noqa: E402
+
+import click  # noqa: E402
+import numpy as np  # noqa: E402
+import yaml  # noqa: E402
+
+PKG_PATH = pathlib.Path(__file__).absolute().parent.parent
+sys.path.insert(0, str(PKG_PATH / "src"))
+
+from dcist_launch_system.meridian_fusion.closures import ClosureParams, closure_errors, find_closures  # noqa: E402
+from dcist_launch_system.meridian_fusion.depth_clouds import DepthCloudParams  # noqa: E402
+from dcist_launch_system.meridian_fusion.graph import (  # noqa: E402
+    GraphParams,
+    dense_xy_errors,
+    lift_and_densify,
+    solve_2d,
+    xy_errors,
+)
+
+
+def _info(msg):
+    click.secho(f"[INFO] {msg}", fg="green")
+
+
+def _error(msg):
+    click.secho(f"[ERROR] {msg}", fg="red")
+    sys.exit(1)
+
+
+def _resolve_output(output, force):
+    output = pathlib.Path(output).expanduser().absolute()
+    if output.exists():
+        if not force:
+            click.confirm(f"Output '{output}' exists! Remove?", abort=True)
+        _info(f"Clearing previous output: '{output}'")
+        shutil.rmtree(output)
+    output.mkdir(parents=True)
+    return output
+
+
+def _run_names(run_dirs):
+    names = [d.name for d in run_dirs]
+    if len(set(names)) < len(names):
+        names = [f"{d.parent.name}_{d.name}" for d in run_dirs]
+    if len(set(names)) < len(names):
+        _error(f"Run directories need distinct names: {names}")
+    return names
+
+
+def _rms(x):
+    return float(np.sqrt(np.mean(np.square(x)))) if len(x) else float("nan")
+
+
+def _closure_report(rows):
+    statuses = {}
+    for r in rows:
+        statuses[r["status"] or "-"] = statuses.get(r["status"] or "-", 0) + 1
+    accepted = [r for r in rows if r["status"] == "accepted"]
+    lines = [f"candidate pairs: {len(rows)}; " + ", ".join(f"{k} {v}" for k, v in sorted(statuses.items())),
+             f"accepted closures: {len(accepted)} ({sum(r['run_a'] != r['run_b'] for r in accepted)} between runs)"]
+    for key, label in [("Z_est", "meridian solutions"), ("Z", "after ICP")]:
+        errs = [closure_errors(r, key) for r in accepted]
+        e = np.array([x for x in errs if x is not None])
+        if len(e):
+            lines.append(f"  accepted closures vs GT, {label:18s}: median {np.median(e[:, 0]):.2f} m / "
+                         f"{np.median(e[:, 1]):.2f} deg, 90% {np.percentile(e[:, 0], 90):.2f} m, "
+                         f"> 1 m: {(e[:, 0] > 1).sum()} of {len(e)}")
+    return lines
+
+
+def _write_closures_csv(rows, path):
+    keys = ["run_a", "submap_a", "node_a", "t_a", "run_b", "submap_b", "node_b", "t_b", "status", "icp_moved_m", "icp_turned_deg", "icp_dz_m"]
+    with open(path, "w") as f:
+        f.write(",".join(keys + ["x", "y", "yaw_deg", "gt_err_m", "gt_err_deg"]) + "\n")
+        for r in rows:
+            vals = [r.get(k, "") for k in keys]
+            Z = r.get("Z")
+            vals += ["", "", ""] if Z is None else [Z[0, 2], Z[1, 2], np.degrees(np.arctan2(Z[1, 0], Z[0, 0]))]
+            err = closure_errors(r, "Z")
+            vals += ["", ""] if err is None else list(err)
+            f.write(",".join(f"{v:.4f}" if isinstance(v, float) else str(v) for v in vals) + "\n")
+
+
+def _plot(runs, before, after, accepted, path):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(11, 10))
+    for r in runs:
+        if np.isfinite(r.gt_body[:, 0, 3]).any():
+            ax.plot(r.gt_body[:, 0, 3], r.gt_body[:, 1, 3], "-", c="k", lw=3, alpha=0.15)
+    for r in runs:
+        ax.plot(after[r.name][:, 0, 3], after[r.name][:, 1, 3], "-", lw=1, label=r.name)
+    for c in accepted:
+        a, b = after[c["run_a"]][c["node_a"], :2, 3], after[c["run_b"]][c["node_b"], :2, 3]
+        ax.plot([a[0], b[0]], [a[1], b[1]], "-", c="m" if c["run_a"] != c["run_b"] else "c", lw=0.6)
+    ax.set_title("fused trajectories (gray: GT; magenta / cyan: closures between / within runs)")
+    ax.set_aspect("equal")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def _plot_heights(runs, dense, path, step_m=0.25):
+    """Top-down plots of every run's trajectory coloured by height: meridian's and fused (own colour scales)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from dcist_launch_system.meridian_fusion.runs import path_length
+
+    def thin(T):
+        s = path_length(T[:, :2, 3])
+        return T[np.unique(np.searchsorted(s, np.arange(0.0, s[-1], step_m)))]
+
+    panels = [("meridian (before fusion)", {r.name: thin(r.dense) for r in runs}),
+              ("fused", {r.name: thin(dense[r.name]) for r in runs})]
+    fig, axes = plt.subplots(1, 2, figsize=(20, 9), sharex=True, sharey=True)
+    for ax, (title, traj) in zip(axes, panels):
+        z = np.concatenate([T[:, 2, 3] for T in traj.values()])
+        lo, hi = np.percentile(z, [1, 99])
+        for T in traj.values():
+            sc = ax.scatter(T[:, 0, 3], T[:, 1, 3], c=T[:, 2, 3], s=2, cmap="viridis", vmin=lo, vmax=hi, lw=0)
+        ax.set_title(f"{title}: height, colour range 1-99th percentile ({lo:.1f} to {hi:.1f} m)")
+        ax.set_aspect("equal")
+        fig.colorbar(sc, ax=ax, shrink=0.8, label="z (m)")
+    fig.tight_layout()
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+@click.command()
+@click.argument("run_dirs", nargs=-1, required=True, type=click.Path(exists=True, file_okay=False))
+@click.option("-o", "--output", required=True, type=click.Path(), help="output directory")
+@click.option("-f", "--force", is_flag=True, help="clear output if it exists")
+@click.option("--localization", "use_localization", is_flag=True,
+              help="start from meridian's localization/ solution instead of localization/rerun/")
+@click.option("--pair-dist", type=float, default=ClosureParams.pair_dist_m, show_default=True,
+              help="pair submaps whose centres are within this [m]")
+@click.option("--max-depth", type=float, default=DepthCloudParams.max_depth_m, show_default=True,
+              help="ICP clouds: depth image points up to this far from the camera [m]")
+@click.option("--depth-cache", type=click.Path(file_okay=False), default=None,
+              help="cache re-aggregated depth clouds in <dir>/<run>/depth_clouds.npz [default: in each run "
+                   "directory]")
+@click.option("--icp-min-fitness", type=float, default=ClosureParams.icp_min_fitness, show_default=True,
+              help="ICP: drop closures whose fitness is below this")
+@click.option("--reference", type=int, default=0, show_default=True,
+              help="index of the run whose first height and tilt are kept")
+def main(run_dirs, output, force, use_localization, pair_dist, max_depth, depth_cache, icp_min_fitness,
+         reference):
+    """
+    Fuse the trajectories of RUN_DIRS (run-meridian outputs, all localized against the same aerial image)
+    with ground-to-ground loop closures, and bring their heights together.
+
+    \b
+    1. candidate pairs: ground submaps within --pair-dist of each other in meridian's solutions
+    2. ROMAN ICP, from the solutions' relative pose, on point clouds re-aggregated from each run's depth
+       images near the two submaps; closures ICP rejects are dropped
+    3. 2D pose graph: each run's odometry, meridian's aerial closures, the ground-to-ground closures
+    4. joint height lift (equal heights where runs pass within meridian's cross_paths_3d distance),
+       densified onto each run's full-rate meridian trajectory
+
+    \b
+    Output:
+        trajectories/<run>.csv   fused body trajectory (#timestamp_kf,x,y,z,qw,qx,qy,qz, UTM), e.g. for
+                                 run-adt4 --trajectory
+        results.txt              closures and, for runs with ground truth, errors before / after
+        closures.csv / .pkl      every candidate pair and what happened to it
+        trajectories.png         fused trajectories and closures
+        heights.png              meridian's and the fused trajectories coloured by height
+    """
+    from meridian.params import CrossViewRPGOParams
+
+    from dcist_launch_system.meridian_fusion.runs import Run
+
+    run_dirs = [pathlib.Path(d).expanduser().absolute() for d in run_dirs]
+    if not 0 <= reference < len(run_dirs):
+        _error(f"--reference must be in [0, {len(run_dirs) - 1}]")
+    solution = "localization" if use_localization else "localization/rerun"
+    P = ClosureParams(pair_dist_m=pair_dist, icp_min_fitness=icp_min_fitness)
+    D = DepthCloudParams(max_depth_m=max_depth)
+    depth_cache = None if depth_cache is None else pathlib.Path(depth_cache).expanduser().absolute()
+    G = GraphParams(reference_run=reference)
+    output = _resolve_output(output, force)
+    t_start = time.time()
+
+    runs = []
+    for d, name in zip(run_dirs, _run_names(run_dirs)):
+        r = Run(d, name, solution)
+        _info(f"{name}: {len(r.times)} nodes, {len(r.submaps)} ground submaps, {len(r.aerial)} aerial closures, "
+              f"GT {'yes' if r.gt is not None else 'no'} ({d})")
+        runs.append(r)
+    with open(output / "fusion_params.yaml", "w") as f:
+        yaml.safe_dump(dict(runs={r.name: str(r.dir) for r in runs}, solution=solution,
+                            closures=dataclasses.asdict(P), depth_clouds=dataclasses.asdict(D), graph=dataclasses.asdict(G)), f, sort_keys=False)
+
+    rows = find_closures(runs, P, D, depth_cache, log=_info)
+    accepted = [r for r in rows if r["status"] == "accepted"]
+    with open(output / "closures.pkl", "wb") as f:
+        pickle.dump(rows, f)
+    _write_closures_csv(rows, output / "closures.csv")
+
+    rp = CrossViewRPGOParams.load(str(runs[0].params_file))
+    _info(f"Solving the pose graph ({sum(len(r.times) for r in runs)} nodes, {len(accepted)} closures)")
+    before = {r.name: r.est for r in runs}
+    aerial_only = solve_2d(runs, rp, accepted, G, use_closures=False)
+    after = solve_2d(runs, rp, accepted, G)
+    _info("Lifting to 3D")
+    dense, lift = lift_and_densify(runs, after, rp, G)
+    (output / "trajectories").mkdir()
+    from robotdatapy.data import PoseData
+
+    for r in runs:
+        PoseData.from_times_and_poses(r.dense_times, dense[r.name]).to_csv(output / "trajectories" / f"{r.name}.csv")
+
+    lines = [f"runs ({solution}): " + ", ".join(f"{r.name} {r.dir}" for r in runs),
+             ""]
+    lines += _closure_report(rows)
+    lines += ["", f"{'run':28s} {'closures':>8s}  RMS xy error at nodes (m): {'meridian':>8s} {'aerial-only':>11s} "
+              f"{'fused':>6s}   heading RMSE (deg): meridian / fused   dense xy RMSE (m): fused"]
+    pooled = {"before": [], "after": []}
+    for r in runs:
+        if not np.isfinite(r.gt_body[:, 0, 3]).any():
+            continue
+        eb, yb = xy_errors(r, before[r.name])
+        ea, _ = xy_errors(r, aerial_only[r.name])
+        eg, yg = xy_errors(r, after[r.name])
+        pooled["before"].append(eb)
+        pooled["after"].append(eg)
+        n = sum(r.name in (c["run_a"], c["run_b"]) for c in accepted)
+        lines.append(f"{r.name:28s} {n:8d}  {'':27s}{_rms(eb):8.3f} {_rms(ea):11.3f} {_rms(eg):6.3f}   "
+                     f"{'':19s}{_rms(yb):8.2f} / {_rms(yg):.2f}   {'':18s}{_rms(dense_xy_errors(r, dense[r.name])):.3f}")
+    if pooled["before"]:
+        lines.append(f"{'pooled':28s} {'':8s}  {'':27s}{_rms(np.concatenate(pooled['before'])):8.3f} {'':11s} "
+                     f"{_rms(np.concatenate(pooled['after'])):6.3f}")
+    lines += ["", f"height lift: {lift['n_pairs']} equal-height pairs ({lift['n_cross']} between runs); median |dz| "
+                  f"between runs at those pairs: meridian {lift['dz_cross_meridian']:.2f} m -> fused {lift['dz_cross_after']:.2f} m",
+              f"took {(time.time() - t_start) / 60:.1f} min"]
+    text = "\n".join(lines)
+    print(text)
+    (output / "results.txt").write_text(text + "\n")
+    _plot(runs, before, after, accepted, output / "trajectories.png")
+    _plot_heights(runs, dense, output / "heights.png")
+    _info(f"Wrote {output}")
+
+
+if __name__ == "__main__":
+    main()
