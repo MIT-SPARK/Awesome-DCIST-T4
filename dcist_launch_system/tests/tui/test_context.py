@@ -40,3 +40,13 @@ def test_deleted_machines_mutation(ctx):
 def test_fleet_zenoh_default(ctx):
     assert ctx._fleet_zenoh["proc"] is None
     assert ctx._fleet_zenoh["config"] is None
+
+
+def test_addresses_path_defaults_to_none(sample_topo):
+    ctx = TuiContext(
+        topo=sample_topo,
+        active_network="mit_wifi",
+        topology_path=None,
+        output_root="~/adt4_output",
+    )
+    assert ctx.addresses_path is None

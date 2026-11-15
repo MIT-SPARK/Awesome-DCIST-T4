@@ -30,6 +30,7 @@ from dcist_launch_system.fleet_helpers import (
     deploy_zenoh_config,
     detect_network,
     filter_reachable,
+    find_addresses_path,
     fleet_link_mode,
     fleetlink_summary,
     generate_namespaced_rviz,
@@ -80,8 +81,9 @@ _TMUX_DIR = (
 
 
 class FleetContext:
-    def __init__(self, network, topology_path, output_root):
-        self.topology = load_topology(topology_path)
+    def __init__(self, network, topology_path, output_root, addresses_path=None):
+        self.addresses_path = find_addresses_path(addresses_path)
+        self.topology = load_topology(topology_path, self.addresses_path)
         self.output_root = output_root
         self.network = network or detect_network(self.topology)
         if not self.network:
@@ -89,6 +91,12 @@ class FleetContext:
                 "Could not auto-detect network. Use --network to specify.", fg="red"
             )
             sys.exit(1)
+        if self.addresses_path is None:
+            click.secho(
+                "No fleet address overlay (--addresses / $ADT4_FLEET_ADDRESSES): "
+                "machines have no addresses.",
+                fg="yellow",
+            )
 
     def machines(self, roles=None, names=None):
         return resolve_machines(self.topology, self.network, roles=roles, names=names)
@@ -102,17 +110,32 @@ class FleetContext:
     default=None,
     help="Network to use (auto-detected if omitted)",
 )
-@click.option("--topology", "-t", type=click.Path(exists=True), default=None)
+@click.option(
+    "--topology",
+    "-t",
+    type=click.Path(exists=True),
+    default=None,
+    help="Public topology.yaml (default: network_diagnostics/config/topology.yaml)",
+)
+@click.option(
+    "--addresses",
+    "-a",
+    type=click.Path(exists=True),
+    default=None,
+    help="Private fleet address overlay (default: $ADT4_FLEET_ADDRESSES, then "
+    "~/.config/adt4/fleet_addresses/fleet_addresses.yaml)",
+)
 @click.option("--output-root", "-o", default="~/adt4_output", help="Remote output root")
 @click.pass_context
-def cli(ctx, network, topology, output_root):
+def cli(ctx, network, topology, addresses, output_root):
     """ADT4 Fleet Management Tool. Run without subcommand for interactive TUI."""
     ctx.ensure_object(dict)
     ctx.obj["network"] = network
     ctx.obj["topology"] = topology
+    ctx.obj["addresses"] = addresses
     ctx.obj["output_root"] = output_root
     if ctx.invoked_subcommand is None:
-        _launch_tui(network, topology, output_root)
+        _launch_tui(network, topology, output_root, addresses)
 
 
 # --- status ---
@@ -123,7 +146,12 @@ def cli(ctx, network, topology, output_root):
 @click.pass_context
 def status(ctx, role):
     """Check connectivity to all fleet machines (ping + SSH)."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     roles = [role] if role else None
     machines = fc.machines(roles=roles)
     if not machines:
@@ -182,7 +210,12 @@ def status(ctx, role):
 @click.pass_context
 def maps(ctx, machine, detail):
     """List experiments on fleet machines."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     names = list(machine) if machine else None
     machines = fc.machines(names=names)
 
@@ -259,7 +292,12 @@ def transfer(
     relay,
 ):
     """Transfer an experiment from one machine to others. Excludes rosbags by default."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     all_machines = fc.machines()
     src = next((m for m in all_machines if m["name"] == src_machine), None)
     if not src:
@@ -336,7 +374,12 @@ def transfer(
 @click.pass_context
 def verify(ctx, experiment, machine):
     """Verify map consistency across machines."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     names = list(machine) if machine else None
     machines = fc.machines(names=names)
 
@@ -410,7 +453,12 @@ def launch(
     ctx, machine, session, experiment, prior_map, base_station, force, yes, dry_run
 ):
     """Launch run-adt4 remotely on fleet robots."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     names = list(machine) if machine else None
     robots = fc.machines(roles=["robot"], names=names)
 
@@ -530,7 +578,12 @@ def launch(
 @click.pass_context
 def monitor(ctx, machine, watch):
     """Monitor fleet status (tmux sessions, ROS2 procs, load, disk)."""
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     names = list(machine) if machine else None
     machines = fc.machines(names=names)
 
@@ -588,7 +641,12 @@ def zenoh(ctx, machine, dry_run):
     (fleet_defaults.fleet_link: fleetlink) every machine gets no endpoints:
     only fleetlink crosses the radio.
     """
-    fc = FleetContext(ctx.obj["network"], ctx.obj["topology"], ctx.obj["output_root"])
+    fc = FleetContext(
+        ctx.obj["network"],
+        ctx.obj["topology"],
+        ctx.obj["output_root"],
+        ctx.obj.get("addresses"),
+    )
     names = list(machine) if machine else None
     machines = fc.machines(names=names)
 

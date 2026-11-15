@@ -31,24 +31,53 @@ source ~/dcist_ws/install/setup.zsh
 - Route to Silvus management network (for `silvus_status.sh`):
   ```bash
   # Find your Silvus ethernet interface
-  ip -brief addr show | grep 192.168.100
+  ip -brief addr show | grep 203.0.113   # your Silvus data subnet, networks.silvus.subnet
   # Add route (replace enxXXX with your interface name)
   sudo ip route add 172.20.0.0/16 dev enxXXXXXXXXXXXX
   ```
 
 ## Configuration
 
-All tools read from a single config file: **`config/topology.yaml`**
+All tools read the fleet topology from two files with the same layout:
 
-This file defines:
-- **Networks**: MIT WiFi, Penn WiFi, Silvus subnets
-- **Machines**: All robots and base stations with IPs per network
-- **Silvus radios**: Management IPs (172.20.x.x), data IPs (192.168.100.x), node IDs
-- **Zenoh**: Port and default connect network
-- **SSH**: Per-role usernames
+- **`config/topology.yaml`** (public, this repo): the networks (in detection
+  priority order), machines with their roles and platforms, Silvus API settings,
+  Zenoh port and default network, per-role SSH users, `fleet-adt4` defaults.
+- **The fleet address overlay** (private): network subnets, each machine's
+  `addresses`, and the Silvus radios' `mgmt_subnet`, `mgmt_ip` and `node_id`.
+  It is deep-merged over topology.yaml.
 
-> **Note**: MIT WiFi IPs (10.29.x.x) are DHCP-assigned and change frequently.
-> Silvus data IPs (192.168.100.x) and radio management IPs (172.20.x.x) are static.
+### Fleet addresses (private)
+
+The overlay is `fleet_addresses.yaml` in the private repo
+`robustrobotics/adt4_fleet_addresses`. It is looked up in this order:
+
+1. `--addresses PATH` (`fleet-adt4`, `scripts/topology_merge.py`)
+2. `$ADT4_FLEET_ADDRESSES`
+3. `~/.config/adt4/fleet_addresses/fleet_addresses.yaml`, if it exists
+
+```bash
+git clone git@github.com:robustrobotics/adt4_fleet_addresses.git ~/.config/adt4/fleet_addresses
+echo 'export ADT4_FLEET_ADDRESSES=~/.config/adt4/fleet_addresses/fleet_addresses.yaml' >> ~/.zshrc
+```
+
+Without it the tools still run but warn, and no machine resolves to an address.
+`config/fleet_addresses.example.yaml` shows the layout with documentation
+addresses (RFC 5737). To change an address, edit the overlay (or use the
+`fleet-adt4` config screen, whose save writes addresses to the overlay and
+everything else to topology.yaml); never put addresses in topology.yaml.
+
+`scripts/topology_merge.py` does the merge for every tool:
+
+```bash
+# Write the merged topology (mode 0600) and print its path; the shell scripts do this
+python3 scripts/topology_merge.py --out "${XDG_RUNTIME_DIR:-/tmp}/adt4_topology_$(id -u).yaml"
+# Fail (exit 1) if no overlay is found
+python3 scripts/topology_merge.py --check
+```
+
+> **Note**: MIT WiFi addresses are DHCP-assigned and change frequently.
+> Silvus data addresses and radio management IPs are static.
 
 ## Tools Reference
 
@@ -104,13 +133,13 @@ Test basic IP connectivity, bandwidth, MTU, and routing.
 ./scripts/ping_sweep.sh sweep
 
 # Bandwidth test (requires iperf3 -s running on target)
-./scripts/ping_sweep.sh bandwidth 192.168.100.3
+./scripts/ping_sweep.sh bandwidth 203.0.113.3
 
 # MTU path discovery (important for Silvus — check for fragmentation)
-./scripts/ping_sweep.sh mtu 192.168.100.3
+./scripts/ping_sweep.sh mtu 203.0.113.3
 
 # Trace route to target
-./scripts/ping_sweep.sh traceroute 192.168.100.3
+./scripts/ping_sweep.sh traceroute 203.0.113.3
 ```
 
 ### `zenoh_check.sh` — Zenoh Middleware Diagnostics
@@ -150,7 +179,7 @@ Output:
   * abc123def456 (router)
 [14:30:20] + CONNECTED  789abc012345 (client)
 [14:31:05] - DISCONNECTED  789abc012345 (client)
-[14:31:05] ! PORT UNREACHABLE  euclid (192.168.100.3:7447)
+[14:31:05] ! PORT UNREACHABLE  euclid (203.0.113.3:7447)
 ```
 
 ### `gen_zenoh_config.sh` — Zenoh Router Config Generator
@@ -177,13 +206,13 @@ Queries Silvus StreamCaster radios via their JSON-RPC API (StreamScape 5) at `/c
 # 1. Add route to radio management network
 sudo ip route add 172.20.0.0/16 dev <your_silvus_interface>
 
-# 2. Discover radio management IPs (if not in topology.yaml)
+# 2. Discover radio management IPs (if not in the fleet address overlay)
 ./scripts/silvus_status.sh discover
 
 # 3. Identify which radio is connected to this machine
 ./scripts/silvus_status.sh detect
 
-# 4. Update topology.yaml with discovered mgmt_ip values
+# 4. Put the discovered mgmt_ip values in the fleet address overlay
 ```
 
 **Commands:**
@@ -222,24 +251,24 @@ sudo ip route add 172.20.0.0/16 dev <your_silvus_interface>
 ```
 === Silvus Radio Status ===
 
-Detecting local radio... found node 310061 at 172.20.187.45
+Detecting local radio... found node 100001 at 172.20.134.161
 
 Radio status (JSON-RPC API):
 
-  Querying radio_310061 (172.20.187.45)... OK (3ms) (LOCAL)
+  Querying radio_100001 (172.20.134.161)... OK (3ms) (LOCAL)
     Model:    SC4200H (firmware v5.0.1.8)
-    Node ID:  310061
+    Node ID:  100001
     Battery:  91%  Voltage: 11.95V  Temp: 38°C
     Uptime:   1:50
-    Mesh:     2 node(s) in routing tree: [310226, 310061]
+    Mesh:     2 node(s) in routing tree: [100002, 100001]
     GPS:      unlocked
 
-  Querying radio_310226 (172.20.187.210)... OK (18ms)
+  Querying radio_100002 (172.20.134.162)... OK (18ms)
     Model:    SC4200H (firmware v5.0.1.8)
-    Node ID:  310226
+    Node ID:  100002
     Battery:  90%  Voltage: 12.03V  Temp: 39°C
     Uptime:   1:50
-    Mesh:     2 node(s) in routing tree: [310061, 310226]
+    Mesh:     2 node(s) in routing tree: [100001, 100002]
     GPS:      unlocked
 ```
 
@@ -250,14 +279,14 @@ Radio status (JSON-RPC API):
 | `battery_percent` | Battery % (float string) | `["90.625000"]` |
 | `input_voltage_monitoring` | Millivolts (float string) | `["11948.535156"]` |
 | `read_current_temperature` | Celsius (int string) | `["38"]` |
-| `nodeid` | Radio node ID | `["310061"]` |
+| `nodeid` | Radio node ID | `["100001"]` |
 | `model` | Hardware model | `["SC4200H"]` |
 | `build_tag` | Firmware version | `["streamscape_v5.0.1.8"]` |
 | `uptime` | System uptime string | `[" 01:47:16 up 1:47, ..."]` |
-| `routing_tree` | Array of node IDs in mesh | `[310226, 310061]` |
+| `routing_tree` | Array of node IDs in mesh | `[100002, 100001]` |
 | `gps_mode` | GPS lock status | `["unlocked"]` |
 | `gps_coordinates` | [lat, lon, alt] | `["0", "0", "0"]` |
-| `local_address` | Management IP | `["172.20.187.45"]` |
+| `local_address` | Management IP | `["172.20.134.161"]` |
 | `radio_mode` | Current radio mode | `["0"]` |
 | `frequency` | Center frequency MHz | |
 | `bandwidth` | Channel bandwidth MHz | |
@@ -397,7 +426,7 @@ source ~/dcist_ws/install/setup.zsh
 ./scripts/ping_sweep.sh sweep --network silvus
 
 # Is it an MTU issue? (common with Silvus)
-./scripts/ping_sweep.sh mtu 192.168.100.3
+./scripts/ping_sweep.sh mtu 203.0.113.3
 
 # Is Zenoh running on both ends?
 ./scripts/zenoh_check.sh
@@ -441,12 +470,12 @@ curl -s http://localhost:8000/@/router/local/link/** | python3 -m json.tool
 
 ```bash
 # Add management route
-sudo ip route add 172.20.0.0/16 dev enx306893ab9ba5
+sudo ip route add 172.20.0.0/16 dev enxXXXXXXXXXXXX
 
 # Run discovery
 ./scripts/silvus_status.sh discover
 
-# Edit topology.yaml with found IPs, then verify
+# Put the found IPs in the fleet address overlay, then verify
 ./scripts/silvus_status.sh status
 ```
 
@@ -467,7 +496,8 @@ launch_configs:
 ```
 network_diagnostics/
 ├── config/
-│   └── topology.yaml              # Network topology (IPs, roles, networks, radios)
+│   ├── topology.yaml              # Fleet topology (roles, networks, radios; no addresses)
+│   └── fleet_addresses.example.yaml  # Layout of the private address overlay
 ├── scripts/
 │   ├── net_diag.sh                # Full diagnostic suite
 │   ├── preflight.sh               # Pre-flight go/no-go checklist
@@ -475,6 +505,7 @@ network_diagnostics/
 │   ├── ping_sweep.sh              # Ping, bandwidth, MTU, traceroute
 │   ├── zenoh_check.sh             # Zenoh router status + auto-start
 │   ├── zenoh_watchdog.sh          # Zenoh session connect/disconnect monitor
+│   ├── topology_merge.py          # Merge topology.yaml + private address overlay
 │   ├── gen_zenoh_config.sh        # Generate Zenoh config from topology
 │   ├── silvus_status.sh           # Silvus radio JSON-RPC API client
 │   ├── switch_network.sh          # WiFi ↔ Silvus switching

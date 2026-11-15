@@ -8,6 +8,7 @@
 #
 # topics:  one entry per ROS topic that crosses the radio.
 #   topic          name pattern, usually "/{robot}/..."
+#   base_topic     optional base-side publication alias for up topics (requires fleetlink fanout support)
 #   type           ROS message type (pkg/msg/Name). Type-hash mismatch => message rejected.
 #   dir            down = base -> robot, up = robot -> base. A topic must appear in ONE
 #                  direction only (validation rejects both; this is the loop prevention).
@@ -170,12 +171,15 @@ topics:
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
   # manipulation approval request (spot_executor_node -> operator UIs): JPEG candidate images
-  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters
+  # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters.
+  # priority high: the robot waits on the operator, so it rides the C2 lane (zenoh DATA_HIGH,
+  # ahead of mesh/video/store) and the agent holds its C2-C6 queues until it is acked (<= 10 s)
   - topic: /{robot}/spot_executor_node/manipulation_request
     type: nlu_interface_rviz/msg/ManipulationApprovalRequest
     dir: up
     mode: latest_reliable
-    cls: C3
+    cls: C2
+    priority: high
     rate_hz:
     ttl_s: 120
     replay_on_resync: false
@@ -250,6 +254,69 @@ topics:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 1}
     platform: [phoenix, husky]
+
+  # ---------------------------------------------------------------- console overlays (up), low rate
+  # GPS fix (every platform; the Spot / Husky GPS driver publishes /{robot}/fix). The web
+  # console can show it next to the relocalized pose (off by default in the UI). 1 Hz, C3:
+  # best effort, dropped first when the radio is congested.
+  - topic: /{robot}/fix
+    type: sensor_msgs/msg/NavSatFix
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 1.0
+    ttl_s: 5
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+  # phoenix (Husky) navigation stack (phoenix-r2 navigation_nexus / arl_mppi), as in
+  # mit_launch/rviz/gauss_mppi_debug.rviz: the MPPI short-range plan, its reference
+  # trajectory, the sampled-rollout debug markers and the mid-range plan. Frame: the local
+  # map frame ({robot}/odom). Low rate, C3 best effort; the console draws them only when its
+  # "local planner" toggle is on, but the relay sends them regardless, so keep the rates low.
+  - topic: /{robot}/srp_interface/plan
+    type: visualization_msgs/msg/Marker
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 1.0
+    ttl_s: 3
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+  - topic: /{robot}/srp/reference_trajectory
+    type: visualization_msgs/msg/Marker
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 1.0
+    ttl_s: 3
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+  - topic: /{robot}/srp_interface/debug
+    type: visualization_msgs/msg/MarkerArray
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 0.5
+    ttl_s: 4
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+  - topic: /{robot}/mrp_interface/plan
+    type: visualization_msgs/msg/Marker
+    dir: up
+    mode: latest
+    cls: C3
+    rate_hz: 0.5
+    ttl_s: 5
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [phoenix, husky]
+  # (mid-range candidate plans /{robot}/mrp_interface/multi_plan, MarkerArray: not relayed;
+  #  gauss runs the mid-range planner as PASSTHROUGH, so there is a single plan.)
+  # Spot's executor paths (smooth / MLP path / MLP target) need no rows here: the fleetlink
+  # agent already sends them as its C1 `paths` stream.
 
   # ---------------------------------------------------------------- RViz-only (up), OFF by default
   # Heavy; the web console gets map/paths through fleetlink C2/C3 instead. Uncomment only if RViz

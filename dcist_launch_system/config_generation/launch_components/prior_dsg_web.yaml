@@ -1,0 +1,13 @@
+---
+# rviz-free variant of prior_dsg for the web console base station (base_station_web*): no RViz or
+# RViz-only visualizer panes; the console renders the graph, mesh and plans itself.
+nodes_to_monitor:
+  dsg_saver: {}
+windows:
+  - window_name: prior_dsg
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_scene_graph_publisher:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_awcd_base_station:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_dsg_saver:=true
