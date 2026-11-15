@@ -1,7 +1,9 @@
 # Which adt4_system tmux windows a trial saves as text, next to its bag:
 #   <window name> [lines]
 # Captured when the trial starts and again when it stops. "lines" is how much
-# scrollback to keep above the visible screen (default 0 = the screen only,
-# right for a panel that redraws itself). Windows not listed are not captured:
-# most of them print the same thing every second.
-status 0
+# scrollback to keep above the visible screen (default 0 = the screen only).
+# Windows not listed are not captured: most print the same thing every second.
+#
+# None by default. The status panel is recorded from its topic instead
+# (/<robot>/ros_system_monitor/table_in in the topic lists): as pane text it
+# is cut to the pane's width and height.

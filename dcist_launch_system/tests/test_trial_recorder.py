@@ -135,7 +135,9 @@ def test_panes_spec_lists_windows_and_scrollback():
         "# comment\nstatus 0\nfleetlink 300  # some history\nhuge 999999\nbare\n"
     )
     assert spec == {"status": 0, "fleetlink": 300, "huge": tr.PANE_MAX_LINES, "bare": 0}
-    assert tr.panes_spec() == {"status": 0}  # the repo's default: the status panel
+    assert (
+        tr.panes_spec() == {}
+    )  # the repo's default: none (status is a recorded topic)
 
 
 METADATA = textwrap.dedent(
@@ -253,7 +255,9 @@ def rig(tmp_path, monkeypatch):
         "TMUX_TMPDIR": str(tmp_path),  # its own tmux server
         "ADT4_REC_SHELL": "bash -c",
         "ADT4_REC_SETUP": "",
+        "ADT4_REC_PANES_FILE": str(tmp_path / "panes.txt"),
     }
+    (tmp_path / "panes.txt").write_text("status 0\n")
     env.pop("TMUX", None)
     root = tmp_path / "adt4_output"
 
@@ -329,7 +333,7 @@ def test_start_status_stop_round_trip(rig):
     info = json.loads((bag / "trial.json").read_text())
     assert info["stopped_at"] and info["topic_counts"]["/husky/tf"] > 0
     assert "Recording stopped" in (bag / "recorder.log").read_text()
-    # only the status panel is saved (recording/capture_panes.txt), at start and stop
+    # only the listed window is saved, at start and stop
     assert sorted(p.name for p in bag.glob("pane_*.txt")) == [
         "pane_start_status_0.txt",
         "pane_stop_status_0.txt",

@@ -12,7 +12,7 @@ into its own bag directory::
         trial.json        who / what / when (written here, updated at stop)
         recorder.log      everything the recorder printed
         pane_*.txt        the stack windows listed in recording/capture_panes.txt
-                          (the status panel), as text, at start and at stop
+                          (none by default), as text, at start and at stop
 
 Design rules (keep them when editing):
 
@@ -673,8 +673,14 @@ def parse_panes_spec(text: str) -> dict[str, int]:
 
 
 def panes_spec() -> dict[str, int]:
+    """The windows to capture: ``recording/capture_panes.txt``, or the file
+    ``$ADT4_REC_PANES_FILE`` names."""
+    path = (
+        os.environ.get("ADT4_REC_PANES_FILE")
+        or package_root() / "recording" / PANES_FILE
+    )
     try:
-        return parse_panes_spec((package_root() / "recording" / PANES_FILE).read_text())
+        return parse_panes_spec(pathlib.Path(path).read_text())
     except OSError:
         return {}
 
