@@ -5,5 +5,5 @@
 # Windows not listed are not captured: most print the same thing every second.
 #
 # None by default. The status panel is recorded from its topic instead
-# (/<robot>/ros_system_monitor/table_in in the topic lists): as pane text it
+# (/global/ros_system_monitor/table_in in the topic lists): as pane text it
 # is cut to the pane's width and height.
