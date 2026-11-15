@@ -367,6 +367,11 @@ launch:
       exec: omniplanner_node
       name: omniplanner_node
       pyenv: $(var spark_env)
+      env:
+        # Objects start suspicious: a pick inspects the object first, and a goal
+        # "(safe o)" plans an inspection (export OMNIPLANNER_OBJECTS_SUSPICIOUS=0
+        # before launching for the old every-object-safe rule).
+        - {name: OMNIPLANNER_OBJECTS_SUSPICIOUS, value: $(env OMNIPLANNER_OBJECTS_SUSPICIOUS 1)}
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml, allow_substs: true}
@@ -382,6 +387,11 @@ launch:
       exec: omniplanner_repair_node
       name: omniplanner_node
       pyenv: $(var spark_env)
+      env:
+        # Objects start suspicious: a pick inspects the object first, and a goal
+        # "(safe o)" plans an inspection (export OMNIPLANNER_OBJECTS_SUSPICIOUS=0
+        # before launching for the old every-object-safe rule).
+        - {name: OMNIPLANNER_OBJECTS_SUSPICIOUS, value: $(env OMNIPLANNER_OBJECTS_SUSPICIOUS 1)}
       param:
         - {name: use_sim_time, value: $(var sim_time)}
         - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/omniplanner_node.yaml, allow_substs: true}
