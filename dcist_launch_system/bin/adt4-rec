@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Per-trial rosbag recording on this machine: start, status, stop.
+
+Runs dcist_launch_system/trial_recorder.py straight from the checkout (standard
+library only), so it works without a sourced or rebuilt workspace:
+
+    ~/dcist_ws/src/awesome_dcist_t4/dcist_launch_system/bin/adt4-rec status
+"""
+
+import importlib.util
+import pathlib
+import sys
+
+_SRC = (
+    pathlib.Path(__file__).resolve().parent.parent
+    / "src"
+    / "dcist_launch_system"
+    / "trial_recorder.py"
+)
+_spec = importlib.util.spec_from_file_location("adt4_trial_recorder", _SRC)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+
+if __name__ == "__main__":
+    sys.exit(_mod.main())

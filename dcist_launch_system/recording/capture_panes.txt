@@ -1,0 +1,7 @@
+# Which adt4_system tmux windows a trial saves as text, next to its bag:
+#   <window name> [lines]
+# Captured when the trial starts and again when it stops. "lines" is how much
+# scrollback to keep above the visible screen (default 0 = the screen only,
+# right for a panel that redraws itself). Windows not listed are not captured:
+# most of them print the same thing every second.
+status 0
