@@ -61,8 +61,56 @@ def test_parse_topics_unset_variable_is_a_problem_not_a_topic():
 def test_repo_topic_lists_parse_cleanly():
     rec = pathlib.Path(__file__).resolve().parents[1] / "recording"
     for f in sorted(rec.glob("*_topics.txt")):
-        topics, problems = tr.parse_topics(f.read_text(), {"ADT4_ROBOT_NAME": "euclid"})
+        topics, problems = tr.parse_topics(
+            f.read_text(), {"ADT4_ROBOT_NAME": "euclid"}, ["euclid", "lewis"]
+        )
         assert topics and not problems, (f.name, problems)
+        assert not any("$" in t for t in topics)
+    # a robot records its own plan; the base station every robot's
+    spot, _ = tr.parse_topics(
+        (rec / "spot_topics.txt").read_text(), {"ADT4_ROBOT_NAME": "lewis"}
+    )
+    assert "/lewis/omniplanner_node/compiled_plan_out" in spot
+    assert not any(t.startswith(("/euclid/", "/hamilton/", "/gauss/")) for t in spot)
+    base, _ = tr.parse_topics(
+        (rec / "base_station_topics.txt").read_text(),
+        {"ADT4_ROBOT_NAME": "willow"},
+        ["euclid", "lewis"],
+    )
+    assert "/euclid/omniplanner_node/compiled_plan_out" in base
+    assert "/lewis/omniplanner_node/compiled_plan_out" in base
+
+
+def test_fleet_robot_lines_need_the_robots():
+    text = "/${ADT4_FLEET_ROBOT}/plan\n/${ADT4_ROBOT_NAME}/tf\n"
+    topics, problems = tr.parse_topics(text, {"ADT4_ROBOT_NAME": "willow"})
+    assert topics == ["/willow/tf"] and "needs the fleet's robots" in problems[0]
+    topics, problems = tr.parse_topics(text, {"ADT4_ROBOT_NAME": "willow"}, ["a", "b"])
+    assert topics == ["/a/plan", "/b/plan", "/willow/tf"] and not problems
+
+
+def test_map_identity_hashes_the_scene_graph(tmp_path):
+    assert tr.map_identity("") is None
+    assert tr.map_identity(tmp_path / "nope") == {
+        "path": str(tmp_path / "nope"),
+        "exists": False,
+        "files": {},
+    }
+    prior = tmp_path / "prior_b45"
+    (prior / "hydra" / "backend").mkdir(parents=True)
+    (prior / "hydra" / "backend" / "dsg.json").write_text('{"nodes": []}')
+    (prior / ".adt4_origin.json").write_text(
+        json.dumps({"run_id": "r-1", "source_machine": "euclid"})
+    )
+    ident = tr.map_identity(prior)
+    f = ident["files"]["hydra/backend/dsg.json"]
+    import hashlib
+
+    assert (
+        f["sha256"] == hashlib.sha256(b'{"nodes": []}').hexdigest() and f["size"] == 13
+    )
+    assert ident["run_id"] == "r-1" and ident["source_machine"] == "euclid"
+    assert "hydra/backend/dsg_with_mesh.json" not in ident["files"]
 
 
 def test_shared_env_keeps_only_ros_settings():
@@ -294,6 +342,10 @@ def test_start_status_stop_round_trip(rig):
     )
     rig.tmux("new-session", "-d", "-s", "adt4_system", "-n", "status", "bash")
     rig.tmux("set-environment", "-t", "adt4_system", "ADT4_OUTPUT_DIR", str(run_dir))
+    prior = rig.root / "prior_map"
+    (prior / "hydra" / "backend").mkdir(parents=True)
+    (prior / "hydra" / "backend" / "dsg.json").write_text("{}")
+    rig.tmux("set-environment", "-t", "adt4_system", "ADT4_PRIOR_MAP", str(prior))
     rig.tmux("send-keys", "-t", "adt4_system:status", "echo hydra-NOMINAL", "Enter")
     rig.tmux("new-window", "-t", "adt4_system", "-n", "hydra", "bash")
     rig.tmux("send-keys", "-t", "adt4_system:hydra", "echo spam-every-second", "Enter")
@@ -308,6 +360,8 @@ def test_start_status_stop_round_trip(rig):
     assert info["trial_id"] == TRIAL and info["description"] == "door test"
     assert info["topics"] == ["/husky/tf", "/husky/odom"]
     assert info["run"]["run_id"] == "abc" and info["stack_running"] is True
+    assert info["prior_map"]["path"] == str(prior)
+    assert len(info["prior_map"]["files"]["hydra/backend/dsg.json"]["sha256"]) == 64
     assert info["base_time_unix"] == 1763235012.5 and info["stopped_at"] is None
 
     rc, st = rig.run("status")

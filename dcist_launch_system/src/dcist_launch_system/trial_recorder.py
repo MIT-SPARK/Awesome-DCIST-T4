@@ -111,21 +111,35 @@ def expand_topic(line: str, env: dict) -> str:
     return _VAR_RE.sub(sub, line)
 
 
-def parse_topics(text: str, env: dict) -> tuple[list[str], list[str]]:
+FLEET_VAR = "ADT4_FLEET_ROBOT"
+
+
+def parse_topics(text: str, env: dict, robots=None) -> tuple[list[str], list[str]]:
     """(topics, problems) of a ``*_topics.txt``: one topic per line, blank
-    lines and ``#`` comments skipped, duplicates dropped, order kept."""
+    lines and ``#`` comments skipped, duplicates dropped, order kept.  A line
+    with ``${ADT4_FLEET_ROBOT}`` stands for one topic per robot in ``robots``
+    (the base station records every robot's plan)."""
     topics, problems = [], []
     for n, raw in enumerate((text or "").splitlines(), 1):
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
-        topic = expand_topic(line, env)
-        if "$" in topic:
-            problems.append(f"line {n}: unset variable in {line!r}")
-        elif not re.fullmatch(r"/[A-Za-z0-9_/~{}]+", topic):
-            problems.append(f"line {n}: not a topic name: {topic!r}")
-        elif topic not in topics:
-            topics.append(topic)
+        if FLEET_VAR in line:
+            if not robots:
+                problems.append(
+                    f"line {n}: {line!r} needs the fleet's robots (--robots)"
+                )
+                continue
+            expanded = [expand_topic(line, {**env, FLEET_VAR: r}) for r in robots]
+        else:
+            expanded = [expand_topic(line, env)]
+        for topic in expanded:
+            if "$" in topic:
+                problems.append(f"line {n}: unset variable in {line!r}")
+            elif not re.fullmatch(r"/[A-Za-z0-9_/~{}]+", topic):
+                problems.append(f"line {n}: not a topic name: {topic!r}")
+            elif topic not in topics:
+                topics.append(topic)
     return topics, problems
 
 
@@ -376,6 +390,56 @@ def disk(path) -> dict:
     }
 
 
+# the saved scene graph of a map directory (fleet/run_scan.py DSG_FILES)
+MAP_FILES = ("hydra/backend/dsg.json", "hydra/backend/dsg_with_mesh.json")
+HASH_MAX_BYTES = 4 * 10**9
+
+
+def sha256_file(path, max_bytes: int = HASH_MAX_BYTES) -> str | None:
+    """sha256 of a file; None when it cannot be read or is over ``max_bytes``."""
+    import hashlib  # noqa: PLC0415
+
+    try:
+        if os.path.getsize(path) > max_bytes:
+            return None
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def map_identity(path) -> dict | None:
+    """Which scene graph a map directory holds: its path, its run id (and the
+    run it was copied from) and the sha256 of each saved scene graph file."""
+    if not path:
+        return None
+    path = os.path.expanduser(str(path))
+    out = {"path": path, "exists": os.path.isdir(path), "files": {}}
+    if not out["exists"]:
+        return out
+    info = read_json(os.path.join(path, "run_info.json")) or {}
+    origin = read_json(os.path.join(path, ".adt4_origin.json")) or {}
+    out["run_id"] = info.get("run_id") or origin.get("run_id")
+    out["experiment"] = info.get("experiment") or origin.get("experiment")
+    out["source_machine"] = origin.get("source_machine")
+    out["source_path"] = origin.get("source_path")
+    for rel in MAP_FILES:
+        f = os.path.join(path, rel)
+        try:
+            st = os.stat(f)
+        except OSError:
+            continue
+        out["files"][rel] = {
+            "sha256": sha256_file(f),
+            "size": st.st_size,
+            "mtime": round(st.st_mtime, 3),
+        }
+    return out
+
+
 def read_json(path) -> dict | None:
     try:
         with open(path) as f:
@@ -520,7 +584,8 @@ def start(args) -> tuple[int, dict]:
         }
     senv = stack_env()
     topic_env = {**os.environ, **senv, "ADT4_ROBOT_NAME": args.machine}
-    topics, problems = parse_topics(text, topic_env)
+    robots = [r for r in (args.robots or "").split(",") if valid_name(r)]
+    topics, problems = parse_topics(text, topic_env, robots)
     if problems or not topics:
         return FAILED, {
             "ok": False,
@@ -614,6 +679,8 @@ def start(args) -> tuple[int, dict]:
         "recorder_git_commit": git_commit(package_root()),
         "stopped_at": None,
     }
+    # which scene graph the stack was launched on (path and file hashes)
+    info["prior_map"] = map_identity(senv.get("ADT4_PRIOR_MAP"))
     info["stack_panes_start"] = capture_stack_panes(bag_dir, "start")
     try:
         write_json_atomic(bag_dir / TRIAL_FILE, info)
@@ -893,6 +960,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--topics-file", default=None, help="a topic list file (overrides --topic-set)"
     )
     s.add_argument("--description", default="")
+    s.add_argument(
+        "--robots",
+        default="",
+        help="the fleet's robots, comma separated (for ${ADT4_FLEET_ROBOT} lines)",
+    )
     s.add_argument(
         "--base-time", type=float, default=None, help="the console's clock (unix s)"
     )

@@ -14,8 +14,6 @@
 /${ADT4_ROBOT_NAME}/livox/imu
 /${ADT4_ROBOT_NAME}/tx_rx_usage
 /${ADT4_ROBOT_NAME}/spot_executor_node/takeover
-/euclid/omniplanner_node/compiled_plan_out
-/hamilton/omniplanner_node/compiled_plan_out
-/gauss/omniplanner_node/compiled_plan_out
 /global/ros_system_monitor/table_in
 /${ADT4_ROBOT_NAME}/ros_system_monitor/node_diagnostic_collector
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_out
