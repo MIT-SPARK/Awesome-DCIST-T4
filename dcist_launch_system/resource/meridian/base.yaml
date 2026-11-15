@@ -9,9 +9,9 @@
 #   - cross_view_localization_data: the aerial image and the optional ground truth
 # Sections left empty use meridian's defaults.
 #
-# run_meridian is read by run-meridian binary, not meridian package. Odometry is the pose of 
-# body_frame in odom_frame, from odom_topic if the bag has it, otherwise from the bag's TF. 
-# The body -> camera extrinsic is looked up from the bag's TF, and meridian reports the 
+# run_meridian is read by run-meridian binary, not meridian package. Odometry is the pose of
+# body_frame in odom_frame, from odom_topic if the bag has it, otherwise from the bag's TF.
+# The body -> camera extrinsic is looked up from the bag's TF, and meridian reports the
 # trajectory of body_frame.
 run_meridian:
   odom_frame: ${ROBOT}/odom
