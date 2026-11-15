@@ -24,6 +24,9 @@ namespace dcist_launch_system_rviz {
  * "Clear Base Station" drops the selected robot(s)' cached changes at the AWCD base station.
  * Reset with "All" selected also resets the scene graph (the scene change writer's ~/reset):
  * every map change is dropped and Neo4j is the prior scene graph again.
+ *
+ * Every result is logged, and the result label lists the latest result of each robot (and of the
+ * base station and scene graph) for the last button press, failures first.
  */
 class ChangeDetectionPanel : public rviz_common::Panel {
   Q_OBJECT
@@ -67,7 +70,12 @@ class ChangeDetectionPanel : public rviz_common::Panel {
   void addRobot(const QString& name, const std::string& ns);
   //! Runs `fn` on the Qt thread (ROS callbacks run on the executor thread).
   void postToGui(std::function<void()> fn);
-  void setResult(const QString& text);
+  //! Starts a new set of results (one button press); earlier results are dropped.
+  void clearResults();
+  //! Logs a result and shows it as the line for `key` (a robot, or e.g. the scene graph).
+  void setResult(const QString& key, bool success, const QString& text);
+  void renderResults();
+  rclcpp::Logger logger() const;
   void updateStatus();
   //! With "All" selected: reset the scene graph to the prior map, once the robots have reset.
   void resetSceneGraphIfAll();
@@ -80,6 +88,12 @@ class ChangeDetectionPanel : public rviz_common::Panel {
   std::string scene_reset_service_;  // discovered <ns>/scene_change_writer/reset
   rclcpp::Client<Trigger>::SharedPtr scene_reset_client_;
   QString pending_selection_;
+
+  struct Result {
+    bool success;
+    QString text;
+  };
+  std::map<QString, Result> results_;  // latest result per robot / target, Qt thread only
 
   QComboBox* robot_box_;
   QLabel* status_label_;

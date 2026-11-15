@@ -3,7 +3,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOPOLOGY="${SCRIPT_DIR}/../config/topology.yaml"
+# topology.yaml merged with the private fleet address overlay ($ADT4_FLEET_ADDRESSES);
+# falls back to the public file (no addresses) if the merge fails.
+TOPOLOGY="$(python3 "${SCRIPT_DIR}/topology_merge.py" --out "${XDG_RUNTIME_DIR:-/tmp}/adt4_topology_$(id -u).yaml")" \
+    || TOPOLOGY="${SCRIPT_DIR}/../config/topology.yaml"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'; DIM='\033[2m'
 
@@ -489,7 +492,7 @@ except:
     else
         echo ""
         echo -e "${GREEN}Found ${found} radio(s).${NC}"
-        echo "Update topology.yaml silvus_radios.radios.*.mgmt_ip with these IPs."
+        echo "Update silvus_radios.radios.*.mgmt_ip in the fleet address overlay (\$ADT4_FLEET_ADDRESSES) with these IPs."
     fi
 }
 
@@ -652,7 +655,7 @@ for name, info in sorted(radios.items()):
         radio_list.append((name, mgmt, str(nid)))
 
 if len(radio_list) < 2:
-    print('  Need at least 2 radios in topology.yaml for a matrix.')
+    print('  Need at least 2 radios in the fleet address overlay (\$ADT4_FLEET_ADDRESSES) for a matrix.')
     sys.exit()
 
 # Query each radio for per-neighbor RSSI via routing_tree + rssi data
@@ -1086,7 +1089,7 @@ usage() {
     echo ""
     echo "Setup:"
     echo "  1. Ensure route exists: sudo ip route add 172.20.0.0/16 dev <silvus_iface>"
-    echo "  2. Run 'discover' or set mgmt_ip in topology.yaml"
+    echo "  2. Run 'discover' or set mgmt_ip in the fleet address overlay (\$ADT4_FLEET_ADDRESSES)"
     echo "  3. Run 'status' to query all radios"
 }
 

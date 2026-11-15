@@ -6,6 +6,8 @@ without raising exceptions. Requires textual[dev] to be installed.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 # ---------------------------------------------------------------------------
@@ -177,3 +179,78 @@ async def test_fleet_app_composes(ctx):
     async with FleetApp(ctx).run_test() as pilot:
         assert pilot.app.query_one("#status_table", DataTable) is not None
         assert pilot.app.query_one("#log", RichLog) is not None
+
+
+# ---------------------------------------------------------------------------
+# ConfigScreen save: addresses go to the overlay, never to topology.yaml
+# ---------------------------------------------------------------------------
+
+
+async def _save_config(ctx):
+    from textual.app import App, ComposeResult
+
+    from dcist_launch_system.tui.screens.config import ConfigScreen
+
+    screen = ConfigScreen(ctx)
+
+    class TestApp(App):
+        def compose(self) -> ComposeResult:
+            return iter([])
+
+        def on_mount(self):
+            self.push_screen(screen)
+
+    async with TestApp().run_test() as pilot:
+        await pilot.pause()
+        screen.action_save_action()
+        await pilot.pause()
+        log = screen.query_one("#config_log")
+        return "\n".join(line.text for line in log.lines)
+
+
+def _has_private_keys(topo):
+    if any("subnet" in (n or {}) for n in topo.get("networks", {}).values()):
+        return True
+    if any("addresses" in m for m in topo.get("machines", {}).values()):
+        return True
+    radios = topo.get("silvus_radios", {})
+    return "mgmt_subnet" in radios or "radios" in radios
+
+
+def test_config_save_splits_addresses_into_overlay(ctx, tmp_path):
+    """Sync (asyncio.run) so it runs without pytest-asyncio."""
+    import copy
+    import os
+
+    import yaml
+
+    from dcist_launch_system.fleet_helpers import topology_merge
+
+    merged = copy.deepcopy(ctx.topo)
+    ctx.topology_path = str(tmp_path / "topology.yaml")
+    ctx.addresses_path = str(tmp_path / "fleet_addresses.yaml")
+    asyncio.run(_save_config(ctx))
+
+    public = yaml.safe_load(open(ctx.topology_path))
+    private = yaml.safe_load(open(ctx.addresses_path))
+    assert not _has_private_keys(public)
+    assert "203.0.113" not in open(ctx.topology_path).read()
+    assert "198.51.100" not in open(ctx.topology_path).read()
+    assert private["machines"]["alpha"]["addresses"]["silvus"] == "203.0.113.10"
+    assert topology_merge.deep_merge(public, private) == merged
+    assert os.stat(ctx.addresses_path).st_mode & 0o777 == 0o600
+
+
+def test_config_save_without_overlay_writes_no_addresses(ctx, tmp_path):
+    import yaml
+
+    ctx.topology_path = str(tmp_path / "topology.yaml")
+    ctx.addresses_path = None
+    text = asyncio.run(_save_config(ctx))
+
+    public = yaml.safe_load(open(ctx.topology_path))
+    assert not _has_private_keys(public)
+    assert public["machines"]["alpha"]["role"] == "robot"
+    assert list(public["networks"]) == ["mit_wifi", "silvus"]
+    assert "Addresses NOT saved" in text
+    assert list(tmp_path.iterdir()) == [tmp_path / "topology.yaml"]

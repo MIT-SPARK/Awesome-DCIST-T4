@@ -1,10 +1,11 @@
 #!/bin/bash
-# ./python_setup.sh [--no-roman] [--no-spark] [--no-console]
+# ./python_setup.sh [--no-roman] [--no-spark] [--no-console] [--openset-query]
 
 ci_running=false
 install_roman=true
 install_spark=true
 install_console=true
+install_openset_query=false
 
 while :; do
     echo $1
@@ -25,8 +26,12 @@ while :; do
             install_console=false
             shift
             ;;
+        --openset-query)
+            install_openset_query=true
+            shift
+            ;;
         -h|-?|--help)
-            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark] [--no-console]"
+            echo "Usage: ./python_setup.sh [--no-roman] [--no-spark] [--no-console] [--openset-query]"
             exit
             ;;
         *)
@@ -182,5 +187,26 @@ if [ "$install_console" = true ]; then
             echo "Console UI build failed; fix the npm error and re-run this script." >&2
             exit 1
         fi
+    fi
+fi
+
+##################################
+# Open-vocabulary object search (openset_query)
+##################################
+# Base station only (opt-in with --openset-query): the SAM3 query server the console's
+# object search talks to. It has its own venv ($ADT4_ENV/sam3) because SAM3 pins
+# numpy<2. Missing model weights do not fail the install: setup_env.sh --weights
+# prints how to get them (facebook/sam3 is gated on Hugging Face).
+
+if [ "$install_openset_query" = true ]; then
+    openset_query_setup=$ADT4_WS/src/awesome_dcist_t4/openset_query/setup_env.sh
+    if ! bash $openset_query_setup; then
+        echo "openset_query install failed; fix the error above and re-run with --openset-query." >&2
+        exit 1
+    fi
+    if [ "$ci_running" = true ]; then
+        echo "Skipping the openset_query model weights (--is-ci)."
+    else
+        bash $openset_query_setup --weights || echo "openset_query: model weights missing, see the instructions above"
     fi
 fi

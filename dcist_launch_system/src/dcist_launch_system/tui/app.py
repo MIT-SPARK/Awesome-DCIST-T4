@@ -20,6 +20,7 @@ from textual.widgets import DataTable, Footer, Header, Label, RichLog, Rule
 from dcist_launch_system.fleet_helpers import (
     detect_network,
     filter_reachable,
+    find_addresses_path,
     generate_zenoh_endpoints,
     get_local_ips,
     load_topology,
@@ -276,7 +277,10 @@ class FleetApp(App):
 
 
 def _launch_tui(
-    network: str | None, topology_path: str | None, output_root: str
+    network: str | None,
+    topology_path: str | None,
+    output_root: str,
+    addresses_path: str | None = None,
 ) -> None:
     """Build TuiContext and run FleetApp."""
     try:
@@ -289,7 +293,8 @@ def _launch_tui(
         )
         return
 
-    topo = load_topology(topology_path)
+    overlay = find_addresses_path(addresses_path)
+    topo = load_topology(topology_path, overlay)
     active_network = network or detect_network(topo)
     if not active_network:
         click.secho("Could not detect network. Use --network.", fg="red")
@@ -304,6 +309,7 @@ def _launch_tui(
         active_network=active_network,
         topology_path=topology_path,
         output_root=output_root,
+        addresses_path=str(overlay) if overlay else None,
         runtime_config=runtime_config,
         _local_ips=local_ips,
     )

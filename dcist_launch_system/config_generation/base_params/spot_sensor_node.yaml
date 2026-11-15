@@ -1,7 +1,9 @@
 ---
 /**:
   ros__parameters:
-    cameras: [frontleft, frontright]
+    # every Spot camera; hand is skipped (with a warning) on a Spot without an arm. Only cameras
+    # with a subscriber are requested (spot_sensors), so the extra ones cost nothing unwatched.
+    cameras: [frontleft, frontright, left, right, back, hand]
     robot:
       setup_logging: false
       should_retry: true

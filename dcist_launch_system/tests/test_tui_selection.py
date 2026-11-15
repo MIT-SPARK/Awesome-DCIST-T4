@@ -209,7 +209,7 @@ def test_zenoh_endpoints_scoped(sample_topology):
         sample_topology, "mit_wifi", "gamma", robot_filter=["alpha"]
     )
     assert len(eps) == 1
-    assert "10.29.1.1" in eps[0]
+    assert "198.51.100.1" in eps[0]
 
     # Robot → always empty (listeners)
     eps = generate_zenoh_endpoints(sample_topology, "mit_wifi", "alpha")
