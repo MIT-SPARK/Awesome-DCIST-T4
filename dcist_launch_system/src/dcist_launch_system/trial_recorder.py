@@ -209,11 +209,30 @@ def find_recorders(procs: dict, pane_pids) -> tuple[list[int], list[int]]:
     return [p for p in top if p in mine], [p for p in top if p not in mine]
 
 
+STORAGE_CONFIG = "mcap_zstd.yaml"  # recording/: lossless zstd of the mcap chunks
+
+
+def compression_args(env: dict | None = None) -> list[str]:
+    """Record with ``recording/mcap_zstd.yaml`` (lossless zstd chunk compression:
+    about a third smaller on camera data for a fraction of one core).
+    ``ADT4_REC_COMPRESSION=none`` records raw, and so does a checkout without
+    the file: compression must never be why a recording does not start."""
+    env = os.environ if env is None else env
+    if env.get("ADT4_REC_COMPRESSION", "zstd") in ("", "none", "off", "0"):
+        return []
+    path = package_root() / "recording" / STORAGE_CONFIG
+    return ["--storage-config-file", str(path)] if path.is_file() else []
+
+
 def record_command(
     bag_dir: str, topics: list[str], extra: list[str] | None = None
 ) -> list[str]:
-    """The same recorder the stack's ``recording`` window runs (``record_topics``)."""
-    return ["ros2", "bag", "record", "-o", bag_dir, *(extra or []), "--topics", *topics]
+    """The same recorder the stack's ``recording`` window runs (``record_topics``),
+    with lossless zstd compression of the bag (see ``compression_args``)."""
+    return [
+        "ros2", "bag", "record", "-o", bag_dir,
+        *compression_args(), *(extra or []), "--topics", *topics,
+    ]  # fmt: skip
 
 
 def pane_script(

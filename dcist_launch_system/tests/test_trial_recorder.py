@@ -164,6 +164,7 @@ def test_pane_script_exports_sources_then_records():
     cmd = tr.record_command(
         "/out/t/m", ["/m/tf", "/m/odom"], ["--max-bag-duration", "60"]
     )
+    cfg = tr.package_root() / "recording" / "mcap_zstd.yaml"
     assert cmd[:5] == ["ros2", "bag", "record", "-o", "/out/t/m"]
     assert cmd[-3:] == ["--topics", "/m/tf", "/m/odom"]
     script = tr.pane_script(
@@ -173,7 +174,8 @@ def test_pane_script_exports_sources_then_records():
     assert lines[0] == "export ROS_DOMAIN_ID=7" and lines[1] == "export X='a b'"
     assert lines[2] == "source ws/setup.zsh"
     assert lines[3].startswith(
-        "ros2 bag record -o /out/t/m --max-bag-duration 60 --topics"
+        f"ros2 bag record -o /out/t/m --storage-config-file {cfg} "
+        "--max-bag-duration 60 --topics"
     )
     assert "exec" not in script  # the pane must outlive the recorder to show its error
 
@@ -436,3 +438,10 @@ def test_stubborn_recorder_is_left_running_unless_forced(rig):
     assert rc == 0 and sp["signals"] == ["SIGINT", "SIGINT", "SIGTERM"]
     assert sp["metadata"] is False  # killed before it could close the bag: reported
     assert time.monotonic() - t0 < 60
+
+
+def test_compression_is_on_by_default_and_can_be_switched_off():
+    cfg = tr.package_root() / "recording" / "mcap_zstd.yaml"
+    assert cfg.is_file() and 'compression: "Zstd"' in cfg.read_text()
+    assert tr.compression_args({}) == ["--storage-config-file", str(cfg)]
+    assert tr.compression_args({"ADT4_REC_COMPRESSION": "none"}) == []
