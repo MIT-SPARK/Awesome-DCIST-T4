@@ -302,6 +302,15 @@ def silent_topics(wanted: list[str], counts: dict | None) -> list[str]:
 
 # ---------------------------------------------------------------- machine
 def _run(argv, timeout=10.0, **kw):
+    """Run a command in its own session, without a terminal.
+
+    The console calls this helper from a process that owns a terminal (its tmux
+    pane).  ``zsh -ic`` is an interactive shell: given a terminal it makes its
+    own process group the terminal's foreground group and never gives it back,
+    and from then on Ctrl-C in that pane no longer reaches the console.  A new
+    session has no controlling terminal to take."""
+    kw.setdefault("stdin", subprocess.DEVNULL)
+    kw.setdefault("start_new_session", True)
     try:
         r = subprocess.run(
             argv,

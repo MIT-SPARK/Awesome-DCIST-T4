@@ -445,3 +445,12 @@ def test_compression_is_on_by_default_and_can_be_switched_off():
     assert cfg.is_file() and 'compression: "Zstd"' in cfg.read_text()
     assert tr.compression_args({}) == ["--storage-config-file", str(cfg)]
     assert tr.compression_args({"ADT4_REC_COMPRESSION": "none"}) == []
+
+
+def test_commands_run_without_the_callers_terminal():
+    # a child in its own session cannot take the caller's terminal (zsh -i did,
+    # and Ctrl-C stopped reaching the console)
+    code = "import os; print(os.getsid(0) == os.getpid(), os.getsid(0))"
+    rc, out, _ = tr._run([sys.executable, "-c", code])
+    own, sid = out.split()
+    assert rc == 0 and own == "True" and int(sid) != os.getsid(0)
