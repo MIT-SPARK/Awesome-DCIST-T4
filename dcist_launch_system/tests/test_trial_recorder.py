@@ -22,6 +22,17 @@ TRIAL = "trial_20261115T193012Z_door-test"
 
 
 # --------------------------------------------------------------------- pure
+def test_trial_of_reads_a_later_part_as_the_same_machine(tmp_path):
+    assert tr.trial_of("/o/trial_x/euclid") == ("trial_x", "euclid")
+    assert tr.trial_of("/o/trial_x/euclid_part3") == ("trial_x", "euclid")
+    d, n = tr.part_dir(tmp_path, "euclid")
+    assert (d.name, n) == ("euclid", 1)
+    d.mkdir()
+    assert tr.part_dir(tmp_path, "euclid")[0].name == "euclid_part2"
+    (tmp_path / "euclid_part2").mkdir()
+    assert tr.part_dir(tmp_path, "euclid") == (tmp_path / "euclid_part3", 3)
+
+
 def test_trial_and_machine_names():
     assert tr.valid_trial(TRIAL)
     assert not tr.valid_trial("20261115_no_prefix")
@@ -323,6 +334,7 @@ def rig(tmp_path, monkeypatch):
 
     yield type("Rig", (), {"run": staticmethod(run), "tmux": staticmethod(tmux),
                            "root": root, "topics": topics, "env": env})  # fmt: skip
+    subprocess.run(["tmux", "-L", tr.REC_SOCKET, "kill-server"], env=env, capture_output=True)  # fmt: skip
     subprocess.run(["tmux", "kill-server"], env=env, capture_output=True)
 
 
@@ -420,10 +432,62 @@ def test_start_reports_a_recorder_that_fails(rig):
 
 @needs_linux_tmux
 def test_never_records_over_an_existing_directory(rig):
-    (rig.root / TRIAL / "husky").mkdir(parents=True)
+    """A start whose bag directory is there already (the recorder died and the
+    console retries) records into the next part beside it."""
+    old = rig.root / TRIAL / "husky"
+    old.mkdir(parents=True)
+    (old / "husky_0.mcap").write_bytes(b"first part")
     rc, out = rig.run(*start_args(rig))
-    assert rc == tr.FAILED and "exists already" in out["error"]
-    assert rig.run("status")[1]["recording"] is False
+    assert rc == 0, out
+    part2 = rig.root / TRIAL / "husky_part2"
+    assert out["dir"] == str(part2) and out["part"] == 2
+    rc, st = rig.run("status")
+    assert st["recording"] and (st["trial"], st["machine"]) == (TRIAL, "husky")
+    rc, sp = rig.run("stop", "--trial", TRIAL)
+    assert rc == 0 and sp["metadata"] is True and sp["machine"] == "husky"
+    info = json.loads((part2 / "trial.json").read_text())
+    assert (info["machine"], info["part"]) == ("husky", 2)
+    assert (old / "husky_0.mcap").read_bytes() == b"first part"
+    assert sorted(p.name for p in (rig.root / TRIAL).iterdir()) == ["husky", "husky_part2"]  # fmt: skip
+    # and once more: part 3
+    rc, out = rig.run(*start_args(rig))
+    assert rc == 0 and out["part"] == 3, out
+    rig.run("stop")
+
+
+@needs_linux_tmux
+def test_the_recorder_outlives_the_stacks_tmux_server(rig):
+    """``tmux kill-server`` on the machine (how a stack is often torn down)
+    must not take a recording with it, and ``tmux attach`` must not find it."""
+    rig.tmux("new-session", "-d", "-s", "adt4_system", "-n", "status", "bash")
+    rc, out = rig.run(*start_args(rig))
+    assert rc == 0, out
+    assert rig.tmux("has-session", "-t", "=adt4_rec").returncode != 0
+    assert "adt4_rec" not in rig.tmux("list-sessions").stdout
+    assert rig.tmux("kill-server").returncode == 0
+    rc, st = rig.run("status")
+    assert st["recording"] is True and st["stack_running"] is False
+    rc, sp = rig.run("stop")
+    assert rc == 0 and sp["stopped"] is True and sp["metadata"] is True
+    assert rig.run("status")[1]["session"] is False
+
+
+@needs_linux_tmux
+def test_a_recorder_left_on_the_default_server_is_still_ours(rig):
+    """One started before the recorder had its own server: seen and stopped."""
+    bag = rig.root / TRIAL / "husky"
+    bag.parent.mkdir(parents=True)
+    rig.tmux("new-session", "-d", "-s", "adt4_rec", "bash", "-c",
+             f"ros2 bag record -o {bag} --topics /husky/tf; sleep 30")  # fmt: skip
+    for _ in range(40):
+        rc, st = rig.run("status")
+        if st["recording"]:
+            break
+        time.sleep(0.25)
+    assert st["recording"] is True and st["dir"] == str(bag)
+    rc, sp = rig.run("stop")
+    assert rc == 0 and sp["stopped"] is True
+    assert rig.tmux("has-session", "-t", "=adt4_rec").returncode != 0
 
 
 @needs_linux_tmux

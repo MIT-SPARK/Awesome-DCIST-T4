@@ -16,14 +16,20 @@ into its own bag directory::
 
 Design rules (keep them when editing):
 
-* The recorder runs in its own tmux session (``adt4_rec``), never in
-  ``adt4_system``; starting or stopping it sends nothing to the stack's panes.
+* The recorder runs in its own tmux session (``adt4_rec``) on its OWN tmux
+  server (socket ``adt4_rec``: ``tmux -L adt4_rec attach`` to look at it),
+  never in ``adt4_system``; starting or stopping it sends nothing to the
+  stack's panes.  So ``tmux kill-server``, or anything else that takes the
+  stack's tmux server down, leaves a recording running, and a plain
+  ``tmux attach`` on the machine never lands in the recorder.
   Reading the stack is limited to ``tmux show-environment`` and
   ``tmux capture-pane``.
 * Nothing here talks to another machine.  Once started, a recording keeps
   going with no network at all.
 * Nothing is overwritten or deleted, and the recorder is never ``kill -9``'d:
   a bag only gets its ``metadata.yaml`` when the recorder exits by itself.
+  A start whose bag directory exists already (the recorder died and the
+  console retries) records into ``<machine>_part2``, ``_part3``, ... beside it.
 * A full disk is reported (``free_bytes``), never acted on.
 * Every command prints exactly one JSON object on its last line; the exit
   status is 0 only when the command did what was asked.
@@ -49,6 +55,8 @@ import time
 
 SCHEMA = 1
 SESSION = "adt4_rec"
+REC_SOCKET = "adt4_rec"  # the recorder's own tmux server (tmux -L)
+PART_RE = re.compile(r"^(?P<machine>.+)_part(?P<part>[1-9][0-9]*)$")
 STACK_SESSION = "adt4_system"
 TRIAL_FILE = "trial.json"
 LOG_FILE = "recorder.log"
@@ -368,12 +376,43 @@ def tmux(*args, timeout=10.0):
     return _run(["tmux", *args], timeout=timeout)
 
 
-def session_exists(name: str) -> bool:
-    return tmux("has-session", "-t", f"={name}")[0] == 0
+def rec_tmux(*args, timeout=10.0):
+    """tmux on the recorder's own server."""
+    return _run(["tmux", "-L", REC_SOCKET, *args], timeout=timeout)
 
 
-def pane_pids(session: str) -> list[int]:
-    rc, out, _ = tmux("list-panes", "-s", "-t", f"={session}", "-F", "#{pane_pid}")
+# where a recorder session can be: its own server, and the default one, where a
+# recorder started before the recorder had its own server still runs
+REC_SERVERS = (rec_tmux, tmux)
+
+
+def session_exists(name: str, run=tmux) -> bool:
+    return run("has-session", "-t", f"={name}")[0] == 0
+
+
+def rec_session_exists() -> bool:
+    return any(session_exists(SESSION, run) for run in REC_SERVERS)
+
+
+def kill_rec_session() -> None:
+    for run in REC_SERVERS:
+        if session_exists(SESSION, run):
+            run("kill-session", "-t", f"={SESSION}")
+
+
+def rec_pane_pids() -> list[int]:
+    return [pid for run in REC_SERVERS for pid in pane_pids(SESSION, run)]
+
+
+def rec_pane_text() -> str:
+    for run in REC_SERVERS:
+        if session_exists(SESSION, run):
+            return pane_text(SESSION, run=run)
+    return ""
+
+
+def pane_pids(session: str, run=tmux) -> list[int]:
+    rc, out, _ = run("list-panes", "-s", "-t", f"={session}", "-F", "#{pane_pid}")
     return [int(x) for x in out.split() if x.isdigit()] if rc == 0 else []
 
 
@@ -558,9 +597,9 @@ def pane_shell() -> list[str]:
 
 def active() -> dict:
     """What is recording now: our recorder (pid, bag dir) and any other."""
-    exists = session_exists(SESSION)
+    exists = rec_session_exists()
     procs = read_procs()
-    ours, others = find_recorders(procs, pane_pids(SESSION) if exists else [])
+    ours, others = find_recorders(procs, rec_pane_pids() if exists else [])
     out = {"session": exists, "pid": None, "dir": None, "others": []}
     if ours:
         pid = ours[0]
@@ -574,11 +613,24 @@ def active() -> dict:
 
 
 def trial_of(bag_dir) -> tuple[str | None, str | None]:
-    """(trial id, machine) of ``<root>/<trial>/<machine>``."""
+    """(trial id, machine) of ``<root>/<trial>/<machine>`` or of a later part
+    of it, ``<root>/<trial>/<machine>_part<n>``."""
     if not bag_dir:
         return None, None
     p = pathlib.Path(bag_dir)
-    return p.parent.name, p.name
+    m = PART_RE.match(p.name)
+    return p.parent.name, m.group("machine") if m else p.name
+
+
+def part_dir(trial_dir: pathlib.Path, machine: str) -> tuple[pathlib.Path, int]:
+    """The bag directory to record into, and which part of the machine's
+    recording it is: ``<machine>``, or the first free ``<machine>_part<n>``
+    when that exists already.  Never an existing directory."""
+    d, n = trial_dir / machine, 1
+    while d.exists() or d.is_symlink():
+        n += 1
+        d = trial_dir / f"{machine}_part{n}"
+    return d, n
 
 
 # ----------------------------------------------------------------- status
@@ -636,7 +688,7 @@ def start(args) -> tuple[int, dict]:
         }
     if act["session"]:
         # ours, and its recorder is gone (it lingers EXIT_LINGER_S): clear it
-        tmux("kill-session", "-t", f"={SESSION}")
+        kill_rec_session()
 
     topics_file = pathlib.Path(
         args.topics_file
@@ -661,12 +713,9 @@ def start(args) -> tuple[int, dict]:
         }
 
     root = pathlib.Path(os.path.expanduser(args.output_root))
-    bag_dir = root / args.trial / args.machine
-    if bag_dir.exists():
-        return FAILED, {
-            "ok": False,
-            "error": f"{bag_dir} exists already; not recording over it",
-        }
+    # never over an existing bag: a start after the recorder died (the console's
+    # Retry) goes on in the next part beside it
+    bag_dir, part = part_dir(root / args.trial, args.machine)
     try:
         bag_dir.parent.mkdir(parents=True, exist_ok=True)
     except OSError as e:
@@ -676,7 +725,7 @@ def start(args) -> tuple[int, dict]:
     env["ADT4_ROBOT_NAME"] = args.machine
     cmd = record_command(str(bag_dir), topics, args.record_arg)
     script = pane_script(env, workspace_setup(), cmd)
-    rc, _, err = tmux(
+    rc, _, err = rec_tmux(
         "new-session", "-d", "-s", SESSION, "-n", "record", "-x", "220", "-y", "50",
         *pane_shell(), script,
     )  # fmt: skip
@@ -693,11 +742,11 @@ def start(args) -> tuple[int, dict]:
         pid = act["pid"]
         if pid is not None and bag_dir.is_dir():
             break
-        if not act["session"] or (pid is None and EXIT_MARK in pane_text(SESSION)):
+        if not act["session"] or (pid is None and EXIT_MARK in rec_pane_text()):
             break  # the recorder is gone already: no point waiting
         time.sleep(0.5)
     if pid is None or not bag_dir.is_dir():
-        tail = pane_text(SESSION).rstrip()[-1500:]
+        tail = rec_pane_text().rstrip()[-1500:]
         return FAILED, {
             "ok": False,
             "error": "the recorder did not start"
@@ -709,10 +758,10 @@ def start(args) -> tuple[int, dict]:
     # keep everything the recorder prints, next to the bag
     log_path = bag_dir / LOG_FILE
     try:
-        log_path.write_text(pane_text(SESSION))
+        log_path.write_text(rec_pane_text())
     except OSError:
         pass
-    tmux(
+    rec_tmux(
         "pipe-pane", "-t", f"={SESSION}:", "-o", f"cat >> {shlex.quote(str(log_path))}"
     )
 
@@ -723,6 +772,9 @@ def start(args) -> tuple[int, dict]:
         "schema": SCHEMA,
         "trial_id": args.trial,
         "machine": args.machine,
+        # 1, or more when the recorder died and was started again in this trial:
+        # the earlier parts are the directories beside this one
+        "part": part,
         "host": socket.gethostname(),
         "description": args.description or "",
         "started_at": utc_iso(now),
@@ -771,6 +823,7 @@ def start(args) -> tuple[int, dict]:
         "trial": args.trial,
         "machine": args.machine,
         "dir": str(bag_dir),
+        "part": part,
         "pid": pid,
         "topics": len(topics),
         "bytes": b1,
@@ -782,13 +835,13 @@ def start(args) -> tuple[int, dict]:
     }
 
 
-def pane_text(target: str, lines: int | None = None) -> str:
+def pane_text(target: str, lines: int | None = None, run=tmux) -> str:
     """Text of a pane (a ``%id``) or of a session's current pane: all its
     scrollback, or with ``lines`` the visible screen plus that many lines."""
     if not target.startswith("%"):
         target = f"={target}:"
     since = "-" if lines is None else str(-int(lines))
-    rc, out, _ = tmux("capture-pane", "-p", "-J", "-S", since, "-t", target)
+    rc, out, _ = run("capture-pane", "-p", "-J", "-S", since, "-t", target)
     return out if rc == 0 else ""
 
 
@@ -858,7 +911,7 @@ def stop(args) -> tuple[int, dict]:
     act = active()
     if act["pid"] is None:
         if act["session"]:
-            tmux("kill-session", "-t", f"={SESSION}")
+            kill_rec_session()
         return OK, {"ok": True, "stopped": False, "was_recording": False,
                     "other_recorders": act["others"]}  # fmt: skip
     pid, bag_dir = act["pid"], act["dir"]
@@ -935,7 +988,7 @@ def stop(args) -> tuple[int, dict]:
             write_json_atomic(os.path.join(bag_dir, TRIAL_FILE), info)
         except OSError:
             pass
-    tmux("kill-session", "-t", f"={SESSION}")  # ours; its recorder has exited
+    kill_rec_session()  # ours; its recorder has exited
     return OK, {
         "ok": True,
         "stopped": True,
