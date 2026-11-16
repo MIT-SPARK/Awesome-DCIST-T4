@@ -190,6 +190,8 @@ def test_pane_runs_with_session_env(tmp_path):
         "--name", "hamilton",
         "--ros-args",
         "-r", "__ns:=/hamilton",
+        "-r", "/tf:=/hamilton/tf",
+        "-r", "/tf_static:=/hamilton/tf_static",
         "-r", "~/table_out:=/global/ros_system_monitor/table_in",
     ]  # fmt: skip
 
