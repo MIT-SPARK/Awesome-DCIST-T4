@@ -454,3 +454,24 @@ def test_commands_run_without_the_callers_terminal():
     rc, out, _ = tr._run([sys.executable, "-c", code])
     own, sid = out.split()
     assert rc == 0 and own == "True" and int(sid) != os.getsid(0)
+
+
+def test_run_listing_records_what_the_run_folder_held(tmp_path):
+    run = tmp_path / "exp_a"
+    (run / "hydra" / "backend").mkdir(parents=True)
+    (run / "hydra" / "backend" / "dsg.json").write_text("graph")
+    (run / "log.txt").write_text("log")
+    os.symlink(run / "log.txt", run / "link")
+    got = tr.run_listing(str(run))
+    assert [(f["path"], f["size"]) for f in got["files"]] == [
+        ("log.txt", 3),
+        ("hydra/backend/dsg.json", 5),
+    ]
+    assert got["bytes"] == 8 and got["truncated"] is False
+    assert all(f["mtime"] > 0 for f in got["files"])
+    # a huge folder is cut, and says so; the total still counts everything
+    cut = tr.run_listing(str(run), limit=1)
+    assert len(cut["files"]) == 1 and cut["truncated"] is True and cut["bytes"] == 8
+    # no run folder: nothing, and no error
+    assert tr.run_listing(None) is None
+    assert tr.run_listing(str(tmp_path / "nope")) is None

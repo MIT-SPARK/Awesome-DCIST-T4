@@ -42,6 +42,7 @@ import re
 import shlex
 import signal
 import socket
+import stat
 import subprocess
 import sys
 import time
@@ -292,6 +293,44 @@ def parse_metadata(text: str) -> dict | None:
     if total is None and not topics:
         return None
     return {"message_count": total, "duration_s": duration, "topics": topics}
+
+
+RUN_LISTING_MAX = 2000  # files; a run folder has tens to hundreds
+
+
+def run_listing(run_dir: str | None, limit: int = RUN_LISTING_MAX) -> dict | None:
+    """What is in the run's output folder right now: every file with its size
+    and modification time.  Taken when a trial stops, so that later one can tell
+    which of the folder's files existed then and which the stack wrote after
+    (it saves its final scene graph only when it shuts down).  Never raises."""
+    if not run_dir or not os.path.isdir(run_dir):
+        return None
+    files, total, truncated = [], 0, False
+    try:
+        for d, dirs, names in os.walk(run_dir):
+            dirs.sort()
+            for n in sorted(names):
+                path = os.path.join(d, n)
+                try:
+                    st = os.lstat(path)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(st.st_mode):
+                    continue
+                total += st.st_size
+                if len(files) >= limit:
+                    truncated = True
+                    continue
+                files.append(
+                    {
+                        "path": os.path.relpath(path, run_dir),
+                        "size": st.st_size,
+                        "mtime": round(st.st_mtime, 3),
+                    }
+                )
+    except OSError:
+        return None
+    return {"files": files, "bytes": total, "truncated": truncated}
 
 
 def silent_topics(wanted: list[str], counts: dict | None) -> list[str]:
@@ -890,6 +929,7 @@ def stop(args) -> tuple[int, dict]:
             topic_counts=(meta or {}).get("topics"),
             silent_topics=silent,
             stack_panes=panes,
+            run_output_at_stop=run_listing((info.get("run") or {}).get("output_dir")),
         )
         try:
             write_json_atomic(os.path.join(bag_dir, TRIAL_FILE), info)
