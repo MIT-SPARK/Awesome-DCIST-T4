@@ -20,6 +20,7 @@ input:
         semantics_type: instance
         use_exact: true
         max_packets: 30
+        tf_lookup: {max_tries: 2}
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
 active_window:
