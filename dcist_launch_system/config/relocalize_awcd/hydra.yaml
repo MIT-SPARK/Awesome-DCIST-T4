@@ -105,10 +105,10 @@ active_window:
 frontend:
   type: GraphBuilder
   serialize_dsg_mesh: false
-  clear_object_meshes: false
+  clear_object_meshes: true
   enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5}
-  mesh_compression: {resolution: 0.005}
+  mesh_compression: {resolution: 0.005, type: ""}
   graph_connector:
     layers:
       - parent_layer: MESH_PLACES

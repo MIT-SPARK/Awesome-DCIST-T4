@@ -1,5 +1,8 @@
 ---
 map_frame: $<env ADT4_ROBOT_NAME>/odom
+frontend:
+  clear_object_meshes: true
+  mesh_compression: {type: ''}
 backend:
   publish_backend_tf: false
   optimize_on_lc: false
