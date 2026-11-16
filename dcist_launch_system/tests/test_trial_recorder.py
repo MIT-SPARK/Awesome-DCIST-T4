@@ -442,7 +442,7 @@ def test_stubborn_recorder_is_left_running_unless_forced(rig):
 
 def test_compression_is_on_by_default_and_can_be_switched_off():
     cfg = tr.package_root() / "recording" / "mcap_zstd.yaml"
-    assert cfg.is_file() and 'compression: "Zstd"' in cfg.read_text()
+    assert cfg.is_file() and "compression: Zstd" in cfg.read_text()
     assert tr.compression_args({}) == ["--storage-config-file", str(cfg)]
     assert tr.compression_args({"ADT4_REC_COMPRESSION": "none"}) == []
 
