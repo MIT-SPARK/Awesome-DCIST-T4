@@ -20,7 +20,8 @@ input:
         verbosity: 1
         semantics_type: instance
         use_exact: true
-        queue_size: 30
+        max_packets: 30
+        tf_lookup: {max_tries: 2}
         filters:
           - {type: InvalidDepthFilter, max_invalid_ratio: 0.5, inf_is_valid: true}
 active_window:
@@ -64,10 +65,10 @@ active_window:
 frontend:
   type: GraphBuilder
   serialize_dsg_mesh: false
-  clear_object_meshes: false
+  clear_object_meshes: true
   enable_mesh_objects: false
   pgmo: {time_horizon: 15.0, d_graph_resolution: 2.5}
-  mesh_compression: {resolution: 0.005}
+  mesh_compression: {resolution: 0.005, type: ""}
   graph_connector:
     layers:
       - parent_layer: MESH_PLACES
