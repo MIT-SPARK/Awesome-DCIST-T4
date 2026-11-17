@@ -283,7 +283,9 @@ def test_fleetlink_bridge_guard(tmp_path, running):
             if running == "executable"
             else "python3 -c from fleetlink.launcher import bridge; bridge()"
         )
-        bridge = subprocess.Popen(["bash", "-c", f"exec -a {shlex.quote(fake)} sleep 30"])
+        bridge = subprocess.Popen(
+            ["bash", "-c", f"exec -a {shlex.quote(fake)} sleep 30"]
+        )
     try:
         # run the pane's script as its pane runs it: as `zsh -c '<script>'`, so its
         # own argv holds the whole command
