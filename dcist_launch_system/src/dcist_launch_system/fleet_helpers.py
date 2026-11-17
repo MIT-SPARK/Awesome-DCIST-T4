@@ -1691,7 +1691,7 @@ def get_silvus_radio_details(topology):
             "rssi": parsed.get(4),
             "link_stats": parsed.get(5),
             "snr_stats": parsed.get(6),
-            "link_quality": parse_network_status(parsed.get(7)),
+            "link_quality": parse_network_status(parsed.get(7), node_id),
             "clients": [
                 c
                 for c in parsed.get(8) or []
@@ -2163,7 +2163,9 @@ def silvus_link_locals(iface):
     """
     try:
         subprocess.run(
-            ["ping", "-6", "-c", "2", "-i", "0.2", "-W", "1", f"ff02::1%{iface}"],
+            # -i 1: a shorter interval to a multicast address needs root, and ping
+            # then sends nothing, so only radios already in the neighbour table show
+            ["ping", "-6", "-c", "2", "-i", "1", "-W", "1", f"ff02::1%{iface}"],
             capture_output=True, timeout=5,
         )  # fmt: skip
         out = subprocess.run(
@@ -2235,21 +2237,31 @@ def _silvus_link_local_by_node(topology, refresh=False):
     return iface, by_node
 
 
-def parse_network_status(raw):
-    """``network_status`` -> ``{neighbour node_id: link value}``.
+def parse_network_status(raw, node_id=None):
+    """``network_status`` -> ``{neighbour node_id: link value}`` for ``node_id``.
 
-    StreamScape 5 returns ``[self, nbr, value, nbr, value, ...]`` (value ~50 for
-    radios a few metres apart, tracking signal quality: SNR-like, in dB).
+    StreamScape 5 returns flat ``[a, b, value, a, b, value, ...]`` triples: the
+    radio's own links (``a`` = itself) and some it heard between other radios
+    (value ~50 for radios a few metres apart, tracking signal quality: SNR-like,
+    in dB). Only the triples with ``node_id`` at either end are kept; without
+    ``node_id`` the radio is taken to be the first triple's ``a``.
     """
-    if not isinstance(raw, list) or len(raw) < 3:
+    if not isinstance(raw, list) or len(raw) < 3 or len(raw) % 3:
         return {}
+    try:
+        triples = [
+            (int(raw[i]), int(raw[i + 1]), float(raw[i + 2]))
+            for i in range(0, len(raw), 3)
+        ]
+    except (TypeError, ValueError):
+        return {}
+    me = int(node_id) if node_id is not None else triples[0][0]
     out = {}
-    rest = raw[1:]
-    for i in range(0, len(rest) - 1, 2):
-        try:
-            out[int(rest[i])] = float(rest[i + 1])
-        except (TypeError, ValueError):
-            pass
+    for a, b, value in triples:
+        if a == me and b != me:
+            out[b] = value
+        elif b == me and a != me:
+            out.setdefault(a, value)  # its own report of the link wins
     return out
 
 
