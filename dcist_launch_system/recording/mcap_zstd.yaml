@@ -1,0 +1,8 @@
+---
+# Storage options of the trial recorder (adt4-rec): lossless zstd compression of
+# the mcap chunks at zstd's default level.  Measured on a robot with ZED colour
+# and depth: the bag is about a third smaller for a fraction of one core.
+# The faster levels ("Fast", "Fastest") saved only 15-20%.
+# ADT4_REC_COMPRESSION=none records raw.
+compression: Zstd
+compressionLevel: Default
