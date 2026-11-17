@@ -249,7 +249,8 @@ def test_base_sessions_have_fleetlink_base_window(name):
     assert 'elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ' in router
     assert "ros2 run fleetlink fleetlink-router ${ADT4_FLEETLINK_PORT:-7450}" in router
     assert bridge.startswith(
-        'if pgrep -f "lib/fleetlink/[f]leetlink-bridge" >/dev/null; then echo '
+        'if pgrep -f "lib/fleetlink/[f]leetlink-bridge|fleetlink[.]launcher import [b]ridge"'
+        " >/dev/null; then echo "
     )
     assert 'elif [ "$ADT4_FLEETLINK_MODE" = fleetlink ]; then ' in bridge
     assert "ros2 run fleetlink fleetlink-bridge --ros-args" in bridge

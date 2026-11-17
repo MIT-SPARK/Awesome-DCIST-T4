@@ -262,7 +262,7 @@ def _bridge_pane():
 
 
 @needs_zsh
-@pytest.mark.parametrize("running", [False, True])
+@pytest.mark.parametrize("running", [None, "executable", "launcher"])
 def test_fleetlink_bridge_guard(tmp_path, running):
     """The bridge starts unless a real bridge runs (not: unless its own pane runs)."""
     if shutil.which("pgrep") is None:
@@ -276,9 +276,14 @@ def test_fleetlink_bridge_guard(tmp_path, running):
     (tmp_path / "ws" / "install" / "setup.zsh").write_text("")
     bridge = None
     if running:
-        # a process whose argv looks like the installed bridge's
-        fake = f"{tmp_path}/install/fleetlink/lib/fleetlink/fleetlink-bridge"
-        bridge = subprocess.Popen(["bash", "-c", f"exec -a {fake} sleep 30"])
+        # a process whose argv looks like the installed bridge's, or like the
+        # process it becomes in the fleetlink venv (no path left in its argv)
+        fake = (
+            f"{tmp_path}/install/fleetlink/lib/fleetlink/fleetlink-bridge"
+            if running == "executable"
+            else "python3 -c from fleetlink.launcher import bridge; bridge()"
+        )
+        bridge = subprocess.Popen(["bash", "-c", f"exec -a {shlex.quote(fake)} sleep 30"])
     try:
         # run the pane's script as its pane runs it: as `zsh -c '<script>'`, so its
         # own argv holds the whole command
