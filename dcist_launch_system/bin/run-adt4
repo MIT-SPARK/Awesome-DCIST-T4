@@ -59,7 +59,12 @@ MODE_ONLY_NODES = {
 # rmw_zenohd's default port (topology.yaml zenoh.port, ADT4_ZENOH_PORT override it)
 DEFAULT_ZENOH_PORT = 7447
 
-CONSOLE_ENV_VARS = ("ADT4_CONSOLE_TOKEN", "ADT4_CONSOLE_PORT", "ADT4_NETWORK")
+CONSOLE_ENV_VARS = (
+    "ADT4_CONSOLE_TOKEN",
+    "ADT4_CONSOLE_PORT",
+    "ADT4_NETWORK",
+    "ADT4_TILES_LIVE",
+)
 
 
 class PlatformType(enum.Enum):
