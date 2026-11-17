@@ -191,16 +191,6 @@ def test_pane_script_exports_sources_then_records():
     assert "exec" not in script  # the pane must outlive the recorder to show its error
 
 
-def test_panes_spec_lists_windows_and_scrollback():
-    spec = tr.parse_panes_spec(
-        "# comment\nstatus 0\nfleetlink 300  # some history\nhuge 999999\nbare\n"
-    )
-    assert spec == {"status": 0, "fleetlink": 300, "huge": tr.PANE_MAX_LINES, "bare": 0}
-    assert (
-        tr.panes_spec() == {}
-    )  # the repo's default: none (status is a recorded topic)
-
-
 METADATA = textwrap.dedent(
     """\
     rosbag2_bagfile_information:
@@ -316,9 +306,7 @@ def rig(tmp_path, monkeypatch):
         "TMUX_TMPDIR": str(tmp_path),  # its own tmux server
         "ADT4_REC_SHELL": "bash -c",
         "ADT4_REC_SETUP": "",
-        "ADT4_REC_PANES_FILE": str(tmp_path / "panes.txt"),
     }
-    (tmp_path / "panes.txt").write_text("status 0\n")
     env.pop("TMUX", None)
     root = tmp_path / "adt4_output"
 
@@ -348,7 +336,7 @@ def test_start_status_stop_round_trip(rig):
     rc, st = rig.run("status")
     assert rc == 0 and st["recording"] is False and st["free_bytes"] > 0
 
-    # a stand-in stack session: its settings reach the recorder, its panes are captured
+    # a stand-in stack session: its settings reach the recorder
     run_dir = rig.root / "run1"
     run_dir.mkdir(parents=True)
     (run_dir / "run_info.json").write_text(
@@ -360,7 +348,6 @@ def test_start_status_stop_round_trip(rig):
     (prior / "hydra" / "backend").mkdir(parents=True)
     (prior / "hydra" / "backend" / "dsg.json").write_text("{}")
     rig.tmux("set-environment", "-t", "adt4_system", "ADT4_PRIOR_MAP", str(prior))
-    rig.tmux("send-keys", "-t", "adt4_system:status", "echo hydra-NOMINAL", "Enter")
     rig.tmux("new-window", "-t", "adt4_system", "-n", "hydra", "bash")
     rig.tmux("send-keys", "-t", "adt4_system:hydra", "echo spam-every-second", "Enter")
     time.sleep(0.5)
@@ -397,17 +384,10 @@ def test_start_status_stop_round_trip(rig):
     rc, sp = rig.run("stop", "--trial", TRIAL)
     assert rc == 0, sp
     assert sp["stopped"] and sp["metadata"] and sp["signals"] == ["SIGINT"]
-    assert sp["silent_topics"] == ["/husky/odom"] and sp["stack_panes"] == 1
+    assert sp["silent_topics"] == ["/husky/odom"]
     info = json.loads((bag / "trial.json").read_text())
     assert info["stopped_at"] and info["topic_counts"]["/husky/tf"] > 0
     assert "Recording stopped" in (bag / "recorder.log").read_text()
-    # only the listed window is saved, at start and stop
-    assert sorted(p.name for p in bag.glob("pane_*.txt")) == [
-        "pane_start_status_0.txt",
-        "pane_stop_status_0.txt",
-    ]
-    assert "hydra-NOMINAL" in (bag / "pane_stop_status_0.txt").read_text()
-    assert info["stack_panes_start"] == ["pane_start_status_0.txt"]
 
     rc, st = rig.run("status")
     assert st["recording"] is False and st["session"] is False

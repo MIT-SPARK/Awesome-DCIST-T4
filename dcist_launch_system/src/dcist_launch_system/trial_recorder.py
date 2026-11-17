@@ -11,8 +11,6 @@ into its own bag directory::
     <output_root>/<trial_id>/<machine>/        a normal rosbag2 directory, plus
         trial.json        who / what / when (written here, updated at stop)
         recorder.log      everything the recorder printed
-        pane_*.txt        the stack windows listed in recording/capture_panes.txt
-                          (none by default), as text, at start and at stop
 
 Design rules (keep them when editing):
 
@@ -81,8 +79,6 @@ START_WAIT_S = 20.0  # for the recorder process and its bag directory to appear
 GROWTH_WAIT_S = 3.0  # then: does the bag grow in this long?
 STOP_WAIT_S = 45.0  # for the recorder to close its bag after SIGINT
 EXIT_LINGER_S = 30  # the pane stays this long after the recorder exits
-PANES_FILE = "capture_panes.txt"  # recording/: which stack windows to save
-PANE_MAX_LINES = 5000  # scrollback kept per captured pane, at most
 EXIT_MARK = "[adt4-rec] recorder exited"
 
 # exit statuses
@@ -800,7 +796,6 @@ def start(args) -> tuple[int, dict]:
     }
     # which scene graph the stack was launched on (path and file hashes)
     info["prior_map"] = map_identity(senv.get("ADT4_PRIOR_MAP"))
-    info["stack_panes_start"] = capture_stack_panes(bag_dir, "start")
     try:
         write_json_atomic(bag_dir / TRIAL_FILE, info)
     except OSError as e:
@@ -846,67 +841,6 @@ def pane_text(target: str, lines: int | None = None, run=tmux) -> str:
 
 
 # ------------------------------------------------------------------- stop
-def parse_panes_spec(text: str) -> dict[str, int]:
-    """``capture_panes.txt`` -> {window name: scrollback lines (0 = the
-    visible screen only)}."""
-    spec = {}
-    for raw in (text or "").splitlines():
-        parts = raw.split("#", 1)[0].split()
-        if not parts:
-            continue
-        lines = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
-        spec[parts[0]] = min(lines, PANE_MAX_LINES)
-    return spec
-
-
-def panes_spec() -> dict[str, int]:
-    """The windows to capture: ``recording/capture_panes.txt``, or the file
-    ``$ADT4_REC_PANES_FILE`` names."""
-    path = (
-        os.environ.get("ADT4_REC_PANES_FILE")
-        or package_root() / "recording" / PANES_FILE
-    )
-    try:
-        return parse_panes_spec(pathlib.Path(path).read_text())
-    except OSError:
-        return {}
-
-
-def capture_stack_panes(
-    bag_dir, tag: str, spec: dict[str, int] | None = None
-) -> list[str]:
-    """Save the listed ``adt4_system`` windows as text next to the bag
-    (read-only for the stack): ``pane_<tag>_<window>_<pane>.txt``.  Only the
-    windows in ``recording/capture_panes.txt``; returns the names written."""
-    spec = panes_spec() if spec is None else spec
-    if not spec:
-        return []
-    rc, out, _ = tmux(
-        "list-panes", "-s", "-t", f"={STACK_SESSION}",
-        "-F", "#{pane_id}\t#{window_index}\t#{window_name}\t#{pane_index}",
-    )  # fmt: skip
-    if rc != 0:
-        return []
-    written = []
-    for line in out.splitlines():
-        parts = line.split("\t")
-        if len(parts) != 4 or parts[2] not in spec:
-            continue
-        pane_id, widx, wname, pidx = parts
-        text = pane_text(pane_id, spec[wname]).rstrip("\n")
-        if not text.strip():
-            continue
-        safe = re.sub(r"[^A-Za-z0-9._-]", "_", wname)[:60] or "window"
-        name = f"pane_{tag}_{safe}_{pidx}.txt"
-        try:
-            with open(os.path.join(bag_dir, name), "w") as f:
-                f.write(text + "\n")
-            written.append(name)
-        except OSError:
-            pass
-    return written
-
-
 def stop(args) -> tuple[int, dict]:
     act = active()
     if act["pid"] is None:
@@ -956,9 +890,6 @@ def stop(args) -> tuple[int, dict]:
         }
 
     now = time.time()
-    panes = (
-        capture_stack_panes(bag_dir, "stop") if bag_dir and not args.no_panes else []
-    )
     meta = None
     if bag_dir:
         try:
@@ -981,7 +912,6 @@ def stop(args) -> tuple[int, dict]:
             duration_s=(meta or {}).get("duration_s"),
             topic_counts=(meta or {}).get("topics"),
             silent_topics=silent,
-            stack_panes=panes,
             run_output_at_stop=run_listing((info.get("run") or {}).get("output_dir")),
         )
         try:
@@ -1003,7 +933,6 @@ def stop(args) -> tuple[int, dict]:
         "duration_s": (meta or {}).get("duration_s"),
         "topics": len(wanted),
         "silent_topics": silent,
-        "stack_panes": len(panes),
         "t": round(time.time(), 3),
         **disk(bag_dir),
     }
@@ -1105,9 +1034,6 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--wait", type=float, default=STOP_WAIT_S)
     s.add_argument(
         "--force", action="store_true", help="second SIGINT then SIGTERM (never -9)"
-    )
-    s.add_argument(
-        "--no-panes", action="store_true", help="do not capture the stack's panes"
     )
     s.add_argument("--base-time", type=float, default=None)
 
