@@ -286,6 +286,15 @@ def test_fleetlink_bridge_guard(tmp_path, running):
         bridge = subprocess.Popen(
             ["bash", "-c", f"exec -a {shlex.quote(fake)} sleep 30"]
         )
+        # wait until the process carries the fake argv (bash execs asynchronously)
+        argv = pathlib.Path(f"/proc/{bridge.pid}/cmdline")
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if argv.exists() and fake.split()[0] in argv.read_bytes().decode(
+                errors="replace"
+            ):
+                break
+            time.sleep(0.01)
     try:
         # run the pane's script as its pane runs it: as `zsh -c '<script>'`, so its
         # own argv holds the whole command
