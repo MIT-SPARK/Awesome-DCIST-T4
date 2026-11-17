@@ -170,12 +170,41 @@ topics:
     replay_on_resync: true
     qos: {reliability: reliable, durability: volatile, depth: 10}
     platform: [spot]
+  # pick result answer (console -> spot_executor_node): std_msgs/String JSON
+  # {request_id, result: picked | retry | give_up}. The robot ignores an answer whose
+  # request_id it is not waiting on, so a late one is harmless; still never replayed.
+  - topic: /{robot}/spot_executor_node/pick_result
+    type: std_msgs/msg/String
+    dir: down
+    mode: reliable
+    cls: C0
+    rate_hz:
+    ttl_s: 30
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 10}
+    platform: [spot]
   # manipulation approval request (spot_executor_node -> operator UIs): JPEG candidate images
   # plus 16-bit PNG depth, a few hundred kB; one per grasp attempt, only the newest matters.
   # priority high: the robot waits on the operator, so it rides the C2 lane (zenoh DATA_HIGH,
   # ahead of mesh/video/store) and the agent holds its C2-C6 queues until it is acked (<= 10 s)
   - topic: /{robot}/spot_executor_node/manipulation_request
     type: nlu_interface_rviz/msg/ManipulationApprovalRequest
+    dir: up
+    mode: latest_reliable
+    cls: C2
+    priority: high
+    rate_hz:
+    ttl_s: 120
+    replay_on_resync: false
+    qos: {reliability: reliable, durability: volatile, depth: 1}
+    platform: [spot]
+  # pick result question (spot_executor_node -> console): after a pick Spot believes worked
+  # it asks whether it really holds the object and waits. std_msgs/String JSON with up to
+  # three JPEGs (gripper and front cameras), about 100-300 kB; repeated every 20 s while
+  # unanswered, then replaced by a small closing message. Same lane as the grasp approval
+  # request: the robot waits on the operator.
+  - topic: /{robot}/spot_executor_node/pick_result_request
+    type: std_msgs/msg/String
     dir: up
     mode: latest_reliable
     cls: C2
