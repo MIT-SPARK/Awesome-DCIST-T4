@@ -30,3 +30,6 @@
 /${ADT4_ROBOT_NAME}/spot_executor_node/resume
 /${ADT4_ROBOT_NAME}/spot_executor_node/stop
 /${ADT4_ROBOT_NAME}/spot_executor_node/teleop_state
+/${ADT4_ROBOT_NAME}/roman/roman_lc/loop_closure
+/${ADT4_ROBOT_NAME}/roman/roman_lc/pose_graph_update
+/${ADT4_ROBOT_NAME}/hydra_multi/backend/pose_graph
