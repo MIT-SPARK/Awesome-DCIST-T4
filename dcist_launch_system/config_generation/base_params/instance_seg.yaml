@@ -49,5 +49,6 @@ model:
       - trash can
       - clothes
       - ball
+      - red and yellow barrel
     confidence_threshold: 0.3
     min_segmentation_size: 0
