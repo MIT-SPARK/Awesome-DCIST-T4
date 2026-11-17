@@ -7,6 +7,8 @@
 #   start-adt4-console [run-adt4 options...]      e.g.  start-adt4-console -p ~/adt4_output/<map>
 #
 # Network: silvus when this machine is on Silvus (see below), else auto-detected.
+# Satellite imagery: fetched from the internet as the map needs it and cached for offline use
+# (adt4-console --tiles-live); ADT4_TILES_LIVE=0 start-adt4-console uses the cache only.
 # Defaults: robot name $ADT4_ROBOT_NAME (else the hostname), output dir
 # ~/adt4_output/console_<YYYYMMDD_HHMMSS>; any option given here wins over them.
 # The console listens on all interfaces (http://<this machine>:${ADT4_CONSOLE_PORT:-8090}), and
@@ -42,6 +44,12 @@ fi
 if [ -n "${ADT4_NETWORK:-}" ]; then
   export ADT4_NETWORK
   echo "start-adt4-console: console network $ADT4_NETWORK"
+fi
+# satellite tiles from the internet by default (console.yaml / console_neo4j.yaml: --tiles-live)
+if [ "${ADT4_TILES_LIVE:-1}" = 0 ]; then
+  unset ADT4_TILES_LIVE
+else
+  export ADT4_TILES_LIVE=1
 fi
 name="${ADT4_ROBOT_NAME:-$(hostname -s)}"
 out="$HOME/adt4_output/console_$(date +%Y%m%d_%H%M%S)"

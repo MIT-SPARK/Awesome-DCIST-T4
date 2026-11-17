@@ -49,11 +49,13 @@ def test_console_settings_forwarded_and_token_redacted(
     monkeypatch.setenv("ADT4_CONSOLE_TOKEN", "test-secret")
     monkeypatch.setenv("ADT4_CONSOLE_PORT", "18090")
     monkeypatch.setenv("ADT4_NETWORK", "silvus")
+    monkeypatch.setenv("ADT4_TILES_LIVE", "1")
     session = write_session(run_adt4, tmp_path, verbose=True)
     assert yaml.safe_load(session.read_text())["environment"] == {
         "ADT4_CONSOLE_TOKEN": "test-secret",
         "ADT4_CONSOLE_PORT": "18090",
         "ADT4_NETWORK": "silvus",
+        "ADT4_TILES_LIVE": "1",
     }
     output = capsys.readouterr().out
     assert "test-secret" not in output
@@ -68,6 +70,7 @@ def test_unset_settings_clear_stale_server_values(run_adt4, tmp_path, monkeypatc
         "ADT4_CONSOLE_TOKEN": "",
         "ADT4_CONSOLE_PORT": "",
         "ADT4_NETWORK": "",
+        "ADT4_TILES_LIVE": "",
     }
 
 
@@ -96,6 +99,7 @@ def test_console_pane_receives_settings_on_existing_server(
     monkeypatch.setenv("ADT4_CONSOLE_TOKEN", "test-secret")
     monkeypatch.setenv("ADT4_CONSOLE_PORT", "18090")
     monkeypatch.setenv("ADT4_NETWORK", "silvus")
+    monkeypatch.setenv("ADT4_TILES_LIVE", "1")
     output = tmp_path / "pane.json"
     code = (
         "import os,json,pathlib; pathlib.Path("
@@ -139,6 +143,7 @@ def test_console_pane_receives_settings_on_existing_server(
             "ADT4_CONSOLE_TOKEN": "test-secret",
             "ADT4_CONSOLE_PORT": "18090",
             "ADT4_NETWORK": "silvus",
+            "ADT4_TILES_LIVE": "1",
         }
     finally:
         subprocess.run(
