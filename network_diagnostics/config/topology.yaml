@@ -49,6 +49,24 @@ machines:
       settle_s: 15
       settle_max_move_m: 0.3
       settle_max_z_m: 1.0
+  ada:
+    role: robot
+    platform_id: phoenix
+    platform_type: phoenix
+    desc: Husky Jockey
+    # husky team's stack (husky_odom: Ouster, Microstrain, URDF, ptpd, DLIO), started
+    # before ADT4; the launch waits for DLIO odometry before run-adt4
+    bringup:
+      session: husky
+      command: ROBOT_NAME=ada ~/.local/bin/tmuxp load -d ~/ws2/husky_ws/src/husky/tmux/adt4.yaml
+      ready_topic: /ada/dlio/odom_node/odom
+      ready_desc: DLIO odometry
+      timeout_s: 120
+      # DLIO calibrates its IMU for 3 s and publishes at once; wait 15 s with ada
+      # still and require the estimate to hold before ADT4 starts
+      settle_s: 15
+      settle_max_move_m: 0.3
+      settle_max_z_m: 1.0
   lewis:
     role: robot
     platform_id: phoenix

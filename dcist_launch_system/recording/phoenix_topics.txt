@@ -18,3 +18,8 @@
 /euclid/omniplanner_node/compiled_plan_out
 /hamilton/omniplanner_node/compiled_plan_out
 /gauss/omniplanner_node/compiled_plan_out
+/global/ros_system_monitor/table_in
+/${ADT4_ROBOT_NAME}/ros_system_monitor/node_diagnostic_collector
+/${ADT4_ROBOT_NAME}/omniplanner_node/compiled_plan_out
+/${ADT4_ROBOT_NAME}/roman/roman_lc/loop_closure
+/${ADT4_ROBOT_NAME}/roman/roman_lc/pose_graph_update
