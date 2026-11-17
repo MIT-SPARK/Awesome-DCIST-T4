@@ -1,0 +1,7 @@
+store_aggregated_pcds: true
+pcd_max_depth: 5.0
+pcd_voxel_size_m: 0.05
+pcd_dist_thresh_m: 0.2
+pcd_ang_thresh_deg: 20.0
+pcd_window_num_scans: 20
+pcd_window_overlap: 0.5
