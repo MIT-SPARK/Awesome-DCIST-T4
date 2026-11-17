@@ -14,5 +14,7 @@
     prior_session_ids: [0]
     output_dir: $(var output_dir)/roman
     submap_knn: 5
+    best_lc_only: false  # true: one loop closure per new submap (most associations)
+    no_self_lcs: true  # no ego-ego loop closures; only hydra_multi consumes these and DLIO is better
     viz_all_live_ids: false  # only visualize loop closures with prior maps
     lc_marker_cube_size: 2.0
