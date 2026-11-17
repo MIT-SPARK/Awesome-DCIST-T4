@@ -11,6 +11,10 @@
       require_same_label: true
     label_drop:
       type: LabelDropFilter
+    label_keep:
+      type: LabelKeepFilter
+      added_labels: [cone, bag, car, truck, bus, red and yellow barrel]
+      removed_labels: [cone, bag, car, truck, bus, red and yellow barrel]
     visualization:
       enabled: true
       line_width: 0.1
