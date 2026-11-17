@@ -44,6 +44,11 @@ backend:
     alignment_gnc_alpha: 0.9
     rot_sigma: 0.1
     trans_sigma: 10.0
+    optimizer:
+      use_pcm: true
+      pcm: {}
+      use_gnc: true
+      gnc: {inlier_probability: 0.7}
   partial_optimizer: {type: ""}
   pgmo:
     run_mode: FULL
@@ -53,6 +58,9 @@ backend:
     optimizer:
       type: KimeraRpgoOptimizer
       solver: LM
+      use_pcm: true
+      pcm: {}
+      use_gnc: true
       gnc: {inlier_probability: 0.7, mu_step: 1.6, max_iterations: 100}
     covariance:
       odom: 1.0e-04
