@@ -1,0 +1,4 @@
+# run-meridian settings for the gauss Husky (merged over resource/meridian/base.yaml)
+run_meridian:
+  body_frame: ${ROBOT}/base_link
+  odom_topic: /${ROBOT}/dlio/odom_node/odom
