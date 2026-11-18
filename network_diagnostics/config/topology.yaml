@@ -97,9 +97,11 @@ fleet_defaults:
     mapping:
       spot: spot-default
       phoenix: phoenix-default
+    # Meridian RPGO relocalization (map <- odom from ROMAN's prior-map loop closures); the
+    # Hydra-Multi sessions (spot_relocalize-relocalize, phoenix_relocalize-relocalize) stay pickable
     relocalize:
-      spot: spot_relocalize-relocalize
-      phoenix: phoenix_relocalize-relocalize
+      spot: spot_meridian_relocalize-meridian_relocalize
+      phoenix: phoenix_meridian_relocalize-meridian_relocalize
   base_station_session: base_station_web_repair-default
   output_root: ~/adt4_output
   # router: rmw_zenohd router-to-router over the radio | fleetlink: only fleetlink crosses it

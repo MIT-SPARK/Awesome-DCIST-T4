@@ -1,5 +1,6 @@
 """Tests for the UI-independent launch workflow — all side effects are faked."""
 
+import pathlib
 import re
 
 import pytest
@@ -737,6 +738,10 @@ def test_session_mode_from_the_experiment_manifest():
         "phoenix_relocalize-relocalize_awcd",
         "spot_bag_relocalize-relocalize",
         "phoenix_bag_relocalize-relocalize",
+        "spot_meridian_relocalize-meridian_relocalize",
+        "phoenix_meridian_relocalize-meridian_relocalize",
+        "spot_bag_meridian_relocalize-meridian_relocalize",
+        "phoenix_bag_meridian_relocalize-meridian_relocalize",
     ):
         assert session_mode(s) == "relocalize", s
     for s in (
@@ -1354,3 +1359,28 @@ def test_gauss_settle_in_topology():
     )
     b = topo["machines"]["gauss"]["bringup"]
     assert b["settle_s"] == 15
+
+
+def test_topology_fleet_defaults_match_their_mode_and_platform():
+    """The checked-in ``fleet_defaults.sessions`` (the console's and TUI's preset
+    sessions) are generated sessions of their launch mode and platform: relocalize
+    defaults to Meridian RPGO on both Spot and Phoenix (Husky)."""
+    import yaml
+
+    from dcist_launch_system.fleet.launch_workflow import list_sessions, session_mode
+
+    topo_path = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "network_diagnostics/config/topology.yaml"
+    )
+    presets = yaml.safe_load(topo_path.read_text())["fleet_defaults"]["sessions"]
+    assert presets["relocalize"] == {
+        "spot": "spot_meridian_relocalize-meridian_relocalize",
+        "phoenix": "phoenix_meridian_relocalize-meridian_relocalize",
+    }
+    available = set(list_sessions())
+    for mode, by_platform in presets.items():
+        for platform, session in by_platform.items():
+            assert session in available, session
+            assert session.startswith(platform), session
+            assert session_mode(session) == mode, session

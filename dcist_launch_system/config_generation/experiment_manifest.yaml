@@ -44,8 +44,10 @@ important_variants:
   - base_station_web-default
   - base_station_web_repair-default
   - phoenix-default
+  - phoenix_meridian_relocalize-meridian_relocalize
   - phoenix_relocalize-relocalize
   - spot-default
+  - spot_meridian_relocalize-meridian_relocalize
   - spot_relocalize-relocalize
 # Experiments define which sets of parameters will be used with which sets of launch files
 experiments:
