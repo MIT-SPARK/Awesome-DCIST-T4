@@ -66,7 +66,6 @@ def test_routing_summary_resolves_names():
 
 from dcist_launch_system import fleet_helpers as fh  # noqa: E402
 
-
 # network_status of radio 310308 in a six-radio mesh (2026-11-17): its own links,
 # then one it heard between two other radios
 MESH_STATUS = ["310308", "65699", "4", "310308", "310226", "70", "310308", "65631", "38",
