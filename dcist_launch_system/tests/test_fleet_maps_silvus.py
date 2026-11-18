@@ -66,11 +66,43 @@ def test_routing_summary_resolves_names():
 
 from dcist_launch_system import fleet_helpers as fh  # noqa: E402
 
+# network_status of radio 310308 in a six-radio mesh (2026-11-17): its own links,
+# then one it heard between two other radios
+MESH_STATUS = ["310308", "65699", "4", "310308", "310226", "70", "310308", "65631", "38",
+               "310308", "286311", "40", "310308", "310061", "44", "65699", "286311", "11"]  # fmt: skip
+
 
 def test_parse_network_status():
     assert fh.parse_network_status(["65631", "310308", "51"]) == {310308: 51.0}
-    assert fh.parse_network_status(["1", "2", "40", "3", "8"]) == {2: 40.0, 3: 8.0}
+    assert fh.parse_network_status(["65631", "310308", "51"], 310308) == {65631: 51.0}
     assert fh.parse_network_status(None) == {} and fh.parse_network_status(["1"]) == {}
+    assert fh.parse_network_status(["1", "2", "40", "3"]) == {}  # not triples
+
+
+def test_parse_network_status_reads_triples_in_a_larger_mesh():
+    links = {65699: 4.0, 310226: 70.0, 65631: 38.0, 286311: 40.0, 310061: 44.0}
+    assert fh.parse_network_status(MESH_STATUS, 310308) == links
+    assert fh.parse_network_status(MESH_STATUS) == links  # first triple's radio
+    # a link reported with the radio second; never a node id as a value
+    assert fh.parse_network_status(MESH_STATUS, 286311) == {310308: 40.0, 65699: 11.0}
+    assert fh.parse_network_status(MESH_STATUS, 65699) == {310308: 4.0, 286311: 11.0}
+
+
+def test_link_locals_multicast_ping_works_without_root(monkeypatch):
+    runs = []
+
+    class Done:
+        stdout = "fe80::c67c:8dff:fea4:bc24 lladdr c4:7c:8d:a4:bc:24 REACHABLE\n"
+
+    def run(cmd, **kw):
+        runs.append(cmd)
+        return Done()
+
+    monkeypatch.setattr(fh.subprocess, "run", run)
+    assert fh.silvus_link_locals("enx0") == ["fe80::c67c:8dff:fea4:bc24"]
+    ping = runs[0]
+    # an unprivileged multicast ping refuses an interval under 1 s
+    assert ping[0] == "ping" and float(ping[ping.index("-i") + 1]) >= 1
 
 
 def test_link_matrix_uses_network_status_when_there_is_no_rssi():
