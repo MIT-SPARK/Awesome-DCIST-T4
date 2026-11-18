@@ -55,6 +55,46 @@ active_window:
   object_extractor: {type: AccumulatedObjectExtractor, min_object_allocation_confidence: 0.5, max_object_volume: 50.0}
   khronos_sinks:
     - {type: ActiveWindowVisualizer, track_label_min_observations: 15}
+    - type: ActiveWindowChangeDetector
+      verbosity: 0
+      prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
+      removal_ema_alpha: 0.2
+      removal_probability_threshold: 0.7
+      removal_min_frames_observed: 5
+      removal_min_in_bounds_fraction: 0.5
+      removal_min_observed_fraction: 0.5
+      removal_score_weighting: vertices
+      collect_debug_voxels: true
+      added_ema_alpha: 0.2
+      added_probability_threshold: 0.8
+      added_min_frames_observed: 20
+      added_prune_after_frames: 100
+      added_detection_method: mesh
+      added_mesh_collision_radius: 0
+      global_added_object_deform: false
+      enable_icp_refinement: false
+      icp_crop_radius: 10.0
+      icp_num_threads: 2
+      icp_downsampling_resolution: 0.2
+      icp_max_correspondence_distance: 1.0
+      icp_max_iterations: 50
+      icp_min_inliers: 50
+      transformation_getter:
+        type: TFTransformationGetter
+      start_enabled: false
+      controller: {type: RosChangeDetectionController}
+      awcd_sinks:
+        - type: TfIcpPublisher
+          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
+        - type: ActiveWindowChangeDetectorPublisher
+          robot_name: $<env ADT4_ROBOT_NAME>
+          global_frame_name: map
+        - type: ActiveWindowChangeDetectorVisualizer
+          verbosity: 1
+          global_frame_name: map
+          min_draw_period_s: 0.5
+          draw_graph: false
+          draw_mesh: true
   sinks:
     - {type: ReconstructionVisualizer}
     - {type: TsdfOccupancyPublisher, min_distance: 0.25, use_relative_height: true, slice_height: 0.25, num_slices: 4}
