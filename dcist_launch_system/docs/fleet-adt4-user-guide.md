@@ -102,8 +102,8 @@ fleet_defaults:
       spot: "spot-default"
       phoenix: "phoenix-default"
     relocalize:
-      spot: "spot_relocalize-relocalize"
-      phoenix: "phoenix_relocalize-relocalize"
+      spot: "spot_meridian_relocalize-meridian_relocalize"
+      phoenix: "phoenix_meridian_relocalize-meridian_relocalize"
   base_station_session: "base_station_heracles-default"
   output_root: "~/adt4_output"
 ```
@@ -283,8 +283,8 @@ fleet_defaults:
       spot: "spot-default"
       phoenix: "phoenix-default"
     relocalize:
-      spot: "spot_relocalize-relocalize"
-      phoenix: "phoenix_relocalize-relocalize"
+      spot: "spot_meridian_relocalize-meridian_relocalize"
+      phoenix: "phoenix_meridian_relocalize-meridian_relocalize"
   base_station_session: "base_station_heracles-default"
   output_root: "~/adt4_output"
   fleet_link: fleetlink   # fleetlink | router (see the README's Fleetlink section)
