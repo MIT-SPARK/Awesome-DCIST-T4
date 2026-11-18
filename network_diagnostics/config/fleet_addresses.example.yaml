@@ -45,6 +45,9 @@ machines:
   samoyed:
     addresses:
       silvus: 203.0.113.62
+  ada:
+    addresses:
+      silvus: 203.0.113.17
   bonsai:
     addresses:
       penn_wifi: 192.0.2.100

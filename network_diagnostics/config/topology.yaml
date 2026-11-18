@@ -64,6 +64,11 @@ machines:
     platform_id: samoyed
     platform_type: phoenix
     desc: ARL Husky
+  ada:
+    role: robot
+    platform_id: phoenix
+    platform_type: phoenix
+    desc: ACL Legion laptop (acl-ada)
   bonsai:
     role: base_station
     desc: RRG dev computer
