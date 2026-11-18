@@ -1,0 +1,14 @@
+---
+# The hydra_multi window with Meridian RPGO relocalization in place of Hydra-Multi: Hydra builds
+# the live scene graph in odom and meridian_rpgo publishes map <- odom.
+nodes_to_monitor:
+  hydra: {external_monitor: {type: JsonMonitor}}
+  meridian_rpgo: {}
+windows:
+  - window_name: meridian_rpgo
+    shell_command_before: source ${ADT4_WS}/install/setup.zsh
+    layout: tiled
+    panes:
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_instance_segmentation:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_hydra:=true
+      - ros2 launch dcist_launch_system master.launch.yaml conf_name:=$config sim_time:=$sim_time robot_name:=$ADT4_ROBOT_NAME launch_meridian_rpgo:=true

@@ -1,0 +1,25 @@
+/**:
+  ros__parameters:
+    ego_id: 0
+    map_frame: map
+    odom_frame: $(var robot_name)/odom
+    base_frame: $(var robot_name)/base_link
+    tf_rate_hz: 10.0
+    odom_rate_hz: 10.0
+    keyframe_trans_m: 0.5
+    keyframe_rot_deg: 10.0
+    rot_consistency_sigma_deg: 5.0
+    rot_consistency_eps_deg: 5.0
+    trans_consistency_sigma_m: 2.0
+    trans_consistency_eps_m: 2.0
+    added_trans_noise_m_per_m: 0.05
+    added_rot_noise_deg_per_m: 0.02
+    single_lc_per_live_submap: true
+    fuse_lc_score: false
+    lc_score_associations_ref: 20.0
+    min_num_inliers: 4
+    optimization_method: pgo
+    odom_rot_sigma_deg: 0.05
+    odom_trans_sigma_m: 0.05
+    prior_rot_sigma_deg: 5.0
+    prior_trans_sigma_m: 2.0

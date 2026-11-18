@@ -28,4 +28,5 @@
 /${ADT4_ROBOT_NAME}/change_detection/state
 /${ADT4_ROBOT_NAME}/roman/roman_lc/loop_closure
 /${ADT4_ROBOT_NAME}/roman/roman_lc/pose_graph_update
+/${ADT4_ROBOT_NAME}/meridian_rpgo/trajectory
 /${ADT4_ROBOT_NAME}/hydra_multi/backend/pose_graph

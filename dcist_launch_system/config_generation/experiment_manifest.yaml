@@ -8,9 +8,12 @@ launch_configs:
   # fleetlink: the robot's fleetlink agent (+ ROS relay in fleetlink mode)
   map: [robot_main, hydra, roman, fleetlink]
   relocalize: [robot_main, hydra_multi, roman, fleetlink]
+  # relocalize with Meridian RPGO (map <- odom from ROMAN's prior-map loop closures) instead of Hydra-Multi
+  meridian_relocalize: [robot_main, meridian_rpgo, roman, fleetlink]
   # development groupings
   bag_map: [map, rviz]
   bag_relocalize: [relocalize, rviz, relocalize_viz]
+  bag_meridian_relocalize: [meridian_relocalize, rviz, meridian_relocalize_viz]
   # planning and base station
   plan_prior: [main, prior_dsg, planning]
   plan_prior_heracles: [main, heracles_prior_dsg, planning]
@@ -28,6 +31,8 @@ configs:
   regions_traversability: [regions]
   relocalize: []
   relocalize_awcd: [relocalize]
+  # relocalize's ROMAN prior maps and Hydra-in-odom, for the meridian_relocalize sessions
+  meridian_relocalize: [relocalize]
   indoor_regions: [indoor, regions]
   image_logging: []
   # indoor ranges/windows + image logging (keyframe archives and tracks for the image store)
@@ -83,6 +88,9 @@ experiments:
   spot_relocalize:
     launch_config: [relocalize, spot_real, sensors]
     config: [relocalize, relocalize_awcd]
+  spot_meridian_relocalize:
+    launch_config: [meridian_relocalize, spot_real, sensors]
+    config: [meridian_relocalize]
   spot_regions:
     launch_config: [robot_main, roman, hydra_regions, spot_real, sensors, fleetlink]
     config: [indoor_regions]
@@ -98,6 +106,9 @@ experiments:
   spot_bag_relocalize:
     launch_config: [bag_relocalize, spot_bag]
     config: [relocalize, relocalize_awcd]
+  spot_bag_meridian_relocalize:
+    launch_config: [bag_meridian_relocalize, spot_bag]
+    config: [meridian_relocalize]
   spot_bag_regions:
     launch_config: [robot_main, roman, hydra_regions, rviz, spot_bag, fleetlink]
     config: [indoor_regions]
@@ -112,6 +123,9 @@ experiments:
   phoenix_relocalize:
     launch_config: [relocalize, phoenix_real, sensors]
     config: [relocalize, relocalize_awcd]
+  phoenix_meridian_relocalize:
+    launch_config: [meridian_relocalize, phoenix_real, sensors]
+    config: [meridian_relocalize]
   phoenix_data_collection:
     launch_config: [robot_main, phoenix_real, sensors]
     config: [default]
@@ -121,6 +135,9 @@ experiments:
   phoenix_bag_relocalize:
     launch_config: bag_relocalize
     config: [relocalize, relocalize_awcd]
+  phoenix_bag_meridian_relocalize:
+    launch_config: bag_meridian_relocalize
+    config: [meridian_relocalize]
 
   # development — offline/simulation experiments
   # a simulated Spot (FakeSpot executor) with the fleetlink agent: plan -> result over

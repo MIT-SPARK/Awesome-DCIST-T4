@@ -233,6 +233,21 @@ launch:
         - {name: output_dir, value: $(var output_dir)}
         - {name: use_sim_time, value: $(var sim_time)}
 
+  # Meridian RPGO relocalization: map <- odom from ROMAN's prior-map loop closures, in place of
+  # Hydra-Multi (roman_ros2, run from the ROMAN env, which also has meridian/clipperpy/gtsam)
+  - arg: {name: launch_meridian_rpgo, default: 'false'}
+  - pyenv_node:
+      if: $(var launch_meridian_rpgo)
+      pkg: roman_ros2
+      exec: meridian_rpgo_relocalization_node.py
+      name: meridian_rpgo
+      pyenv: $(var roman_env)
+      param:
+        - {name: use_sim_time, value: $(var sim_time)}
+        - {from: $(find-pkg-share dcist_launch_system)/config/$(var conf_name)/meridian_rpgo.yaml, allow_substs: true}
+      remap:
+        - {from: meridian_rpgo/status, to: ros_system_monitor/node_diagnostic_collector}
+
   # Spot Executor
   - arg: {name: launch_spot_executor, default: 'false'}
   - pyenv_node:
