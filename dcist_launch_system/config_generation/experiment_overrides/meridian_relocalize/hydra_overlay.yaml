@@ -38,11 +38,10 @@ active_window:
       icp_min_inliers: 50
       transformation_getter:
         type: TFTransformationGetter
+        verbosity: 1
       start_enabled: false  # press Start (change_detection/start service or RViz panel) once relocalized
       controller: {type: RosChangeDetectionController}  # <robot>/change_detection/{start,stop,reset}
       awcd_sinks:
-        - type: TfIcpPublisher
-          pre_icp_odom_frame: $<env ADT4_ROBOT_NAME>/pre_icp_odom
         - type: ActiveWindowChangeDetectorPublisher
           robot_name: $<env ADT4_ROBOT_NAME>
           global_frame_name: map  # default is the GlobalInfo map frame (<robot>/odom in relocalize)
