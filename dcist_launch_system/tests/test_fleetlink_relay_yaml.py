@@ -113,6 +113,24 @@ def test_relay_yaml_teleop_entries(relay_config_class):
     assert st.dir == "up" and st.type == "std_msgs/msg/String"
 
 
+def test_relay_yaml_pick_result_entries(relay_config_class):
+    """The after-pick question goes up and its answer down, for Spots only."""
+    cfg = relay_config_class.load(RELAY_YAML)
+    spot = cfg.resolve("euclid", "spot", base="willow")
+    husky = cfg.resolve("gauss", "phoenix", base="willow")
+    ask = spot.topics["/euclid/spot_executor_node/pick_result_request"]
+    assert ask.type == "std_msgs/msg/String" and ask.dir == "up"
+    assert ask.mode == "latest_reliable"
+    # the robot waits on the operator: same lane as the grasp approval request
+    grasp = spot.topics["/euclid/spot_executor_node/manipulation_request"]
+    assert (ask.cls, ask.priority) == (grasp.cls, grasp.priority)
+    answer = spot.topics["/euclid/spot_executor_node/pick_result"]
+    assert answer.type == "std_msgs/msg/String" and answer.dir == "down"
+    assert answer.mode == "reliable" and not answer.replay_on_resync
+    for name in ("pick_result_request", "pick_result"):
+        assert f"/gauss/spot_executor_node/{name}" not in husky.topics
+
+
 def test_relay_yaml_console_overlay_rows(relay_config_class):
     """GPS fix on every platform; the phoenix MPPI / mid-range markers only on
     phoenix; all low rate, best effort (C3), never replayed."""
