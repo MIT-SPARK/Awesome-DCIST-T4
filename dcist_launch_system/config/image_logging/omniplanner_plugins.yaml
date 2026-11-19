@@ -31,6 +31,10 @@ robots:
     type: phoenix
     robot_type: husky
     body_frame: lewis/base_link
+  - robot_name: ada
+    type: phoenix
+    robot_type: husky
+    body_frame: ada/base_link
 planners:
   goto_points:
     plugin:
