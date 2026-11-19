@@ -59,7 +59,7 @@ active_window:
       verbosity: 0
       prior_map_path: $<env ADT4_PRIOR_MAP>/hydra/backend/dsg_with_mesh.json
       removal_ema_alpha: 0.2
-      removal_probability_threshold: 0.7
+      removal_probability_threshold: 0.6
       removal_min_frames_observed: 5
       removal_min_in_bounds_fraction: 0.5
       removal_min_observed_fraction: 0.5

@@ -4,17 +4,23 @@
     tf_fallback_identity: true
     require_same_label: true
     merge_containment_threshold: 0.5
-    filters: [prior_object_overlap, label_drop]
+    drift_pair_radius: 2
+    merge_radius: 2
+    filters: [prior_object_overlap, prior_object_proximity, label_keep]
     prior_object_overlap:
       type: PriorObjectOverlapFilter
       max_overlap_ratio: 0.4
+      require_same_label: true
+    prior_object_proximity:
+      type: PriorObjectProximityFilter
+      radius: 1.5
       require_same_label: true
     label_drop:
       type: LabelDropFilter
     label_keep:
       type: LabelKeepFilter
-      added_labels: [cone, bag, car, truck, bus, red and yellow barrel]
-      removed_labels: [cone, bag, car, truck, bus, red and yellow barrel]
+      added_labels: [cone, bag, car, truck, bus, van, red and yellow barrel]
+      removed_labels: [cone, bag, car, truck, bus, van, red and yellow barrel]
     visualization:
       enabled: true
       line_width: 0.1

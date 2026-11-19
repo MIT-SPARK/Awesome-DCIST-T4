@@ -113,6 +113,10 @@ class AwcdBaseStationNode(Node):
                 merge_containment_threshold=self.declare_parameter(
                     "merge_containment_threshold", 0.5
                 ).value,
+                merge_radius=self.declare_parameter("merge_radius", -1.0).value,
+                drift_pair_radius=self.declare_parameter(
+                    "drift_pair_radius", -1.0
+                ).value,
             ),
             filters=self._make_filters(),
         )

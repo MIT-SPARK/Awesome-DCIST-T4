@@ -426,3 +426,60 @@ class TestFilters:
 
         kept = {(r.kind, r.obj_id) for r in _reconciled(store)}
         assert kept == {(ADDED, reconciled_added_id("hamilton", 1)), (REMOVED, 9)}
+
+
+class TestDriftPairs:
+    def _store(self, radius=0.75):
+        return AwcdChangeStore(ReconcileConfig(drift_pair_radius=radius))
+
+    def test_nearby_same_label_pair_cancels(self):
+        store = self._store()
+        store.update(
+            "hamilton", REMOVED, [_record("hamilton", REMOVED, 7, label="cone")]
+        )
+        store.update(
+            "hamilton",
+            ADDED,
+            [_record("hamilton", ADDED, 1, center=(0.5, 0.0, 0.0), label="cone")],
+        )
+        assert _reconciled(store) == []
+        store.config.drift_pair_radius = -1.0
+        assert len(_reconciled(store)) == 2
+
+    def test_far_other_label_or_other_robot_is_kept(self):
+        store = self._store()
+        store.update(
+            "hamilton", REMOVED, [_record("hamilton", REMOVED, 7, label="cone")]
+        )
+        store.update(
+            "hamilton",
+            ADDED,
+            [
+                _record("hamilton", ADDED, 1, center=(2.0, 0.0, 0.0), label="cone"),
+                _record("hamilton", ADDED, 2, center=(0.3, 0.0, 0.0), label="bag"),
+            ],
+        )
+        store.update(
+            "topaz",
+            ADDED,
+            [_record("topaz", ADDED, 3, center=(0.3, 0.0, 0.0), label="cone")],
+        )
+        assert len(_reconciled(store, kind=REMOVED)) == 1
+
+    def test_pairs_are_one_to_one_nearest_first(self):
+        store = self._store()
+        store.update(
+            "hamilton",
+            REMOVED,
+            [
+                _record("hamilton", REMOVED, 7, label="cone"),
+                _record("hamilton", REMOVED, 8, center=(0.6, 0.0, 0.0), label="cone"),
+            ],
+        )
+        store.update(
+            "hamilton",
+            ADDED,
+            [_record("hamilton", ADDED, 1, center=(0.5, 0.0, 0.0), label="cone")],
+        )
+        (record,) = _reconciled(store)
+        assert record.kind == REMOVED and record.obj_id == 7
