@@ -72,6 +72,7 @@ active_window:
       added_detection_method: mesh
       added_mesh_collision_radius: 0
       global_added_object_deform: false
+      added_absence_evidence: true
       enable_icp_refinement: false
       icp_crop_radius: 10.0
       icp_num_threads: 2
