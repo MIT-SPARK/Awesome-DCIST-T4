@@ -91,6 +91,8 @@ class ReconcileConfig:
     require_same_label: bool = True
     # Min overlap of the two world AABBs, as a fraction of the smaller box's volume.
     merge_containment_threshold: float = 0.5
+    # Also merge two added objects whose centroids are within this [m]; negative = off.
+    merge_radius: float = -1.0
     # Box dimensions are clamped to at least this [m] so flat boxes don't have ~zero volume.
     min_box_dimension: float = 0.05
 
@@ -374,7 +376,8 @@ class AwcdChangeStore:
 
         Call once after updating the robots' slices. The filters drop records first. Removed
         objects then merge by NodeId. Added objects merge greedily, in order of decreasing AABB
-        containment, as long as a group keeps one label; records of the same robot merge too.
+        containment (or centroid distance within merge_radius), as long as a group keeps one
+        label; records of the same robot merge too.
         """
         order = lambda r: (r.namespace, r.obj_id)  # noqa: E731
         # Removed ids before filtering: a removed object whose report is dropped (e.g. by label) is
@@ -425,11 +428,16 @@ class AwcdChangeStore:
         containment = np.divide(
             overlap, smaller, out=np.zeros_like(overlap), where=smaller > 0.0
         )
-        # Candidate pairs i < j, strongest containment first (ties by index, deterministic).
-        rows, cols = np.nonzero(
-            np.triu(containment >= config.merge_containment_threshold, k=1)
+        candidates = containment >= config.merge_containment_threshold
+        centers = np.array([r.center for r in records], dtype=float).reshape(-1, 3)
+        distance = np.linalg.norm(centers[:, None] - centers[None], axis=2)
+        if config.merge_radius >= 0:
+            candidates |= distance <= config.merge_radius
+        # Candidate pairs i < j, strongest containment then nearest first (ties by index).
+        rows, cols = np.nonzero(np.triu(candidates, k=1))
+        order = np.lexsort(
+            (cols, rows, distance[rows, cols], -containment[rows, cols])
         )
-        order = np.lexsort((cols, rows, -containment[rows, cols]))
         pairs = list(zip(rows[order].tolist(), cols[order].tolist()))
 
         # Union-find; each root tracks the known labels in its group.

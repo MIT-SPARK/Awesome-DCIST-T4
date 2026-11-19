@@ -5,6 +5,7 @@
     tf_fallback_identity: true
     require_same_label: true  # only merge added objects if labels match (unknown matches any)
     merge_containment_threshold: 0.5  # min world-AABB overlap / smaller box volume to merge (across and within robots)
+    merge_radius: -1.0  # also merge added objects with centroids within this [m]; negative = off
     # Applied in order to every robot's reports before merging; each name's type + fields are under it.
     filters: [prior_object_overlap, label_keep]
     prior_object_overlap:

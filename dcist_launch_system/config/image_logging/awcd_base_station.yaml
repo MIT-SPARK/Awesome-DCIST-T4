@@ -4,6 +4,7 @@
     tf_fallback_identity: true
     require_same_label: true
     merge_containment_threshold: 0.5
+    merge_radius: -1.0
     filters: [prior_object_overlap, label_keep]
     prior_object_overlap:
       type: PriorObjectOverlapFilter
