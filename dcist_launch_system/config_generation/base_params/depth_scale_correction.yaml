@@ -33,7 +33,7 @@
     lidar_topic: /$(var robot_name)/livox/lidar
     lidar_odom_frame: $(var robot_name)/odom
     # topaz/smaug: Mid-360 mounted upside down, TF and driver extrinsic identity
-    lidar_mount_rpy_deg: [180.0, 0.0, 0.0]
+    lidar_mount_rpy_deg: [0.0, 0.0, 0.0]
     lidar_wait_s: 30.0
     # complete once the window spans lidar_calibration_duration_s and has lidar_min_bin_pairs at
     # 0.5-3, 3-5 and 5-9.5 m; after lidar_max_calibration_duration_s fit anyway (WARNING)
