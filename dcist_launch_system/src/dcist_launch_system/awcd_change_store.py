@@ -93,6 +93,9 @@ class ReconcileConfig:
     merge_containment_threshold: float = 0.5
     # Also merge two added objects whose centroids are within this [m]; negative = off.
     merge_radius: float = -1.0
+    # Cancel a robot's removed + added report of the same label with centroids within this [m]
+    # (the prior object re-detected off its prior pose, e.g. a drifted cone); negative = off.
+    drift_pair_radius: float = -1.0
     # Box dimensions are clamped to at least this [m] so flat boxes don't have ~zero volume.
     min_box_dimension: float = 0.05
 
@@ -288,6 +291,41 @@ def _quat_to_rotmat(q: np.ndarray) -> np.ndarray:
     )
 
 
+def _cancel_drift_pairs(
+    removed: List[ChangeRecord], added: List[ChangeRecord], radius: float
+) -> Tuple[List[ChangeRecord], List[ChangeRecord]]:
+    """Drops one-to-one pairs of a robot's removed and added reports that are one drifted object.
+
+    Pairs need the same robot, equal known labels and centroids within `radius`; nearest first.
+    """
+    if not removed or not added:
+        return removed, added
+    r_centers = np.array([r.center for r in removed], dtype=float)
+    a_centers = np.array([a.center for a in added], dtype=float)
+    distance = np.linalg.norm(r_centers[:, None] - a_centers[None], axis=2)
+    same = np.array(
+        [
+            [
+                r.namespace == a.namespace and r.label and r.label == a.label
+                for a in added
+            ]
+            for r in removed
+        ],
+        dtype=bool,
+    )
+    rows, cols = np.nonzero(same & (distance <= radius))
+    used_r, used_a = set(), set()
+    for i in np.lexsort((cols, rows, distance[rows, cols])):
+        r, a = int(rows[i]), int(cols[i])
+        if r not in used_r and a not in used_a:
+            used_r.add(r)
+            used_a.add(a)
+    return (
+        [r for i, r in enumerate(removed) if i not in used_r],
+        [a for i, a in enumerate(added) if i not in used_a],
+    )
+
+
 def _fuse(kind: str, obj_id: int, members: List[ChangeRecord]) -> ChangeRecord:
     """Merged record: earliest stamp, bbox of the best-observed member, max confidences."""
     # members are sorted by (namespace, obj_id), so max() breaks ties deterministically.
@@ -374,24 +412,27 @@ class AwcdChangeStore:
     def reconcile(self) -> None:
         """Recompute the RECONCILED records from all robots' latest reports.
 
-        Call once after updating the robots' slices. The filters drop records first. Removed
+        Call once after updating the robots' slices. Drift pairs (drift_pair_radius) are cancelled
+        first, then the filters drop records. Removed
         objects then merge by NodeId. Added objects merge greedily, in order of decreasing AABB
         containment (or centroid distance within merge_radius), as long as a group keeps one
         label; records of the same robot merge too.
         """
         order = lambda r: (r.namespace, r.obj_id)  # noqa: E731
+        removed = sorted(self.records(kind=REMOVED), key=order)
+        added = sorted(self.records(kind=ADDED), key=order)
+        if self.config.drift_pair_radius >= 0:
+            removed, added = _cancel_drift_pairs(
+                removed, added, self.config.drift_pair_radius
+            )
         # Removed ids before filtering: a removed object whose report is dropped (e.g. by label) is
         # still gone, so it must not make overlapping added objects look like re-detections.
         context = FilterContext(
             prior_objects=self._prior_objects,
-            removed_ids={r.obj_id for r in self.records(kind=REMOVED)},
+            removed_ids={r.obj_id for r in removed},
         )
-        removed = self._filter(
-            REMOVED, sorted(self.records(kind=REMOVED), key=order), context
-        )
-        added = self._filter(
-            ADDED, sorted(self.records(kind=ADDED), key=order), context
-        )
+        removed = self._filter(REMOVED, removed, context)
+        added = self._filter(ADDED, added, context)
 
         removed_groups: Dict[int, List[ChangeRecord]] = {}
         for record in removed:
@@ -435,9 +476,7 @@ class AwcdChangeStore:
             candidates |= distance <= config.merge_radius
         # Candidate pairs i < j, strongest containment then nearest first (ties by index).
         rows, cols = np.nonzero(np.triu(candidates, k=1))
-        order = np.lexsort(
-            (cols, rows, distance[rows, cols], -containment[rows, cols])
-        )
+        order = np.lexsort((cols, rows, distance[rows, cols], -containment[rows, cols]))
         pairs = list(zip(rows[order].tolist(), cols[order].tolist()))
 
         # Union-find; each root tracks the known labels in its group.

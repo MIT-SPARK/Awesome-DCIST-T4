@@ -5,6 +5,8 @@
     tf_fallback_identity: true
     require_same_label: true  # only merge added objects if labels match (unknown matches any)
     merge_containment_threshold: 0.5  # min world-AABB overlap / smaller box volume to merge (across and within robots)
+    # Cancel a robot's removed + added report of the same label within this [m] (drifted prior object); negative = off.
+    drift_pair_radius: -1.0
     merge_radius: -1.0  # also merge added objects with centroids within this [m]; negative = off
     # Applied in order to every robot's reports before merging; each name's type + fields are under it.
     filters: [prior_object_overlap, label_keep]
@@ -22,8 +24,8 @@
       # removed_labels: [cone]
     label_keep:  # add to `filters` to report only these categories (an empty list keeps that kind)
       type: LabelKeepFilter
-      added_labels: [cone, bag, car, truck, bus, red and yellow barrel]
-      removed_labels: [cone, bag, car, truck, bus, red and yellow barrel]
+      added_labels: [cone, bag, car, truck, bus, van, red and yellow barrel]
+      removed_labels: [cone, bag, car, truck, bus, van, red and yellow barrel]
     visualization:
       enabled: true  # RViz markers: per robot on ~/changed_objects, merged on ~/reconciled_objects
       line_width: 0.1
