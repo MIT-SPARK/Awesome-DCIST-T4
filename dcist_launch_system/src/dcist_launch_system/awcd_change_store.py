@@ -193,6 +193,38 @@ class PriorObjectOverlapFilter(ChangeFilter):
         return ~hits.any(axis=1)
 
 
+class PriorObjectProximityFilter(ChangeFilter):
+    """Drops added objects whose centroid is within `radius` of a non-removed prior object's.
+
+    Like PriorObjectOverlapFilter, but catches re-detections shifted off the prior box.
+    """
+
+    @dataclass
+    class Config:
+        # Max centroid distance [m] to a prior object to drop the added object.
+        radius: float = 1.0
+        # Only prior objects of the same label (unknown matches anything) count.
+        require_same_label: bool = True
+
+    def __init__(self, config: Optional["PriorObjectProximityFilter.Config"] = None):
+        self.config = config or PriorObjectProximityFilter.Config()
+
+    def keep(self, kind, records, context):
+        keep = np.ones(len(records), dtype=bool)
+        priors = [
+            p for p in context.prior_objects if p.obj_id not in context.removed_ids
+        ]
+        if kind != ADDED or not records or not priors:
+            return keep
+        added = np.array([r.center for r in records], dtype=float)
+        prior = np.array([p.center for p in priors], dtype=float)
+        distances = np.linalg.norm(added[:, None] - prior[None], axis=2)
+        hits = distances <= self.config.radius
+        if self.config.require_same_label:
+            hits &= _labels_match([r.label for r in records], [p.label for p in priors])
+        return ~hits.any(axis=1)
+
+
 class LabelDropFilter(ChangeFilter):
     """Drops added / removed records whose label is listed (e.g. added chairs, removed trash cans)."""
 
@@ -237,6 +269,7 @@ class LabelKeepFilter(ChangeFilter):
 # Filter type name (the `type` of a configured filter) -> filter class; each has a nested Config.
 FILTER_TYPES = {
     "PriorObjectOverlapFilter": PriorObjectOverlapFilter,
+    "PriorObjectProximityFilter": PriorObjectProximityFilter,
     "LabelDropFilter": LabelDropFilter,
     "LabelKeepFilter": LabelKeepFilter,
 }
