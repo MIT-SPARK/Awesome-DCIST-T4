@@ -4,16 +4,16 @@
     tf_fallback_identity: true
     require_same_label: true
     merge_containment_threshold: 0.5
-    drift_pair_radius: -1.0
-    merge_radius: -1.0
-    filters: [prior_object_overlap, label_keep]
+    drift_pair_radius: 1.5
+    merge_radius: 1.5
+    filters: [prior_object_overlap, prior_object_proximity, label_keep]
     prior_object_overlap:
       type: PriorObjectOverlapFilter
       max_overlap_ratio: 0.4
       require_same_label: true
     prior_object_proximity:
       type: PriorObjectProximityFilter
-      radius: 1.0
+      radius: 1.5
       require_same_label: true
     label_drop:
       type: LabelDropFilter

@@ -22,7 +22,7 @@ active_window:
       collect_debug_voxels: true  # per-voxel free/occupied/unknown lists for change_detection/voxels
       # Temporal EMA filter params for newly-added-object detection:
       added_ema_alpha: 0.2  # EMA smoothing factor
-      added_probability_threshold: 0.8  # Smoothed probability to declare newly-added
+      added_probability_threshold: 0.7  # Smoothed probability to declare newly-added
       added_min_frames_observed: 20  # Min frames before a track can be declared added
       added_prune_after_frames: 100  # Frames of no measurement before non-added tracks are pruned
       added_detection_method: mesh  # graph: 2D footprint in prior places; mesh: 3D vs prior mesh
