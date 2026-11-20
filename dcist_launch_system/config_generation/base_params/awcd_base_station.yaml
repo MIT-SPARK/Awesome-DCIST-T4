@@ -6,8 +6,8 @@
     require_same_label: true  # only merge added objects if labels match (unknown matches any)
     merge_containment_threshold: 0.5  # min world-AABB overlap / smaller box volume to merge (across and within robots)
     # Cancel a robot's removed + added report of the same label within this [m] (drifted prior object); negative = off.
-    drift_pair_radius: 2
-    merge_radius: 2  # also merge added objects with centroids within this [m]; negative = off
+    drift_pair_radius: 2.0
+    merge_radius: 2.0  # also merge added objects with centroids within this [m]; negative = off
     # Applied in order to every robot's reports before merging; each name's type + fields are under it.
     filters: [prior_object_overlap, prior_object_proximity, label_keep]
     prior_object_overlap:
