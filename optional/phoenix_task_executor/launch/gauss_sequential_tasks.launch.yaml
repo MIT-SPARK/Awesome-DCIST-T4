@@ -1,0 +1,43 @@
+---
+launch:
+  # TF is namespaced by robot to match ADT4 (keeps full TF trees off the zenoh mesh)
+  - set_remap: { from: /tf, to: /gauss/tf }
+  - set_remap: { from: /tf_static, to: /gauss/tf_static }
+  - include:
+      file: $(find-pkg-share phoenix_launch)/launch/stack_launch.xml
+      arg:
+        - { name: "name", value: "gauss" }
+        - { name: "imu_topic", value: "/gauss/microstrain/imu/data" }
+        - { name: "lidar_topic", value: "/gauss/ouster/points" }  # self-hit filtered
+        - { name: "lidar_ns", value: "ouster" }
+        - { name: "terrainnet", value: "false" }
+        - { name: "mid_range_planner", value: "false" }
+        - { name: "controller_config", value: "$(find-pkg-share arl_mppi)/config/husky.yaml" }
+        - { name: "tak", value: "false" }
+        - { name: "active_srp", value: "mppi_guided_search" }
+        - { name: "active_mrp", value: "PASSTHROUGH" }
+        - { name: "mrp_platform", value: "platform" }
+        - { name: "use_gvom", value: "false" }
+        - { name: "vectr_slam_odom", value: "false" }
+        - { name: "vectr_slam_map", value: "false" }
+# - include:
+#     file: $(find-pkg-share hardware_launch)/launch/gauss_hardware_launch.xml
+
+  - node:
+      pkg: "topic_tools"
+      exec: "relay"
+      name: "odom_relay"
+      param:
+        - { name: "input_topic", value: "/gauss/dlio/odom_node/odom" }
+        - { name: "output_topic", value: "/gauss/odometry/local" }
+
+  # Explicit alternative launch; never run alongside the legacy lrp_gen_node.
+  - node:
+      pkg: "phoenix_task_executor"
+      exec: "phoenix_task_executor"
+      name: "phoenix_task_executor"
+      namespace: "gauss"
+      output: "screen"
+      param:
+        - { name: "robot", value: "gauss" }
+        - { name: "goal_radius", value: 3.5 }

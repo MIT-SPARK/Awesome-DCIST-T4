@@ -689,3 +689,11 @@ A big thank you to our sponsors for their generous support:
 
 * [ARL Distributed and Collaborative Intelligent Systems and Technology Collaborative Research Alliance (DCIST
 CRA) agreement W911NF-17-2-0181](https://arl.devcom.army.mil/cras/dcist-cra/)
+
+## Optional Phoenix mission executor
+
+The [Phoenix task executor](optional/phoenix_task_executor/REVIEW.txt) preserves
+separate navigation tasks for Husky missions. It is draft, opt-in, and excluded
+from default colcon discovery and all automatic launches. Build its overlay in
+the robot-local Phoenix ROS environment; the existing planner action interface
+and deployment remain unchanged.
