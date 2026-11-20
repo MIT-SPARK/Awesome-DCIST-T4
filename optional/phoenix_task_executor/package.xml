@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>phoenix_task_executor</name><version>0.1.0</version>
+  <description>Opt-in sequential execution of explicit Phoenix path tasks.</description>
+  <maintainer email="phoenix-development@example.com">Phoenix development</maintainer>
+  <license>ARL-LimitedRelease</license>
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>rclpy</exec_depend><exec_depend>action_msgs</exec_depend>
+  <exec_depend>phx_nav_msgs</exec_depend><exec_depend>robot_executor_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend><exec_depend>std_msgs</exec_depend><exec_depend>std_srvs</exec_depend>
+  <test_depend>python3-pytest</test_depend>
+  <export><build_type>ament_python</build_type></export>
+</package>

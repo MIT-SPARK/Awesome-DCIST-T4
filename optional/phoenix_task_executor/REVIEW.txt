@@ -1,0 +1,57 @@
+DRAFT: optional Phoenix task executor owned by ADT4
+
+Companion compiler: https://github.com/MIT-SPARK/Omniplanner/pull/69
+Supersedes the Phoenix-hosted prototype in:
+https://gitlab.sitcore.net/aimm/ros2/phoenix-r2/-/merge_requests/360
+
+The executor implementation and ROS wire interfaces are unchanged by this move.
+Run it on the robot in the Phoenix ROS environment, using an explicitly built
+overlay; do not forward SRP/MRP action traffic to the base station.
+Normal ADT4 launches and builds do not include this package. The parent
+optional/COLCON_IGNORE prevents default recursive colcon discovery.
+
+DEPENDENCIES
+Runtime: rclpy, phx_nav_msgs (from the matching Phoenix installation),
+robot_executor_msgs (from spot_tools), nav_msgs, action_msgs, std_msgs, std_srvs.
+No Phoenix planner internals, GPU library, Spot SDK or new wire types are imported.
+
+BUILD (inside the existing Phoenix development environment)
+Source /phoenix/install/setup.bash, then build into a separate overlay directory:
+  colcon build --base-paths /path/to/adt4/optional/phoenix_task_executor     /path/to/adt4/spot_tools/robot_executor_interface/robot_executor_msgs     --build-base /path/to/overlay/build --install-base /path/to/overlay/install     --packages-up-to phoenix_task_executor
+Source that overlay only for the opt-in executor launch. Build/package selection
+does not activate the node. Keep normal Phoenix and ADT4 launch defaults intact.
+
+INTERFACE
+Input: /<robot>/omniplanner_node/compiled_tasks_out, ActionSequenceMsg.
+Each FOLLOW retains a complete path and its own endpoint. Frames are preserved.
+Output: current task guidance on planner/PASSTHROUGH/mrp/passthrough_topic.
+Clients: mid_range_planner_action (MRPGoal), short_range_planner_action (SRPGoal).
+Status: task_executor/status (JSON String); cancel: task_executor/cancel (Trigger).
+Only SRP success followed by old MRP termination advances the sequence.
+Whole missions are validated before sending any goal. Failure, rejection and
+cancellation do not advance. Duplicate plan IDs are ignored; busy replacement
+missions are rejected. The executor publishes no velocity commands.
+
+ACTIVATION IS DISABLED
+The standalone launch starts only this node when explicitly invoked. Before any
+activation, remove the legacy lrp_gen_node and trajectory_server from the chosen
+Phoenix launch so there is only one mission dispatcher. Set sequential_tasks:
+true in the Omniplanner Phoenix adaptor only after both components are installed.
+The gauss_sequential_tasks launch is the historical staging example, not a
+drop-in replacement for today's field profile. It requires review of mapping,
+odometry and recovery settings before use. No automatic launch is modified here.
+
+REMAINING DRAFT WORK
+- Integrate mission repair/preemption with cancellation. Existing empty-Path
+  cancellation and Spot-specific pause/resume conventions are not supported yet.
+- Integrate per-action feedback with ADT4's goal manager.
+- Configure task/status transport deliberately if Omniplanner runs off-robot;
+  this PR does not alter fleetlink allowlists.
+- Reconcile the example full-stack launch; perform full-process and driving tests.
+- Inspect/pick/place remain skipped by the legacy Phoenix compiler; the executor
+  accepts FOLLOW only and rejects unsupported actions.
+
+TESTING
+The original 20 compiler/executor tests passed in a network-isolated ROS
+container, including real action calls to fake planners and cancellation races.
+Run the same suite against this package after building the isolated overlay.

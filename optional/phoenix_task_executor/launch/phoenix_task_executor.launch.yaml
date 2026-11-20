@@ -1,0 +1,13 @@
+---
+launch:
+  - arg: {name: robot, default: gauss}
+  - arg: {name: goal_radius, default: '3.5'}
+  - node:
+      pkg: phoenix_task_executor
+      exec: phoenix_task_executor
+      name: phoenix_task_executor
+      namespace: $(var robot)
+      output: screen
+      param:
+        - {name: robot, value: $(var robot)}
+        - {name: goal_radius, value: $(var goal_radius)}
